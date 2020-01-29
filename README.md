@@ -15,7 +15,6 @@ Significant updates to the supporting libraries has broken this ode.  It still w
 **Jan 2020** - 96/283 test failing  
 
 
-
 ## Installation
 
     pip install jx-sqlite
