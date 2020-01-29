@@ -18,7 +18,7 @@
                     "mo-files==1.2",            "mo-future==1.1",
                "mo-json==2.1.17319",            "mo-json-config",
                         "mo-kwargs",                   "mo-logs",
-                          "mo-math",                    "mo-sql",
+                          "mo-math",        "mo-sql>=3.35.20029",
             "mo-testing==1.0.17168",                "mo-threads",
                          "mo-times"
     ],
@@ -40,7 +40,6 @@
             "Significant updates to the supporting libraries has broken this ode.  It still works works for the simple cases that require it",
             "",
             "**Jan 2020** - 96/283 test failing  ",
-            "",
             "",
             "",
             "## Installation",
@@ -149,5 +148,5 @@
     "packages": ["jx_sqlite", "jx_sqlite/expressions"],
     "python_requires": "==2.7, ==3.6, ==3.7, ==3.8",
     "url": "https://github.com/klahnakoski/jx-sqlite",
-    "version": "1.12.20029"
+    "version": "3.35.20029"
 }
