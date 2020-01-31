@@ -14,13 +14,13 @@
     "description": "JSON query expressions using SQLite",
     "include_package_data": true,
     "install_requires": [
-        "mo-collections==1.2.17235",        "mo-dots==1.5.17188",
-                    "mo-files==1.2",            "mo-future==1.1",
-               "mo-json==2.1.17319",            "mo-json-config",
-                        "mo-kwargs",                   "mo-logs",
-                          "mo-math",        "mo-sql>=3.35.20029",
-            "mo-testing==1.0.17168",                "mo-threads",
-                         "mo-times"
+        "mo-collections>=3.38.20029",        "mo-dots>=3.41.20031",
+              "mo-files>=3.41.20031",      "mo-future>=3.40.20031",
+               "mo-json>=3.38.20029", "mo-json-config>=3.42.20031",
+             "mo-kwargs>=3.38.20029",        "mo-logs>=3.38.20029",
+               "mo-math>=3.41.20031",         "mo-sql>=3.38.20031",
+            "mo-testing>=3.38.20029",     "mo-threads>=3.42.20031",
+              "mo-times>=3.38.20029"
     ],
     "license": "MPL 2.0",
     "long_description": {
@@ -28,6 +28,13 @@
             "# jx-sqlite ",
             "",
             "JSON query expressions using SQLite",
+            "",
+            "https://travis-ci.org/klahnakoski/jx-sqlite.svg?branch=master",
+            "",
+            "|Branch      |Status   | ",
+            "|------------|---------|",
+            "|master      | [![Build Status](https://travis-ci.org/klahnakoski/jx-sqlite.svg?branch=master)](https://travis-ci.org/klahnakoski/jx-sqlite) |",
+            "|dev         | [![Build Status](https://travis-ci.org/klahnakoski/jx-sqlite.svg?branch=dev)](https://travis-ci.org/klahnakoski/jx-sqlite)    | ",
             "",
             "## Summary",
             "",
@@ -147,5 +154,5 @@
     "name": "jx-sqlite",
     "packages": ["jx_sqlite", "jx_sqlite/expressions"],
     "url": "https://github.com/klahnakoski/jx-sqlite",
-    "version": "3.35.20029"
+    "version": "3.42.20031"
 }
