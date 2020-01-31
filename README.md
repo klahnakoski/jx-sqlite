@@ -2,6 +2,13 @@
 
 JSON query expressions using SQLite
 
+https://travis-ci.org/klahnakoski/jx-sqlite.svg?branch=master
+
+|Branch      |Status   | 
+|------------|---------|
+|master      | [![Build Status](https://travis-ci.org/klahnakoski/jx-sqlite.svg?branch=master)](https://travis-ci.org/klahnakoski/jx-sqlite) |
+|dev         | [![Build Status](https://travis-ci.org/klahnakoski/jx-sqlite.svg?branch=dev)](https://travis-ci.org/klahnakoski/jx-sqlite)    | 
+
 ## Summary
 
 This library will manage your database schema to store JSON documents. You get all the speed of a well-formed database schema without the schema migration headaches. 
