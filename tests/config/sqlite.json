@@ -3,7 +3,7 @@
 	"db":{
 		"name": "testing",
 //		"filename":"test.sqlite",
-		"upgrade": true,
+		"upgrade": false,
 		"load_functions": true
 	},
 	"constants": {

@@ -10,7 +10,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 from mo_json import STRING
 
-from mo_dots import concat_field
+from mo_dots import concat_field, set_default
 
 from jx_base import Facts, Column
 from jx_sqlite.utils import UID, GUID, DIGITS_TABLE, ABOUT_TABLE
@@ -42,7 +42,7 @@ class Container(object):
     @override
     def __init__(
             self,
-            db=None,  # EXISTING Sqlite3 DATBASE
+            db=None,  # EXISTING Sqlite3 DATBASE, OR CONFIGURATION FOR Sqlite DB
             filename=None,  # FILE FOR THE DATABASE (None FOR MEMORY DATABASE)
             kwargs=None   # See Sqlite parameters
     ):
@@ -51,7 +51,7 @@ class Container(object):
             self.db = db
         else:
             # PASS CALL PARAMETERS TO Sqlite
-            self.db = db = Sqlite(filename=filename, kwargs=kwargs)
+            self.db = db = Sqlite(filename=filename, kwargs=set_default({}, db, kwargs))
 
         self.db.create_new_functions()  # creating new functions: regexp
 
