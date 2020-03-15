@@ -31,7 +31,7 @@ Significant updates to the supporting libraries has broken this code.  It still 
 Open a database 
 
 ```python
-container = Container()
+container = jx_sqlite.Container(filename="my.db")
 ```
 
 Declare a table

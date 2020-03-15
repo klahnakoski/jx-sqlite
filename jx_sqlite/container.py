@@ -40,12 +40,18 @@ _config = None
 
 class Container(object):
     @override
-    def __init__(self, db=None):
+    def __init__(
+            self,
+            db=None,  # EXISTING Sqlite3 DATBASE
+            filename=None,  # FILE FOR THE DATABASE (None FOR MEMORY DATABASE)
+            kwargs=None   # See Sqlite parameters
+    ):
         global _config
         if isinstance(db, Sqlite):
             self.db = db
         else:
-            self.db = db = Sqlite(db)
+            # PASS CALL PARAMETERS TO Sqlite
+            self.db = db = Sqlite(filename=filename, kwargs=kwargs)
 
         self.db.create_new_functions()  # creating new functions: regexp
 
