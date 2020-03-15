@@ -28,7 +28,7 @@ boolean_type = type(True)
 
 if PY3:
     import itertools
-    import collections
+    from collections import OrderedDict, UserDict
     from collections.abc import Callable, Iterable, Mapping, Set, MutableMapping
     from functools import cmp_to_key, reduce, update_wrapper
     from configparser import ConfigParser
@@ -40,7 +40,7 @@ if PY3:
     zip_longest = itertools.zip_longest
 
     text = str
-    text_type = str
+    text = str
     string_types = str
     binary_type = bytes
     integer_types = (int, )
@@ -102,6 +102,12 @@ if PY3:
         except StopIteration:
             return None
 
+    def NEXT(_iter):
+        """
+        RETURN next() FUNCTION, DO NOT CALL
+        """
+        return _iter.__next__
+
     def next(_iter):
         return _iter.__next__()
 
@@ -122,10 +128,8 @@ if PY3:
         sort_keys=True   # <-- IMPORTANT!  sort_keys==True
     ).encode
 
-    UserDict = collections.UserDict
 
-else:
-    import collections
+else:  # PY2
     from collections import Callable, Iterable, Mapping, Set, MutableMapping, OrderedDict
     from functools import cmp_to_key, reduce, update_wrapper
 
@@ -139,7 +143,7 @@ else:
 
     reduce = __builtin__.reduce
     text = __builtin__.unicode
-    text_type = __builtin__.unicode
+    text = __builtin__.unicode
     string_types = (str, unicode)
     binary_type = str
     integer_types = (int, long)
@@ -192,6 +196,12 @@ else:
         except StopIteration:
             return None
 
+    def NEXT(_iter):
+        """
+        RETURN next() FUNCTION, DO NOT CALL
+        """
+        return _iter.next
+
     def next(_iter):
         return _iter.next()
 
@@ -215,7 +225,7 @@ else:
 
 
     # COPIED FROM Python's collections.UserDict (copied July 2018)
-    class UserDict(collections.MutableMapping):
+    class UserDict(MutableMapping):
 
         # Start by filling-out the abstract methods
         def __init__(*args, **kwargs):

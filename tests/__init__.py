@@ -20,7 +20,7 @@ from copy import deepcopy
 from jx_sqlite.container import Container
 
 import mo_json_config
-from mo_future import text_type
+from mo_future import text
 from mo_dots import wrap, coalesce, unwrap, listwrap, Data, startswith_field
 from mo_json import json2value
 from mo_kwargs import override
@@ -84,7 +84,7 @@ class SQLiteUtils(object):
             Log.error("can not load {{data}} into container", {"data": subtest.data}, e)
 
         frum = subtest.query['from']
-        if isinstance(frum, text_type):
+        if isinstance(frum, text):
             subtest.query["from"] = frum.replace(TEST_TABLE, self._index.name)
         else:
             Log.error("Do not know how to handle")
@@ -229,10 +229,10 @@ def sort_table(result):
     """
     SORT ROWS IN TABLE, EVEN IF ELEMENTS ARE JSON
     """
-    data = wrap([{text_type(i): v for i, v in enumerate(row)} for row in result.data])
+    data = wrap([{text(i): v for i, v in enumerate(row)} for row in result.data])
     sort_columns = jx.sort(set(jx.get_columns(data, leaves=True).name))
     data = jx.sort(data, sort_columns)
-    result.data = [tuple(row[text_type(i)] for i in range(len(result.header))) for row in data]
+    result.data = [tuple(row[text(i)] for i in range(len(result.header))) for row in data]
 
 
 def error(response):

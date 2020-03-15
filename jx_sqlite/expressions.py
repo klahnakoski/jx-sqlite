@@ -11,7 +11,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from future.utils import text_type
+from future.utils import text
 from mo_dots import coalesce, wrap, Null, split_field, startswith_field
 from mo_dots import join_field, ROOT_PATH, relative_field, Data
 from mo_json import json2value
@@ -649,7 +649,7 @@ def to_sql(self, schema, not_null=False, boolean=False):
         value_is_missing = self.value.missing().to_sql(schema, boolean=True)[0].sql.b
         value = self.value.to_sql(schema, not_null=True)[0].sql.s
         prefix = self.prefix.to_sql(schema)[0].sql.s
-        len_prefix = text_type(len(convert.json2value(self.prefix.json))) if isinstance(self.prefix,
+        len_prefix = text(len(convert.json2value(self.prefix.json))) if isinstance(self.prefix,
                                                                                       Literal) else "length(" + prefix + ")"
         suffix = self.suffix.to_sql(schema)[0].sql.s
         start_index = self.start.to_sql(schema)[0].sql.n
@@ -741,7 +741,7 @@ def sql_quote(value):
     elif isinstance(value, unicode):
         return "'" + value.replace("'", "''") + "'"
     else:
-        return text_type(value)
+        return text(value)
 
 
 json_type_to_sql_type = {
