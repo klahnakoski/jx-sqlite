@@ -13,7 +13,7 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import allocate_lock as _allocate_lock
+from mo_future import allocate_lock as _allocate_lock, decorate
 from mo_math.randoms import Random
 from mo_threads.signals import Signal
 
@@ -73,8 +73,9 @@ class Lock(object):
     def __exit__(self, a, b, c):
         if self.waiting:
             self.debug and _Log.note("signaling {{num}} waiters on {{name|quote}}", name=self.name, num=len(self.waiting))
-            waiter = self.waiting.pop()
-            waiter.go()
+            # TELL ANOTHER THAT THE LOCK IS READY SOON
+            other = self.waiting.pop()
+            other.go()
         self.lock.release()
         self.debug and _Log.note("released lock {{name|quote}}", name=self.name)
 
@@ -86,6 +87,9 @@ class Lock(object):
         """
         waiter = Signal()
         if self.waiting:
+            # TELL ANOTHER THAT THE LOCK IS READY SOON
+            other = self.waiting.pop()
+            other.go()
             self.debug and _Log.note("waiting with {{num}} others on {{name|quote}}", num=len(self.waiting), name=self.name, stack_depth=1)
             self.waiting.insert(0, waiter)
         else:
@@ -112,3 +116,15 @@ class Lock(object):
             pass
 
         return bool(waiter)
+
+
+def locked(func):
+    """
+    WRAP func WITH A Lock, TO ENSURE JUST ONE THREAD AT A TIME
+    """
+    lock = Lock()
+    @decorate(func)
+    def output(*args, **kwargs):
+        with lock:
+            return func(*args, **kwargs)
+    return output

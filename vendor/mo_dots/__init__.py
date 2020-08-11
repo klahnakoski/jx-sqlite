@@ -43,7 +43,7 @@ def coalesce(*args):
     # http://en.wikipedia.org/wiki/Null_coalescing_operator
     for a in args:
         if a != None:
-            return wrap(a)
+            return to_data(a)
     return Null
 
 
@@ -209,24 +209,24 @@ def hash_value(v):
         return hash(tuple(sorted(hash_value(vv) for vv in v.values())))
 
 
-def set_default(*params):
+def set_default(*dicts):
     """
-    UPDATES FIRST dict WITH THE MERGE RESULT, WHERE MERGE RESULT IS DEFINED AS:
-    FOR EACH LEAF, RETURN THE HIGHEST PRIORITY LEAF VALUE
+    RECURSIVE MERGE OF MULTIPLE dicts MOST IMPORTANT FIRST
 
-    RECURSIVE VERSION OF params[0].update(*reversed(params));
+    UPDATES dicts[0] WITH THE MERGE RESULT, WHERE MERGE RESULT IS DEFINED AS:
+    FOR EACH LEAF, RETURN THE FIRST NOT-NULL LEAF VALUE
 
-    :param params:  dicts IN PRIORITY ORDER, FIRST IS HIGHES PRIORITY
-    :return: FIRST dict OR NEW dict WITH PROPERTIES SET
+    :param dicts: dicts IN PRIORITY ORDER, HIHEST TO LOWEST
+    :return: dicts[0]
     """
-    p0 = params[0]
+    p0 = dicts[0]
     agg = p0 if p0 or _get(p0, CLASS) in data_types else {}
-    for p in params[1:]:
+    for p in dicts[1:]:
         p = unwrap(p)
         if p is None:
             continue
         _all_default(agg, p, seen={})
-    return wrap(agg)
+    return to_data(agg)
 
 
 def _all_default(d, default, seen=None):
@@ -464,7 +464,27 @@ def lower_match(value, candidates):
     return [v for v in candidates if v.lower() == value.lower()]
 
 
-def wrap(v):
+def dict_to_data(d):
+    """
+    DO NOT CHECK TYPE
+    :param d: dict
+    :return: Data
+    """
+    m = object.__new__(Data)
+    _set(m, SLOT, d)
+    return m
+
+
+def list_to_data(v):
+    """
+    to_data, BUT WITHOUT CHECKS
+    """
+    output = list.__new__(FlatList)
+    output.list = v
+    return output
+
+
+def to_data(v):
     """
     WRAP AS Data OBJECT FOR DATA PROCESSING: https://github.com/klahnakoski/mo-dots/tree/dev/docs
     :param v:  THE VALUE TO WRAP
@@ -487,14 +507,23 @@ def wrap(v):
         return v
 
 
-def wrap_leaves(value):
+wrap = to_data
+
+
+def leaves_to_data(value):
     """
     dict WITH DOTS IN KEYS IS INTERPRETED AS A PATH
     """
-    return wrap(_wrap_leaves(value))
+    return to_data(_leaves_to_data(value))
 
 
-def _wrap_leaves(value):
+wrap_leaves = leaves_to_data
+
+
+def _leaves_to_data(value):
+    """
+    RETURN UNWRAPPED STRUCTURES
+    """
     if value == None:
         return None
 
@@ -507,7 +536,7 @@ def _wrap_leaves(value):
 
         output = {}
         for key, value in value.items():
-            value = _wrap_leaves(value)
+            value = _leaves_to_data(value)
 
             if key == "":
                 get_logger().error("key is empty string.  Probably a bad idea")
@@ -536,7 +565,7 @@ def _wrap_leaves(value):
     if hasattr(value, '__iter__'):
         output = []
         for v in value:
-            v = wrap_leaves(v)
+            v = leaves_to_data(v)
             output.append(v)
         return output
     return value
@@ -596,11 +625,11 @@ def listwrap(value):
     if value == None:
         return FlatList()
     elif is_list(value):
-        return wrap(value)
+        return list_to_data(value)
     elif is_many(value):
-        return wrap(list(value))
+        return list_to_data(list(value))
     else:
-        return wrap([unwrap(value)])
+        return list_to_data([unwrap(value)])
 
 def unwraplist(v):
     """

@@ -39,8 +39,10 @@ datetime.strptime('2012-01-01', '%Y-%m-%d')  # http://bugs.python.org/issue7980
 
 class Queue(object):
     """
-     SIMPLE MESSAGE QUEUE, multiprocessing.Queue REQUIRES SERIALIZATION, WHICH
-     IS DIFFICULT TO USE JUST BETWEEN THREADS (SERIALIZATION REQUIRED)
+     SIMPLE MULTI-THREADED QUEUE
+
+     (multiprocessing.Queue REQUIRES SERIALIZATION, WHICH
+     IS DIFFICULT TO USE JUST BETWEEN THREADS)
     """
 
     def __init__(self, name, max=None, silent=False, unique=False, allow_add_after_close=False):
@@ -236,7 +238,7 @@ class Queue(object):
             elif not self.queue:
                 return None
             else:
-                v =self.queue.pop()
+                v =self.queue.popleft()
                 if v is THREAD_STOP:  # SENDING A STOP INTO THE QUEUE IS ALSO AN OPTION
                     self.closed.go()
                 return v
@@ -419,10 +421,9 @@ class ThreadedQueue(Queue):
     ):
         if period !=None and not isinstance(period, (int, float, long)):
             Log.error("Expecting a float for the period")
-
+        period = coalesce(period, 1)  # SECONDS
         batch_size = coalesce(batch_size, int(max_size / 2) if max_size else None, 900)
         max_size = coalesce(max_size, batch_size * 2)  # REASONABLE DEFAULT
-        period = coalesce(period, 1)  # SECONDS
 
         Queue.__init__(self, name=name, max=max_size, silent=silent)
 

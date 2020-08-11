@@ -28,7 +28,7 @@ from mo_logs import Log
 from mo_sql import SQL, SQL_AND, SQL_CASE, SQL_COMMA, SQL_DESC, SQL_ELSE, SQL_END, SQL_FROM, SQL_GROUPBY, \
     SQL_INNER_JOIN, SQL_IS_NOT_NULL, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_LIMIT, SQL_NULL, SQL_ON, SQL_ONE, SQL_OR, \
     SQL_ORDERBY, SQL_SELECT, SQL_STAR, SQL_THEN, SQL_TRUE, SQL_UNION_ALL, SQL_WHEN, SQL_WHERE, sql_coalesce, \
-    sql_count, sql_iso, sql_list, SQL_DOT, SQL_PLUS, ConcatSQL, SQL_EQ
+    sql_count, sql_iso, sql_list, SQL_DOT, SQL_PLUS, ConcatSQL, SQL_EQ, SQL_LT
 from jx_sqlite.sqlite import quote_column, quote_value, sql_alias
 
 EXISTS_COLUMN = quote_column("__exists__")
@@ -210,9 +210,10 @@ class EdgesTable(SetOpTable):
                     )
                     where = None
                     join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
-                    on_clause = (
-                        quote_column(edge_alias, domain_name) + " < " + edge_values[1][1] + SQL_AND +
-                        edge_values[0][1] + " < " + sql_iso(quote_column(edge_alias, domain_name), SQL_PLUS, text(d.interval))
+                    on_clause = ConcatSQL(
+                        quote_column(edge_alias, domain_name), SQL_LT, edge_values[1][1], SQL_AND,
+                        edge_values[0][1], SQL_LT,
+                        sql_iso(quote_column(edge_alias, domain_name), SQL_PLUS, text(d.interval))
                     )
                     null_on_clause = None
                 else:

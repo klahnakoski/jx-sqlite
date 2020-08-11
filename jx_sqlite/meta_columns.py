@@ -17,7 +17,7 @@ from jx_python import jx
 from jx_sqlite.utils import untyped_column
 from jx_sqlite.expressions._utils import sql_type_to_json_type
 from mo_dots import Data, Null, coalesce, is_data, is_list, literal_field, startswith_field, tail_field, unwraplist, \
-    wrap
+    wrap, to_data
 from mo_json import STRUCT, IS_NULL
 from mo_json.typed_encoder import unnest_path, untyped
 from mo_logs import Log

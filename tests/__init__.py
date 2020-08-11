@@ -121,6 +121,9 @@ class SQLiteUtils(object):
         except Exception as e:
             Log.error("Failed test {{name|quote}}", name=subtest.name, cause=e)
 
+    def execute_update(self, command):
+        return self._index.update(command)
+
     def execute_query(self, query):
         try:
             if startswith_field(query["from"], self._index.name):

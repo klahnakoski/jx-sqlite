@@ -103,7 +103,9 @@ class SetOpTable(InsertTable):
                 primary_doc_details = nested_doc_details
             else:
                 def place(parent_doc_details):
-                    if startswith_field(step, parent_doc_details['nested_path'][0]):
+                    if step == parent_doc_details['nested_path'][0]:
+                        pass  # IGNORE
+                    elif startswith_field(step, parent_doc_details['nested_path'][0]):
                         for c in parent_doc_details['children']:
                             if place(c):
                                 return True
