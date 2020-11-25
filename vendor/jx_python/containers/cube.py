@@ -11,14 +11,14 @@ from __future__ import absolute_import, division, unicode_literals
 
 import mo_dots as dot
 from jx_base.container import Container
-from jx_base.query import _normalize_edge
+from jx_base.expressions.query_op import _normalize_edge
 from jx_python.cubes.aggs import cube_aggs
 from jx_python.lists.aggs import is_aggs
 from mo_collections.matrix import Matrix
 from mo_dots import Data, FlatList, Null, is_data, is_list, listwrap, leaves_to_data, to_data, list_to_data, \
     dict_to_data
-from mo_dots.lists import EMPTY
-from mo_future import is_text, transpose
+from mo_future import is_text, transpose, first
+from mo_imports import export
 from mo_logs import Log
 from mo_math import MAX, OR
 
@@ -26,7 +26,7 @@ from mo_math import MAX, OR
 class Cube(Container):
     """
     A CUBE IS LIKE A NUMPY ARRAY, ONLY WITH THE DIMENSIONS TYPED AND NAMED.
-    CUBES ARE BETTER THAN PANDAS BECAUSE THEY DEAL WITH NULLS GRACEFULLY
+    CUBES ARE EASIER TO WORK WITH THAN PANDAS BECAUSE THEY DEAL WITH NULLS GRACEFULLY
     """
 
     def __init__(self, select, edges, data, frum=None):
@@ -54,14 +54,14 @@ class Cube(Container):
                     Log.error("not expecting a list of records")
 
                 data = {select.name: Matrix.ZERO}
-                self.edges = EMPTY
+                self.edges = Null
             elif is_data(data):
                 # EXPECTING NO MORE THAN ONE rownum EDGE IN THE DATA
                 length = MAX([len(v) for v in data.values()])
                 if length >= 1:
                     self.edges = list_to_data([{"name": "rownum", "domain": {"type": "rownum"}}])
                 else:
-                    self.edges = EMPTY
+                    self.edges = Null
             elif is_list(data):
                 if is_list(select):
                     Log.error("not expecting a list of records")
@@ -78,7 +78,7 @@ class Cube(Container):
                     Log.error("not expecting a list of records")
 
                 data = {select.name: Matrix(value=data)}
-                self.edges = EMPTY
+                self.edges = Null
         else:
             self.edges = to_data(edges)
 
@@ -117,7 +117,7 @@ class Cube(Container):
         columns = dot.dict_to_data({s.name: s for s in self.select + self.edges})
 
         # DEFER TO ListContainer
-        from jx_python.containers.list_usingPythonList import ListContainer
+        from jx_python.containers.list import ListContainer
 
         frum = ListContainer(name="", data=frum.values(), schema=columns)
         return frum.query(q)
@@ -126,7 +126,7 @@ class Cube(Container):
         """
         TRY NOT TO USE THIS, IT IS SLOW
         """
-        matrix = self.data.values()[0]  # CANONICAL REPRESENTATIVE
+        matrix = first(self.data.values())  # CANONICAL REPRESENTATIVE
         if matrix.num == 0:
             return
         e_names = self.edges.name
@@ -209,12 +209,12 @@ class Cube(Container):
 
             # MAP DICT TO NUMERIC INDICES
             for name, v in item.items():
-                ei, parts = list_to_data([(i, e.domain.partitions) for i, e in enumerate(self.edges) if e.name == name])[0]
+                ei, parts = first((i, e.domain.partitions) for i, e in enumerate(self.edges) if e.name == name)
                 if not parts:
                     Log.error("Can not find {{name}}=={{value|quote}} in list of edges, maybe this feature is not implemented yet",
                         name= name,
                         value= v)
-                part = list_to_data([p for p in parts if p.value == v])[0]
+                part = first(p for p in parts if p.value == v)
                 if not part:
                     return Null
                 else:
@@ -242,7 +242,7 @@ class Cube(Container):
                 Log.error("{{name}} not found in cube",  name= item)
 
             output = Cube(
-                select=[s for s in self.select if s.name == item][0],
+                select=first(s for s in self.select if s.name == item),
                 edges=self.edges,
                 data={item: self.data[item]}
             )
@@ -252,6 +252,9 @@ class Cube(Container):
 
     def __getattr__(self, item):
         return self.data[item]
+
+    def items(self):
+        return self.data.items()
 
     def get_columns(self):
         return self.edges + listwrap(self.select)
@@ -275,7 +278,7 @@ class Cube(Container):
         if not self.is_value:
             Log.error("Not dealing with this case yet")
 
-        matrix = self.data.values()[0]
+        matrix = first(self.data.values())
         parts = [e.domain.partitions for e in self.edges]
         for c in matrix._all_combos():
             method(matrix[c], [parts[i][cc] for i, cc in enumerate(c)], self)
@@ -291,10 +294,10 @@ class Cube(Container):
             return Cube(select, self.edges, values)
 
     def filter(self, where):
-        if len(self.edges)==1 and self.edges[0].domain.type=="index":
+        if len(self.edges)==1 and first(self.edges).domain.type=="index":
             # USE THE STANDARD LIST FILTER
             from jx_python import jx
-            return jx.filter(self.data.values()[0].cube, where)
+            return jx.filter(first(self.data.values()).cube, where)
         else:
             # FILTER DOES NOT ALTER DIMESIONS, JUST WHETHER THERE ARE VALUES IN THE CELLS
             Log.unexpected("Incomplete")
@@ -417,7 +420,7 @@ class Cube(Container):
         from jx_python import jx
 
         # SET OP
-        canonical = self.data.values()[0]
+        canonical = first(self.data.values())
         accessor = jx.get(window.value)
         cnames = self.data.keys()
 
@@ -469,3 +472,6 @@ class Cube(Container):
             data={k: v.cube for k, v in self.data.items()},
             meta=self.meta
         )
+
+
+export("jx_base.container", Cube)

@@ -9,16 +9,29 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from collections import Mapping
 from datetime import date, datetime
 from decimal import Decimal
 
-from mo_future import binary_type, generator_types, get_function_arguments, get_function_defaults, none_type, text
-
-from mo_dots import Data, FlatList, NullType, SLOT, get_attr, set_attr, unwrap, to_data
-from mo_dots.datas import register_data
+from mo_dots.datas import register_data, Data, SLOT
+from mo_dots.lists import FlatList
+from mo_dots.nones import NullType, Null
 from mo_dots.utils import CLASS, OBJ
+from mo_future import (
+    binary_type,
+    generator_types,
+    get_function_arguments,
+    get_function_defaults,
+    none_type,
+    text,
+    Mapping,
+)
+from mo_imports import export, expect
 
+get_attr, set_attr, list_to_data, to_data, from_data = expect(
+    "get_attr", "set_attr", "list_to_data", "to_data", "from_data"
+)
+
+_new = object.__new__
 _get = object.__getattribute__
 _set = object.__setattr__
 WRAPPED_CLASSES = set()
@@ -59,9 +72,7 @@ class DataObject(Mapping):
             return obj.__dict__.items()
         except Exception as e:
             return [
-                (k, getattr(obj, k, None))
-                for k in dir(obj)
-                if not k.startswith("__")
+                (k, getattr(obj, k, None)) for k in dir(obj) if not k.startswith("__")
             ]
 
     def iteritems(self):
@@ -69,11 +80,13 @@ class DataObject(Mapping):
         try:
             return obj.__dict__.iteritems()
         except Exception as e:
+
             def output():
                 for k in dir(obj):
                     if k.startswith("__"):
                         continue
                     yield k, getattr(obj, k, None)
+
             return output()
 
     def __data__(self):
@@ -106,21 +119,21 @@ def datawrap(v):
     type_ = _get(v, CLASS)
 
     if type_ is dict:
-        m = Data()
+        m = _new(Data)
         _set(m, SLOT, v)  # INJECT m.__dict__=v SO THERE IS NO COPY
         return m
     elif type_ is tuple:
         return FlatList(v)
     elif type_ is list:
-        return FlatList(v)
+        return list_to_data(v)
     elif type_ in (Data, DataObject, FlatList, NullType):
         return v
-    elif type_ in (none_type, text, binary_type, int, float, Decimal, datetime, date):
+    elif type_ in (text, binary_type, int, float, Decimal, datetime, date):
         return v
     elif type_ in generator_types:
         return (to_data(vv) for vv in v)
-    elif isinstance(v, (text, binary_type, int, float, Decimal, datetime, date, FlatList, NullType, Mapping, none_type)):
-        return v
+    elif v == None:
+        return Null
     elif hasattr(v, "__data__"):
         return v.__data__()
     else:
@@ -150,7 +163,9 @@ class DictClass(object):
 
         ordered_params = dict(zip(params, args))
 
-        output = self.class_(**params_pack(params, ordered_params, kwargs, settings, defaults))
+        output = self.class_(
+            **params_pack(params, ordered_params, kwargs, settings, defaults)
+        )
         return DataObject(output)
 
 
@@ -163,7 +178,8 @@ def params_pack(params, *args):
                 continue
             settings[k] = v
 
-    output = {str(k): unwrap(settings[k]) for k in params if k in settings}
+    output = {str(k): from_data(settings[k]) for k in params if k in settings}
     return output
 
 
+export("mo_dots.lists", datawrap)

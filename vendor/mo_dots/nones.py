@@ -9,13 +9,13 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_dots import to_data
-from mo_future import is_binary, text, none_type
-
+from mo_dots.lists import is_sequence
 from mo_dots.utils import CLASS, OBJ
+from mo_future import is_binary, text, none_type
+from mo_imports import expect, export
 
-wrap = None
-is_sequence = None
+to_data = expect("to_data")
+
 _get = object.__getattribute__
 _set = object.__setattr__
 _zero_list = []
@@ -120,7 +120,9 @@ class NullType(object):
             return other == None
 
     def __ne__(self, other):
-        return other is not None and _get(other, CLASS) is not NullType and other != None
+        return (
+            other is not None and _get(other, CLASS) is not NullType and other != None
+        )
 
     def __or__(self, other):
         if other is True:
@@ -190,6 +192,7 @@ class NullType(object):
             return to_data(v.get(key))
         except Exception as e:
             from mo_logs import Log
+
             Log.error("not expected", cause=e)
 
     def __setattr__(self, key, value):
@@ -237,7 +240,7 @@ class NullType(object):
         return _null_hash
 
 
-Null = NullType()   # INSTEAD OF None!!!
+Null = NullType()  # INSTEAD OF None!!!
 
 
 def _assign_to_null(obj, path, value, force=True):
@@ -253,7 +256,7 @@ def _assign_to_null(obj, path, value, force=True):
             d = _get(obj, "__dict__")
             o = d[OBJ]
             p = d["__key__"]
-            s = [p]+path
+            s = [p] + path
             return _assign_to_null(o, s, value)
 
         path0 = path[0]
@@ -298,3 +301,5 @@ def _setdefault(obj, key, value):
     return v
 
 
+export("mo_dots.lists", Null)
+export("mo_dots.lists", "EMPTY", Null)

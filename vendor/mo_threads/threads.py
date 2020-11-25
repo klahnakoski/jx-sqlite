@@ -301,6 +301,7 @@ class Thread(BaseThread):
         DEBUG and Log.note("Thread {{name|quote}} got request to stop", name=self.name)
 
     def _run(self):
+        self.please_stop.remove_go(self.start)
         self.id = get_ident()
         with RegisterThread(self):
             try:
@@ -375,9 +376,9 @@ class Thread(BaseThread):
                                 Log.error(
                                     "Problem in thread {{name|quote}}", name=self.name, cause=e
                                 )
-                            except Exception:
+                            except Exception as cause:
                                 sys.stderr.write(
-                                    str("ERROR in thread: " + self.name + " " + text(e) + "\n")
+                                    str("ERROR in thread: " + self.name + " " + text(cause) + "\n")
                                 )
                         elif self.end_of_thread.response != None:
                             Log.warning(
@@ -486,11 +487,15 @@ class RegisterThread(object):
     def __enter__(self):
         with ALL_LOCK:
             ALL[self.thread.id] = self.thread
-        self.thread.cprofiler = CProfiler()
-        self.thread.cprofiler.__enter__()
+        cprofiler = self.thread.cprofiler = CProfiler()
+        cprofiler.__enter__()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        # PYTHON WILL REMOVE GLOBAL VAR BEFORE END-OF-THREAD
+        all_lock = ALL_LOCK
+        all = ALL
+
         self.thread.cprofiler.__exit__(exc_type, exc_val, exc_tb)
         with self.thread.child_locker:
             if self.thread.children:
@@ -499,8 +504,8 @@ class RegisterThread(object):
                     children=[c.name for c in self.thread.children],
                     thread=self.thread.name
                 )
-        with ALL_LOCK:
-            del ALL[self.thread.id]
+        with all_lock:
+            del all[self.thread.id]
 
 
 def register_thread(func):

@@ -14,13 +14,10 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from mo_future import allocate_lock as _allocate_lock, decorate
-from mo_math.randoms import Random
+from mo_math import randoms
 from mo_threads.signals import Signal
 
-_Log = None
-_Except = None
-_Thread = None
-_extract_stack = None
+_Log, _Except, _Thread, _extract_stack = [None] * 4
 
 DEBUG = False
 DEBUG_SIGNAL = False
@@ -40,10 +37,7 @@ def _late_import():
     from mo_threads.threads import Thread as _Thread
     from mo_logs import Log as _Log
 
-    _ = _Log
-    _ = _Except
-    _ = _Thread
-    _ = _extract_stack
+    _keep_imports = _Log, _Except, _Thread, _extract_stack
 
 
 class Lock(object):
@@ -62,7 +56,7 @@ class Lock(object):
         self.waiting = None
 
     def __enter__(self):
-        if self.sample and Random.int(100) == 0:
+        if self.sample and randoms.int(100) == 0:
             _Log.warning("acquire  lock {{name|quote}}", name=self.name)
 
         self.debug and _Log.note("acquire  lock {{name|quote}}", name=self.name)
@@ -74,15 +68,15 @@ class Lock(object):
         if self.waiting:
             self.debug and _Log.note("signaling {{num}} waiters on {{name|quote}}", name=self.name, num=len(self.waiting))
             # TELL ANOTHER THAT THE LOCK IS READY SOON
-            other = self.waiting.pop()
-            other.go()
+            waiter = self.waiting.pop()
+            waiter.go()
         self.lock.release()
         self.debug and _Log.note("released lock {{name|quote}}", name=self.name)
 
     def wait(self, till=None):
         """
         THE ASSUMPTION IS wait() WILL ALWAYS RETURN WITH THE LOCK ACQUIRED
-        :param till: WHEN TO GIVE UP WAITING FOR ANOTHER THREAD TO SIGNAL
+        :param till: WHEN TO GIVE UP WAITING FOR ANOTHER THREAD TO SIGNAL, LOCK IS STILL ACQUIRED
         :return: True IF SIGNALED TO GO, False IF till WAS SIGNALED
         """
         waiter = Signal()

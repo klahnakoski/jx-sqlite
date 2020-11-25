@@ -30,7 +30,7 @@ __all__ = ["parse", "parserinfo"]
 
 class _timelex(object):
 
-    def __init__(self, instream):
+    def __init__(query_path, instream):
         if is_text(instream):
             instream = StringIO(instream)
         self.instream = instream

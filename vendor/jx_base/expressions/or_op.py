@@ -8,24 +8,14 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-"""
-# NOTE:
-
-THE self.lang[operator] PATTERN IS CASTING NEW OPERATORS TO OWN LANGUAGE;
-KEEPING Python AS# Python, ES FILTERS AS ES FILTERS, AND Painless AS
-Painless. WE COULD COPY partial_eval(), AND OTHERS, TO THIER RESPECTIVE
-LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
-
-"""
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import and_op
-from jx_base.expressions._utils import simplified
 from jx_base.expressions.and_op import AndOp
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.true_op import TRUE
 from jx_base.language import is_op
+from mo_imports import export
 from mo_json import BOOLEAN
 
 
@@ -47,10 +37,13 @@ class OrOp(Expression):
         return output
 
     def map(self, map_):
-        return self.lang[OrOp([t.map(map_) for t in self.terms])]
+        return (OrOp([t.map(map_) for t in self.terms]))
 
-    def missing(self):
+    def missing(self, lang):
         return FALSE
+
+    def invert(self, lang):
+        return AndOp([t.invert(lang) for t in self.terms]).partial_eval(lang)
 
     def __call__(self, row=None, rownum=None, rows=None):
         return any(t(row, rownum, rows) for t in self.terms)
@@ -62,12 +55,14 @@ class OrOp(Expression):
             return False
         return all(t == u for t, u in zip(self.terms, other.terms))
 
-    @simplified
-    def partial_eval(self):
+    def __contains__(self, item):
+        return any(item in t for t in self.terms)
+
+    def partial_eval(self, lang):
         terms = []
         ands = []
         for t in self.terms:
-            simple = self.lang[t].partial_eval()
+            simple = (t).partial_eval(lang)
             if simple.type != BOOLEAN:
                 simple = simple.exists()
 
@@ -94,7 +89,7 @@ class OrOp(Expression):
             return FALSE
         if len(terms) == 1:
             return terms[0]
-        return self.lang[OrOp(terms)]
+        return (OrOp(terms))
 
 
-and_op.OrOp = OrOp
+export("jx_base.expressions.and_op", OrOp)

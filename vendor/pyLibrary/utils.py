@@ -10,21 +10,24 @@ from __future__ import division, unicode_literals
 
 import datetime
 
+from mo_logs import Log
+
 from mo_dots import DataObject, Null, unwrap
 from mo_future import text, zip_longest
 
 
 class Version(object):
 
-    __slots__ = ["version"]
+    __slots__ = ["prefix", "version"]
 
-    def __new__(cls, version):
+    def __new__(cls, version, prefix=""):
         if version == None:
             return Null
         else:
             return object.__new__(cls)
 
-    def __init__(self, version):
+    def __init__(self, version, prefix=""):
+        self.prefix = prefix
         version = unwrap(version)
 
         if isinstance(version, tuple):
@@ -32,11 +35,22 @@ class Version(object):
         elif isinstance(version, DataObject):
             self.version = [0, 0, 0]
         elif isinstance(version, Version):
+            self.prefix = version.prefix
             self.version = version.version
         else:
+            for i, c in enumerate(version):
+                if c in '0123456789':
+                    self.prefix, version = version[:i], version[i:]
+                    break
+
             try:
-                self.version = tuple(map(int, version.split('.')))
-            except Exception as e:
+                def scrub(v):
+                    try:
+                        return int(v)
+                    except Exception:
+                        return v
+                self.version = tuple(map(scrub, version.split('.')))
+            except Exception:
                 self.version = [0, 0, 0]
 
     def __gt__(self, other):
@@ -71,13 +85,13 @@ class Version(object):
         return self.version != other.version
 
     def __str__(self):
-        return text(".").join(map(text, self.version))
+        return self.prefix+text(".").join(map(text, self.version))
 
     def __add__(self, other):
         major, minor, mini = self.version
         minor += other
         mini = datetime.datetime.utcnow().strftime("%y%j")
-        return Version((major, minor, mini))
+        return Version((major, minor, mini), prefix=self.prefix)
 
     @property
     def major(self):

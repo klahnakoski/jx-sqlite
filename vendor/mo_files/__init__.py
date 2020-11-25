@@ -24,7 +24,7 @@ from mo_files.url import URL
 from mo_future import PY3, text, is_text
 from mo_logs import Except, Log
 from mo_logs.exceptions import get_stacktrace
-from mo_math.randoms import Random
+from mo_math import randoms
 
 
 class File(object):
@@ -377,6 +377,15 @@ class File(object):
         return [File(self._filename + "/" + c) for c in os.listdir(self.filename)]
 
     @property
+    def decendants(self):
+        yield self
+        if self.is_directory():
+            for c in os.listdir(self.abspath):
+                child = File(self._filename + "/" + c)
+                for cc in child.decendants:
+                    yield cc
+
+    @property
     def leaves(self):
         for c in os.listdir(self.abspath):
             child = File(self._filename + "/" + c)
@@ -434,6 +443,12 @@ class File(object):
     def __unicode__(self):
         return self.abspath
 
+    def __eq__(self, other):
+        return isinstance(other, File) and other.abspath == self.abspath
+
+    def __hash__(self):
+        return self.abspath.__hash__()
+
     def __str__(self):
         return self.abspath
 
@@ -471,7 +486,7 @@ class TempFile(File):
     def __init__(self, filename=None):
         if isinstance(filename, File):
             return
-        self.temp = NamedTemporaryFile(prefix=Random.filename(), delete=False)
+        self.temp = NamedTemporaryFile(prefix=randoms.filename(), delete=False)
         self.temp.close()
         File.__init__(self, self.temp.name)
 
@@ -569,17 +584,20 @@ def join_path(*path):
 def delete_daemon(file, caller_stack, please_stop):
     # WINDOWS WILL HANG ONTO A FILE FOR A BIT AFTER WE CLOSED IT
     from mo_threads import Till
-
+    num_attempts = 0
     while not please_stop:
         try:
+            if file.exists:
+                return
             file.delete()
             return
         except Exception as e:
             e = Except.wrap(e)
             e.trace = e.trace[0:2] + caller_stack
-
-            Log.warning(u"problem deleting file {{file}}", file=file.abspath, cause=e)
+            if num_attempts:
+                Log.warning(u"problem deleting file {{file}}", file=file.abspath, cause=e)
             (Till(seconds=10) | please_stop).wait()
+        num_attempts += 1
 
 
 def add_suffix(filename, suffix):

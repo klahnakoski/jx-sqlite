@@ -16,7 +16,7 @@ import unittest
 from mo_collections.unique_index import UniqueIndex
 import mo_dots
 from mo_dots import coalesce, is_container, is_list, literal_field, unwrap, to_data, is_data, is_many
-from mo_future import is_text, zip_longest
+from mo_future import is_text, zip_longest, first
 from mo_logs import Except, Log, suppress_exception
 from mo_logs.strings import expand_template, quote
 import mo_math
@@ -57,25 +57,43 @@ class FuzzyTestCase(unittest.TestCase):
     def assertEqual(self, test_value, expected, msg=None, digits=None, places=None, delta=None):
         self.assertAlmostEqual(test_value, expected, msg=msg, digits=digits, places=places, delta=delta)
 
-    def assertRaises(self, problem, function, *args, **kwargs):
-        try:
-            function(*args, **kwargs)
-        except Exception as e:
-            f = Except.wrap(e)
-            if is_text(problem):
-                if problem in f:
-                    return
-                Log.error(
-                    "expecting an exception returning {{problem|quote}} got something else instead",
-                    problem=problem,
-                    cause=f
-                )
-            elif not isinstance(f, problem) and not isinstance(e, problem):
-                Log.error("expecting an exception of type {{type}} to be raised", type=problem)
-            else:
-                return
+    def assertRaises(self, problem=None, function=None, *args, **kwargs):
+        if function is None:
+            return RaiseContext(self, problem=problem or Exception)
 
-        Log.error("Expecting an exception to be raised")
+        with RaiseContext(self, problem=problem):
+            function(*args, **kwargs)
+
+
+class RaiseContext(object):
+
+    def __init__(self, this, problem=Exception):
+        self.this = this
+        self.problem = problem
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if not exc_val:
+            Log.error("Expecting an error")
+        f = Except.wrap(exc_val)
+
+        if isinstance(self.problem, (list, tuple)):
+            problems = self.problem
+        else:
+            problems = [self.problem]
+
+        causes = []
+        for problem in problems:
+            if isinstance(problem, object.__class__) and issubclass(problem, BaseException) and isinstance(exc_val, problem):
+                return True
+            try:
+                self.this.assertIn(problem, f)
+                return True
+            except Exception as cause:
+                causes.append(cause)
+        Log.error("problem is not raised", cause=first(causes))
 
 
 def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=None):
@@ -83,7 +101,7 @@ def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=
     test = unwrap(test)
     expected = unwrap(expected)
     try:
-        if test is None and (is_null(expected) or expected is None):
+        if test is None and (is_null_op(expected) or expected is None):
             return
         elif test is expected:
             return
@@ -103,10 +121,14 @@ def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=
                     Log.error("Expecting data, not a list")
                 test = test[0]
             for k, e in expected.items():
-                if is_text(k):
-                    t = mo_dots.get_attr(test, literal_field(k))
-                else:
+                try:
                     t = test[k]
+                    assertAlmostEqual(t, e, msg=msg, digits=digits, places=places, delta=delta)
+                    continue
+                except:
+                    pass
+
+                t = mo_dots.get_attr(test, literal_field(k))
                 assertAlmostEqual(t, e, msg=msg, digits=digits, places=places, delta=delta)
         elif is_container(test) and isinstance(expected, set):
             test = set(to_data(t) for t in test)
@@ -116,16 +138,18 @@ def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=
                     test=test,
                     expected=expected
                 )
-
-            for e in expected:
-                for t in test:
-                    try:
-                        assertAlmostEqual(t, e, msg=msg, digits=digits, places=places, delta=delta)
-                        break
-                    except Exception as _:
-                        pass
-                else:
-                    Log.error("Sets do not match. {{value|json}} not found in {{test|json}}", value=e, test=test)
+            try:
+                return len(set(test)|expected) == len(expected)
+            except:
+                for e in expected:
+                    for t in test:
+                        try:
+                            assertAlmostEqual(t, e, msg=msg, digits=digits, places=places, delta=delta)
+                            break
+                        except Exception as _:
+                            pass
+                    else:
+                        Log.error("Sets do not match. {{value|json}} not found in {{test|json}}", value=e, test=test)
 
         elif isinstance(expected, types.FunctionType):
             return expected(test)
@@ -145,12 +169,12 @@ def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=
                 assertAlmostEqual(t, e, msg=msg, digits=digits, places=places, delta=delta)
         else:
             assertAlmostEqualValue(test, expected, msg=msg, digits=digits, places=places, delta=delta)
-    except Exception as e:
+    except Exception as cause:
         Log.error(
             "{{test|json|limit(10000)}} does not match expected {{expected|json|limit(10000)}}",
             test=test if show_detail else "[can not show]",
             expected=expected if show_detail else "[can not show]",
-            cause=e
+            cause=cause
         )
 
 
@@ -158,7 +182,7 @@ def assertAlmostEqualValue(test, expected, digits=None, places=None, msg=None, d
     """
     Snagged from unittest/case.py, then modified (Aug2014)
     """
-    if is_null(expected):
+    if is_null_op(expected):
         if test == None:  # pandas dataframes reject any comparision with an exception!
             return
         else:
@@ -233,5 +257,5 @@ def assertAlmostEqualValue(test, expected, digits=None, places=None, msg=None, d
     raise AssertionError(coalesce(msg, "") + ": (" + standardMsg + ")")
 
 
-def is_null(v):
+def is_null_op(v):
     return v.__class__.__name__ == "NullOp"
