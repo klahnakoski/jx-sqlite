@@ -9,7 +9,9 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import RightOp as RightOp_, ZERO, simplified
+from jx_base.expressions._utils import simplified
+
+from jx_base.expressions import RightOp as RightOp_, ZERO
 from jx_sqlite.expressions.basic_substring_op import BasicSubstringOp
 from jx_sqlite.expressions.length_op import LengthOp
 from jx_sqlite.expressions.max_op import MaxOp

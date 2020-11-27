@@ -22,7 +22,6 @@ from mo_future import is_text, text
 from mo_json import BOOLEAN, NESTED, NUMBER, OBJECT, STRING, json2value
 from mo_json.typed_encoder import untype_path
 from mo_logs import Log
-from mo_math.randoms import Random
 from mo_times import Date
 
 DIGITS_TABLE = "__digits__"
@@ -39,7 +38,7 @@ ALL_TYPES = "bns"
 
 
 def unique_name():
-    return Random.string(20)
+    return randoms.string(20)
 
 
 def column_key(k, v):

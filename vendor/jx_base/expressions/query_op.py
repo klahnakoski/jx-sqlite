@@ -17,6 +17,7 @@ from jx_base.dimensions import Dimension
 from jx_base.domains import DefaultDomain, Domain, SetDomain
 from jx_base.expressions._utils import jx_expression
 from jx_base.expressions.expression import Expression
+from jx_base.expressions.true_op import TRUE
 from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.leaves_op import LeavesOp
 from jx_base.expressions.script_op import ScriptOp
@@ -279,7 +280,7 @@ class QueryOp(Expression):
             output.edges = Null
             output.groupby = Null
 
-        output.where = _normalize_where({"and": listwrap(query.where)}, schema=schema)
+        output.where = _normalize_where(query.where)
         output.window = [_normalize_window(w) for w in listwrap(query.window)]
         output.sort = _normalize_sort(query.sort)
         if output.limit != None and (
@@ -715,6 +716,10 @@ def _normalize_range(range):
 
 
 def _normalize_where(where, schema=None):
+    if is_many(where):
+        where = {"and": where}
+    elif not where:
+        where = TRUE
     return jx_expression(where, schema=schema)
 
 

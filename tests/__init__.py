@@ -17,6 +17,7 @@ import signal
 import subprocess
 from copy import deepcopy
 
+from jx_base.expressions import QueryOp
 from jx_sqlite.container import Container
 
 import mo_json_config
@@ -30,7 +31,6 @@ from mo_testing.fuzzytestcase import assertAlmostEqual
 
 from jx_sqlite.query_table import QueryTable
 from jx_python import jx
-from jx_base.query import QueryOp
 
 from tests import test_jx
 from tests.test_jx import TEST_TABLE

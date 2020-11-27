@@ -9,21 +9,20 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-import jx_base
-from jx_base import Column, Table, jx_expression
+from jx_base import Column, Table, Container
 from jx_base.meta_columns import META_COLUMNS_DESC, META_COLUMNS_NAME, SIMPLE_METADATA_COLUMNS
 from jx_base.schema import Schema
 from jx_python import jx
-from jx_sqlite.utils import untyped_column
 from jx_sqlite.expressions._utils import sql_type_to_json_type
+from jx_sqlite.sqlite import sql_query
+from jx_sqlite.utils import untyped_column
 from mo_dots import Data, Null, coalesce, is_data, is_list, literal_field, startswith_field, tail_field, unwraplist, \
-    wrap, to_data
+    wrap
 from mo_json import STRUCT, IS_NULL
 from mo_json.typed_encoder import unnest_path, untyped
 from mo_logs import Log
 from mo_threads import Lock, Queue
 from mo_times.dates import Date
-from jx_sqlite.sqlite import sql_query
 
 DEBUG = False
 singlton = None
@@ -35,7 +34,7 @@ ID = {"field": ["es_index", "es_column"], "version": "last_updated"}
 CACHE = {}  # MAP FROM id(db) TO ColumnList MANAGING THAT DB
 
 
-class ColumnList(jx_base.Table, jx_base.Container):
+class ColumnList(Table, Container):
     """
     OPTIMIZED FOR fact column LOOKUP
     """

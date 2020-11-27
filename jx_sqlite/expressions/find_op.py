@@ -9,7 +9,9 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import FindOp as FindOp_, ZERO, simplified
+from jx_base.expressions._utils import simplified
+
+from jx_base.expressions import FindOp as FindOp_, ZERO
 from jx_sqlite.expressions._utils import SQLang, check, with_var
 from jx_sqlite.expressions.and_op import AndOp
 from jx_sqlite.expressions.ne_op import NeOp

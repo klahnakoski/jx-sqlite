@@ -17,7 +17,6 @@ from jx_base.container import type2container
 from jx_base.domains import SimpleSetDomain
 from jx_base.expressions import TupleOp, Variable, jx_expression
 from jx_base.language import is_op
-from jx_base.query import QueryOp
 from jx_python import jx
 from jx_sqlite.utils import GUID, sql_aggs, unique_name, untyped_column
 from jx_sqlite.base_table import BaseTable

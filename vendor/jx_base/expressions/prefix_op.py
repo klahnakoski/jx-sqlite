@@ -50,7 +50,7 @@ class PrefixOp(Expression):
             return PrefixOp(jx_expression(expr), jx_expression(const))
 
     def __data__(self):
-        if not self.expr:
+        if self.expr == None:
             return {"prefix": {}}
         elif is_op(self.expr, Variable) and is_literal(self.prefix):
             return {"prefix": {self.expr.var: self.prefix.value}}
