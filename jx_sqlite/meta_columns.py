@@ -9,9 +9,9 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base import Column, Table, Container
+import jx_base
+from jx_base import Table, Container, Column, Schema
 from jx_base.meta_columns import META_COLUMNS_DESC, META_COLUMNS_NAME, SIMPLE_METADATA_COLUMNS
-from jx_base.schema import Schema
 from jx_python import jx
 from jx_sqlite.expressions._utils import sql_type_to_json_type
 from jx_sqlite.sqlite import sql_query
@@ -110,6 +110,7 @@ class ColumnList(Table, Container):
                     es_type=dtype,
                     es_column=name,
                     es_index=table.name,
+                    multi=1,
                     last_updated=Date.now()
                 ))
             last_nested_path = full_nested_path

@@ -16,8 +16,7 @@ from jx_base.domains import DefaultDomain, DurationDomain, TimeDomain
 from jx_base.language import is_op
 from jx_python import jx
 from jx_sqlite.utils import ColumnMapping, STATS, _make_column_name, get_column, sql_aggs, sql_text_array_to_set, \
-    untyped_column, PARENT, UID
-from jx_sqlite.container import DIGITS_TABLE
+    untyped_column, PARENT, UID, DIGITS_TABLE
 from jx_sqlite.expressions._utils import SQLang, sql_type_to_json_type
 from jx_sqlite.expressions.tuple_op import TupleOp
 from jx_sqlite.expressions.variable import Variable

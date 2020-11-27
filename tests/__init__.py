@@ -38,14 +38,11 @@ from tests.test_jx import TEST_TABLE
 
 class SQLiteUtils(object):
     @override
-    def __init__(
-        self,
-        kwargs=None
-    ):
+    def __init__(self, kwargs=None):
         self._index = None
 
     def setUp(self):
-        container = Container(db = test_jx.global_settings.db)
+        container = Container(db=test_jx.global_settings.db)
         self._index = QueryTable(name="testing", container=container)
 
     def tearDown(self):
@@ -63,7 +60,7 @@ class SQLiteUtils(object):
 
     def execute_tests(self, subtest, tjson=False, places=6):
         subtest = wrap(subtest)
-        subtest.name = get_stacktrace()[1]['method']
+        subtest.name = get_stacktrace()[1]["method"]
 
         if subtest.disable:
             return
@@ -80,15 +77,14 @@ class SQLiteUtils(object):
         try:
             # INSERT DATA
             self._index.insert(subtest.data)
-        except Exception as  e:
-            Log.error("can not load {{data}} into container", {"data": subtest.data}, e)
+        except Exception as cause:
+            Log.error("can not load {{data}} into container", data=subtest.data, cause=cause)
 
-        frum = subtest.query['from']
+        frum = subtest.query["from"]
         if isinstance(frum, text):
             subtest.query["from"] = frum.replace(TEST_TABLE, self._index.name)
         else:
             Log.error("Do not know how to handle")
-
 
         return Data({"index": subtest.query["from"]})
 
@@ -100,7 +96,7 @@ class SQLiteUtils(object):
             num_expectations = 0
             for k, v in subtest.items():
                 if k.startswith("expecting_"):  # WHAT FORMAT ARE WE REQUESTING
-                    format = k[len("expecting_"):]
+                    format = k[len("expecting_") :]
                 elif k == "expecting":  # NO FORMAT REQUESTED (TO TEST DEFAULT FORMATS)
                     format = None
                 else:
@@ -115,9 +111,11 @@ class SQLiteUtils(object):
 
                 compare_to_expected(subtest.query, result, expected)
             if num_expectations == 0:
-                Log.error("Expecting test {{name|quote}} to have property named 'expecting_*' for testing the various format clauses", {
-                    "name": subtest.name
-                })
+                Log.error(
+                    "Expecting test {{name|quote}} to have property named 'expecting_*'"
+                    " for testing the various format clauses",
+                    {"name": subtest.name},
+                )
         except Exception as e:
             Log.error("Failed test {{name|quote}}", name=subtest.name, cause=e)
 
@@ -136,7 +134,7 @@ class SQLiteUtils(object):
             Log.error("Failed query", e)
 
     def try_till_response(self, *args, **kwargs):
-        self.execute_query(json2value(kwargs["data"].decode('utf8')))
+        self.execute_query(json2value(kwargs["data"].decode("utf8")))
 
 
 def compare_to_expected(query, result, expect):
@@ -147,10 +145,16 @@ def compare_to_expected(query, result, expect):
         assertAlmostEqual(set(result.header), set(expect.header))
 
         # MAP FROM expected COLUMN TO result COLUMN
-        mapping = list(zip(*list(zip(*filter(
-            lambda v: v[0][1] == v[1][1],
-            itertools.product(enumerate(expect.header), enumerate(result.header))
-        )))[1]))[0]
+        mapping = list(zip(
+            *list(zip(
+                *filter(
+                    lambda v: v[0][1] == v[1][1],
+                    itertools.product(
+                        enumerate(expect.header), enumerate(result.header)
+                    ),
+                )
+            ))[1]
+        ))[0]
         result.header = [result.header[m] for m in mapping]
 
         if result.data:
@@ -168,8 +172,12 @@ def compare_to_expected(query, result, expect):
 
         if not query.sort:
             try:
-                #result.data MAY BE A LIST OF VALUES, NOT OBJECTS
-                data_columns = jx.sort(set(jx.get_columns(result.data, leaves=True)) | set(jx.get_columns(expect.data, leaves=True)), "name")
+                # result.data MAY BE A LIST OF VALUES, NOT OBJECTS
+                data_columns = jx.sort(
+                    set(jx.get_columns(result.data, leaves=True))
+                    | set(jx.get_columns(expect.data, leaves=True)),
+                    "name",
+                )
             except Exception as _:
                 data_columns = [{"name": "."}]
 
@@ -187,7 +195,12 @@ def compare_to_expected(query, result, expect):
                 except Exception:
                     pass
 
-    elif result.meta.format == "cube" and len(result.edges) == 1 and result.edges[0].name == "rownum" and not query.sort:
+    elif (
+        result.meta.format == "cube"
+        and len(result.edges) == 1
+        and result.edges[0].name == "rownum"
+        and not query.sort
+    ):
         result_data, result_header = cube2list(result.data)
         result_data = unwrap(jx.sort(result_data, result_header))
         result.data = list2cube(result_data, result_header)
@@ -211,7 +224,7 @@ def cube2list(cube):
     for r in zip(*[[(k, v) for v in a] for k, a in cube.items()]):
         row = Data()
         for k, v in r:
-            row[k]=v
+            row[k] = v
         rows.append(unwrap(row))
     return rows, header
 
@@ -220,7 +233,7 @@ def list2cube(rows, header):
     output = {h: [] for h in header}
     for r in rows:
         for h in header:
-            if h==".":
+            if h == ".":
                 output[h].append(r)
             else:
                 r = wrap(r)
@@ -235,11 +248,13 @@ def sort_table(result):
     data = wrap([{text(i): v for i, v in enumerate(row)} for row in result.data])
     sort_columns = jx.sort(set(jx.get_columns(data, leaves=True).name))
     data = jx.sort(data, sort_columns)
-    result.data = [tuple(row[text(i)] for i in range(len(result.header))) for row in data]
+    result.data = [
+        tuple(row[text(i)] for i in range(len(result.header))) for row in data
+    ]
 
 
 def error(response):
-    response = response.content.decode('utf8')
+    response = response.content.decode("utf8")
 
     try:
         e = Except.new_instance(json2value(response))
@@ -254,12 +269,17 @@ def error(response):
 
 def run_app(please_stop, server_is_ready):
     proc = subprocess.Popen(
-        ["python", "active_data\\app.py", "--settings", "tests/config/elasticsearch.json"],
+        [
+            "python",
+            "active_data\\app.py",
+            "--settings",
+            "tests/config/elasticsearch.json",
+        ],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         bufsize=-1
-        #creationflags=CREATE_NEW_PROCESS_GROUP
+        # creationflags=CREATE_NEW_PROCESS_GROUP
     )
 
     while not please_stop:
@@ -272,14 +292,18 @@ def run_app(please_stop, server_is_ready):
 
     proc.send_signal(signal.CTRL_C_EVENT)
 
+
 # read_alternate_settings
 try:
     filename = os.environ.get("TEST_CONFIG")
     if filename:
-        test_jx.global_settings = mo_json_config.get("file://"+filename)
+        test_jx.global_settings = mo_json_config.get("file://" + filename)
         constants.set(test_jx.global_settings.constants)
     else:
-        Log.alert("No TEST_CONFIG environment variable to point to config file.  Using ./tests/config/sqlite.json")
+        Log.alert(
+            "No TEST_CONFIG environment variable to point to config file.  Using"
+            " ./tests/config/sqlite.json"
+        )
         test_jx.global_settings = mo_json_config.get("file://tests/config/sqlite.json")
         constants.set(test_jx.global_settings.constants)
 
@@ -290,4 +314,3 @@ try:
     test_jx.utils = SQLiteUtils(test_jx.global_settings)
 except Exception as e:
     Log.warning("problem", e)
-

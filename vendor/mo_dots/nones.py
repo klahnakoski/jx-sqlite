@@ -86,6 +86,12 @@ class NullType(object):
     def __rmul__(self, other):
         return Null
 
+    def __int__(self):
+        return Null
+
+    def __float__(self):
+        return Null
+
     def __div__(self, other):
         return Null
 

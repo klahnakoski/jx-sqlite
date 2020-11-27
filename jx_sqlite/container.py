@@ -8,18 +8,11 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_json import STRING
-
-from mo_dots import concat_field, set_default
-
+import jx_base
 from jx_base import Facts, Column
-from jx_sqlite.utils import UID, GUID, DIGITS_TABLE, ABOUT_TABLE
 from jx_sqlite.namespace import Namespace
 from jx_sqlite.query_table import QueryTable
 from jx_sqlite.snowflake import Snowflake
-from mo_future import first, PY3, NEXT
-from mo_kwargs import override
-from mo_logs import Log
 from jx_sqlite.sqlite import (
     SQL_SELECT,
     SQL_FROM,
@@ -33,6 +26,12 @@ from jx_sqlite.sqlite import (
     sql_create,
     sql_insert,
     json_type_to_sqlite_type)
+from jx_sqlite.utils import UID, GUID, DIGITS_TABLE, ABOUT_TABLE
+from mo_dots import concat_field, set_default
+from mo_future import first, NEXT
+from mo_json import STRING
+from mo_kwargs import override
+from mo_logs import Log
 from mo_threads.lock import locked
 from mo_times import Date
 
