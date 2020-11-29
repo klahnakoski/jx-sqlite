@@ -28,7 +28,7 @@ class SqlSubstrOp(SqlSubstrOp_):
             sql = sql_call("SUBSTR", value, start, length)
         return wrap([{"name": ".", "sql": {"s": sql}}])
 
-    def partial_eval(self):
+    def partial_eval(self, lang):
         value = self.value.partial_eval(SQLang)
         start = self.start.partial_eval(SQLang)
         length = self.length.partial_eval(SQLang)

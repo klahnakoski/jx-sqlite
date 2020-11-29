@@ -71,19 +71,17 @@ class EqOp(EqOp_):
             )
 
     @simplified
-    def partial_eval(self):
+    def partial_eval(self, lang):
         lhs = self.lhs.partial_eval(SQLang)
         rhs = self.rhs.partial_eval(SQLang)
 
         if isinstance(lhs, Literal) and isinstance(rhs, Literal):
             return TRUE if builtin_ops["eq"](lhs.value, rhs.value) else FALSE
         else:
-            rhs_missing = rhs.missing().partial_eval(SQLang)
-            output = self.lang[CaseOp(
-                [
-                    WhenOp(lhs.missing(), **{"then": rhs_missing}),
-                    WhenOp(rhs_missing, **{"then": FALSE}),
-                    SqlEqOp([lhs, rhs]),
-                ]
-            )].partial_eval(SQLang)
+            rhs_missing = rhs.missing(SQLang)
+            output = CaseOp([
+                WhenOp(lhs.missing(SQLang), then=rhs_missing),
+                WhenOp(rhs_missing, then=FALSE),
+                SqlEqOp([lhs, rhs]),
+            ]).partial_eval(SQLang)
             return output

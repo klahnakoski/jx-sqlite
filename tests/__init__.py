@@ -130,8 +130,8 @@ class SQLiteUtils(object):
                 return self._index.query_metadata(deepcopy(query))
             else:
                 Log.error("Do not know how to handle")
-        except Exception as e:
-            Log.error("Failed query", e)
+        except Exception as cause:
+            Log.error("Failed query", cause)
 
     def try_till_response(self, *args, **kwargs):
         self.execute_query(json2value(kwargs["data"].decode("utf8")))

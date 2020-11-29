@@ -10,7 +10,7 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import SqlInstrOp as SqlInstrOp_
-from jx_sqlite.expressions._utils import check
+from jx_sqlite.expressions._utils import check, SQLang
 from jx_sqlite.sqlite import sql_call
 from mo_dots import wrap
 
@@ -25,7 +25,7 @@ class SqlInstrOp(SqlInstrOp_):
             [{"name": ".", "sql": {"n": sql_call("INSTR", value, find)}}]
         )
 
-    def partial_eval(self):
+    def partial_eval(self, lang):
         value = self.value.partial_eval(SQLang)
         find = self.find.partial_eval(SQLang)
         return SqlInstrOp([value, find])

@@ -38,7 +38,7 @@ from jx_sqlite.sqlite import (
 
 class FindOp(FindOp_):
     @simplified
-    def partial_eval(self):
+    def partial_eval(self, lang):
         return FindOp(
             [self.value.partial_eval(SQLang), self.find.partial_eval(SQLang)],
             **{
@@ -83,14 +83,13 @@ class FindOp(FindOp_):
 
     def exists(self):
 
-        found = NeOp(
-            [SqlInstrOp([NotLeftOp([self.value, self.start]), self.find]), ZERO]
-        )
+        found = NeOp([
+            SqlInstrOp([NotLeftOp([self.value, self.start]), self.find]),
+            ZERO,
+        ])
 
-        output = self.lang[OrOp(
-            [
-                self.default.exists(),
-                AndOp([self.value.exists(), self.find.exists(), found]),
-            ]
-        )].partial_eval(SQLang)
+        output = OrOp([
+            self.default.exists(),
+            AndOp([self.value.exists(), self.find.exists(), found]),
+        ]).partial_eval(self.lang)
         return output

@@ -51,11 +51,11 @@ def extend(cls):
 
 
 def simplified(func):
-    def mark_as_simple(self):
+    def mark_as_simple(self, lang):
         if self.simplified:
             return self
 
-        output = func(self)
+        output = func(self, lang)
         output.simplified = True
         return output
 
