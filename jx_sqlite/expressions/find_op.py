@@ -40,20 +40,20 @@ class FindOp(FindOp_):
     @simplified
     def partial_eval(self):
         return FindOp(
-            [SQLang[self.value].partial_eval(), SQLang[self.find].partial_eval()],
+            [self.value.partial_eval(SQLang), self.find.partial_eval(SQLang)],
             **{
-                "start": SQLang[self.start].partial_eval(),
-                "default": SQLang[self.default].partial_eval(),
+                "start": self.start.partial_eval(SQLang),
+                "default": self.default.partial_eval(SQLang),
             }
         )
 
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        value = SQLang[self.value].partial_eval().to_sql(schema)[0].sql.s
-        find = SQLang[self.find].partial_eval().to_sql(schema)[0].sql.s
-        start = SQLang[self.start].partial_eval().to_sql(schema)[0].sql.n
+        value = self.value.partial_eval(SQLang).to_sql(schema)[0].sql.s
+        find = self.find.partial_eval(SQLang).to_sql(schema)[0].sql.s
+        start = self.start.partial_eval(SQLang).to_sql(schema)[0].sql.n
         default = coalesce(
-            SQLang[self.default].partial_eval().to_sql(schema)[0].sql.n, SQL_NULL
+            self.default.partial_eval(SQLang).to_sql(schema)[0].sql.n, SQL_NULL
         )
 
         if start.sql != SQL_ZERO.sql:
@@ -92,5 +92,5 @@ class FindOp(FindOp_):
                 self.default.exists(),
                 AndOp([self.value.exists(), self.find.exists(), found]),
             ]
-        )].partial_eval()
+        )].partial_eval(SQLang)
         return output

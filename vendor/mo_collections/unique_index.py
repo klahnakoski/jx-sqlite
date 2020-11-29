@@ -10,8 +10,7 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_dots import is_data, is_sequence, tuplewrap, unwrap, to_data
-from mo_dots.objects import datawrap
+from mo_dots import is_data, is_sequence, tuplewrap, unwrap, to_data, list_to_data
 from mo_future import PY2, iteritems, Set, Mapping, Iterable, first
 from mo_logs import Log
 from mo_logs.exceptions import suppress_exception
@@ -74,7 +73,7 @@ class UniqueIndex(Set, Mapping):
         return to_data(output)
 
     def add(self, val):
-        val = datawrap(val)
+        val = to_data(val)
         key = value2key(self._keys, val)
         if key == None:
             Log.error("Expecting key to be not None")
@@ -102,7 +101,7 @@ class UniqueIndex(Set, Mapping):
             self.add(v)
 
     def remove(self, val):
-        key = value2key(self._keys, datawrap(val))
+        key = value2key(self._keys, to_data(val))
         if key == None:
             Log.error("Expecting key to not be None")
 
@@ -183,8 +182,8 @@ def value2key(keys, val):
             return val
     else:
         if is_data(val):
-            return datawrap({k: val[k] for k in keys})
+            return to_data({k: val[k] for k in keys})
         elif is_sequence(val):
-            return datawrap(dict(zip(keys, val)))
+            return to_data(dict(zip(keys, val)))
         else:
             Log.error("do not know what to do here")

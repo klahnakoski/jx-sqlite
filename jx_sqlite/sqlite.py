@@ -648,7 +648,7 @@ def sql_query(command):
         else:
             from jx_sqlite.expressions import SQLang
 
-            where = SQLang[jx_expression(command.where)].to_sql[0].b
+            where = jx_expression(command.where).partial_eval(SQLang).to_sql[0].b
             acc.append(where)
 
     sort = coalesce(command.orderby, command.sort)

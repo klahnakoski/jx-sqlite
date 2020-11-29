@@ -19,8 +19,8 @@ from jx_sqlite.sqlite import sql_iso
 class FloorOp(FloorOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        lhs = SQLang[self.lhs].to_sql(schema)[0].sql.n
-        rhs = SQLang[self.rhs].to_sql(schema)[0].sql.n
+        lhs = self.lhs.partial_eval(SQLang).to_sql(schema)[0].sql.n
+        rhs = self.rhs.partial_eval(SQLang).to_sql(schema)[0].sql.n
         modifier = lhs + " < 0 "
 
         if text(rhs).strip() != "1":

@@ -16,7 +16,7 @@ from jx_sqlite.expressions._utils import SQLang, check
 class BooleanOp(BooleanOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        term = SQLang[self.term].partial_eval()
+        term = self.term.partial_eval(SQLang)
         if term.type == "boolean":
             sql = term.to_sql(schema)
             return sql
@@ -26,5 +26,5 @@ class BooleanOp(BooleanOp_):
             else:
                 return FALSE.to_sql(schema)
         else:
-            sql = term.exists().partial_eval().to_sql(schema)
+            sql = term.exists().partial_eval(SQLang).to_sql(schema)
             return sql

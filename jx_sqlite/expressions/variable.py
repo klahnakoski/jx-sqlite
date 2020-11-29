@@ -29,7 +29,7 @@ class Variable(Variable_):
             )
         cols = schema.leaves(var_name)
         if not cols:
-            return self.lang[NULL].to_sql(schema)
+            return NULL.to_sql(schema)
         acc = {}
         if boolean:
             for col in cols:

@@ -28,7 +28,7 @@ class InOp(InOp_):
             Log.error("Not supported")
         j_value = json2value(self.superset.json)
         if j_value:
-            var = SQLang[self.value].to_sql(schema)
+            var = self.value.partial_eval(SQLang).to_sql(schema)
             sql = SQL_OR.join(
                 sql_iso(v, SQL_IN, quote_list(j_value))
                 for t, v in var[0].sql.items()

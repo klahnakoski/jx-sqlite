@@ -26,6 +26,6 @@ class SqlInstrOp(SqlInstrOp_):
         )
 
     def partial_eval(self):
-        value = self.value.partial_eval()
-        find = self.find.partial_eval()
+        value = self.value.partial_eval(SQLang)
+        find = self.find.partial_eval(SQLang)
         return SqlInstrOp([value, find])

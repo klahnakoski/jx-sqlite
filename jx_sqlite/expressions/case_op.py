@@ -27,18 +27,18 @@ class CaseOp(CaseOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
         if len(self.whens) == 1:
-            return SQLang[self.whens[-1]].to_sql(schema)
+            return self.whens[-1].partial_eval(SQLang).to_sql(schema)
 
         output = {}
         for t in "bsn":  # EXPENSIVE LOOP to_sql() RUN 3 TIMES
-            els_ = coalesce(SQLang[self.whens[-1]].to_sql(schema)[0].sql[t], SQL_NULL)
+            els_ = coalesce(self.whens[-1].partial_eval(SQLang).to_sql(schema)[0].sql[t], SQL_NULL)
             acc = SQL_ELSE + els_ + SQL_END
             for w in reversed(self.whens[0:-1]):
                 acc = ConcatSQL(
                     SQL_WHEN,
-                    SQLang[w.when].to_sql(schema, boolean=True)[0].sql.b,
+                    w.when.partial_eval(SQLang).to_sql(schema, boolean=True)[0].sql.b,
                     SQL_THEN,
-                    coalesce(SQLang[w.then].to_sql(schema)[0].sql[t], SQL_NULL),
+                    coalesce(w.then.partial_eval(SQLang).to_sql(schema)[0].sql[t], SQL_NULL),
                     acc,
                 )
             output[t] = SQL_CASE + acc

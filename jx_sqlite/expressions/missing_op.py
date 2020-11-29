@@ -27,8 +27,8 @@ from jx_sqlite.sqlite import (
 class MissingOp(MissingOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        value = SQLang[self.expr].partial_eval()
-        missing_value = value.missing().partial_eval()
+        value = self.expr.partial_eval(SQLang)
+        missing_value = value.missing(SQLang)
 
         if not is_op(missing_value, MissingOp):
             return missing_value.to_sql(schema)

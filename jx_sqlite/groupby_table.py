@@ -51,7 +51,7 @@ class GroupbyTable(EdgesTable):
         selects = []
         groupby = []
         for i, e in enumerate(query.groupby):
-            for edge_sql in SQLang[e.value].to_sql(schema):
+            for edge_sql in e.value.partial_eval(SQLang).to_sql(schema):
                 column_number = len(selects)
                 sql_type, sql = edge_sql.sql.items()[0]
                 if sql is SQL_NULL and not e.value.var in schema.keys():
@@ -78,7 +78,7 @@ class GroupbyTable(EdgesTable):
 
         for i, select in enumerate(listwrap(query.select)):
             column_number = len(selects)
-            sql_type, sql = SQLang[select.value].to_sql(schema)[0].sql.items()[0]
+            sql_type, sql = select.value.partial_eval(SQLang).to_sql(schema)[0].sql.items()[0]
             if sql == 'NULL' and not select.value.var in schema.keys():
                 Log.error("No such column {{var}}", var=select.value.var)
 
@@ -107,7 +107,7 @@ class GroupbyTable(EdgesTable):
         for w in query.window:
             selects.append(self._window_op(self, query, w))
 
-        where = SQLang[query.where].to_sql(schema)[0].sql.b
+        where = query.where.partial_eval(SQLang).to_sql(schema)[0].sql.b
 
         command = (
             SQL_SELECT + (sql_list(selects)) +
@@ -120,7 +120,7 @@ class GroupbyTable(EdgesTable):
             command += SQL_ORDERBY + sql_list(
                 sql_iso(sql[t]) + SQL_IS_NULL + "," +
                 sql[t] + (" DESC" if s.sort == -1 else "")
-                for s, sql in [(s, SQLang[s.value].to_sql(schema)[0].sql) for s in query.sort]
+                for s, sql in [(s, s.value.partial_eval(SQLang).to_sql(schema)[0].sql) for s in query.sort]
                 for t in "bns" if sql[t]
             )
 

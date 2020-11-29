@@ -29,7 +29,7 @@ class AndOp(AndOp_):
                             "b": SQL_AND.join(
                                 [
                                     sql_iso(
-                                        SQLang[t].to_sql(schema, boolean=True)[0].sql.b
+                                        t.partial_eval(SQLang).to_sql(schema, boolean=True)[0].sql.b
                                     )
                                     for t in self.terms
                                 ]

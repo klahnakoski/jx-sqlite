@@ -22,8 +22,8 @@ from jx_sqlite.expressions.sub_op import SubOp
 class RightOp(RightOp_):
     @simplified
     def partial_eval(self):
-        value = self.value.partial_eval()
-        length = self.length.partial_eval()
+        value = self.value.partial_eval(SQLang)
+        length = self.length.partial_eval(SQLang)
         max_length = LengthOp(value)
 
         return BasicSubstringOp(

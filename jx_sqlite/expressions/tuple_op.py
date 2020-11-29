@@ -18,5 +18,5 @@ class TupleOp(TupleOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
         return wrap(
-            [{"name": ".", "sql": SQLang[t].to_sql(schema)[0].sql} for t in self.terms]
+            [{"name": ".", "sql": t.partial_eval(SQLang).to_sql(schema)[0].sql} for t in self.terms]
         )

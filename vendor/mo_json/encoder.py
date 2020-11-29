@@ -127,13 +127,13 @@ class cPythonJSONEncoder(object):
                 output = text(self.encoder(scrubbed))
                 param["size"] = len(output)
                 return output
-        except Exception as e:
+        except Exception as cause:
             from mo_logs.exceptions import Except
             from mo_logs import Log
 
-            e = Except.wrap(e)
-            Log.warning("problem serializing {{type}}", type=text(repr(value)), cause=e)
-            raise e
+            cause = Except.wrap(cause)
+            Log.warning("problem serializing {{type}}", type=text(repr(value)), cause=cause)
+            raise cause
 
 
 def _value2json(value, _buffer):

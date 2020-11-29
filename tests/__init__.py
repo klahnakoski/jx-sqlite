@@ -116,8 +116,8 @@ class SQLiteUtils(object):
                     " for testing the various format clauses",
                     {"name": subtest.name},
                 )
-        except Exception as e:
-            Log.error("Failed test {{name|quote}}", name=subtest.name, cause=e)
+        except Exception as cause:
+            Log.error("Failed test {{name|quote}}", name=subtest.name, cause=cause)
 
     def execute_update(self, command):
         return self._index.update(command)

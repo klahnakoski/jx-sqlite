@@ -25,8 +25,8 @@ class PrefixOp(PrefixOp_):
             sql = ConcatSQL(
                 sql_call(
                     "INSTR",
-                    SQLang[self.expr].to_sql(schema)[0].sql.s,
-                    SQLang[self.prefix].to_sql(schema)[0].sql.s,
+                    self.expr.partial_eval(SQLang).to_sql(schema)[0].sql.s,
+                    self.prefix.partial_eval(SQLang).to_sql(schema)[0].sql.s,
                 ),
                 SQL_EQ,
                 SQL_ONE,

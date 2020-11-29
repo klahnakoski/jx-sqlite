@@ -82,8 +82,8 @@ def to_sql(self, schema, not_null=False, boolean=False):
 
 def _inequality_to_sql(self, schema, not_null=False, boolean=False, many=True):
     op, identity = _sql_operators[self.op]
-    lhs = NumberOp(self.lhs).partial_eval().to_sql(schema, not_null=True)[0].sql.n
-    rhs = NumberOp(self.rhs).partial_eval().to_sql(schema, not_null=True)[0].sql.n
+    lhs = NumberOp(self.lhs).partial_eval(SQLang).to_sql(schema, not_null=True)[0].sql.n
+    rhs = NumberOp(self.rhs).partial_eval(SQLang).to_sql(schema, not_null=True)[0].sql.n
     sql = sql_iso(lhs) + op + sql_iso(rhs)
 
     output = SQLScript(
@@ -100,13 +100,13 @@ def _inequality_to_sql(self, schema, not_null=False, boolean=False, many=True):
 def _binaryop_to_sql(self, schema, not_null=False, boolean=False, many=True):
     op, identity = _sql_operators[self.op]
 
-    lhs = NumberOp(self.lhs).partial_eval().to_sql(schema, not_null=True)[0].sql.n
-    rhs = NumberOp(self.rhs).partial_eval().to_sql(schema, not_null=True)[0].sql.n
+    lhs = NumberOp(self.lhs).partial_eval(SQLang).to_sql(schema, not_null=True)[0].sql.n
+    rhs = NumberOp(self.rhs).partial_eval(SQLang).to_sql(schema, not_null=True)[0].sql.n
     script = sql_iso(lhs) + op + sql_iso(rhs)
     if not_null:
         sql = script
     else:
-        missing = OrOp([self.lhs.missing(), self.rhs.missing()]).partial_eval()
+        missing = OrOp([self.lhs.missing(), self.rhs.missing()]).partial_eval(SQLang)
         if missing is FALSE:
             sql = script
         else:
@@ -123,17 +123,17 @@ def _binaryop_to_sql(self, schema, not_null=False, boolean=False, many=True):
 def multiop_to_sql(self, schema, not_null=False, boolean=False, many=False):
     sign, zero = _sql_operators[self.op]
     if len(self.terms) == 0:
-        return SQLang[self.default].to_sql(schema)
+        return self.default.partial_eval(SQLang).to_sql(schema)
     elif self.default is NULL:
         return sign.join(
-            sql_call("COALESCE", SQLang[t].to_sql(schema), zero)
+            sql_call("COALESCE", t.partial_eval(SQLang).to_sql(schema), zero)
             for t in self.terms
         )
     else:
         return sql_call(
             "COALESCE",
-            sign.join(sql_iso(SQLang[t].to_sql(schema)) for t in self.terms),
-            SQLang[self.default].to_sql(schema)
+            sign.join(sql_iso(t.partial_eval(SQLang).to_sql(schema)) for t in self.terms),
+            self.default.partial_eval(SQLang).to_sql(schema)
         )
 
 
@@ -157,7 +157,7 @@ def with_var(var, expression, eval):
 
 def basic_multiop_to_sql(self, schema, not_null=False, boolean=False, many=False):
     op, identity = _sql_operators[self.op.split("basic.")[1]]
-    sql = op.join(sql_iso(SQLang[t].to_sql(schema)[0].sql.n) for t in self.terms)
+    sql = op.join(sql_iso(t.partial_eval(SQLang).to_sql(schema)[0].sql.n) for t in self.terms)
     return wrap([{"name": ".", "sql": {"n": sql}}])
 
 

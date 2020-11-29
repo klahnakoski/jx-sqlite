@@ -19,7 +19,7 @@ from jx_sqlite.sqlite import sql_coalesce
 class NumberOp(NumberOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        value = SQLang[self.term].to_sql(schema, not_null=True)
+        value = self.term.partial_eval(SQLang).to_sql(schema, not_null=True)
         acc = []
         for c in value:
             for t, v in c.sql.items():

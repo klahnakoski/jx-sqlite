@@ -58,7 +58,7 @@ class EdgesTable(SetOpTable):
                 SQL_ON + quote_column(t.alias, PARENT) + SQL_EQ + quote_column(previous.alias, UID)
             )
 
-        main_filter = SQLang[query.where].to_sql(schema, boolean=True)[0].sql.b
+        main_filter = query.where.to_sql(schema, boolean=True)[0].sql.b
 
         # SHIFT THE COLUMN DEFINITIONS BASED ON THE NESTED QUERY DEPTH
         ons = []
@@ -76,19 +76,19 @@ class EdgesTable(SetOpTable):
             edge_alias = "e" + text(edge_index)
 
             if query_edge.value:
-                edge_values = [p for c in SQLang[query_edge.value].to_sql(schema).sql for p in c.items()]
+                edge_values = [p for c in query_edge.value.partial_eval(SQLang).to_sql(schema).sql for p in c.items()]
 
             elif not query_edge.value and any(query_edge.domain.partitions.where):
                 case = SQL_CASE
                 for pp, p in enumerate(query_edge.domain.partitions):
-                    w = SQLang[p.where].to_sql(schema)[0].sql.b
+                    w = p.where.partial_eval(SQLang).to_sql(schema)[0].sql.b
                     t = quote_value(pp)
                     case += SQL_WHEN + w + SQL_THEN + t
                 case += SQL_ELSE + SQL_NULL + SQL_END  # quote value with length of partitions
                 edge_values = [("n", case)]
 
             elif query_edge.range:
-                edge_values = SQLang[query_edge.range.min].to_sql(schema)[0].sql.items() + SQLang[query_edge.range.max].to_sql(schema)[
+                edge_values = query_edge.range.min.partial_eval(SQLang).to_sql(schema)[0].sql.items() + query_edge.range.max.partial_eval(SQLang).to_sql(schema)[
                     0].sql.items()
 
             else:
@@ -391,7 +391,7 @@ class EdgesTable(SetOpTable):
 
                 raise NotImplementedError()
             elif s.aggregate == "cardinality":
-                for details in SQLang[s.value].to_sql(schema):
+                for details in s.value.partial_eval(SQLang).to_sql(schema):
                     for sql_type, sql in details.sql.items():
                         column_number = len(outer_selects)
                         count_sql = sql_alias(sql_count("DISTINCT" + sql_iso(sql)), _make_column_name(column_number))
@@ -407,7 +407,7 @@ class EdgesTable(SetOpTable):
                             type=sql_type_to_json_type[sql_type]
                         )
             elif s.aggregate == "union":
-                for details in SQLang[s.value].to_sql(schema):
+                for details in s.value.partial_eval(SQLang).to_sql(schema):
                     for sql_type, sql in details.sql.items():
                         column_number = len(outer_selects)
                         outer_selects.append(sql_alias("JSON_GROUP_ARRAY(DISTINCT" + sql_iso(sql) + ")", _make_column_name(column_number)))
@@ -440,7 +440,7 @@ class EdgesTable(SetOpTable):
                             type="number"
                         )
             else:  # STANDARD AGGREGATES
-                for details in SQLang[s.value].partial_eval().to_sql(schema):
+                for details in s.value.partial_eval(SQLang).to_sql(schema):
                     for sql_type, sql in details.sql.items():
                         column_number = len(outer_selects)
                         sql = sql_aggs[s.aggregate] + sql_iso(sql)

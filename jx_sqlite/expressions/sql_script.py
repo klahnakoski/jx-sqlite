@@ -73,7 +73,7 @@ class SQLScript(SQLScript_, SQL):
 
     @property
     def sql(self):
-        self.miss = self.miss.partial_eval()
+        self.miss = self.miss.partial_eval(SQLang)
         if self.miss is TRUE:
             return wrap({json_type_to_sql_type[self.data_type]: SQL_NULL})
         elif self.miss is FALSE:
@@ -85,7 +85,7 @@ class SQLScript(SQLScript_, SQL):
                         SQL_CASE,
                         SQL_WHEN,
                         SQL_NOT,
-                        sql_iso(SQLang[self.miss].to_sql(self.schema)[0].sql.b),
+                        sql_iso(self.miss.partial_eval(SQLang).to_sql(self.schema)[0].sql.b),
                         SQL_THEN,
                         self.expr,
                         SQL_END,

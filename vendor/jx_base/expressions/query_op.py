@@ -24,17 +24,16 @@ from jx_base.expressions.script_op import ScriptOp
 from jx_base.expressions.variable import Variable
 from jx_base.language import is_expression, is_op
 from jx_base.table import Table
-from jx_base.utils import is_variable_name
+from jx_base.utils import is_variable_name, coalesce
 from mo_dots import (
     Data,
     FlatList,
     Null,
-    coalesce,
     concat_field,
     is_container,
+    listwrap,
     is_data,
     is_list,
-    listwrap,
     literal_field,
     relative_field,
     set_default,

@@ -20,7 +20,6 @@ from jx_base.expressions.null_op import NULL
 from jx_base.expressions.or_op import OrOp
 from jx_base.expressions.true_op import TRUE
 from jx_base.language import is_op
-from mo_dots import coalesce
 from mo_imports import export
 from mo_json import OBJECT, same_json_type, merge_json_type
 from mo_logs import Log
@@ -31,8 +30,8 @@ class WhenOp(Expression):
         Expression.__init__(self, [term])
 
         self.when = term
-        self.then = coalesce(clauses.get("then"), NULL)
-        self.els_ = coalesce(clauses.get("else"), NULL)
+        self.then = clauses.get("then", NULL)
+        self.els_ = clauses.get("else", NULL)
 
         if self.then is NULL:
             self.data_type = self.els_.type

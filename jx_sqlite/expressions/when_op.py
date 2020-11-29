@@ -18,9 +18,9 @@ from jx_sqlite.sqlite import SQL_CASE, SQL_ELSE, SQL_END, SQL_NULL, SQL_THEN, SQ
 class WhenOp(WhenOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False, many=True):
-        when = SQLang[self.when].partial_eval().to_sql(schema, boolean=True)[0].sql
-        then = SQLang[self.then].partial_eval().to_sql(schema, not_null=not_null)[0].sql
-        els_ = SQLang[self.els_].partial_eval().to_sql(schema, not_null=not_null)[0].sql
+        when = self.when.partial_eval(SQLang).to_sql(schema, boolean=True)[0].sql
+        then = self.then.partial_eval(SQLang).to_sql(schema, not_null=not_null)[0].sql
+        els_ = self.els_.partial_eval(SQLang).to_sql(schema, not_null=not_null)[0].sql
         output = {}
         for t in "bsn":
             if then[t] == None:

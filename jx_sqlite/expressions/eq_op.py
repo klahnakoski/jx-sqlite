@@ -30,8 +30,8 @@ from jx_sqlite.sqlite import SQL_FALSE, SQL_IS_NULL, SQL_OR, sql_iso, SQL_EQ
 class EqOp(EqOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        lhs = SQLang[self.lhs].to_sql(schema)
-        rhs = SQLang[self.rhs].to_sql(schema)
+        lhs = self.lhs.partial_eval(SQLang).to_sql(schema)
+        rhs = self.rhs.partial_eval(SQLang).to_sql(schema)
         acc = []
         if len(lhs) != len(rhs):
             Log.error("lhs and rhs have different dimensionality!?")
@@ -72,18 +72,18 @@ class EqOp(EqOp_):
 
     @simplified
     def partial_eval(self):
-        lhs = self.lhs.partial_eval()
-        rhs = self.rhs.partial_eval()
+        lhs = self.lhs.partial_eval(SQLang)
+        rhs = self.rhs.partial_eval(SQLang)
 
         if isinstance(lhs, Literal) and isinstance(rhs, Literal):
             return TRUE if builtin_ops["eq"](lhs.value, rhs.value) else FALSE
         else:
-            rhs_missing = rhs.missing().partial_eval()
+            rhs_missing = rhs.missing().partial_eval(SQLang)
             output = self.lang[CaseOp(
                 [
                     WhenOp(lhs.missing(), **{"then": rhs_missing}),
                     WhenOp(rhs_missing, **{"then": FALSE}),
                     SqlEqOp([lhs, rhs]),
                 ]
-            )].partial_eval()
+            )].partial_eval(SQLang)
             return output

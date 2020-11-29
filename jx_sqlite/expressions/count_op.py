@@ -33,7 +33,7 @@ class CountOp(CountOp_):
     def to_sql(self, schema, not_null=False, boolean=False):
         acc = []
         for term in self.terms:
-            sqls = SQLang[term].to_sql(schema)
+            sqls = term.partial_eval(SQLang).to_sql(schema)
             if len(sqls) > 1:
                 acc.append(SQL_TRUE)
             else:

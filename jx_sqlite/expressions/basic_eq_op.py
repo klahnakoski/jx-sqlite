@@ -17,4 +17,4 @@ from jx_sqlite.sqlite import sql_iso, SQL_EQ
 class BasicEqOp(BasicEqOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False, many=False):
-        return sql_iso(SQLang[self.rhs].to_sql(schema)) + SQL_EQ + sql_iso(+ SQLang[self.lhs].to_sql(schema))
+        return sql_iso(self.rhs.partial_eval(SQLang).to_sql(schema)) + SQL_EQ + sql_iso(+ self.lhs.partial_eval(SQLang).to_sql(schema))

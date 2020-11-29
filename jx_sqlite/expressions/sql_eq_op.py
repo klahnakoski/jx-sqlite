@@ -20,8 +20,8 @@ from jx_sqlite.sqlite import SQL_IS_NULL, SQL_OR, sql_iso, ConcatSQL, JoinSQL, S
 class SqlEqOp(SqlEqOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        lhs = SQLang[self.lhs].partial_eval()
-        rhs = SQLang[self.rhs].partial_eval()
+        lhs = self.lhs.partial_eval(SQLang)
+        rhs = self.rhs.partial_eval(SQLang)
         lhs_sql = lhs.to_sql(schema, not_null=True)
         rhs_sql = rhs.to_sql(schema, not_null=True)
         if is_literal(rhs) and lhs_sql[0].sql.b != None and rhs.value in ("T", "F"):

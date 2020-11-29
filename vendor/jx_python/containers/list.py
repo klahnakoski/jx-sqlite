@@ -10,11 +10,8 @@
 from __future__ import absolute_import, division, unicode_literals
 
 import itertools
-from copy import copy
 
 from jx_base import Column
-from mo_json import NESTED
-
 from jx_base.container import Container
 from jx_base.expressions import TRUE, Variable
 from jx_base.language import is_expression, is_op
@@ -29,6 +26,7 @@ from mo_collections import UniqueIndex
 from mo_dots import Data, Null, is_data, is_list, listwrap, unwrap, unwraplist, to_data, coalesce, dict_to_data
 from mo_future import first, sort_using_key
 from mo_imports import export, expect
+from mo_json import NESTED
 from mo_logs import Log
 from mo_threads import Lock
 

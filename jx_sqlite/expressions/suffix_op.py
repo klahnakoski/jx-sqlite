@@ -29,6 +29,6 @@ class SuffixOp(SuffixOp_):
         else:
             return (
                 EqOp([RightOp([self.expr, LengthOp(self.suffix)]), self.suffix])
-                .partial_eval()
+                .partial_eval(SQLang)
                 .to_sql(schema)
             )

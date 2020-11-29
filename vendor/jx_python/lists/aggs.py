@@ -15,7 +15,8 @@ from jx_base.domains import DefaultDomain, SimpleSetDomain
 from jx_python import windows
 from jx_python.expressions import jx_expression_to_function
 from mo_collections.matrix import Matrix
-from mo_dots import coalesce, listwrap, to_data
+from mo_dots import to_data
+from jx_base.utils import coalesce, listwrap
 from mo_logs import Log
 from mo_math import UNION
 from mo_times.dates import Date

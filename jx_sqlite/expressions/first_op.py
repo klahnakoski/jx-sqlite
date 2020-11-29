@@ -17,7 +17,7 @@ from mo_logs import Log
 class FirstOp(FirstOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        value = SQLang[self.term].to_sql(schema, not_null=True)
+        value = self.term.partial_eval(SQLang).to_sql(schema, not_null=True)
         for c in value:
             for t, v in c.sql.items():
                 if t == "j":

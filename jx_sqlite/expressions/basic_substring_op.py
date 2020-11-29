@@ -21,16 +21,16 @@ from mo_dots import wrap
 class BasicSubstringOp(BasicSubstringOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        value = SQLang[self.value].to_sql(schema, not_null=True)[0].sql.s
+        value = self.value.partial_eval(SQLang).to_sql(schema, not_null=True)[0].sql.s
         start = (
             AddOp([self.start, Literal(1)])
-            .partial_eval()
+            .partial_eval(SQLang)
             .to_sql(schema, not_null=True)[0]
             .sql.n
         )
         length = (
             SubOp([self.end, self.start])
-            .partial_eval()
+            .partial_eval(SQLang)
             .to_sql(schema, not_null=True)[0]
             .sql.n
         )

@@ -19,7 +19,7 @@ from jx_base.expressions import (
     Expression,
 )
 from jx_python.expressions import _utils, Python
-from mo_dots import coalesce
+from jx_base.utils import coalesce
 from mo_future import PY2, text
 from mo_logs import Log
 

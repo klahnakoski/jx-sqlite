@@ -21,7 +21,7 @@ class CoalesceOp(CoalesceOp_):
         acc = {"b": [], "s": [], "n": [], "0": []}
 
         for term in self.terms:
-            for t, v in SQLang[term].to_sql(schema)[0].sql.items():
+            for t, v in term.partial_eval(SQLang).to_sql(schema)[0].sql.items():
                 acc[t].append(v)
 
         output = {}

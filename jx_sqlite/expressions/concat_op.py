@@ -37,14 +37,14 @@ class ConcatOp(ConcatOp_):
         default = self.default.to_sql(schema)
         if len(self.terms) == 0:
             return default
-        len_sep = LengthOp(self.separator).partial_eval()
+        len_sep = LengthOp(self.separator).partial_eval(SQLang)
         no_sep = is_literal(len_sep) and len_sep.value==0
-        sep = SQLang[self.separator].to_sql(schema)[0].sql.s
+        sep = self.separator.partial_eval(SQLang).to_sql(schema)[0].sql.s
 
         acc = []
         for t in self.terms:
-            t = SQLang[t]
-            missing = t.missing().partial_eval()
+            t = t.partial_eval(SQLang)
+            missing = t.missing().partial_eval(SQLang)
 
             term = t.to_sql(schema, not_null=True)[0].sql
             if term.s:

@@ -23,7 +23,7 @@ from mo_dots.datas import register_data
 from mo_dots.lists import last
 from mo_future import is_text, text
 from mo_imports import export
-from mo_json import value2json, true, false, null, EXISTS, OBJECT, NESTED
+from mo_json import value2json, true, false, null, EXISTS, OBJECT, NESTED, python_type_to_json_type
 from mo_json.typed_encoder import EXISTS_TYPE
 from mo_logs import Log
 from mo_logs.strings import expand_template, quote
@@ -99,7 +99,7 @@ def DataClass(name, columns, constraint=None):
     required = to_data(filter(lambda c: c.required and c.default == None, columns)).name
     # nulls = to_data(filter(lambda c: c.nulls, columns)).name
     defaults = {c.name: coalesce(c.default, None) for c in columns}
-    types = {c.name: coalesce(c.jx_type, object) for c in columns}
+    types = {c.name: coalesce(c.type, object) for c in columns}
 
     code = expand_template(
         """

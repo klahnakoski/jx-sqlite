@@ -27,7 +27,7 @@ class OrOp(OrOp_):
                         "b": JoinSQL(
                             SQL_OR,
                             [
-                                sql_iso(SQLang[t].to_sql(schema, boolean=True)[0].sql.b)
+                                sql_iso(t.partial_eval(SQLang).to_sql(schema, boolean=True)[0].sql.b)
                                 for t in self.terms
                             ],
                         )

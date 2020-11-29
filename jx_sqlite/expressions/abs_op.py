@@ -20,7 +20,7 @@ from jx_sqlite.sqlite import SQL_NULL
 class AbsOp(AbsOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        expr = SQLang[self.term].partial_eval().to_sql(schema)[0].sql.n
+        expr = self.term.partial_eval(SQLang).to_sql(schema)[0].sql.n
         if not expr:
             return SQLScript(
                 expr=SQL_NULL,

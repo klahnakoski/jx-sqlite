@@ -21,9 +21,9 @@ from jx_sqlite.sqlite import SQL, ConcatSQL, SQL_LIKE, SQL_ESCAPE, SQL_ONE
 class BasicStartsWithOp(BasicStartsWithOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        prefix = SQLang[self.prefix].partial_eval()
+        prefix = self.prefix.partial_eval(SQLang)
         if is_literal(prefix):
-            value = SQLang[self.value].partial_eval().to_sql(schema)[0].sql.s
+            value = self.value.partial_eval(SQLang).to_sql(schema)[0].sql.s
             prefix = prefix.value
             if "%" in prefix or "_" in prefix:
                 for r in "\\_%":
@@ -35,6 +35,6 @@ class BasicStartsWithOp(BasicStartsWithOp_):
         else:
             return (
                 SqlEqOp([SqlInstrOp([self.value, prefix]), SQL_ONE])
-                .partial_eval()
+                .partial_eval(SQLang)
                 .to_sql()
             )

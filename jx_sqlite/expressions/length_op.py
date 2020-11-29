@@ -21,7 +21,7 @@ from jx_sqlite.sqlite import SQL, sql_iso, ConcatSQL
 class LengthOp(LengthOp_):
     @check
     def to_sql(self, schema, not_null=False, boolean=False):
-        term = SQLang[self.term].partial_eval()
+        term = self.term.partial_eval(SQLang)
         if is_literal(term):
             val = term.value
             if isinstance(val, text):
