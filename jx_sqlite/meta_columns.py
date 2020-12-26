@@ -11,13 +11,27 @@ from __future__ import absolute_import, division, unicode_literals
 
 import jx_base
 from jx_base import Table, Container, Column, Schema
-from jx_base.meta_columns import META_COLUMNS_DESC, META_COLUMNS_NAME, SIMPLE_METADATA_COLUMNS
+from jx_base.meta_columns import (
+    META_COLUMNS_DESC,
+    META_COLUMNS_NAME,
+    SIMPLE_METADATA_COLUMNS,
+)
 from jx_python import jx
 from jx_sqlite.expressions._utils import sql_type_to_json_type
 from jx_sqlite.sqlite import sql_query
 from jx_sqlite.utils import untyped_column
-from mo_dots import Data, Null, coalesce, is_data, is_list, literal_field, startswith_field, tail_field, unwraplist, \
-    wrap
+from mo_dots import (
+    Data,
+    Null,
+    coalesce,
+    is_data,
+    is_list,
+    literal_field,
+    startswith_field,
+    tail_field,
+    unwraplist,
+    wrap,
+)
 from mo_json import STRUCT, IS_NULL
 from mo_json.typed_encoder import unnest_path, untyped
 from mo_logs import Log
@@ -54,9 +68,7 @@ class ColumnList(Table, Container):
         self.db = db
         self.es_index = None
         self.last_load = Null
-        self.todo = Queue(
-            "update columns to es"
-        )  # HOLD (action, column) PAIR, WHERE action in ['insert', 'update']
+        self.todo = Queue("update columns to es")  # HOLD (action, column) PAIR, WHERE action in ['insert', 'update']
         self._snowflakes = Data()
         self._load_from_database()
 
@@ -73,9 +85,11 @@ class ColumnList(Table, Container):
         result = self.db.query(sql_query({
             "from": "sqlite_master",
             "where": {"eq": {"type": "table"}},
-            "orderby": "name"
+            "orderby": "name",
         }))
-        tables = wrap([{k: d for k, d in zip(result.header, row)} for row in result.data])
+        tables = wrap([
+            {k: d for k, d in zip(result.header, row)} for row in result.data
+        ])
         last_nested_path = ["."]
         for table in tables:
             if table.name.startswith("__"):
@@ -111,7 +125,7 @@ class ColumnList(Table, Container):
                     es_column=name,
                     es_index=table.name,
                     multi=1,
-                    last_updated=Date.now()
+                    last_updated=Date.now(),
                 ))
             last_nested_path = full_nested_path
 

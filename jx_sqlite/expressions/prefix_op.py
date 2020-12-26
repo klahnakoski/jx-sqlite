@@ -18,15 +18,15 @@ from jx_sqlite.sqlite import SQL_TRUE, ConcatSQL, SQL_EQ, SQL_ONE
 
 class PrefixOp(PrefixOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_sql(self, schema):
         if not self.expr:
             return wrap([{"name": ".", "sql": {"b": SQL_TRUE}}])
         else:
             sql = ConcatSQL(
                 sql_call(
                     "INSTR",
-                    self.expr.partial_eval(SQLang).to_sql(schema)[0].sql.s,
-                    self.prefix.partial_eval(SQLang).to_sql(schema)[0].sql.s,
+                    self.expr.partial_eval(SQLang).to_sql(schema),
+                    self.prefix.partial_eval(SQLang).to_sql(schema),
                 ),
                 SQL_EQ,
                 SQL_ONE,

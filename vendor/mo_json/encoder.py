@@ -14,10 +14,9 @@ import math
 import time
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from json.encoder import encode_basestring
 from math import floor
 
-from mo_dots import Data, FlatList, Null, NullType, SLOT, is_data, is_list, unwrap
+from mo_dots import Data, FlatList, NullType, SLOT, is_data, is_list, unwrap
 from mo_future import (
     PYPY,
     binary_type,
@@ -28,7 +27,7 @@ from mo_future import (
     text,
     utf8_json_encoder,
     xrange,
-    StringIO,
+    StringIO, encode_basestring,
 )
 from mo_json import ESCAPE_DCT, float2json, scrub
 from mo_logs import Except

@@ -127,8 +127,8 @@ def _jx_expression(expr, lang):
                 return NULL
             raise Log.error("{{instruction|json}} is not known", instruction=expr)
 
-    except Exception as casue:
-        Log.error("programmer error expr = {{value|quote}}", value=expr, cause=casue)
+    except Exception as cause:
+        Log.error("programmer error expr = {{value|quote}}", value=expr, cause=cause)
 
 
 language = Language(None)

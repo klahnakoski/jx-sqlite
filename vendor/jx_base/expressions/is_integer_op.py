@@ -11,12 +11,11 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.expression import Expression
-from jx_base.expressions.false_op import FALSE
-from mo_json import BOOLEAN
+from mo_json import INTEGER
 
 
 class IsIntegerOp(Expression):
-    data_type = BOOLEAN
+    data_type = INTEGER
 
     def __init__(self, term):
         Expression.__init__(self, [term])
@@ -32,4 +31,12 @@ class IsIntegerOp(Expression):
         return (IsIntegerOp(self.term.map(map_)))
 
     def missing(self, lang):
-        return FALSE
+        return self.expr.missing()
+
+    def partial_eval(self, lang):
+        term = self.term.partial_eval(lang)
+
+        if term.type is INTEGER:
+            return term
+        else:
+            return NULL

@@ -17,28 +17,24 @@ from jx_sqlite.sqlite import sql_coalesce, sql_iso
 
 class DivOp(DivOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        lhs = self.lhs.partial_eval(SQLang).to_sql(schema)[0].sql.n
-        rhs = self.rhs.partial_eval(SQLang).to_sql(schema)[0].sql.n
-        d = self.default.partial_eval(SQLang).to_sql(schema)[0].sql.n
+    def to_sql(self, schema):
+        lhs = self.lhs.partial_eval(SQLang).to_sql(schema)
+        rhs = self.rhs.partial_eval(SQLang).to_sql(schema)
+        d = self.default.partial_eval(SQLang).to_sql(schema)
 
         if lhs and rhs:
             if d == None:
-                return wrap(
-                    [{"name": ".", "sql": {"n": sql_iso(lhs) + " / " + sql_iso(rhs)}}]
-                )
+                return wrap([{
+                    "name": ".",
+                    "sql": {"n": sql_iso(lhs) + " / " + sql_iso(rhs)},
+                }])
             else:
-                return wrap(
-                    [
-                        {
-                            "name": ".",
-                            "sql": {
-                                "n": sql_coalesce(
-                                    [sql_iso(lhs) + " / " + sql_iso(rhs), d]
-                                )
-                            },
-                        }
-                    ]
-                )
+                return wrap([{
+                    "name": ".",
+                    "sql": {"n": sql_coalesce([
+                        sql_iso(lhs) + " / " + sql_iso(rhs),
+                        d,
+                    ])},
+                }])
         else:
             return Null

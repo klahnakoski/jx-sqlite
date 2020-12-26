@@ -60,7 +60,7 @@ class PythonScript(PythonScript_):
     if PY2:
         __unicode__ = __str__
 
-    def to_python(self, not_null=False, boolean=False, many=True):
+    def to_python(self, not_null=False, boolean=False):
         return self
 
     def missing(self, lang):

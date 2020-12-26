@@ -25,7 +25,8 @@ from jx_sqlite.sqlite import (
     sql_eq,
     sql_create,
     sql_insert,
-    json_type_to_sqlite_type)
+    json_type_to_sqlite_type,
+)
 from jx_sqlite.utils import UID, GUID, DIGITS_TABLE, ABOUT_TABLE
 from mo_dots import concat_field, set_default
 from mo_future import first, NEXT
@@ -41,10 +42,10 @@ _config = None
 class Container(object):
     @override
     def __init__(
-            self,
-            db=None,  # EXISTING Sqlite3 DATBASE, OR CONFIGURATION FOR Sqlite DB
-            filename=None,  # FILE FOR THE DATABASE (None FOR MEMORY DATABASE)
-            kwargs=None   # See Sqlite parameters
+        self,
+        db=None,  # EXISTING Sqlite3 DATBASE, OR CONFIGURATION FOR Sqlite DB
+        filename=None,  # FILE FOR THE DATABASE (None FOR MEMORY DATABASE)
+        kwargs=None,  # See Sqlite parameters
     ):
         global _config
         if isinstance(db, Sqlite):
@@ -71,16 +72,16 @@ class Container(object):
         def output():
             while True:
                 with self.db.transaction() as t:
-                    top_id = first(
-                        first(
-                            t.query(
-                                SQL_SELECT
-                                + quote_column("next_id")
-                                + SQL_FROM
-                                + quote_column(ABOUT_TABLE)
-                            ).data
+                    top_id = first(first(
+                        t
+                        .query(
+                            SQL_SELECT
+                            + quote_column("next_id")
+                            + SQL_FROM
+                            + quote_column(ABOUT_TABLE)
                         )
-                    )
+                        .data
+                    ))
                     max_id = top_id + 1000
                     t.execute(
                         SQL_UPDATE
@@ -97,9 +98,9 @@ class Container(object):
     def setup(self):
         if not self.db.about(ABOUT_TABLE):
             with self.db.transaction() as t:
-                t.execute(
-                    sql_create(ABOUT_TABLE, {"version": "TEXT", "next_id": "INTEGER"})
-                )
+                t.execute(sql_create(
+                    ABOUT_TABLE, {"version": "TEXT", "next_id": "INTEGER"}
+                ))
                 t.execute(sql_insert(ABOUT_TABLE, {"version": "1.0", "next_id": 1000}))
                 t.execute(sql_create(DIGITS_TABLE, {"value": "INTEGER"}))
                 t.execute(sql_insert(DIGITS_TABLE, [{"value": i} for i in range(10)]))
@@ -117,7 +118,9 @@ class Container(object):
         if uid != UID:
             Log.error("do not know how to handle yet")
 
-        command = sql_create(fact_name, {UID: "INTEGER PRIMARY KEY", GUID: "TEXT"}, unique=UID)
+        command = sql_create(
+            fact_name, {UID: "INTEGER PRIMARY KEY", GUID: "TEXT"}, unique=UID
+        )
 
         with self.db.transaction() as t:
             t.execute(command)
@@ -131,7 +134,7 @@ class Container(object):
             with self.db.transaction() as t:
                 for p in paths:
                     full_name = concat_field(fact_name, p[0])
-                    t.execute("DROP TABLE "+quote_column(full_name))
+                    t.execute("DROP TABLE " + quote_column(full_name))
             self.ns.columns.remove_table(fact_name)
 
     def get_or_create_facts(self, fact_name, uid=UID):
@@ -153,11 +156,13 @@ class Container(object):
                 es_index=fact_name,
                 es_type=json_type_to_sqlite_type[STRING],
                 jx_type=STRING,
-                nested_path=['.'],
+                nested_path=["."],
                 multi=1,
-                last_updated=Date.now()
+                last_updated=Date.now(),
             ))
-            command = sql_create(fact_name, {UID: "INTEGER PRIMARY KEY", GUID: "TEXT"}, unique=UID)
+            command = sql_create(
+                fact_name, {UID: "INTEGER PRIMARY KEY", GUID: "TEXT"}, unique=UID
+            )
 
             with self.db.transaction() as t:
                 t.execute(command)

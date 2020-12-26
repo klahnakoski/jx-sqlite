@@ -17,7 +17,7 @@ from jx_sqlite.sqlite import SQL_FALSE, SQL_IS_NOT_NULL, SQL_OR, sql_iso
 
 class ExistsOp(ExistsOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_sql(self, schema):
         field = self.field.to_sql(schema)[0].sql
         acc = []
         for t, v in field.items():

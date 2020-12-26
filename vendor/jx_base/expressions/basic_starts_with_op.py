@@ -12,7 +12,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
-from jx_base.expressions.string_op import StringOp
+from jx_base.expressions.to_string_op import ToStringOp
 from jx_base.language import is_op
 from mo_json import BOOLEAN
 
@@ -49,6 +49,6 @@ class BasicStartsWithOp(Expression):
 
     def partial_eval(self, lang):
         return BasicStartsWithOp([
-            StringOp(self.value).partial_eval(lang),
-            StringOp(self.prefix).partial_eval(lang),
+            ToStringOp(self.value).partial_eval(lang),
+            ToStringOp(self.prefix).partial_eval(lang),
         ])

@@ -20,31 +20,27 @@ from mo_logs import Log
 
 class LeavesOp(LeavesOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_sql(self, schema):
         if not is_op(self.term, Variable):
             Log.error("Can only handle Variable")
         term = self.term.var
         prefix_length = len(split_field(term))
-        output = wrap(
-            [
-                {
-                    "name": join_field(
-                        split_field(schema.get_column_name(c))[prefix_length:]
-                    ),
-                    "sql": Variable(schema.get_column_name(c)).to_sql(schema)[0].sql,
-                }
-                for c in schema.columns
-                if startswith_field(c.name, term)
-                and (
-                    (
-                        c.jx_type not in (EXISTS, OBJECT, NESTED)
-                        and startswith_field(schema.nested_path[0], c.nested_path[0])
-                    )
-                    or (
-                        c.jx_type not in (EXISTS, OBJECT)
-                        and schema.nested_path[0] == c.nested_path[0]
-                    )
+        output = wrap([
+            {
+                "name": join_field(split_field(schema.get_column_name(c))[prefix_length:]),
+                "sql": Variable(schema.get_column_name(c)).to_sql(schema)[0].sql,
+            }
+            for c in schema.columns
+            if startswith_field(c.name, term)
+            and (
+                (
+                    c.jx_type not in (EXISTS, OBJECT, NESTED)
+                    and startswith_field(schema.nested_path[0], c.nested_path[0])
                 )
-            ]
-        )
+                or (
+                    c.jx_type not in (EXISTS, OBJECT)
+                    and schema.nested_path[0] == c.nested_path[0]
+                )
+            )
+        ])
         return output

@@ -10,26 +10,14 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import CoalesceOp as CoalesceOp_
-from jx_sqlite.expressions._utils import SQLang, check
-from mo_dots import wrap
-from jx_sqlite.sqlite import sql_coalesce
+from jx_sqlite.expressions._utils import SQLang, check, SQLScript
+from mo_sql import sql_coalesce
 
 
 class CoalesceOp(CoalesceOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        acc = {"b": [], "s": [], "n": [], "0": []}
+    def to_sql(self, schema):
+        terms = [t.partial_eval(SQLang).to_sql(schema) for t in self.terms]
+        data_type = merge_types(t.data_type for t in terms)
 
-        for term in self.terms:
-            for t, v in term.partial_eval(SQLang).to_sql(schema)[0].sql.items():
-                acc[t].append(v)
-
-        output = {}
-        for t, terms in acc.items():
-            if not terms:
-                continue
-            elif len(terms) == 1:
-                output[t] = terms[0]
-            else:
-                output[t] = sql_coalesce(terms)
-        return wrap([{"name": ".", "sql": output}])
+        return SQLScript(data_type=data_type, expr=sql_coalesce(terms), frum=self)

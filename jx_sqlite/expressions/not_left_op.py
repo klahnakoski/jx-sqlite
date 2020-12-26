@@ -16,11 +16,11 @@ from mo_dots import wrap
 
 class NotLeftOp(NotLeftOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        # test_v = self.value.missing().to_sql(boolean=True)[0].sql.b
-        # test_l = self.length.missing().to_sql(boolean=True)[0].sql.b
-        v = self.value.to_sql(schema, not_null=True)[0].sql.s
-        l = "max(0, " + self.length.to_sql(schema, not_null=True)[0].sql.n + ")"
+    def to_sql(self, schema):
+        # test_v = self.value.missing().to_sql(boolean=True)
+        # test_l = self.length.missing().to_sql(boolean=True)
+        v = self.value.to_sql(schema, not_null=True)
+        l = "max(0, " + self.length.to_sql(schema, not_null=True) + ")"
 
         expr = "substr(" + v + ", " + l + "+1)"
         return wrap([{"name": ".", "sql": {"s": expr}}])

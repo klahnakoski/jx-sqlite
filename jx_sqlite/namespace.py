@@ -21,6 +21,7 @@ class Namespace(jx_base.Namespace):
     """
     MANAGE SQLITE DATABASE
     """
+
     def __init__(self, db):
         self.db = db
         self.columns = ColumnList(db)
@@ -43,4 +44,3 @@ class Namespace(jx_base.Namespace):
 
     def add_column_to_schema(self, column):
         self.columns.add(column)
-

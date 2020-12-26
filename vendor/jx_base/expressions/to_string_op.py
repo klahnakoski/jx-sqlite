@@ -21,7 +21,7 @@ from jx_base.language import is_op
 from mo_json import STRING, IS_NULL
 
 
-class StringOp(Expression):
+class ToStringOp(Expression):
     data_type = STRING
 
     def __init__(self, term):
@@ -35,7 +35,7 @@ class StringOp(Expression):
         return self.term.vars()
 
     def map(self, map_):
-        return (StringOp(self.term.map(map_)))
+        return (ToStringOp(self.term.map(map_)))
 
     def missing(self, lang):
         return self.term.missing(lang)
@@ -45,11 +45,11 @@ class StringOp(Expression):
         if term.type is IS_NULL:
             return NULL
         term = (FirstOp(term)).partial_eval(lang)
-        if is_op(term, StringOp):
+        if is_op(term, ToStringOp):
             return term.term.partial_eval(lang)
         elif is_op(term, CoalesceOp):
             return CoalesceOp([
-                (StringOp(t)).partial_eval(lang) for t in term.terms
+                (ToStringOp(t)).partial_eval(lang) for t in term.terms
             ])
         elif is_literal(term):
             if term.type == STRING:
@@ -59,6 +59,6 @@ class StringOp(Expression):
         return self
 
     def __eq__(self, other):
-        if not is_op(other, StringOp):
+        if not is_op(other, ToStringOp):
             return False
         return self.term == other.term

@@ -17,7 +17,7 @@ from jx_base.expressions.true_op import TRUE
 from mo_json import BOOLEAN
 
 
-class BooleanOp(Expression):
+class ToBooleanOp(Expression):
     data_type = BOOLEAN
 
     def __init__(self, term):
@@ -31,7 +31,7 @@ class BooleanOp(Expression):
         return self.term.vars()
 
     def map(self, map_):
-        return BooleanOp(self.term.map(map_))
+        return ToBooleanOp(self.term.map(map_))
 
     def missing(self, lang):
         return self.term.missing(lang)

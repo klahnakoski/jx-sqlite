@@ -17,7 +17,7 @@ from jx_sqlite.sqlite import SQL_CASE, SQL_ELSE, SQL_END, SQL_NULL, SQL_THEN, SQ
 
 class RangeOp(RangeOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_sql(self, schema):
         when = self.when.to_sql(schema, boolean=True)[0].sql
         then = self.then.to_sql(schema, not_null=not_null)[0].sql
         els_ = self.els_.to_sql(schema, not_null=not_null)[0].sql

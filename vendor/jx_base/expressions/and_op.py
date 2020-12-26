@@ -10,7 +10,7 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions.boolean_op import BooleanOp
+from jx_base.expressions.to_boolean_op import ToBooleanOp
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.true_op import TRUE
@@ -67,7 +67,7 @@ class AndOp(Expression):
         # NEST DEEP NESTED QUERIES
         or_terms = [[]]  # LIST OF TUPLES FOR or-ing and and-ing
         for i, t in enumerate(self.terms):
-            simple = (BooleanOp(t)).partial_eval(lang)
+            simple = (ToBooleanOp(t)).partial_eval(lang)
             if simple.type != BOOLEAN:
                 simple = simple.exists()
 

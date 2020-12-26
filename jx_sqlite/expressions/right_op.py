@@ -26,10 +26,8 @@ class RightOp(RightOp_):
         length = self.length.partial_eval(SQLang)
         max_length = LengthOp(value)
 
-        return BasicSubstringOp(
-            [
-                value,
-                MaxOp([ZERO, MinOp([max_length, SubOp([max_length, length])])]),
-                max_length,
-            ]
-        )
+        return BasicSubstringOp([
+            value,
+            MaxOp([ZERO, MinOp([max_length, SubOp([max_length, length])])]),
+            max_length,
+        ])

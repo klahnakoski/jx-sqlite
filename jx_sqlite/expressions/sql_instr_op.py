@@ -17,13 +17,11 @@ from mo_dots import wrap
 
 class SqlInstrOp(SqlInstrOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        value = self.value.to_sql(schema, not_null=True)[0].sql.s
-        find = self.find.to_sql(schema, not_null=True)[0].sql.s
+    def to_sql(self, schema):
+        value = self.value.to_sql(schema, not_null=True)
+        find = self.find.to_sql(schema, not_null=True)
 
-        return wrap(
-            [{"name": ".", "sql": {"n": sql_call("INSTR", value, find)}}]
-        )
+        return wrap([{"name": ".", "sql": {"n": sql_call("INSTR", value, find)}}])
 
     def partial_eval(self, lang):
         value = self.value.partial_eval(SQLang)

@@ -13,7 +13,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 from mo_dots.lists import is_many
 
-from mo_future import is_text, is_binary
+from mo_future import is_text, is_binary, PY2
 import sys
 
 from mo_dots import Data, Null, is_data, listwrap, unwraplist
@@ -133,10 +133,13 @@ class Except(Exception, LogItem):
                 return True
         return False
 
-    def __unicode__(self):
+    def __str__(self):
         output = self.context + ": " + self.template + CR
         if self.params:
-            output = expand_template(output, self.params)
+            try:
+                output = expand_template(output, self.params)
+            except Exception as cause:
+                return self.template
 
         if self.trace:
             output += indent(format_trace(self.trace))
@@ -153,12 +156,8 @@ class Except(Exception, LogItem):
 
         return output
 
-    if PY3:
-
-        def __str__(self):
-            return self.__unicode__()
-
-    else:
+    if PY2:
+        __unicode__ = __str__
 
         def __str__(self):
             return self.__unicode__().encode("latin1", "replace")

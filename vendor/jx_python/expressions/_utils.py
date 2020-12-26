@@ -23,7 +23,7 @@ from mo_dots import is_data, is_list, Null
 from mo_future import is_text
 from mo_json import BOOLEAN
 
-NumberOp, OrOp, PythonScript, ScriptOp, WhenOp = [None]*5
+ToNumberOp, OrOp, PythonScript, ScriptOp, WhenOp = [None]*5
 
 
 def jx_expression_to_function(expr):
@@ -72,14 +72,14 @@ class JXExpression(object):
 
 
 @extend(NullOp)
-def to_python(self, not_null=False, boolean=False, many=False):
+def to_python(self, many=False):
     return "None"
 
 
-def _inequality_to_python(self, not_null=False, boolean=False, many=True):
+def _inequality_to_python(self, not_null=False, boolean=False):
     op, identity = _python_operators[self.op]
-    lhs = NumberOp(self.lhs).partial_eval(Python).to_python(not_null=True)
-    rhs = NumberOp(self.rhs).partial_eval(Python).to_python(not_null=True)
+    lhs = ToNumberOp(self.lhs).partial_eval(Python).to_python(not_null=True)
+    rhs = ToNumberOp(self.rhs).partial_eval(Python).to_python(not_null=True)
     script = "(" + lhs + ") " + op + " (" + rhs + ")"
 
     output = (
@@ -96,11 +96,11 @@ def _inequality_to_python(self, not_null=False, boolean=False, many=True):
     return output
 
 
-def _binaryop_to_python(self, not_null=False, boolean=False, many=True):
+def _binaryop_to_python(self, not_null=False, boolean=False):
     op, identity = _python_operators[self.op]
 
-    lhs = NumberOp(self.lhs).partial_eval(Python).to_python(not_null=True)
-    rhs = NumberOp(self.rhs).partial_eval(Python).to_python(not_null=True)
+    lhs = ToNumberOp(self.lhs).partial_eval(Python).to_python(not_null=True)
+    rhs = ToNumberOp(self.rhs).partial_eval(Python).to_python(not_null=True)
     script = "(" + lhs + ") " + op + " (" + rhs + ")"
     missing = OrOp([self.lhs.missing(Python), self.rhs.missing(Python)]).partial_eval(lang)
     if missing is FALSE:

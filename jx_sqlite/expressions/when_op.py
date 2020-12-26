@@ -17,7 +17,7 @@ from jx_sqlite.sqlite import SQL_CASE, SQL_ELSE, SQL_END, SQL_NULL, SQL_THEN, SQ
 
 class WhenOp(WhenOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False, many=True):
+    def to_sql(self, schema):
         when = self.when.partial_eval(SQLang).to_sql(schema, boolean=True)[0].sql
         then = self.then.partial_eval(SQLang).to_sql(schema, not_null=not_null)[0].sql
         els_ = self.els_.partial_eval(SQLang).to_sql(schema, not_null=not_null)[0].sql

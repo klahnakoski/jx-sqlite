@@ -24,7 +24,15 @@ from mo_logs import Log
 from mo_threads import register_thread
 
 TRUE, FALSE, Literal, is_literal, MissingOp, NotOp, NULL, Variable, AndOp = expect(
-    "TRUE", "FALSE", "Literal", "is_literal", "MissingOp", "NotOp", "NULL", "Variable", "AndOp"
+    "TRUE",
+    "FALSE",
+    "Literal",
+    "is_literal",
+    "MissingOp",
+    "NotOp",
+    "NULL",
+    "Variable",
+    "AndOp",
 )
 
 
@@ -149,7 +157,7 @@ class Expression(BaseExpression):
         elif inv is FALSE:
             return TRUE
         else:
-            return (NotOp(inv))
+            return NotOp(inv)
 
     def partial_eval(self, lang):
         """

@@ -9,22 +9,21 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import BooleanOp as BooleanOp_, FALSE, TRUE, is_literal
+from jx_base.expressions import IsBooleanOp as ToBooleanOp_, FALSE, TRUE, is_literal
 from jx_sqlite.expressions._utils import SQLang, check
+from mo_json import BOOLEAN
 
 
-class BooleanOp(BooleanOp_):
+class IsBooleanOp(ToBooleanOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_sql(self, schema):
         term = self.term.partial_eval(SQLang)
-        if term.type == "boolean":
-            sql = term.to_sql(schema)
-            return sql
+        if term.type is BOOLEAN:
+            return term.to_sql(schema)
         elif is_literal(term) and term.value in ("T", "F"):
             if term.value == "T":
                 return TRUE.to_sql(schema)
             else:
                 return FALSE.to_sql(schema)
         else:
-            sql = term.exists().partial_eval(SQLang).to_sql(schema)
-            return sql
+            return term.exists().partial_eval(SQLang).to_sql(schema)

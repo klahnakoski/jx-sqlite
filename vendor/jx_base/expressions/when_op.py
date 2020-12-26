@@ -11,7 +11,7 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.and_op import AndOp
-from jx_base.expressions.boolean_op import BooleanOp
+from jx_base.expressions.to_boolean_op import ToBooleanOp
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.literal import Literal
@@ -71,7 +71,7 @@ class WhenOp(Expression):
         ]).partial_eval(lang)
 
     def partial_eval(self, lang):
-        when = (BooleanOp(self.when)).partial_eval(lang)
+        when = (ToBooleanOp(self.when)).partial_eval(lang)
 
         if when is TRUE:
             return (self.then).partial_eval(lang)

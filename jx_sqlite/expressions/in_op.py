@@ -23,15 +23,14 @@ from jx_sqlite.sqlite import SQL_FALSE, SQL_OR, sql_iso, ConcatSQL, SQL_IN
 
 class InOp(InOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_sql(self, schema):
         if not is_op(self.superset, Literal):
             Log.error("Not supported")
         j_value = json2value(self.superset.json)
         if j_value:
             var = self.value.partial_eval(SQLang).to_sql(schema)
             sql = SQL_OR.join(
-                sql_iso(v, SQL_IN, quote_list(j_value))
-                for t, v in var[0].sql.items()
+                sql_iso(v, SQL_IN, quote_list(j_value)) for t, v in var[0].sql.items()
             )
         else:
             sql = SQL_FALSE

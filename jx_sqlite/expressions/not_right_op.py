@@ -18,9 +18,13 @@ from jx_sqlite.sqlite import SQL_ONE, SQL_ZERO, SQL
 
 class NotRightOp(NotRightOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        v = self.value.to_sql(schema, not_null=True)[0].sql.s
-        r = self.length.to_sql(schema, not_null=True)[0].sql.n
-        l = sql_call("MAX", SQL_ZERO, sql_call("length", v) + SQL(" - ") + sql_call("MAX", SQL_ZERO, r))
+    def to_sql(self, schema):
+        v = self.value.to_sql(schema, not_null=True)
+        r = self.length.to_sql(schema, not_null=True)
+        l = sql_call(
+            "MAX",
+            SQL_ZERO,
+            sql_call("length", v) + SQL(" - ") + sql_call("MAX", SQL_ZERO, r),
+        )
         sql = sql_call("SUBSTR", v, SQL_ONE, l)
         return wrap([{"name": ".", "sql": {"s": sql}}])

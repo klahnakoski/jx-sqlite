@@ -10,9 +10,10 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+from jx_base.expressions._utils import simplified
 from jx_base.expressions.expression import jx_expression, Expression, _jx_expression
 from jx_base.utils import is_variable_name
-from mo_dots import to_data, is_container
+from mo_dots import to_data, listwrap
 from mo_future import is_text
 from mo_logs import Log
 from mo_math import UNION
@@ -25,15 +26,15 @@ class SelectOp(Expression):
         """
         :param terms: list OF {"name":name, "value":value} DESCRIPTORS
         """
+        if not isinstance(terms, list) or not all(isinstance(term, dict) for term in terms):
+            Log.error("expecting list of dicts")
+        Expression.__init__(self, None)
         self.terms = terms
 
     @classmethod
     def define(cls, expr):
-        expr = to_data(expr)
-        term = expr.select
+        term = listwrap(to_data(expr).select)
         terms = []
-        if not is_container(term):
-            raise Log.error("Expecting a list")
         for t in term:
             if is_text(t):
                 if not is_variable_name(t):
@@ -61,17 +62,51 @@ class SelectOp(Expression):
                     Log.error("expecting a name property")
             else:
                 terms.append({"name": t.name, "value": jx_expression(t.value)})
-        return (SelectOp(terms))
+        return SelectOp(terms)
+
+    @simplified
+    def partial_eval(self, lang):
+        new_terms = []
+        diff = False
+        for name, expr in self:
+            new_expr = expr.partial_eval(lang)
+            if new_expr is expr:
+                new_terms.append({"name": name, "value": expr})
+                continue
+            diff = True
+
+            if expr is NULL:
+                continue
+            elif is_op(expr, SelectOp):
+                for t_name, t_value in expr.terms:
+                    new_terms.append({
+                        "name": concat_field(name, t_name),
+                        "value": t_value,
+                    })
+            else:
+                new_terms.append({"name": name, "value": new_expr})
+                diff = True
+        if diff:
+            return SelectOp(new_terms)
+        else:
+            return self
+
+    def __iter__(self):
+        """
+        :return:  return iterator of (name, value) tuples
+        """
+        for term in self.terms:
+            yield term["name"], term["value"]
 
     def __data__(self):
         return {"select": [
-            {"name": t.name, "value": t.value.__data__()} for t in to_data(self.terms)
+            {"name": name, "value": value.__data__()} for name, value in self
         ]}
 
     def vars(self):
-        return UNION(t.value for t in self.terms)
+        return UNION(value for _, value in self)
 
     def map(self, map_):
         return SelectOp([
-            {"name": t.name, "value": t.value.map(map_)} for t in self.terms
+            {"name": name, "value": value.map(map_)} for name, value in self
         ])

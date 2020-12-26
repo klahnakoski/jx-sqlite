@@ -9,14 +9,14 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import MaxOp as MaxOp_
-from jx_sqlite.expressions._utils import SQLang, check
-from mo_dots import wrap
+from jx_base.expressions import MaxOp as MaxOp_, MissingOp
+from jx_sqlite.expressions._utils import SQLang, check, SQLScript
 from jx_sqlite.sqlite import sql_iso, sql_list
 
 
 class MaxOp(MaxOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        terms = [t.partial_eval(SQLang).to_sql(schema)[0].sql.n for t in self.terms]
-        return wrap([{"name": ".", "sql": {"n": "max" + sql_iso((sql_list(terms)))}}])
+    def to_sql(self, schema):
+        miss = MissingOp(self).partial_eval(SQLang)
+        expr = sql_iso(sql_list(t.to_sql(schema) for t in self.terms.partial_eval()))
+        return SQLScript(missing=miss, expr=expr, frum=self)

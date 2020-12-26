@@ -20,19 +20,21 @@ from mo_dots import wrap
 
 class BasicSubstringOp(BasicSubstringOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        value = self.value.partial_eval(SQLang).to_sql(schema, not_null=True)[0].sql.s
+    def to_sql(self, schema):
+        value = self.value.partial_eval(SQLang).to_sql(schema, not_null=True)
         start = (
             AddOp([self.start, Literal(1)])
             .partial_eval(SQLang)
             .to_sql(schema, not_null=True)[0]
-            .sql.n
+            .sql
+            .n
         )
         length = (
             SubOp([self.end, self.start])
             .partial_eval(SQLang)
             .to_sql(schema, not_null=True)[0]
-            .sql.n
+            .sql
+            .n
         )
         sql = sql_call("SUBSTR", value, start, length)
         return wrap([{"name": ".", "sql": {"s": sql}}])

@@ -81,7 +81,7 @@ The easy part is making the schema, and changing it dynamically as new JSON sche
 By dealing with JSON documents we are limiting ourselves to [snowflake schemas](https://en.wikipedia.org/wiki/Snowflake_schema). This limitation reduces the scope of the problem. Let's further restrict ourselves to a subset of schema transformations that can be handled automatically; we will call them "schema expansions":
 
 1.	Adding a property - This is a common migration
-2.	Changing the datatype of a property, or allowing multiple types - It is nice if numbers can be queried like numbers and strings as strings even if they are found in the same property..
+2.	Changing the data type of a property, or allowing multiple types - It is nice if numbers can be queried like numbers and strings as strings even if they are found in the same property..
 3.	Change a single-valued property to a multi-valued property - Any JSON property `{"a": 1}` can be interpreted as multi-valued `{"a": [1]}`. Then assigning multiple values is trivial expansion `{"a": [1, 2, 3]}`.
 4.	Change an inner object to nested array of objects - Like the multi-valued case: `{"a":{"b":"c"}}`, each inner object can be interpreted as a nested array `{"a": [{"b":"c"}]}`.  Which similarly trivializes schema expansion.
 

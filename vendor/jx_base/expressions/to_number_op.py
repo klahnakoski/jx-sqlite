@@ -27,7 +27,7 @@ from mo_logs import Log
 from mo_times import Date
 
 
-class NumberOp(Expression):
+class ToNumberOp(Expression):
     data_type = NUMBER
 
     def __init__(self, term):
@@ -41,7 +41,7 @@ class NumberOp(Expression):
         return self.term.vars()
 
     def map(self, map_):
-        return (NumberOp(self.term.map(map_)))
+        return (ToNumberOp(self.term.map(map_)))
 
     def missing(self, lang):
         return self.term.missing(lang)
@@ -66,13 +66,13 @@ class NumberOp(Expression):
                 Log.error("can not convert {{value|json}} to number", value=term.value)
         elif is_op(term, CaseOp):  # REWRITING
             return CaseOp(
-                [WhenOp(t.when, **{"then": NumberOp(t.then)}) for t in term.whens[:-1]]
-                + [NumberOp(term.whens[-1])]
+                [WhenOp(t.when, **{"then": ToNumberOp(t.then)}) for t in term.whens[:-1]]
+                + [ToNumberOp(term.whens[-1])]
             ).partial_eval(lang)
         elif is_op(term, WhenOp):  # REWRITING
             return WhenOp(
-                term.when, **{"then": NumberOp(term.then), "else": NumberOp(term.els_)}
+                term.when, **{"then": ToNumberOp(term.then), "else": ToNumberOp(term.els_)}
             ).partial_eval(lang)
         elif is_op(term, CoalesceOp):
-            return (CoalesceOp([NumberOp(t) for t in term.terms]))
-        return (NumberOp(term))
+            return (CoalesceOp([ToNumberOp(t) for t in term.terms]))
+        return (ToNumberOp(term))

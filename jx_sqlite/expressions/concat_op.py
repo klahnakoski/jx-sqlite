@@ -28,18 +28,22 @@ from jx_sqlite.sqlite import (
     sql_iso,
     sql_list,
     sql_concat_text,
-    ConcatSQL, SQL_PLUS, SQL_ONE, SQL_ZERO)
+    ConcatSQL,
+    SQL_PLUS,
+    SQL_ONE,
+    SQL_ZERO,
+)
 
 
 class ConcatOp(ConcatOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_sql(self, schema):
         default = self.default.to_sql(schema)
         if len(self.terms) == 0:
             return default
         len_sep = LengthOp(self.separator).partial_eval(SQLang)
-        no_sep = is_literal(len_sep) and len_sep.value==0
-        sep = self.separator.partial_eval(SQLang).to_sql(schema)[0].sql.s
+        no_sep = is_literal(len_sep) and len_sep.value == 0
+        sep = self.separator.partial_eval(SQLang).to_sql(schema)
 
         acc = []
         for t in self.terms:
@@ -74,7 +78,7 @@ class ConcatOp(ConcatOp_):
                 acc.append(
                     SQL_CASE
                     + SQL_WHEN
-                    + sql_iso(missing.to_sql(schema, boolean=True)[0].sql.b)
+                    + sql_iso(missing.to_sql(schema, boolean=True))
                     + SQL_THEN
                     + SQL_EMPTY_STRING
                     + SQL_ELSE
@@ -90,7 +94,7 @@ class ConcatOp(ConcatOp_):
             expr_ = sql_call(
                 "SUBSTR",
                 sql_concat_text(acc),
-                ConcatSQL(LengthOp(self.separator).to_sql(schema)[0].sql.n, SQL_PLUS, SQL_ONE)
+                ConcatSQL(LengthOp(self.separator).to_sql(schema), SQL_PLUS, SQL_ONE),
             )
 
         return SQLScript(

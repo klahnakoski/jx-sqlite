@@ -11,7 +11,7 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base import Column
+from jx_base import Column, jx_expression
 from jx_base.language import is_op
 from jx_base.queries import get_property_name
 from jx_sqlite.utils import (
@@ -24,7 +24,7 @@ from jx_sqlite.utils import (
     PARENT,
 )
 from jx_sqlite.expressions._utils import SQLang, sql_type_to_json_type
-from jx_sqlite.expressions.boolean_op import BooleanOp
+from jx_sqlite.expressions.to_boolean_op import ToBooleanOp
 from jx_sqlite.expressions.leaves_op import LeavesOp
 from jx_sqlite.insert_table import InsertTable
 from mo_dots import (
@@ -41,6 +41,7 @@ from mo_dots import (
 )
 from mo_future import text, unichr
 from mo_json import IS_NULL, STRUCT
+from mo_logs import Log
 from mo_math import UNION
 from mo_times import Date
 from jx_sqlite.sqlite import (
@@ -182,68 +183,32 @@ class SetOpTable(InsertTable):
             if step not in active_columns:
                 continue
 
-            # ADD SQL SELECT COLUMNS FOR EACH jx SELECT CLAUSE
-            si = 0
-            for select in listwrap(query.select):
-                try:
-                    column_number = len(sql_selects)
-                    select.pull = get_column(column_number)
-                    db_columns = select.value.partial_eval(SQLang).to_sql(schema)
+            # ADD SQL SELECT COLUMNS
+            selects = (
+                jx_expression({"select": query.select})
+                .partial_eval(SQLang)
+                .to_sql(schema)
+            )
+            for column_number, (name, value) in enumerate(selects.frum):
+                if is_op(value, LeavesOp):
+                    Log.error("expecting SelectOp to subsume the LeavesOp")
 
-                    for column in db_columns:
-                        for t, unsorted_sql in column.sql.items():
-                            json_type = sql_type_to_json_type[t]
-                            if json_type in STRUCT:
-                                continue
-                            column_number = len(sql_selects)
-                            column_alias = _make_column_name(column_number)
-                            sql_selects.append(sql_alias(unsorted_sql, column_alias))
-                            if startswith_field(schema.path, step) and is_op(
-                                select.value, LeavesOp
-                            ):
-                                # ONLY FLATTEN primary_nested_path AND PARENTS, NOT CHILDREN
-                                index_to_column[column_number] = nested_doc_details[
-                                    "index_to_column"
-                                ][column_number] = ColumnMapping(
-                                    push_name=literal_field(get_property_name(concat_field(
-                                        select.name, column.name
-                                    ))),
-                                    push_child=".",
-                                    push_column_name=get_property_name(concat_field(
-                                        select.name, column.name
-                                    )),
-                                    push_column=si,
-                                    pull=get_column(column_number),
-                                    sql=unsorted_sql,
-                                    type=json_type,
-                                    column_alias=column_alias,
-                                    nested_path=nested_path,
-                                )
-                                si += 1
-                            else:
-                                index_to_column[column_number] = nested_doc_details[
-                                    "index_to_column"
-                                ][column_number] = ColumnMapping(
-                                    push_name=select.name,
-                                    push_child=column.name,
-                                    push_column_name=select.name,
-                                    push_column=si,
-                                    pull=get_column(column_number),
-                                    sql=unsorted_sql,
-                                    type=json_type,
-                                    column_alias=column_alias,
-                                    nested_path=nested_path,
-                                )
-                finally:
-                    si += 1
+                sql = value.partial_eval(SQLang).to_sql(schema)
+                column_alias = _make_column_name(column_number)
+                sql_selects.append(sql_alias(sql, column_alias))
+                index_to_column[column_number] = nested_doc_details["index_to_column"][column_number] = ColumnMapping(
+                    push_name=name,
+                    push_child=".",
+                    push_column_name=name,
+                    push_column=column_number,
+                    pull=get_column(column_number),
+                    sql=sql,
+                    type=value.data_type,
+                    column_alias=column_alias,
+                    nested_path=nested_path,
+                )
 
-        where_clause = (
-            BooleanOp(query.where)
-            .partial_eval(SQLang)
-            .to_sql(schema, boolean=True)[0]
-            .sql
-            .b
-        )
+        where_clause = ToBooleanOp(query.where).partial_eval(SQLang).to_sql(schema)
         unsorted_sql = self._make_sql_for_one_nest_in_set_op(
             ".", sql_selects, where_clause, active_columns, index_to_column
         )

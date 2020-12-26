@@ -9,6 +9,8 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
+from jx_base.expressions import FALSE, FalseOp, NULL, NullOp, TrueOp, extend
+from jx_base.language import Language
 from jx_sqlite.sqlite import (
     SQL,
     SQL_FALSE,
@@ -20,17 +22,26 @@ from jx_sqlite.sqlite import (
     SQL_PLUS,
     SQL_STAR,
     SQL_LT,
-    ConcatSQL)
-
-from jx_base.expressions import FALSE, FalseOp, NULL, NullOp, TrueOp, extend
-from jx_base.language import Language
+    ConcatSQL,
+    SQL_END,
+    SQL_THEN,
+    SQL_CASE,
+    SQL_WHEN,
+    SQL_ELSE,
+    quote_column,
+    SQL_AS,
+    SQL_SELECT,
+    SQL_FROM,
+    SQL_WITH,
+)
 from jx_sqlite.sqlite import sql_call
-from mo_dots import wrap, FlatList, is_data
+from mo_dots import wrap
 from mo_future import decorate
 from mo_json import BOOLEAN, NESTED, OBJECT, STRING, NUMBER, IS_NULL, TIME, INTERVAL
+from mo_json.types import T_IS_NULL, T_BOOLEAN, T_NUMBER, T_TIME, T_INTERVAL, T_STRING
 from mo_logs import Log
 
-NumberOp, OrOp, SQLScript = [None] * 3
+ToNumberOp, OrOp, SQLScript = [None] * 3
 
 
 def check(func):
@@ -39,24 +50,15 @@ def check(func):
     """
 
     @decorate(func)
-    def to_sql(self, schema, not_null=False, boolean=False, **kwargs):
-        if kwargs.get("many") != None:
-            Log.error("not expecting many")
+    def to_sql(self, schema):
         try:
-            output = func(self, schema, not_null, boolean)
+            output = func(self, schema)
         except Exception as e:
+            # output = func(self, schema)
             raise Log.error("not expected", cause=e)
-        if isinstance(output, SQLScript):
-            return output
-        if not isinstance(output, FlatList):
-            Log.error("expecting FlatList")
-        if not is_data(output[0].sql):
-            Log.error("expecting Data")
-        for k, v in output[0].sql.items():
-            if k not in {"b", "n", "s", "j", "0"}:
-                Log.error("expecting datatypes")
-            if not isinstance(v, SQL):
-                Log.error("expecting text")
+        if not isinstance(output, SQLScript):
+            output = func(self, schema)
+            Log.error("expecting SQLScript")
         return output
 
     return to_sql
@@ -64,26 +66,32 @@ def check(func):
 
 @extend(NullOp)
 @check
-def to_sql(self, schema, not_null=False, boolean=False):
-    return wrap([{"name": ".", "sql": {"0": SQL_NULL}}])
+def to_sql(self, schema):
+    return SQLScript(
+        data_type=T_IS_NULL, expr=SQL_NULL, frum=self, miss=TrueOp, schema=schema
+    )
 
 
 @extend(TrueOp)
 @check
-def to_sql(self, schema, not_null=False, boolean=False):
-    return wrap([{"name": ".", "sql": {"b": SQL_TRUE}}])
+def to_sql(self, schema):
+    return SQLScript(
+        data_type=BOOLEAN, expr=SQL_TRUE, frum=self, miss=FalseOp, schema=schema
+    )
 
 
 @extend(FalseOp)
 @check
-def to_sql(self, schema, not_null=False, boolean=False):
-    return wrap([{"name": ".", "sql": {"b": SQL_FALSE}}])
+def to_sql(self, schema):
+    return SQLScript(
+        data_type=BOOLEAN, expr=SQL_FALSE, frum=self, miss=FalseOp, schema=schema
+    )
 
 
-def _inequality_to_sql(self, schema, not_null=False, boolean=False, many=True):
+def _inequality_to_sql(self, schema):
     op, identity = _sql_operators[self.op]
-    lhs = NumberOp(self.lhs).partial_eval(SQLang).to_sql(schema, not_null=True)[0].sql.n
-    rhs = NumberOp(self.rhs).partial_eval(SQLang).to_sql(schema, not_null=True)[0].sql.n
+    lhs = ToNumberOp(self.lhs).partial_eval(SQLang).to_sql(schema, not_null=True)
+    rhs = ToNumberOp(self.rhs).partial_eval(SQLang).to_sql(schema, not_null=True)
     sql = sql_iso(lhs) + op + sql_iso(rhs)
 
     output = SQLScript(
@@ -97,11 +105,11 @@ def _inequality_to_sql(self, schema, not_null=False, boolean=False, many=True):
 
 
 @check
-def _binaryop_to_sql(self, schema, not_null=False, boolean=False, many=True):
+def _binaryop_to_sql(self, schema):
     op, identity = _sql_operators[self.op]
 
-    lhs = NumberOp(self.lhs).partial_eval(SQLang).to_sql(schema, not_null=True)[0].sql.n
-    rhs = NumberOp(self.rhs).partial_eval(SQLang).to_sql(schema, not_null=True)[0].sql.n
+    lhs = ToNumberOp(self.lhs).partial_eval(SQLang).to_sql(schema, not_null=True)
+    rhs = ToNumberOp(self.rhs).partial_eval(SQLang).to_sql(schema, not_null=True)
     script = sql_iso(lhs) + op + sql_iso(rhs)
     if not_null:
         sql = script
@@ -110,17 +118,20 @@ def _binaryop_to_sql(self, schema, not_null=False, boolean=False, many=True):
         if missing is FALSE:
             sql = script
         else:
-            sql = (
-                "CASE WHEN "
-                + missing.to_sql(schema, boolean=True)[0].sql.b
-                + " THEN NULL ELSE "
-                + script
-                + " END"
+            sql = ConcatSQL(
+                SQL_CASE,
+                SQL_WHEN,
+                missing.to_sql(schema, boolean=True),
+                SQL_THEN,
+                SQL_NULL,
+                SQL_ELSE,
+                script,
+                SQL_END,
             )
     return wrap([{"name": ".", "sql": {"n": sql}}])
 
 
-def multiop_to_sql(self, schema, not_null=False, boolean=False, many=False):
+def multiop_to_sql(self, schema, many=False):
     sign, zero = _sql_operators[self.op]
     if len(self.terms) == 0:
         return self.default.partial_eval(SQLang).to_sql(schema)
@@ -132,8 +143,10 @@ def multiop_to_sql(self, schema, not_null=False, boolean=False, many=False):
     else:
         return sql_call(
             "COALESCE",
-            sign.join(sql_iso(t.partial_eval(SQLang).to_sql(schema)) for t in self.terms),
-            self.default.partial_eval(SQLang).to_sql(schema)
+            sign.join(
+                sql_iso(t.partial_eval(SQLang).to_sql(schema)) for t in self.terms
+            ),
+            self.default.partial_eval(SQLang).to_sql(schema),
         )
 
 
@@ -144,20 +157,25 @@ def with_var(var, expression, eval):
     :param eval: THE EXPRESSION TO COMPUTE SECOND, WITH var ASSIGNED
     :return: PYTHON EXPRESSION
     """
+    x = SQL("x")
+
     return ConcatSQL(
-        SQL("WITH x AS (SELECT ("),
-        expression,
-        SQL(") AS "),
-        var,
-        SQL(") SELECT "),
+        sql_iso(
+            SQL_WITH,
+            x,
+            SQL_AS,
+            sql_iso(SQL_SELECT, sql_iso(expression), SQL_AS, quote_column(var)),
+        ),
+        SQL_SELECT,
         eval,
-        SQL(" FROM x")
+        SQL_FROM,
+        x,
     )
 
 
-def basic_multiop_to_sql(self, schema, not_null=False, boolean=False, many=False):
+def basic_multiop_to_sql(self, schema, many=False):
     op, identity = _sql_operators[self.op.split("basic.")[1]]
-    sql = op.join(sql_iso(t.partial_eval(SQLang).to_sql(schema)[0].sql.n) for t in self.terms)
+    sql = op.join(sql_iso(t.partial_eval(SQLang).to_sql(schema)) for t in self.terms)
     return wrap([{"name": ".", "sql": {"n": sql}}])
 
 
@@ -197,14 +215,19 @@ json_type_to_sql_type = {
     STRING: SQL_STRING_TYPE,
     OBJECT: SQL_OBJECT_TYPE,
     NESTED: SQL_NESTED_TYPE,
+    T_IS_NULL: SQL_IS_NULL_TYPE,
+    T_BOOLEAN: SQL_BOOLEAN_TYPE,
+    T_NUMBER: SQL_NUMBER_TYPE,
+    T_TIME: SQL_TIME_TYPE,
+    T_INTERVAL: SQL_INTERVAL_TYPE,
+    T_STRING: SQL_STRING_TYPE,
 }
 
 sql_type_to_json_type = {
     None: None,
-    SQL_IS_NULL_TYPE: IS_NULL,
-    SQL_BOOLEAN_TYPE: BOOLEAN,
-    SQL_NUMBER_TYPE: NUMBER,
-    SQL_TIME_TYPE: TIME,
-    SQL_STRING_TYPE: STRING,
-    SQL_OBJECT_TYPE: OBJECT,
+    "0": IS_NULL,
+    "b": BOOLEAN,
+    "n": NUMBER,
+    "s": STRING,
+    "j": OBJECT,
 }

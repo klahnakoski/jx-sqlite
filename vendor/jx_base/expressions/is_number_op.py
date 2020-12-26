@@ -11,14 +11,12 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.expression import Expression
-from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.null_op import NULL
-from jx_base.expressions.true_op import TRUE
-from mo_json import BOOLEAN, OBJECT, NUMBER_TYPES
+from mo_json import NUMBER_TYPES, NUMBER
 
 
 class IsNumberOp(Expression):
-    data_type = BOOLEAN
+    data_type = NUMBER
 
     def __init__(self, term):
         Expression.__init__(self, [term])
@@ -34,16 +32,14 @@ class IsNumberOp(Expression):
         return (IsNumberOp(self.term.map(map_)))
 
     def missing(self, lang):
-        return FALSE
+        return self.expr.missin(lang)
 
     def partial_eval(self, lang):
         term = self.term.partial_eval(lang)
 
         if term is NULL:
-            return FALSE
+            return NULL
         elif term.type in NUMBER_TYPES:
-            return TRUE
-        elif term.type == OBJECT:
-            return self
+            return term
         else:
-            return FALSE
+            return NULL

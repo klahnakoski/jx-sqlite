@@ -44,6 +44,12 @@ class NullType(object):
     def __bool__(self):
         return False
 
+    def __int__(self):
+        return Null
+
+    def __float__(self):
+        return Null
+
     def __nonzero__(self):
         return False
 

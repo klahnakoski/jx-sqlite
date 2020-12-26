@@ -9,14 +9,16 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import FromUnixOp as FromUnixOp_
+from jx_base.expressions import IsStringOp as IsStringOp_, NULL
 from jx_sqlite.expressions._utils import check
-from mo_dots import wrap
-from jx_sqlite.sqlite import sql_iso
+from mo_json.types import T_STRING
 
 
-class FromUnixOp(FromUnixOp_):
+class IsStringOp(IsStringOp_):
     @check
     def to_sql(self, schema):
-        v = self.value.to_sql(schema)[0].sql
-        return wrap([{"name": ".", "sql": {"n": "FROM_UNIXTIME" + sql_iso(v.n)}}])
+        value = self.term.to_sql(schema)
+        if value.data_type == T_STRING:
+            return value
+        else:
+            return NULL.to_sql()

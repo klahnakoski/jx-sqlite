@@ -150,6 +150,7 @@ if PY3:
         )
         .encode
     )
+    encode_basestring = json.encoder
 
 
 else:  # PY2
@@ -257,6 +258,7 @@ else:  # PY2
         )
         .encode
     )
+    encode_basestring = json.encode_basestring
 
     # COPIED FROM Python's collections.UserDict (copied July 2018)
     class UserDict(MutableMapping):
@@ -372,4 +374,5 @@ _keep_imports = (
     start_new_thread,
     interrupt_main,
     process_time,
+    encode_basestring,
 )

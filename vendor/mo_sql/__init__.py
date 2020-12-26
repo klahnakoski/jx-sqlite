@@ -30,7 +30,10 @@ class SQL(object):
 
     @property
     def sql(self):
-        return "".join(self)
+        try:
+            return "".join(self)
+        except Exception as e:
+            raise e
 
     def __iter__(self):
         raise Log.error("not implemented")
@@ -69,14 +72,11 @@ class SQL(object):
         return self.sql
 
     if PY2:
-
         def __unicode__(self):
             return "".join(self)
 
-    else:
-
-        def __str__(self):
-            return "".join(self)
+    def __str__(self):
+        return "".join(self)
 
 
 class TextSQL(SQL):
@@ -180,6 +180,7 @@ SQL_SELECT_AS_STRUCT = SQL("\nSELECT AS STRUCT\n")
 SQL_DELETE = SQL("\nDELETE\n")
 SQL_CREATE = SQL("\nCREATE TABLE\n")
 SQL_INSERT = SQL("\nINSERT INTO\n")
+SQL_WITH = SQL("\nWITH ")
 SQL_FROM = SQL("\nFROM\n")
 SQL_WHERE = SQL("\nWHERE\n")
 SQL_GROUPBY = SQL("\nGROUP BY\n")
@@ -191,10 +192,16 @@ SQL_LIMIT = SQL("\nLIMIT\n")
 SQL_UPDATE = SQL("\nUPDATE\n")
 SQL_SET = SQL("\nSET\n")
 
+SQL_ALTER_TABLE = SQL("ALTER TABLE ")
+SQL_ADD_COLUMN = SQL(" ADD COLUMN ")
+SQL_RENAME_COLUMN = SQL(" RENAME COLUMN ")
+SQL_RENAME_TO = SQL(" RENAME TO ")
+
 SQL_CONCAT = SQL(" || ")
 SQL_AS = SQL(" AS ")
 SQL_LIKE = SQL(" LIKE ")
 SQL_ESCAPE = SQL(" ESCAPE ")
+SQL_TO = SQL(" TO ")
 SQL_OP = SQL("(")
 SQL_CP = SQL(")")
 SQL_IN = SQL(" IN ")
@@ -203,6 +210,7 @@ SQL_GE = SQL(" >= ")
 SQL_EQ = SQL(" = ")
 SQL_LT = SQL(" < ")
 SQL_LE = SQL(" <= ")
+SQL_NEG = SQL("-")
 SQL_DOT = SQL(".")
 SQL_CR = SQL("\n")
 

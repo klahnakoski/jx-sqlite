@@ -32,7 +32,9 @@ from mo_times import Date, Duration, Timer
 DEBUG = True
 TRACE = True
 
-FORMAT_COMMAND = "Running command from \"{{file}}:{{line}}\"\n{{command|limit(1000)|indent}}"
+FORMAT_COMMAND = (
+    'Running command from "{{file}}:{{line}}"\n{{command|limit(1000)|indent}}'
+)
 DOUBLE_TRANSACTION_ERROR = (
     "You can not query outside a transaction you have open already"
 )
@@ -134,9 +136,7 @@ class Sqlite(DB):
 
         self.locker = Lock()
         self.available_transactions = []  # LIST OF ALL THE TRANSACTIONS BEING MANAGED
-        self.queue = Queue(
-            "sql commands"
-        )  # HOLD (command, result, signal, stacktrace) TUPLES
+        self.queue = Queue("sql commands")  # HOLD (command, result, signal, stacktrace) TUPLES
 
         self.get_trace = coalesce(get_trace, TRACE)
         self.closed = False
@@ -144,8 +144,8 @@ class Sqlite(DB):
         # WORKER VARIABLES
         self.transaction_stack = []  # THE TRANSACTION OBJECT WE HAVE PARTIALLY RUN
         self.last_command_item = (
-            None
-        )  # USE THIS TO HELP BLAME current_transaction FOR HANGING ON TOO LONG
+            None  # USE THIS TO HELP BLAME current_transaction FOR HANGING ON TOO LONG
+        )
         self.too_long = None
         self.delayed_queries = []
         self.delayed_transactions = []
@@ -247,9 +247,11 @@ class Sqlite(DB):
     def _load_functions(self):
         global _load_extension_warning_sent
         library_loc = File.new_instance(sys.modules[__name__].__file__, "../..")
-        full_path = File.new_instance(
-            library_loc, "vendor/sqlite/libsqlitefunctions.so"
-        ).abspath
+        full_path = (
+            File
+            .new_instance(library_loc, "vendor/sqlite/libsqlitefunctions.so")
+            .abspath
+        )
         try:
             trace = get_stacktrace(0)[0]
             if self.upgrade:
@@ -400,7 +402,9 @@ class Sqlite(DB):
                 elif transaction.exception and query is not ROLLBACK:
                     result.exception = Except(
                         context=ERROR,
-                        template="Not allowed to continue using a transaction that failed",
+                        template=(
+                            "Not allowed to continue using a transaction that failed"
+                        ),
                         cause=transaction.exception,
                         trace=trace,
                     )
@@ -422,9 +426,9 @@ class Sqlite(DB):
                     transaction.exception = result.exception = err
 
                     if query in [COMMIT, ROLLBACK]:
-                        self._close_transaction(
-                            CommandItem(ROLLBACK, result, signal, trace, transaction)
-                        )
+                        self._close_transaction(CommandItem(
+                            ROLLBACK, result, signal, trace, transaction
+                        ))
 
                     signal.release()
                     return
@@ -517,7 +521,12 @@ class Transaction(object):
 
             # RUN THEM
             for c in todo:
-                self.db.debug and Log.note(FORMAT_COMMAND, command=c.command, file=c.trace[0]['file'], line=c.trace[0]['line'])
+                self.db.debug and Log.note(
+                    FORMAT_COMMAND,
+                    command=c.command,
+                    file=c.trace[0]["file"],
+                    line=c.trace[0]["line"],
+                )
                 self.db.db.execute(text(c.command))
         except Exception as e:
             Log.error("problem running commands", current=c, cause=e)
@@ -558,7 +567,9 @@ def quote_column(*path):
             if not is_text(p):
                 Log.error("expecting strings, not {{type}}", type=p.__class__.__name__)
     try:
-        output = ConcatSQL(SQL_SPACE, JoinSQL(SQL_DOT, [SQL(quote(p)) for p in path]), SQL_SPACE)
+        output = ConcatSQL(
+            SQL_SPACE, JoinSQL(SQL_DOT, [SQL(quote(p)) for p in path]), SQL_SPACE
+        )
         return output
     except Exception as e:
         Log.error("Not expacted", cause=e)
@@ -571,10 +582,7 @@ def sql_alias(value, alias):
 
 
 def sql_call(func_name, *parameters):
-    return ConcatSQL(
-        SQL(func_name),
-        sql_iso(JoinSQL(SQL_COMMA, parameters))
-    )
+    return ConcatSQL(SQL(func_name), sql_iso(JoinSQL(SQL_COMMA, parameters)))
 
 
 def quote_value(value):
@@ -699,9 +707,7 @@ def sql_insert(table, records):
         quote_column(table),
         sql_iso(sql_list(map(quote_column, keys))),
         SQL_VALUES,
-        sql_list(
-            sql_iso(sql_list([quote_value(r[k]) for k in keys])) for r in records
-        ),
+        sql_list(sql_iso(sql_list([quote_value(r[k]) for k in keys])) for r in records),
     )
 
 

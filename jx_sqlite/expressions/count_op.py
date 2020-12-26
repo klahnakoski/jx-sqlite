@@ -30,7 +30,7 @@ from jx_sqlite.sqlite import (
 
 class CountOp(CountOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_sql(self, schema):
         acc = []
         for term in self.terms:
             sqls = term.partial_eval(SQLang).to_sql(schema)
@@ -39,19 +39,17 @@ class CountOp(CountOp_):
             else:
                 for t, v in sqls[0].sql.items():
                     if t in ["b", "s", "n"]:
-                        acc.append(
-                            ConcatSQL(
-                                SQL_CASE,
-                                SQL_WHEN,
-                                sql_iso(v),
-                                SQL_IS_NULL,
-                                SQL_THEN,
-                                SQL_ZERO,
-                                SQL_ELSE,
-                                SQL_ONE,
-                                SQL_END,
-                            )
-                        )
+                        acc.append(ConcatSQL(
+                            SQL_CASE,
+                            SQL_WHEN,
+                            sql_iso(v),
+                            SQL_IS_NULL,
+                            SQL_THEN,
+                            SQL_ZERO,
+                            SQL_ELSE,
+                            SQL_ONE,
+                            SQL_END,
+                        ))
                     else:
                         acc.append(SQL_TRUE)
 

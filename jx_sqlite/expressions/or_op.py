@@ -18,23 +18,17 @@ from jx_sqlite.sqlite import SQL_OR, sql_iso, JoinSQL
 
 class OrOp(OrOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        return wrap(
-            [
-                {
-                    "name": ".",
-                    "sql": {
-                        "b": JoinSQL(
-                            SQL_OR,
-                            [
-                                sql_iso(t.partial_eval(SQLang).to_sql(schema, boolean=True)[0].sql.b)
-                                for t in self.terms
-                            ],
-                        )
-                    },
-                }
-            ]
-        )
+    def to_sql(self, schema):
+        return wrap([{
+            "name": ".",
+            "sql": {"b": JoinSQL(
+                SQL_OR,
+                [
+                    sql_iso(t.partial_eval(SQLang).to_sql(schema, boolean=True))
+                    for t in self.terms
+                ],
+            )},
+        }])
 
 
 _utils.OrOp = OrOp

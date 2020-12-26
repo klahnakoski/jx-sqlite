@@ -39,7 +39,7 @@ class MissingOp(Expression):
         return self.expr.vars()
 
     def map(self, map_):
-        return (MissingOp(self.expr.map(map_)))
+        return MissingOp(self.expr.map(map_))
 
     def missing(self, lang):
         return FALSE
@@ -48,9 +48,9 @@ class MissingOp(Expression):
         output = self.expr.missing(lang)
         if is_op(output, MissingOp):
             # break call cycle
-            return (NotOp(output))
+            return NotOp(output)
         else:
-            return (output.invert(lang))
+            return output.invert(lang)
 
     def exists(self):
         return TRUE

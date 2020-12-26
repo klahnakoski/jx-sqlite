@@ -12,10 +12,10 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
-from jx_base.expressions.integer_op import IntegerOp
+from jx_base.expressions.integer_op import ToIntegerOp
 from jx_base.expressions.literal import ZERO
 from jx_base.expressions.max_op import MaxOp
-from jx_base.expressions.string_op import StringOp
+from jx_base.expressions.to_string_op import ToStringOp
 from jx_base.language import is_op
 from mo_json import INTEGER
 
@@ -48,10 +48,10 @@ class BasicIndexOfOp(Expression):
         return FALSE
 
     def partial_eval(self, lang):
-        start = IntegerOp(MaxOp([ZERO, self.start])).partial_eval(lang)
+        start = ToIntegerOp(MaxOp([ZERO, self.start])).partial_eval(lang)
         return self.lang.BasicIndexOfOp([
-            StringOp(self.value).partial_eval(lang),
-            StringOp(self.find).partial_eval(lang),
+            ToStringOp(self.value).partial_eval(lang),
+            ToStringOp(self.find).partial_eval(lang),
             start,
         ])
 

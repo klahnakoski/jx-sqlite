@@ -15,5 +15,5 @@ from jx_sqlite.expressions._utils import check
 
 class BetweenOp(BetweenOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_sql(self, schema):
         return self.partial_eval(SQLang).to_sql(schema)

@@ -11,7 +11,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_sqlite.sqlite import quote_value
 
-from jx_base.expressions import StringOp as StringOp_
+from jx_base.expressions import ToStringOp as StringOp_
 from jx_sqlite.expressions._utils import SQLang, check
 from mo_dots import wrap
 from jx_sqlite.sqlite import (
@@ -26,10 +26,10 @@ from jx_sqlite.sqlite import (
 )
 
 
-class StringOp(StringOp_):
+class ToStringOp(StringOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        test = self.term.partial_eval(SQLang).missing().to_sql(schema, boolean=True)[0].sql.b
+    def to_sql(self, schema):
+        test = self.term.partial_eval(SQLang).missing().to_sql(schema, boolean=True)
         value = self.term.partial_eval(SQLang).to_sql(schema, not_null=True)[0].sql
         acc = []
         for t, v in value.items():

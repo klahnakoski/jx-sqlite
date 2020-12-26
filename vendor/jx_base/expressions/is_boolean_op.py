@@ -33,3 +33,4 @@ class IsBooleanOp(Expression):
 
     def missing(self, lang):
         return FALSE
+

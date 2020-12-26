@@ -29,7 +29,7 @@ from jx_sqlite.sqlite import SQL_FALSE, SQL_IS_NULL, SQL_OR, sql_iso, SQL_EQ
 
 class EqOp(EqOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_sql(self, schema):
         lhs = self.lhs.partial_eval(SQLang).to_sql(schema)
         rhs = self.rhs.partial_eval(SQLang).to_sql(schema)
         acc = []

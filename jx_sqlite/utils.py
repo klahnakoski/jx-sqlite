@@ -17,7 +17,15 @@ from math import isnan
 from jx_base import DataClass
 from jx_base import Snowflake
 from jx_sqlite.sqlite import quote_column
-from mo_dots import Data, concat_field, is_data, is_list, join_field, split_field, is_sequence
+from mo_dots import (
+    Data,
+    concat_field,
+    is_data,
+    is_list,
+    join_field,
+    split_field,
+    is_sequence,
+)
 from mo_future import is_text, text
 from mo_json import BOOLEAN, NESTED, NUMBER, OBJECT, STRING, json2value
 from mo_json.typed_encoder import untype_path
@@ -155,7 +163,7 @@ sql_aggs = {
     "median": "MEDIAN",
     "min": "MIN",
     "minimum": "MIN",
-    "sum": "SUM"
+    "sum": "SUM",
 }
 
 STATS = {
@@ -167,7 +175,7 @@ STATS = {
     "median": "MEDIAN({{value}})",
     "sos": "SUM({{value}}*{{value}})",
     "var": "(1-1.0/COUNT({{value}}))*VARIANCE({{value}})",
-    "avg": "AVG({{value}})"
+    "avg": "AVG({{value}})",
 }
 
 quoted_GUID = quote_column(GUID)
@@ -237,50 +245,44 @@ def copy_cols(cols, nest_to_alias):
 ColumnMapping = DataClass(
     "ColumnMapping",
     [
-        {               # EDGES ARE AUTOMATICALLY INCLUDED IN THE OUTPUT, USE THIS TO INDICATE EDGES SO WE DO NOT DOUBLE-PRINT
-            "name":"is_edge",
-            "default": False
+        {  # EDGES ARE AUTOMATICALLY INCLUDED IN THE OUTPUT, USE THIS TO INDICATE EDGES SO WE DO NOT DOUBLE-PRINT
+            "name": "is_edge",
+            "default": False,
         },
-        {               # TRACK NUMBER OF TABLE COLUMNS THIS column REPRESENTS
-            "name":"num_push_columns",
-            "nulls": True
+        {  # TRACK NUMBER OF TABLE COLUMNS THIS column REPRESENTS
+            "name": "num_push_columns",
+            "nulls": True,
         },
-        {               # NAME OF THE PROPERTY (USED BY LIST FORMAT ONLY)
+        {  # NAME OF THE PROPERTY (USED BY LIST FORMAT ONLY)
             "name": "push_name",
-            "nulls": True
+            "nulls": True,
         },
-        {               # PATH INTO COLUMN WHERE VALUE IS STORED ("." MEANS COLUMN HOLDS PRIMITIVE VALUE)
+        {  # PATH INTO COLUMN WHERE VALUE IS STORED ("." MEANS COLUMN HOLDS PRIMITIVE VALUE)
             "name": "push_child",
-            "nulls": True
+            "nulls": True,
         },
-        {               # THE COLUMN NUMBER
-            "name": "push_column",
-            "nulls": True
-        },
-        {               # THE COLUMN NAME FOR TABLES AND CUBES (WITH NO ESCAPING DOTS, NOT IN LEAF FORM)
+        {"name": "push_column", "nulls": True},  # THE COLUMN NUMBER
+        {  # THE COLUMN NAME FOR TABLES AND CUBES (WITH NO ESCAPING DOTS, NOT IN LEAF FORM)
             "name": "push_column_name",
-            "nulls": True
+            "nulls": True,
         },
-        {               # A FUNCTION THAT WILL RETURN A VALUE
-            "name": "pull",
-            "nulls": True
-        },
-        {               # A LIST OF MULTI-SQL REQUIRED TO GET THE VALUE FROM THE DATABASE
+        {"name": "pull", "nulls": True},  # A FUNCTION THAT WILL RETURN A VALUE
+        {  # A LIST OF MULTI-SQL REQUIRED TO GET THE VALUE FROM THE DATABASE
             "name": "sql",
-            "type": list
+            "type": list,
         },
-        "type",         # THE NAME OF THE JSON DATA TYPE EXPECTED
-        {               # A LIST OF PATHS EACH INDICATING AN ARRAY
+        "type",  # THE NAME OF THE JSON DATA TYPE EXPECTED
+        {  # A LIST OF PATHS EACH INDICATING AN ARRAY
             "name": "nested_path",
             "type": list,
-            "default": ["."]
+            "default": ["."],
         },
-        "column_alias"
+        "column_alias",
     ],
     constraint={"and": [
         {"in": {"type": ["0", "boolean", "number", "string", "object"]}},
-        {"gte": [{"length": "nested_path"}, 1]}
-    ]}
+        {"gte": [{"length": "nested_path"}, 1]},
+    ]},
 )
 
 json_types = {
@@ -288,11 +290,8 @@ json_types = {
     "REAL": "number",
     "INTEGER": "integer",
     "TINYINT": "boolean",
-    "OBJECT": "nested"
+    "OBJECT": "nested",
 }
-
-
-
 
 
 class BasicSnowflake(Snowflake):
@@ -318,8 +317,4 @@ class ColumnLocator(object):
         self.columns = columns
 
     def __getitem__(self, column_name):
-        return [
-            c
-            for c in self.columns
-            if untype_path(c.name) == column_name
-        ]
+        return [c for c in self.columns if untype_path(c.name) == column_name]

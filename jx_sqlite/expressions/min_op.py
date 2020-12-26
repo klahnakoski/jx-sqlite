@@ -17,6 +17,6 @@ from jx_sqlite.sqlite import sql_iso, sql_list
 
 class MinOp(MinOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        terms = [t.partial_eval(SQLang).to_sql(schema)[0].sql.n for t in self.terms]
+    def to_sql(self, schema):
+        terms = [t.partial_eval(SQLang).to_sql(schema) for t in self.terms]
         return wrap([{"name": ".", "sql": {"n": "min" + sql_iso((sql_list(terms)))}}])

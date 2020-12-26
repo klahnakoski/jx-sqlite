@@ -9,22 +9,21 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import NumberOp as NumberOp_
-from jx_sqlite.expressions import _utils
-from jx_sqlite.expressions._utils import SQLang, check
+from jx_base.expressions import ToIntegerOp as IntegerOp_
+from jx_sqlite.expressions._utils import check
 from mo_dots import wrap
 from jx_sqlite.sqlite import sql_coalesce
 
 
-class NumberOp(NumberOp_):
+class ToIntegerOp(IntegerOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        value = self.term.partial_eval(SQLang).to_sql(schema, not_null=True)
+    def to_sql(self, schema):
+        value = self.term.to_sql(schema, not_null=True)
         acc = []
         for c in value:
             for t, v in c.sql.items():
                 if t == "s":
-                    acc.append("CAST(" + v + " as FLOAT)")
+                    acc.append("CAST(" + v + " as INTEGER)")
                 else:
                     acc.append(v)
 
@@ -34,6 +33,3 @@ class NumberOp(NumberOp_):
             return wrap([{"name": ".", "sql": {"n": acc[0]}}])
         else:
             return wrap([{"name": ".", "sql": {"n": sql_coalesce(acc)}}])
-
-
-_utils.NumberOp = NumberOp

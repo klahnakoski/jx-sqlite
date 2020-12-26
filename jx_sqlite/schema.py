@@ -21,49 +21,15 @@ class Schema(object):
     """
 
     def __init__(self, nested_path, snowflake):
-        if nested_path[-1] != '.':
+        if nested_path[-1] != ".":
             Log.error("Expecting full nested path")
         self.path = concat_field(snowflake.fact_name, nested_path[0])
         self.nested_path = nested_path
         self.snowflake = snowflake
 
-    # def add(self, column_name, column):
-    #     if column_name != column.names[self.nested_path[0]]:
-    #         Log.error("Logic error")
-    #
-    #     self.columns.append(column)
-    #
-    #     for np in self.nested_path:
-    #         rel_name = column.names[np]
-    #         container = self.namespace.setdefault(rel_name, set())
-    #         hidden = [
-    #             c
-    #             for c in container
-    #             if len(c.nested_path[0]) < len(np)
-    #         ]
-    #         for h in hidden:
-    #             container.remove(h)
-    #
-    #         container.add(column)
-    #
-    #     container = self.namespace.setdefault(column.es_column, set())
-    #     container.add(column)
-
-    # def remove(self, column_name, column):
-    #     if column_name != column.names[self.nested_path[0]]:
-    #         Log.error("Logic error")
-    #
-    #     self.namespace[column_name] = [c for c in self.namespace[column_name] if c != column]
-
     def __getitem__(self, item):
         output = self.snowflake.namespace.columns.find(self.path, item)
         return output
-
-    # def __copy__(self):
-    #     output = Schema(self.nested_path)
-    #     for k, v in self.namespace.items():
-    #         output.namespace[k] = copy(v)
-    #     return output
 
     def get_column_name(self, column):
         """
@@ -103,7 +69,7 @@ class Schema(object):
         return set(
             c
             for c in self.snowflake.namespace.columns.find(self.snowflake.fact_name)
-            for k in [c.name]
+            for k in [c.name, c.es_column]
             if startswith_field(k, full_name) and k != GUID or k == full_name
             if c.jx_type not in [OBJECT, EXISTS]
         )
@@ -128,10 +94,11 @@ class Schema(object):
                     if origin != c.nested_path[0]:
                         fact_dict.setdefault(c.name, []).append(c)
                 elif origin == var:
-                    origin_dict.setdefault(concat_field(var, c.names[origin]), []).append(c)
+                    origin_dict.setdefault(
+                        concat_field(var, c.names[origin]), []
+                    ).append(c)
 
                     if origin != c.nested_path[0]:
                         fact_dict.setdefault(concat_field(var, c.name), []).append(c)
 
         return set_default(origin_dict, fact_dict)
-

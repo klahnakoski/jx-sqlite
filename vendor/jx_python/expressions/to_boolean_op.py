@@ -9,11 +9,11 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import BooleanOp as BooleanOp_
+from jx_base.expressions import ToBooleanOp as ToBooleanOp_
 from jx_python.expressions._utils import with_var, Python
 
 
-class BooleanOp(BooleanOp_):
+class ToBooleanOp(ToBooleanOp_):
     def to_python(self, not_null=False, boolean=False, many=False):
         return with_var(
             "f",

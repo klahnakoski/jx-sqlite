@@ -18,13 +18,30 @@ from mo_dots import concat_field, wrap
 from mo_future import text
 from mo_json import NESTED
 from mo_logs import Log
-from jx_sqlite.sqlite import SQL_FROM, SQL_LIMIT, SQL_SELECT, SQL_STAR, SQL_ZERO, sql_iso, sql_list, SQL_CREATE, SQL_AS
+from jx_sqlite.sqlite import (
+    SQL_FROM,
+    SQL_LIMIT,
+    SQL_SELECT,
+    SQL_STAR,
+    SQL_ZERO,
+    sql_iso,
+    sql_list,
+    SQL_CREATE,
+    SQL_AS,
+    ConcatSQL,
+    SQL_ALTER_TABLE,
+    SQL_ADD_COLUMN,
+    SQL_RENAME_COLUMN,
+    SQL_RENAME_TO,
+    SQL_TO,
+)
 
 
 class Snowflake(jx_base.Snowflake):
     """
     MANAGE SINGLE HIERARCHY IN SQLITE DATABASE
     """
+
     def __init__(self, fact_name, namespace):
         if not namespace.columns._snowflakes[fact_name]:
             Log.error("{{name}} does not exist", name=fact_name)
@@ -52,16 +69,19 @@ class Snowflake(jx_base.Snowflake):
         cname = column.name
         if column.jx_type == NESTED:
             # WE ARE ALSO NESTING
-            self._nest_column(column, [cname]+column.nested_path)
+            self._nest_column(column, [cname] + column.nested_path)
 
         table = concat_field(self.fact_name, column.nested_path[0])
 
         try:
             with self.namespace.db.transaction() as t:
-                t.execute(
-                    "ALTER TABLE" + quote_column(table) +
-                    "ADD COLUMN" + quote_column(column.es_column) + column.es_type
-                )
+                t.execute(ConcatSQL(
+                    SQL_ALTER_TABLE,
+                    quote_column(table),
+                    SQL_ADD_COLUMN,
+                    quote_column(column.es_column),
+                    quote_column(column.es_type),
+                ))
             self.namespace.columns.add(column)
         except Exception as e:
             if "duplicate column name" in e:
@@ -73,24 +93,34 @@ class Snowflake(jx_base.Snowflake):
                     if c.es_column == column.es_column:
                         break
                 else:
-                    Log.error("Did not add column {{column}]", column=column.es_column, cause=e)
+                    Log.error(
+                        "Did not add column {{column}]",
+                        column=column.es_column,
+                        cause=e,
+                    )
             else:
-                Log.error("Did not add column {{column}]", column=column.es_column, cause=e)
+                Log.error(
+                    "Did not add column {{column}]", column=column.es_column, cause=e
+                )
 
     def _drop_column(self, column):
         # DROP COLUMN BY RENAMING IT, WITH __ PREFIX TO HIDE IT
         cname = column.name
         if column.jx_type == "nested":
             # WE ARE ALSO NESTING
-            self._nest_column(column, [cname]+column.nested_path)
+            self._nest_column(column, [cname] + column.nested_path)
 
         table = concat_field(self.fact_name, column.nested_path[0])
 
         with self.namespace.db.transaction() as t:
-            t.execute(
-                "ALTER TABLE" + quote_column(table) +
-                "RENAME COLUMN" + quote_column(column.es_column) + " TO " + quote_column("__" + column.es_column)
-            )
+            t.execute(ConcatSQL(
+                SQL_ALTER_TABLE,
+                quote_column(table),
+                SQL_RENAME_COLUMN,
+                quote_column(column.es_column),
+                SQL_TO,
+                quote_column("__" + column.es_column),
+            ))
         self.namespace.columns.remove(column)
 
     def _nest_column(self, column):
@@ -114,17 +144,23 @@ class Snowflake(jx_base.Snowflake):
         if not data:
             # DEFINE A NEW TABLE
             command = (
-                SQL_CREATE + quote_column(destination_table) + sql_iso(sql_list([
+                SQL_CREATE
+                + quote_column(destination_table)
+                + sql_iso(sql_list([
                     quoted_UID + "INTEGER",
                     quoted_PARENT + "INTEGER",
                     quoted_ORDER + "INTEGER",
                     "PRIMARY KEY " + sql_iso(quoted_UID),
-                    "FOREIGN KEY " + sql_iso(quoted_PARENT) + " REFERENCES " + quote_column(existing_table) + sql_iso(quoted_UID)
+                    "FOREIGN KEY "
+                    + sql_iso(quoted_PARENT)
+                    + " REFERENCES "
+                    + quote_column(existing_table)
+                    + sql_iso(quoted_UID),
                 ]))
             )
             with self.namespace.db.transaction() as t:
                 t.execute(command)
-                self.add_table([new_path]+column.nested_path)
+                self.add_table([new_path] + column.nested_path)
 
         # TEST IF THERE IS ANY DATA IN THE NEW NESTED ARRAY
         if not moving_columns:
@@ -132,26 +168,47 @@ class Snowflake(jx_base.Snowflake):
 
         column.es_index = destination_table
         with self.namespace.db.transaction() as t:
-            t.execute(
-                "ALTER TABLE " + quote_column(destination_table) +
-                " ADD COLUMN " + quote_column(column.es_column) + " " + column.es_type
-            )
+            t.execute(ConcatSQL(
+                SQL_ALTER_TABLE,
+                quote_column(destination_table),
+                SQL_ADD_COLUMN,
+                quote_column(column.es_column),
+                column.es_type,
+            ))
 
             # Deleting parent columns
             for col in moving_columns:
                 column = col.es_column
                 tmp_table = "tmp_" + existing_table
-                columns = list(map(text, t.query(SQL_SELECT + SQL_STAR + SQL_FROM + quote_column(existing_table) + SQL_LIMIT + SQL_ZERO).header))
-                t.execute(
-                    "ALTER TABLE " + quote_column(existing_table) +
-                    " RENAME TO " + quote_column(tmp_table)
-                )
-                t.execute(
-                    SQL_CREATE + quote_column(existing_table) + SQL_AS +
-                    SQL_SELECT + sql_list([quote_column(c) for c in columns if c != column]) +
-                    SQL_FROM + quote_column(tmp_table)
-                )
-                t.execute("DROP TABLE " + quote_column(tmp_table))
+                columns = list(map(
+                    text,
+                    t
+                    .query(ConcatSQL(
+                        SQL_SELECT,
+                        SQL_STAR,
+                        SQL_FROM,
+                        quote_column(existing_table),
+                        SQL_LIMIT,
+                        SQL_ZERO,
+                    ))
+                    .header,
+                ))
+                t.execute(ConcatSQL(
+                    SQL_ALTER_TABLE,
+                    quote_column(existing_table),
+                    SQL_RENAME_TO,
+                    quote_column(tmp_table),
+                ))
+                t.execute(ConcatSQL(
+                    SQL_CREATE,
+                    quote_column(existing_table),
+                    SQL_AS,
+                    SQL_SELECT,
+                    sql_list([quote_column(c) for c in columns if c != column]),
+                    SQL_FROM,
+                    quote_column(tmp_table),
+                ))
+                t.execute(ConcatSQL("DROP TABLE", quote_column(tmp_table)))
 
     def add_table(self, nested_path):
         query_paths = self.namespace.columns._snowflakes[self.fact_name]
@@ -165,7 +222,10 @@ class Snowflake(jx_base.Snowflake):
         """
         :return:  LIST OF (nested_path, full_name) PAIRS
         """
-        return [(path[0], concat_field(self.fact_name, path[0])) for path in self.query_paths]
+        return [
+            (path[0], concat_field(self.fact_name, path[0]))
+            for path in self.query_paths
+        ]
 
     def get_schema(self, nested_path):
         return Schema(nested_path, self)
@@ -181,4 +241,3 @@ class Snowflake(jx_base.Snowflake):
     @property
     def query_paths(self):
         return self.namespace.columns._snowflakes[self.fact_name]
-

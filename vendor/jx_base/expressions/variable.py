@@ -37,6 +37,7 @@ class Variable(Expression):
         self.var = get_property_name(var)
 
         if type == None:
+            # MAYBE THE NAME HAS A HINT TO THE TYPE
             jx_type = inserter_type_to_json_type.get(last(split_field(var)))
             if jx_type:
                 self.data_type = jx_type
@@ -97,7 +98,7 @@ class Variable(Expression):
         if self.var == "_id":
             return FALSE
         else:
-            return (MissingOp(self))
+            return lang.MissingOp(self)
 
 
 IDENTITY = Variable(".")

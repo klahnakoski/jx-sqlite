@@ -63,7 +63,7 @@ _ = listwrap, last, true, false, null
 def DataClass(name, columns, constraint=None):
     """
     Use the DataClass to define a class, but with some extra features:
-    1. restrict the datatype of property
+    1. restrict the data type of property
     2. restrict if `required`, or if `nulls` are allowed
     3. generic constraints on object properties
 
@@ -77,7 +77,7 @@ def DataClass(name, columns, constraint=None):
             "required", - False if it must be defined (even if None)
             "nulls",    - True if property can be None, or missing
             "default",  - A default value, if none is provided
-            "type"      - a Python datatype
+            "type"      - a Python data type
         }
     :param constraint: a JSON query Expression for extra constraints (return true if all constraints are met)
     :return: The class that has been created

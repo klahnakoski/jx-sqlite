@@ -21,7 +21,7 @@ from jx_sqlite.sqlite import SQL_FALSE, SQL_TRUE
 
 class SuffixOp(SuffixOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_sql(self, schema):
         if not self.expr:
             return wrap([{"name": ".", "sql": {"b": SQL_FALSE}}])
         elif isinstance(self.suffix, Literal) and not self.suffix.value:

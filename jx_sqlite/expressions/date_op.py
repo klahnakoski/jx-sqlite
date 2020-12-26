@@ -17,5 +17,5 @@ from mo_dots import wrap
 
 class DateOp(DateOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_sql(self, schema):
         return wrap([{"name": ".", "sql": {"n": quote_value(self.value)}}])
