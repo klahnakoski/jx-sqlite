@@ -150,7 +150,7 @@ if PY3:
         )
         .encode
     )
-    encode_basestring = json.encoder
+    encode_basestring = utf8_json_encoder
 
 
 else:  # PY2

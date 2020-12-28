@@ -290,7 +290,8 @@ def pretty_json(value):
                     return "{" + values[0] + "}"
                 else:
                     return "{\n" + ",\n".join(indent(v) for v in values) + "\n}"
-            except Exception as e:
+            except Exception as cause:
+                cause = Except.wrap(cause)
                 from mo_logs import Log
                 from mo_math import OR
 
@@ -298,13 +299,13 @@ def pretty_json(value):
                     Log.error(
                         "JSON must have string keys: {{keys}}:",
                         keys=[k for k in value.keys()],
-                        cause=e,
+                        cause=cause,
                     )
 
                 Log.error(
                     "problem making dict pretty: keys={{keys}}:",
                     keys=[k for k in value.keys()],
-                    cause=e,
+                    cause=cause,
                 )
         elif value.__class__ in (binary_type, text):
             if is_binary(value):
@@ -317,7 +318,7 @@ def pretty_json(value):
                     })
                 else:
                     return quote(value)
-            except Exception as e:
+            except Exception as cause:
                 from mo_logs import Log
 
                 try:
@@ -410,10 +411,10 @@ def pretty_json(value):
             output.append("\n]")
             try:
                 return "".join(output)
-            except Exception as e:
+            except Exception as cause:
                 from mo_logs import Log
 
-                Log.error("not expected", cause=e)
+                Log.error("not expected", cause=cause)
         elif hasattr(value, "__data__"):
             d = value.__data__()
             return pretty_json(d)
@@ -443,8 +444,8 @@ def pretty_json(value):
 
             return pypy_json_encode(value)
 
-    except Exception as e:
-        problem_serializing(value, e)
+    except Exception as cause:
+        problem_serializing(value, cause)
 
 
 def problem_serializing(value, e=None):

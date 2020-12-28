@@ -14,12 +14,9 @@ from jx_base.language import is_op
 from jx_sqlite.expressions._utils import check, SQLang
 from jx_sqlite.expressions.sql_script import SQLScript
 from jx_sqlite.expressions.to_boolean_op import ToBooleanOp
-from jx_sqlite.sqlite import sql_iso, SQL_NOT, ConcatSQL
+from jx_sqlite.sqlite import sql_iso, SQL_NOT, ConcatSQL, SQL_IS_NOT_NULL
 from mo_json.types import T_BOOLEAN
 
-
-def IS_NOT_NULL(args):
-    pass
 
 
 class NotOp(NotOp_):
@@ -30,7 +27,7 @@ class NotOp(NotOp_):
             if is_op(term.term, MissingOp):
                 return SQLScript(
                     data_type=T_BOOLEAN,
-                    expr=ConcatSQL(term.term.expr.to_sql(schema), IS_NOT_NULL),
+                    expr=ConcatSQL(term.term.expr.to_sql(schema), SQL_IS_NOT_NULL),
                     miss=self.term.missing(SQLang),
                     frum=self,
                 )

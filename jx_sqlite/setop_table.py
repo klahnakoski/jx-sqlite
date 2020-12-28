@@ -189,7 +189,8 @@ class SetOpTable(InsertTable):
                 .partial_eval(SQLang)
                 .to_sql(schema)
             )
-            for column_number, (name, value) in enumerate(selects.frum):
+            for name, value in selects.frum:
+                column_number += 1
                 if is_op(value, LeavesOp):
                     Log.error("expecting SelectOp to subsume the LeavesOp")
 
@@ -247,6 +248,10 @@ class SetOpTable(InsertTable):
             doc = Null
             output = []
             id_coord = nested_doc_details["id_coord"]
+            index_to_column = tuple(
+                (i, c, concat_field(c.push_name, c.push_child))
+                for i, c in nested_doc_details["index_to_column"].items()
+            )
 
             while True:
                 doc_id = row[id_coord]
@@ -262,15 +267,8 @@ class SetOpTable(InsertTable):
                     previous_doc_id = doc_id
                     doc = Null
                     curr_nested_path = nested_doc_details["nested_path"][0]
-                    index_to_column = nested_doc_details["index_to_column"].items()
-                    for i, c in index_to_column:
+                    for i, c, relative_field in index_to_column:
                         value = row[i]
-                        if is_list(query.select) or is_op(query.select.value, LeavesOp):
-                            # ASSIGN INNER PROPERTIES
-                            relative_field = concat_field(c.push_name, c.push_child)
-                        else:  # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT
-                            relative_field = c.push_child
-
                         if relative_field == ".":
                             if exists(value):
                                 doc = value
@@ -310,7 +308,8 @@ class SetOpTable(InsertTable):
                 except IndexError:
                     return output
 
-        cols = tuple([i for i in index_to_column.values() if i.push_name != None])
+        cols = tuple(i for i in index_to_column.values() if i.push_name != None)
+        # TODO: VERY EXPENSIVE TO reverse() ALL DATA!
         rows = list(reversed(unwrap(result.data)))
         if rows:
             row = rows.pop()
@@ -319,36 +318,6 @@ class SetOpTable(InsertTable):
             data = result.data
 
         if query.format == "cube":
-            # for f, full_name in self.snowflake.tables:
-            #     if f != '.' or (test_dots(cols) and is_list(query.select)):
-            #         num_rows = len(result.data)
-            #         num_cols = MAX([c.push_column for c in cols]) + 1 if len(cols) else 0
-            #         map_index_to_name = {c.push_column: c.push_column_name for c in cols}
-            #         temp_data = [[None] * num_rows for _ in range(num_cols)]
-            #         for rownum, d in enumerate(result.data):
-            #             for c in cols:
-            #                 if c.push_child == ".":
-            #                     temp_data[c.push_column][rownum] = c.pull(d)
-            #                 else:
-            #                     column = temp_data[c.push_column][rownum]
-            #                     if column is None:
-            #                         column = temp_data[c.push_column][rownum] = {}
-            #                     column[c.push_child] = c.pull(d)
-            #         output = Data(
-            #             meta={"format": "cube"},
-            #             data={n: temp_data[c] for c, n in map_index_to_name.items()},
-            #             edges=[{
-            #                 "name": "rownum",
-            #                 "domain": {
-            #                     "type": "rownum",
-            #                     "min": 0,
-            #                     "max": num_rows,
-            #                     "interval": 1
-            #                 }
-            #             }]
-            #         )
-            #         return output
-
             if is_list(query.select) or is_op(query.select.value, LeavesOp):
                 num_rows = len(data)
                 temp_data = {c.push_column_name: [None] * num_rows for c in cols}
@@ -502,19 +471,19 @@ class SetOpTable(InsertTable):
                 select_clause = []
                 # ADD SELECT CLAUSE HERE
                 for select_index, s in enumerate(selects):
-                    sql_select = index_to_sql_select.get(select_index)
-                    if not sql_select:
-                        select_clause.append(selects[select_index])
+                    column_mapping = index_to_sql_select.get(select_index)
+                    if not column_mapping:
+                        select_clause.append(s)
                         continue
 
-                    if startswith_field(sql_select.nested_path[0], nested_path):
+                    if startswith_field(column_mapping.nested_path[0], nested_path):
                         select_clause.append(sql_alias(
-                            sql_select.sql, sql_select.column_alias
+                            column_mapping.sql, column_mapping.column_alias
                         ))
                     else:
                         # DO NOT INCLUDE DEEP STUFF AT THIS LEVEL
                         select_clause.append(sql_alias(
-                            SQL_NULL, sql_select.column_alias
+                            SQL_NULL, column_mapping.column_alias
                         ))
 
                 if nested_path == ".":

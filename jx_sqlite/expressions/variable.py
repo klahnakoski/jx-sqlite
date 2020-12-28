@@ -9,10 +9,9 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import NULL, Variable as Variable_, SelectOp, FALSE
-from jx_sqlite.expressions._utils import check, SQLang, SQLScript
-from jx_sqlite.expressions.select_op import LazySelectClause
-from jx_sqlite.sqlite import Log, ConcatSQL, quote_column, SQL_AS
+from jx_base.expressions import NULL, Variable as Variable_, SelectOp
+from jx_sqlite.expressions._utils import check, SQLScript
+from jx_sqlite.sqlite import Log, quote_column
 from jx_sqlite.utils import GUID
 from mo_json.types import ToJsonType
 

@@ -690,12 +690,12 @@ def _simple_expand(template, seq):
                     val = FORMATTERS[func_name](val)
             val = toString(val)
             return val
-        except Exception as e:
+        except Exception as cause:
             from mo_logs import Except
 
-            e = Except.wrap(e)
+            cause = Except.wrap(cause)
             try:
-                if e.message.find("is not JSON serializable"):
+                if cause.message.find("is not JSON serializable"):
                     # WORK HARDER
                     val = toString(val)
                     return val
@@ -708,9 +708,9 @@ def _simple_expand(template, seq):
                     + "|".join(ops)
                     + " in template: {{template_|json}}",
                     template_=template,
-                    cause=e,
+                    cause=cause,
                 )
-            return "[template expansion error: (" + str(e.message) + ")]"
+            return "[template expansion error: (" + str(cause.message) + ")]"
 
     return _variable_pattern.sub(replacer, template)
 
