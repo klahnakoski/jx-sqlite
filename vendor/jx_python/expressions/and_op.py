@@ -10,7 +10,6 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import AndOp as AndOp_
-from jx_python.expressions._utils import Python
 from jx_python.expressions.to_boolean_op import ToBooleanOp
 
 

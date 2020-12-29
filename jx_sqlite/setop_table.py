@@ -105,21 +105,17 @@ class SetOpTable(InsertTable):
         sorts = []
         if query.sort:
             for select in query.sort:
-                col = select.value.partial_eval(SQLang).to_sql(schema)[0]
-                for t, sql in col.sql.items():
-                    json_type = sql_type_to_json_type[t]
-                    if json_type in STRUCT:
-                        continue
-                    column_number = len(sql_selects)
-                    # SQL HAS ABS TABLE REFERENCE
-                    column_alias = _make_column_name(column_number)
-                    sql_selects.append(sql_alias(sql, column_alias))
-                    if select.sort == -1:
-                        sorts.append(quote_column(column_alias) + SQL_IS_NULL)
-                        sorts.append(quote_column(column_alias) + " DESC")
-                    else:
-                        sorts.append(quote_column(column_alias) + SQL_IS_NULL)
-                        sorts.append(quote_column(column_alias))
+                sql = select.value.partial_eval(SQLang).to_sql(schema)
+                column_number = len(sql_selects)
+                # SQL HAS ABS TABLE REFERENCE
+                column_alias = _make_column_name(column_number)
+                sql_selects.append(sql_alias(sql, column_alias))
+                if select.sort == -1:
+                    sorts.append(quote_column(column_alias) + SQL_IS_NULL)
+                    sorts.append(quote_column(column_alias) + " DESC")
+                else:
+                    sorts.append(quote_column(column_alias) + SQL_IS_NULL)
+                    sorts.append(quote_column(column_alias))
 
         primary_doc_details = Data()
         # EVERY SELECT STATEMENT THAT WILL BE REQUIRED, NO MATTER THE DEPTH
@@ -187,7 +183,7 @@ class SetOpTable(InsertTable):
                 .to_sql(schema)
             )
             for i, (name, value) in enumerate(selects.frum):
-                column_number += 1
+                column_number = len(sql_selects)
                 if is_op(value, LeavesOp):
                     Log.error("expecting SelectOp to subsume the LeavesOp")
 

@@ -12,14 +12,14 @@ from __future__ import absolute_import, division, unicode_literals
 from jx_base.expressions.to_number_op import ToNumberOp as NumberOp_
 from jx_base.expressions.true_op import TRUE
 from jx_python.expressions import _utils
-from mo_json import NUMBER_TYPES
+from mo_json.types import T_NUMBER_TYPES
 
 
 class ToNumberOp(NumberOp_):
     def to_python(self, not_null=False, boolean=False, many=False):
         term = self.term
         if not_null:
-            if term.type in NUMBER_TYPES:
+            if term.type in T_NUMBER_TYPES:
                 return term.to_python(not_null=True)
             else:
                 return "float(" + self.term.to_python(not_null=True) + ")"

@@ -11,7 +11,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import NULL, Variable as Variable_, SelectOp, FALSE
 from jx_sqlite.expressions._utils import check, SQLScript
-from jx_sqlite.sqlite import Log, quote_column
+from jx_sqlite.sqlite import quote_column
 from jx_sqlite.utils import GUID
 from mo_json.types import ToJsonType, T_INTEGER
 

@@ -9,7 +9,7 @@ from datetime import datetime, date
 from decimal import Decimal
 
 from mo_dots import split_field, NullType, is_many, is_data, concat_field
-from mo_future import text, none_type, PY2, long, items, is_text
+from mo_future import text, none_type, PY2, long, items
 from mo_logs import Log
 from mo_times import Date
 
@@ -17,12 +17,15 @@ from mo_times import Date
 def ToJsonType(value):
     if isinstance(value, JsonType):
         return value
-    return _type_to_json_type[value]
+    try:
+        return _type_to_json_type[value]
+    except Exception:
+        return T_UNKNOWN
 
 
 def FromJsonType(value):
     for k, v in _type_to_json_type.items():
-        if k is value or v is value:
+        if k is value or v is value or v == value:
             return k
     return OBJECT
 
@@ -83,6 +86,17 @@ class JsonType(object):
             (k, v.tuple() if isinstance(v, JsonType) else v)
             for k, v in sorted(self.__dict__.items(), key=lambda p: p[0])
         )
+
+    def __contains__(self, item):
+        if not isinstance(item, JsonType):
+            return False
+        sd = self.__dict__
+        od = item.__dict__
+        for k, ov in od.items():
+            sv = sd.get(k)
+            if sv != ov:
+                return False
+        return True
 
     def __eq__(self, other):
         if not isinstance(other, JsonType):
@@ -175,9 +189,10 @@ T_TIME = _primitive("~t~", TIME)
 T_INTERVAL = _primitive("~d~", INTERVAL)
 T_STRING = _primitive("~s~", STRING)
 T_NESTED = _primitive(NESTED_KEY, NESTED)
+T_UNKNOWN = _primitive("~u~", "unknown")
 
-T_PRIMITIVE = (T_BOOLEAN, T_INTEGER, T_NUMBER, T_TIME, T_INTERVAL, T_STRING)
-T_NUMBER_TYPES = (T_INTEGER, T_NUMBER, T_TIME, T_INTERVAL)
+T_PRIMITIVE = T_BOOLEAN | T_INTEGER | T_NUMBER | T_TIME | T_INTERVAL | T_STRING
+T_NUMBER_TYPES = T_INTEGER | T_NUMBER | T_TIME | T_INTERVAL
 
 _type_to_json_type = {
     IS_NULL: T_IS_NULL,

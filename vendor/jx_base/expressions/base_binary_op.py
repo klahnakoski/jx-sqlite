@@ -15,6 +15,7 @@ from jx_base.expressions.expression import Expression
 from jx_base.language import is_op
 from mo_imports import expect
 from mo_json.types import T_NUMBER
+from mo_dots import coalesce
 
 FALSE, Literal, is_literal, NULL, OrOp, Variable = expect(
     "FALSE", "Literal", "is_literal", "NULL", "OrOp", "Variable"
@@ -26,10 +27,10 @@ class BaseBinaryOp(Expression):
     data_type = T_NUMBER
     op = None
 
-    def __init__(self, terms, default=NULL):
+    def __init__(self, terms, default=None):
         Expression.__init__(self, terms)
         self.lhs, self.rhs = terms
-        self.default = default
+        self.default = coalesce(default, NULL)
 
     @property
     def name(self):

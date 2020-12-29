@@ -40,7 +40,8 @@ ENABLE_CONSTRAINTS = True
 
 
 def generateGuid():
-    """Gets a random GUID.
+    """
+    Gets a random GUID.
     Note: python's UUID generation library is used here.
     Basically UUID is the same as GUID when represented as a string.
     :Returns:
@@ -61,8 +62,8 @@ def _exec(code, name):
         exec(code, globs, fake_locals)
         temp = fake_locals[name]
         return temp
-    except Exception as e:
-        Log.error("Can not make class\n{{code}}", code=code, cause=e)
+    except Exception as cause:
+        Log.error("Can not make class\n{{code}}", code=code, cause=cause)
 
 
 _ = listwrap, last, true, false, null
@@ -112,8 +113,8 @@ def DataClass(name, columns, constraint=None):
     code = expand_template(
         """
 from __future__ import unicode_literals
-from mo_future import is_text, is_binary
-from collections import Mapping
+from mo_future import is_text, is_binary, Mapping
+from mo_dots import Null
 
 meta = None
 types_ = {{types}}

@@ -15,7 +15,6 @@ import operator
 from jx_base.language import is_expression, Language
 from mo_dots import is_sequence
 from mo_future import (
-    first,
     get_function_name,
     is_text,
     items as items_,
@@ -24,6 +23,7 @@ from mo_future import (
 )
 from mo_imports import expect
 from mo_json import BOOLEAN, INTEGER, IS_NULL, NUMBER, OBJECT, STRING, scrub
+from mo_json.types import T_IS_NULL, ToJsonType
 from mo_logs import Except, Log
 from mo_math import is_number
 from mo_times import Date
@@ -68,17 +68,16 @@ def jx_expression(expr, schema=None):
     if expr == None:
         return None
 
-    # UPDATE THE VARIABLE WITH THIER KNOWN TYPES
+    # UPDATE THE VARIABLE WITH THEIR KNOWN TYPES
     if not schema:
         output = _jx_expression(expr, language)
         return output
     output = _jx_expression(expr, language)
     for v in output.vars():
-        leaves = schema.leaves(v.var)
-        if len(leaves) == 0:
-            v.data_type = IS_NULL
-        if len(leaves) == 1:
-            v.data_type = first(leaves).jx_type
+        data_type = T_IS_NULL
+        for leaf in schema.leaves(v.var):
+            data_type |= ToJsonType(leaf.jx_type)
+        v.data_type = data_type
     return output
 
 

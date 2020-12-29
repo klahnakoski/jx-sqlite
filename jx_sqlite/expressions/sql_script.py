@@ -11,19 +11,12 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import (
     FALSE,
-    NULL,
-    ONE,
     SQLScript as SQLScript_,
     TRUE,
-    ZERO,
     Variable,
 )
 from jx_base.language import is_op
-from jx_sqlite.expressions import _utils
-from jx_sqlite.expressions._utils import json_type_to_sql_type, SQLang, check
-from mo_dots import coalesce, wrap
-from mo_future import PY2, text, is_text
-from mo_logs import Log
+from jx_sqlite.expressions._utils import SQLang, check
 from jx_sqlite.sqlite import (
     SQL,
     SQL_CASE,
@@ -36,6 +29,9 @@ from jx_sqlite.sqlite import (
     SQL_NOT,
     SQL_IS_NOT_NULL,
 )
+from mo_future import PY2, text
+from mo_imports import export
+from mo_logs import Log
 
 
 class SQLScript(SQLScript_, SQL):
@@ -138,4 +134,5 @@ class SQLScript(SQLScript_, SQL):
             return False
 
 
-_utils.SQLScript = SQLScript
+export("jx_sqlite.expressions._utils", SQLScript)
+export("jx_sqlite.expressions.or_op", SQLScript)

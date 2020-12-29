@@ -12,7 +12,6 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
-from jx_base.expressions.missing_op import MissingOp
 from jx_base.language import is_op
 from jx_base.utils import get_property_name
 from mo_dots import is_sequence, split_field
@@ -20,33 +19,26 @@ from mo_dots.lists import last
 from mo_future import is_text
 from mo_imports import export
 from mo_json.typed_encoder import inserter_type_to_json_type
+from mo_json.types import ToJsonType, JsonType
 
 
 class Variable(Expression):
-    def __init__(self, var, type=None, multi=None):
+    def __init__(self, var, type=None):
         """
-
         :param var:   DOT DELIMITED PATH INTO A DOCUMENT
         :param type:  JSON TYPE, IF KNOWN
-        :param multi: NUMBER OF DISTINCT VALUES IN A SLOT
         """
         Expression.__init__(self, None)
 
-        # if self.lang != self.__class_.lang:
-        #     pass
         self.var = get_property_name(var)
 
         if type == None:
             # MAYBE THE NAME HAS A HINT TO THE TYPE
-            jx_type = inserter_type_to_json_type.get(last(split_field(var)))
-            if jx_type:
-                self.data_type = jx_type
+            self.data_type = ToJsonType(inserter_type_to_json_type.get(last(split_field(var))))
         else:
-            self.data_type = type
-
-        self._many = False
-        if multi and multi > 1:
-            self._many = True
+            self.data_type = ToJsonType(type)
+        if not isinstance(self.data_type, JsonType):
+            Log.error("expecting json type")
 
     def __call__(self, row, rownum=None, rows=None):
         path = split_field(self.var)
@@ -60,10 +52,6 @@ class Variable(Expression):
 
     def __data__(self):
         return self.var
-
-    @property
-    def many(self):
-        return self._many
 
     def vars(self):
         return {self}

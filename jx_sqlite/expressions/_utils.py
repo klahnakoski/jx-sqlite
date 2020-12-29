@@ -9,7 +9,8 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import FALSE, FalseOp, NULL, NullOp, TrueOp, extend
+from mo_imports import expect
+from jx_base.expressions import FALSE, FalseOp, NULL, NullOp, TrueOp, extend, AndOp
 from jx_base.language import Language
 from jx_sqlite.sqlite import (
     SQL,
@@ -41,7 +42,7 @@ from mo_json import BOOLEAN, NESTED, OBJECT, STRING, NUMBER, IS_NULL, TIME, INTE
 from mo_json.types import T_IS_NULL, T_BOOLEAN, T_NUMBER, T_TIME, T_INTERVAL, T_STRING
 from mo_logs import Log
 
-ToNumberOp, OrOp, SQLScript = [None] * 3
+ToNumberOp, OrOp, SQLScript = expect("ToNumberOp", "OrOp", "SQLScript")
 
 
 def check(func):
@@ -108,27 +109,13 @@ def _inequality_to_sql(self, schema):
 def _binaryop_to_sql(self, schema):
     op, identity = _sql_operators[self.op]
 
-    lhs = ToNumberOp(self.lhs).partial_eval(SQLang).to_sql(schema, not_null=True)
-    rhs = ToNumberOp(self.rhs).partial_eval(SQLang).to_sql(schema, not_null=True)
-    script = sql_iso(lhs) + op + sql_iso(rhs)
-    if not_null:
-        sql = script
-    else:
-        missing = OrOp([self.lhs.missing(), self.rhs.missing()]).partial_eval(SQLang)
-        if missing is FALSE:
-            sql = script
-        else:
-            sql = ConcatSQL(
-                SQL_CASE,
-                SQL_WHEN,
-                missing.to_sql(schema, boolean=True),
-                SQL_THEN,
-                SQL_NULL,
-                SQL_ELSE,
-                script,
-                SQL_END,
-            )
-    return wrap([{"name": ".", "sql": {"n": sql}}])
+    lhs = ToNumberOp(self.lhs).partial_eval(SQLang).to_sql(schema)
+    rhs = ToNumberOp(self.rhs).partial_eval(SQLang).to_sql(schema)
+    script = ConcatSQL(sql_iso(lhs), op, sql_iso(rhs))
+    missing = OrOp([self.lhs.missing(SQLang), self.rhs.missing(SQLang)]).partial_eval(SQLang)
+    return SQLScript(
+        data_type=T_NUMBER, expr=script, frum=self, miss=missing, schema=schema,
+    )
 
 
 def multiop_to_sql(self, schema, many=False):
@@ -176,7 +163,13 @@ def with_var(var, expression, eval):
 def basic_multiop_to_sql(self, schema, many=False):
     op, identity = _sql_operators[self.op.split("basic.")[1]]
     sql = op.join(sql_iso(t.partial_eval(SQLang).to_sql(schema)) for t in self.terms)
-    return wrap([{"name": ".", "sql": {"n": sql}}])
+    return SQLScript(
+        data_type=T_NUMBER,
+        frum=self,
+        expr=sql,
+        miss=FALSE,  # basic operations are "strict"
+        schema=schema,
+    )
 
 
 SQLang = Language("SQLang")
