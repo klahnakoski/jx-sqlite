@@ -9,7 +9,7 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import SelectOp as SelectOp_, FALSE, LeavesOp, Variable
+from jx_base.expressions import SelectOp as SelectOp_, FALSE, LeavesOp, Variable, AndOp
 from jx_base.language import is_op
 from jx_sqlite.expressions._utils import check, SQLang
 from jx_sqlite.expressions.sql_script import SQLScript
@@ -67,7 +67,7 @@ class SelectOp(SelectOp_):
         return SQLScript(
             data_type=type,
             expr=LazySelectClause(sql_terms, schema),
-            miss=FALSE,
+            miss=AndOp([t['value'].missing(SQLang) for t in sql_terms]),
             frum=self,
             schema=schema,
         )
@@ -85,13 +85,17 @@ class LazySelectClause(SQL):
         self.schema = schema
 
     def __iter__(self):
-        yield SQL_SELECT
+        for s in SQL_SELECT:
+            yield s
         comma = SQL(" ")
         for term in self.terms:
             name, value = term["name"], term["value"]
-            yield comma
+            for s in comma:
+                yield s
             comma = SQL_COMMA
-            yield quote_column(name)
-            yield SQL_AS
+            for s in quote_column(name):
+                yield s
+            for s in SQL_AS:
+                yield s
             for s in value.to_sql(self.schema):
                 yield s

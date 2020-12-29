@@ -165,15 +165,15 @@ PRIMITIVE = (EXISTS, BOOLEAN, INTEGER, NUMBER, TIME, INTERVAL, STRING)
 INTERNAL = (EXISTS, OBJECT, NESTED)
 STRUCT = (OBJECT, NESTED)
 
-NESTED_KEY = "a"  # "a" FOR ARRAY
+NESTED_KEY = "~a~"  # "a" FOR ARRAY
 
 T_IS_NULL = _new(JsonType)
-T_BOOLEAN = _primitive("b", BOOLEAN)
-T_INTEGER = _primitive("i", INTEGER)
-T_NUMBER = _primitive("n", NUMBER)
-T_TIME = _primitive("t", TIME)
-T_INTERVAL = _primitive("d", INTERVAL)
-T_STRING = _primitive("s", STRING)
+T_BOOLEAN = _primitive("~b~", BOOLEAN)
+T_INTEGER = _primitive("~i~", INTEGER)
+T_NUMBER = _primitive("~n~", NUMBER)
+T_TIME = _primitive("~t~", TIME)
+T_INTERVAL = _primitive("~d~", INTERVAL)
+T_STRING = _primitive("~s~", STRING)
 T_NESTED = _primitive(NESTED_KEY, NESTED)
 
 T_PRIMITIVE = (T_BOOLEAN, T_INTEGER, T_NUMBER, T_TIME, T_INTERVAL, T_STRING)

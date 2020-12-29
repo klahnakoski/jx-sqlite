@@ -9,7 +9,7 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import NotOp as NotOp_, MissingOp
+from jx_base.expressions import NotOp as NotOp_, MissingOp, FALSE
 from jx_base.language import is_op
 from jx_sqlite.expressions._utils import check, SQLang
 from jx_sqlite.expressions.sql_script import SQLScript
@@ -18,25 +18,27 @@ from jx_sqlite.sqlite import sql_iso, SQL_NOT, ConcatSQL, SQL_IS_NOT_NULL
 from mo_json.types import T_BOOLEAN
 
 
-
 class NotOp(NotOp_):
     @check
     def to_sql(self, schema):
-        term = NotOp(ToBooleanOp(self.term)).partial_eval(SQLang)
+        term = self.partial_eval(SQLang)
         if is_op(term, NotOp):
-            if is_op(term.term, MissingOp):
+            is_expr = term.term.to_sql(schema).frum.partial_eval(SQLang)
+            if is_op(is_expr, MissingOp):
+                exists = is_expr.expr
                 return SQLScript(
                     data_type=T_BOOLEAN,
-                    expr=ConcatSQL(term.term.expr.to_sql(schema), SQL_IS_NOT_NULL),
-                    miss=self.term.missing(SQLang),
-                    frum=self,
+                    expr=ConcatSQL(exists.to_sql(schema), SQL_IS_NOT_NULL),
+                    miss=FALSE,
+                    frum=exists,
+                    schema=schema
                 )
             else:
                 return SQLScript(
                     data_type=T_BOOLEAN,
-                    expr=ConcatSQL(SQL_NOT, sql_iso(term.term.to_sql(schema))),
-                    miss=self.term.missing(SQLang),
-                    frum=self,
+                    miss=FALSE,
+                    expr=ConcatSQL(SQL_NOT, sql_iso(is_expr.to_sql(schema))),
+                    frum=is_expr,
                 )
         else:
             return term.to_sql(schema)

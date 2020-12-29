@@ -34,7 +34,7 @@ from jx_sqlite.sqlite import (
     ConcatSQL,
     SQL_STAR,
     SQL_EQ,
-    SQL_ZERO,
+    SQL_ZERO, SQL_GT,
 )
 from jx_sqlite.sqlite import quote_column, quote_value, sql_alias
 from jx_sqlite.utils import (
@@ -457,11 +457,12 @@ class SetOpTable(InsertTable):
                     from_clause.append(quote_column(alias, PARENT))
                     from_clause.append(SQL_EQ)
                     from_clause.append(quote_column(parent_alias, UID))
-                    where_clause = (
-                        sql_iso(where_clause)
-                        + SQL_AND
-                        + quote_column(alias, ORDER)
-                        + " > 0"
+                    where_clause = ConcatSQL(
+                        sql_iso(where_clause),
+                        SQL_AND,
+                        quote_column(alias, ORDER),
+                        SQL_GT,
+                        SQL_ZERO
                     )
                 parent_alias = alias
 
@@ -483,11 +484,12 @@ class SetOpTable(InsertTable):
                     from_clause.append(quote_column(alias, PARENT))
                     from_clause.append(SQL_EQ)
                     from_clause.append(quote_column(parent_alias, UID))
-                    where_clause = (
-                        sql_iso(where_clause)
-                        + SQL_AND
-                        + quote_column(parent_alias, ORDER)
-                        + " > 0"
+                    where_clause = ConcatSQL(
+                        sql_iso(where_clause),
+                        SQL_AND,
+                        quote_column(parent_alias, ORDER),
+                        SQL_GT,
+                        SQL_ZERO
                     )
                 parent_alias = alias
 
@@ -530,8 +532,7 @@ class SetOpTable(InsertTable):
                 ConcatSQL(*from_clause),
                 SQL_WHERE,
                 where_clause,
-            )],
-            *children_sql
+            )] + children_sql
         )
 
         return sql

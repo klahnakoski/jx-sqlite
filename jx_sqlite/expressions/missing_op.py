@@ -9,7 +9,7 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import MissingOp as MissingOp_, FALSE, TRUE, Variable
+from jx_base.expressions import MissingOp as MissingOp_, FALSE, TRUE, Variable, SelectOp
 from jx_base.language import is_op
 from jx_sqlite.expressions._utils import SQLang, check
 from jx_sqlite.expressions.sql_script import SQLScript
@@ -26,21 +26,18 @@ class MissingOp(MissingOp_):
     def to_sql(self, schema):
         sql = self.expr.partial_eval(SQLang).to_sql(schema)
 
-        if sql.miss is TRUE:
-            return TRUE.to_sql(schema)
-        elif sql.miss is FALSE:
-            return FALSE.to_sql(schema)
-        elif is_op(sql.frum, Variable):
+        if is_op(sql.miss, MissingOp):
             return SQLScript(
                 miss=FALSE,
                 data_type=T_BOOLEAN,
-                expr=ConcatSQL(sql, SQL_IS_NULL),
+                expr=ConcatSQL(sql.expr, SQL_IS_NULL),
                 frum=self,
             )
 
+        expr = sql.miss.to_sql(schema)
         return SQLScript(
             miss=FALSE,
             data_type=T_BOOLEAN,
-            expr=ConcatSQL(sql_iso(sql), SQL_IS_NULL),
-            frum=self,
+            expr=expr,
+            frum=sql.miss,
         )
