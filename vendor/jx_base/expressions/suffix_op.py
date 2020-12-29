@@ -22,13 +22,13 @@ from jx_base.expressions.variable import Variable
 from jx_base.expressions.when_op import WhenOp
 from jx_base.language import is_op
 from mo_dots import is_data
-from mo_json import BOOLEAN, STRING
+from mo_json.types import T_BOOLEAN, STRING
 from mo_logs import Log
 
 
 class SuffixOp(Expression):
     has_simple_form = True
-    data_type = BOOLEAN
+    data_type = T_BOOLEAN
 
     def __init__(self, term):
         Expression.__init__(self, term)
@@ -64,7 +64,7 @@ class SuffixOp(Expression):
         if self.expr is None:
             return TRUE
         else:
-            return (SuffixOp([self.expr.map(map_), self.suffix.map(map_)]))
+            return SuffixOp([self.expr.map(map_), self.suffix.map(map_)])
 
     def partial_eval(self, lang):
         if self.expr is None:

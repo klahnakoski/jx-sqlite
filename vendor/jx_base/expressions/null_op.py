@@ -106,5 +106,8 @@ TYPE_ORDER[NullOp] = 9
 TYPE_ORDER[NULL] = 9
 
 export("jx_base.expressions._utils", NULL)
-export("jx_base.expressions.literal", NULL)
 export("jx_base.expressions.expression", NULL)
+export("jx_base.expressions.base_binary_op", NULL)
+export("jx_base.expressions.base_multi_op", NULL)
+export("jx_base.expressions.basic_in_op", NULL)
+export("jx_base.expressions.literal", NULL)

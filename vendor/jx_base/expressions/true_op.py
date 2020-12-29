@@ -13,11 +13,11 @@ from __future__ import absolute_import, division, unicode_literals
 from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.literal import Literal
 from mo_imports import export
-from mo_json import BOOLEAN
+from mo_json.types import T_BOOLEAN
 
 
 class TrueOp(Literal):
-    data_type = BOOLEAN
+    data_type = T_BOOLEAN
 
     def __new__(cls, *args, **kwargs):
         return object.__new__(cls, *args, **kwargs)

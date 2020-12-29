@@ -31,11 +31,7 @@ class ToNumberOp(NumberOp_):
                 return "float(" + value + ")"
             else:
                 return (
-                    "float("
-                    + value
-                    + ") if ("
-                    + (exists).to_python()
-                    + ") else None"
+                    "float(" + value + ") if (" + (exists).to_python() + ") else None"
                 )
 
 

@@ -18,13 +18,13 @@ from jx_base.expressions.or_op import OrOp
 from jx_base.expressions.outer_join_op import OuterJoinOp
 from jx_base.language import is_op
 from mo_dots import startswith_field
-from mo_json import BOOLEAN
+from mo_json.types import T_BOOLEAN
 from mo_logs import Log
 from mo_math import UNION
 
 
 class InnerJoinOp(Expression):
-    data_type = BOOLEAN
+    data_type = T_BOOLEAN
     has_simple_form = False
 
     __slots__ = ["frum", "nests"]

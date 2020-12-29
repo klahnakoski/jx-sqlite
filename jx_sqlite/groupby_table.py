@@ -101,7 +101,7 @@ class GroupbyTable(EdgesTable):
                     is_edge=True,
                     push_name=e.name,
                     push_column_name=e.name.replace("\\.", "."),
-                    push_column=i,
+                    push_column_index=i,
                     push_child=select_name,
                     pull=get_column(column_number),
                     sql=sql,
@@ -131,7 +131,7 @@ class GroupbyTable(EdgesTable):
             index_to_column[column_number] = ColumnMapping(
                 push_name=select.name,
                 push_column_name=select.name,
-                push_column=i + len(query.groupby),
+                push_column_index=i + len(query.groupby),
                 push_child=".",
                 pull=get_column(column_number),
                 sql=sql,

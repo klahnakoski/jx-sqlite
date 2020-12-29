@@ -11,6 +11,7 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.expression import Expression
+from jx_base.expressions.case_op import CaseOp
 from jx_base.expressions.last_op import LastOp
 from jx_base.expressions.literal import is_literal
 from jx_base.language import is_op
@@ -18,7 +19,7 @@ from mo_imports import expect
 from mo_json import OBJECT
 from mo_logs import Log
 
-CaseOp, WhenOp = expect("CaseOp", "WhenOp")
+WhenOp = expect("WhenOp")
 
 
 class FirstOp(Expression):
@@ -34,7 +35,7 @@ class FirstOp(Expression):
         return self.term.vars()
 
     def map(self, map_):
-        return (LastOp(self.term.map(map_)))
+        return LastOp(self.term.map(map_))
 
     def missing(self, lang):
         return self.term.missing(lang)
@@ -57,4 +58,4 @@ class FirstOp(Expression):
         elif is_literal(term):
             Log.error("not handled yet")
         else:
-            return (FirstOp(term))
+            return FirstOp(term)

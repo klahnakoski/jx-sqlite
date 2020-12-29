@@ -44,7 +44,7 @@ class TupleOp(Expression):
         return output
 
     def map(self, map_):
-        return (TupleOp([t.map(map_) for t in self.terms]))
+        return TupleOp([t.map(map_) for t in self.terms])
 
     def missing(self, lang):
         return FALSE
@@ -54,7 +54,7 @@ class TupleOp(Expression):
 
     def partial_eval(self, lang):
         if all(is_literal(t) for t in self.terms):
-            return (Literal([t.value for t in self.terms]))
+            return Literal([t.value for t in self.terms])
 
         return self
 

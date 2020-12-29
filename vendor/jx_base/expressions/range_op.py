@@ -14,13 +14,13 @@ from jx_base.expressions._utils import operators
 from jx_base.expressions.and_op import AndOp
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.literal import Literal
-from mo_json import BOOLEAN
+from mo_json.types import T_BOOLEAN
 from mo_logs import Log
 
 
 class RangeOp(Expression):
     has_simple_form = True
-    data_type = BOOLEAN
+    data_type = T_BOOLEAN
 
     def __new__(cls, term, *args):
         Expression.__new__(cls, *args)

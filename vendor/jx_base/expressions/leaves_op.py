@@ -33,7 +33,7 @@ class LeavesOp(Expression):
         return self.term.vars()
 
     def map(self, map_):
-        return (LeavesOp(self.term.map(map_)))
+        return LeavesOp(self.term.map(map_))
 
     def missing(self, lang):
         return FALSE

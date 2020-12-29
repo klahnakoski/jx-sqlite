@@ -11,17 +11,16 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.and_op import AndOp
-from jx_base.expressions.to_boolean_op import ToBooleanOp
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.literal import Literal
 from jx_base.expressions.not_op import NotOp
 from jx_base.expressions.null_op import NULL
 from jx_base.expressions.or_op import OrOp
+from jx_base.expressions.to_boolean_op import ToBooleanOp
 from jx_base.expressions.true_op import TRUE
 from jx_base.language import is_op
 from mo_imports import export
-from mo_json import OBJECT, same_json_type, merge_json_type
 from mo_logs import Log
 
 
@@ -32,15 +31,7 @@ class WhenOp(Expression):
         self.when = term
         self.then = clauses.get("then", NULL)
         self.els_ = clauses.get("else", NULL)
-
-        if self.then is NULL:
-            self.data_type = self.els_.type
-        elif self.els_ is NULL:
-            self.data_type = self.then.type
-        elif same_json_type(self.then.type, self.els_.type):
-            self.data_type = merge_json_type(self.then.type, self.els_.type)
-        else:
-            self.data_type = OBJECT
+        self.data_type = self.then.type | self.els_.type
 
     def __data__(self):
         return {
@@ -94,8 +85,10 @@ class WhenOp(Expression):
             elif els_ is TRUE:
                 return (NotOp(when)).partial_eval(lang)
 
-        return (WhenOp(when, **{"then": then, "else": els_}))
+        return WhenOp(when, **{"then": then, "else": els_})
 
 
-export("jx_base.expressions.first_op", WhenOp)
+export("jx_base.expressions.base_multi_op", WhenOp)
+export("jx_base.expressions.case_op", WhenOp)
 export("jx_base.expressions.eq_op", WhenOp)
+export("jx_base.expressions.first_op", WhenOp)

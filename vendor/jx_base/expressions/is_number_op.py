@@ -12,11 +12,12 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.null_op import NULL
-from mo_json import NUMBER_TYPES, NUMBER
+from mo_json import NUMBER_TYPES
+from mo_json.types import T_NUMBER
 
 
 class IsNumberOp(Expression):
-    data_type = NUMBER
+    data_type = T_NUMBER
 
     def __init__(self, term):
         Expression.__init__(self, [term])
@@ -29,7 +30,7 @@ class IsNumberOp(Expression):
         return self.term.vars()
 
     def map(self, map_):
-        return (IsNumberOp(self.term.map(map_)))
+        return IsNumberOp(self.term.map(map_))
 
     def missing(self, lang):
         return self.expr.missin(lang)

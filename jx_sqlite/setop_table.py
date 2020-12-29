@@ -13,37 +13,10 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base import Column, jx_expression
 from jx_base.language import is_op
-from jx_base.queries import get_property_name
-from jx_sqlite.utils import (
-    COLUMN,
-    ColumnMapping,
-    ORDER,
-    _make_column_name,
-    get_column,
-    UID,
-    PARENT,
-)
 from jx_sqlite.expressions._utils import SQLang, sql_type_to_json_type
-from jx_sqlite.expressions.to_boolean_op import ToBooleanOp
 from jx_sqlite.expressions.leaves_op import LeavesOp
+from jx_sqlite.expressions.to_boolean_op import ToBooleanOp
 from jx_sqlite.insert_table import InsertTable
-from mo_dots import (
-    Data,
-    Null,
-    concat_field,
-    is_list,
-    listwrap,
-    literal_field,
-    startswith_field,
-    unwrap,
-    unwraplist,
-    exists,
-)
-from mo_future import text, unichr
-from mo_json import IS_NULL, STRUCT
-from mo_logs import Log
-from mo_math import UNION
-from mo_times import Date
 from jx_sqlite.sqlite import (
     SQL_AND,
     SQL_FROM,
@@ -54,7 +27,6 @@ from jx_sqlite.sqlite import (
     SQL_ON,
     SQL_ORDERBY,
     SQL_SELECT,
-    SQL_TRUE,
     SQL_UNION_ALL,
     SQL_WHERE,
     sql_iso,
@@ -65,6 +37,31 @@ from jx_sqlite.sqlite import (
     SQL_ZERO,
 )
 from jx_sqlite.sqlite import quote_column, quote_value, sql_alias
+from jx_sqlite.utils import (
+    COLUMN,
+    ColumnMapping,
+    ORDER,
+    _make_column_name,
+    get_column,
+    UID,
+    PARENT,
+)
+from mo_dots import (
+    Data,
+    Null,
+    concat_field,
+    is_list,
+    listwrap,
+    startswith_field,
+    unwrap,
+    unwraplist,
+    exists,
+)
+from mo_future import text, unichr
+from mo_json.types import IS_NULL, STRUCT, FromJsonType
+from mo_logs import Log
+from mo_math import UNION
+from mo_times import Date
 
 
 class SetOpTable(InsertTable):
@@ -189,7 +186,7 @@ class SetOpTable(InsertTable):
                 .partial_eval(SQLang)
                 .to_sql(schema)
             )
-            for name, value in selects.frum:
+            for i, (name, value) in enumerate(selects.frum):
                 column_number += 1
                 if is_op(value, LeavesOp):
                     Log.error("expecting SelectOp to subsume the LeavesOp")
@@ -201,10 +198,10 @@ class SetOpTable(InsertTable):
                     push_name=name,
                     push_child=".",
                     push_column_name=name,
-                    push_column=column_number,
+                    push_column_index=i,
                     pull=get_column(column_number),
                     sql=sql,
-                    type=value.data_type,
+                    type=FromJsonType(value.data_type),
                     column_alias=column_alias,
                     nested_path=nested_path,
                 )
@@ -339,7 +336,9 @@ class SetOpTable(InsertTable):
                 )
             else:
                 num_rows = len(data)
-                map_index_to_name = {c.push_column: c.push_column_name for c in cols}
+                map_index_to_name = {
+                    c.push_column_index: c.push_column_name for c in cols
+                }
                 temp_data = [data]
 
                 return Data(
@@ -359,16 +358,16 @@ class SetOpTable(InsertTable):
         elif query.format == "table":
             # for f, _ in self.snowflake.tables:
             #     if frum.endswith(f):
-            #         num_column = MAX([c.push_column for c in cols]) + 1
+            #         num_column = MAX([c.push_column_index for c in cols]) + 1
             #         header = [None] * num_column
             #         for c in cols:
-            #             header[c.push_column] = c.push_column_name
+            #             header[c.push_column_index] = c.push_column_name
             #
             #         output_data = []
             #         for d in result.data:
             #             row = [None] * num_column
             #             for c in cols:
-            #                 set_column(row, c.push_column, c.push_child, c.pull(d))
+            #                 set_column(row, c.push_column_index, c.push_child, c.pull(d))
             #             output_data.append(row)
             #
             #         return Data(
@@ -377,25 +376,27 @@ class SetOpTable(InsertTable):
             #             data=output_data
             #         )
             if is_list(query.select) or is_op(query.select.value, LeavesOp):
-                column_names = [None] * (max(c.push_column for c in cols) + 1)
+                num_cols = max(c.push_column_index for c in cols) + 1
+                columns = [None] * num_cols
                 for c in cols:
-                    column_names[c.push_column] = c.push_column_name
+                    columns[c.push_column_index] = c
+                push_names = [c.push_name for c in columns]
 
                 temp_data = []
                 for rownum, d in enumerate(data):
-                    row = [None] * len(column_names)
-                    for c in cols:
-                        row[c.push_column] = d[c.push_name]
+                    row = [d[push_name] for push_name in push_names]
                     temp_data.append(row)
 
                 return Data(
-                    meta={"format": "table"}, header=column_names, data=temp_data
+                    meta={"format": "table"},
+                    header=[c.push_column_name for c in columns],
+                    data=temp_data,
                 )
             else:
                 column_names = listwrap(query.select).name
                 return Data(
                     meta={"format": "table"},
-                    header=column_names,
+                    header=columns_names,
                     data=[[d] for d in data],
                 )
 
@@ -458,8 +459,7 @@ class SetOpTable(InsertTable):
         select_clause = []
         children_sql = []
         done = []
-        if not where_clause:
-            where_clause = SQL_TRUE
+
         # STATEMENT FOR EACH NESTED PATH
         for i, (nested_path, sub_table) in enumerate(self.snowflake.tables):
             if any(startswith_field(nested_path, d) for d in done):

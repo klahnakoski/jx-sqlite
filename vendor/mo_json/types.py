@@ -5,15 +5,26 @@
 # PRIMITIVE = (EXISTS, BOOLEAN, INTEGER, NUMBER, TIME, INTERVAL, STRING)
 # INTERNAL = (EXISTS, OBJECT, NESTED)
 # STRUCT = (OBJECT, NESTED)
-from mo_dots import split_field
-from mo_json import STRING, INTERVAL, TIME, NUMBER, INTEGER, BOOLEAN, NESTED, IS_NULL
+from datetime import datetime, date
+from decimal import Decimal
+
+from mo_dots import split_field, NullType, is_many, is_data, concat_field
+from mo_future import text, none_type, PY2, long, items, is_text
 from mo_logs import Log
+from mo_times import Date
 
 
 def ToJsonType(value):
     if isinstance(value, JsonType):
         return value
     return _type_to_json_type[value]
+
+
+def FromJsonType(value):
+    for k, v in _type_to_json_type.items():
+        if k is value or v is value:
+            return k
+    return OBJECT
 
 
 class JsonType(object):
@@ -59,6 +70,14 @@ class JsonType(object):
     def __hash__(self):
         return hash(self.tuple())
 
+    def leaves(self):
+        if self in T_PRIMITIVE:
+            yield ".", self
+        else:
+            for k, v in self.__dict__.items():
+                for p, t in v.leaves():
+                    yield concat_field(k, p), t
+
     def tuple(self):
         return tuple(
             (k, v.tuple() if isinstance(v, JsonType) else v)
@@ -68,11 +87,18 @@ class JsonType(object):
     def __eq__(self, other):
         if not isinstance(other, JsonType):
             return False
+
+        if self is T_INTEGER or self is T_NUMBER:
+            if other is T_INTEGER or other is T_NUMBER:
+                return True
+
         sd = self.__dict__
         od = other.__dict__
-        for k, v in sd.items():
-            if v != od[k]:
+        for k, sv in sd.items():
+            ov = od.get(k)
+            if sv != ov:
                 return False
+
         return len(sd) == len(od)
 
     def __radd__(self, path):
@@ -93,6 +119,14 @@ class JsonType(object):
         return str(self.__data__())
 
 
+def union_type(*types):
+    output = T_IS_NULL
+
+    for t in types:
+        output |= t
+    return output
+
+
 _new = object.__new__
 
 
@@ -102,6 +136,37 @@ def _primitive(name, value):
     return output
 
 
+IS_NULL = "0"
+BOOLEAN = "boolean"
+INTEGER = "integer"
+NUMBER = "number"
+TIME = "time"
+INTERVAL = "interval"
+STRING = "string"
+OBJECT = "object"
+NESTED = "nested"
+EXISTS = "exists"
+
+ALL_TYPES = {
+    IS_NULL: IS_NULL,
+    BOOLEAN: BOOLEAN,
+    INTEGER: INTEGER,
+    NUMBER: NUMBER,
+    TIME: TIME,
+    INTERVAL: INTERVAL,
+    STRING: STRING,
+    OBJECT: OBJECT,
+    NESTED: NESTED,
+    EXISTS: EXISTS,
+}
+JSON_TYPES = (BOOLEAN, INTEGER, NUMBER, STRING, OBJECT)
+NUMBER_TYPES = (INTEGER, NUMBER, TIME, INTERVAL)
+PRIMITIVE = (EXISTS, BOOLEAN, INTEGER, NUMBER, TIME, INTERVAL, STRING)
+INTERNAL = (EXISTS, OBJECT, NESTED)
+STRUCT = (OBJECT, NESTED)
+
+NESTED_KEY = "a"  # "a" FOR ARRAY
+
 T_IS_NULL = _new(JsonType)
 T_BOOLEAN = _primitive("b", BOOLEAN)
 T_INTEGER = _primitive("i", INTEGER)
@@ -109,9 +174,12 @@ T_NUMBER = _primitive("n", NUMBER)
 T_TIME = _primitive("t", TIME)
 T_INTERVAL = _primitive("d", INTERVAL)
 T_STRING = _primitive("s", STRING)
-T_NESTED = _primitive("a", NESTED)
+T_NESTED = _primitive(NESTED_KEY, NESTED)
 
-_type_to_json_type ={
+T_PRIMITIVE = (T_BOOLEAN, T_INTEGER, T_NUMBER, T_TIME, T_INTERVAL, T_STRING)
+T_NUMBER_TYPES = (T_INTEGER, T_NUMBER, T_TIME, T_INTERVAL)
+
+_type_to_json_type = {
     IS_NULL: T_IS_NULL,
     BOOLEAN: T_BOOLEAN,
     INTEGER: T_INTERVAL,
@@ -121,3 +189,39 @@ _type_to_json_type ={
     STRING: T_STRING,
     NESTED: T_NESTED
 }
+
+
+def value_to_json_type(value):
+    if is_many(value):
+        return _primitive(NESTED_KEY, union_type(*value))
+    elif is_data(value):
+        return {k: value_to_json_type(v) for k, v in value.items()}
+    else:
+        return _python_type_to_json_type[value.__class__]
+
+
+def python_type_to_json_type(type):
+    return _python_type_to_json_type[type]
+
+
+_python_type_to_json_type = {
+    int: T_INTEGER,
+    text: T_STRING,
+    float: T_NUMBER,
+    Decimal: T_NUMBER,
+    bool: T_BOOLEAN,
+    NullType: T_IS_NULL,
+    none_type: T_IS_NULL,
+    Date: T_TIME,
+    datetime: T_TIME,
+    date: T_TIME,
+}
+
+if PY2:
+    _python_type_to_json_type[str] = T_STRING
+    _python_type_to_json_type[long] = T_INTEGER
+
+
+for k, v in items(_python_type_to_json_type):
+    _python_type_to_json_type[k.__name__] = v
+

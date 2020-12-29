@@ -261,7 +261,7 @@ ColumnMapping = DataClass(
             "name": "push_child",
             "nulls": True,
         },
-        {"name": "push_column", "nulls": True},  # THE COLUMN NUMBER
+        {"name": "push_column_index", "nulls": True},  # THE COLUMN NUMBER
         {  # THE COLUMN NAME FOR TABLES AND CUBES (WITH NO ESCAPING DOTS, NOT IN LEAF FORM)
             "name": "push_column_name",
             "nulls": True,

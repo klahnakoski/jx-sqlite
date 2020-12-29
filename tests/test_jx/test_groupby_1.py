@@ -14,7 +14,8 @@ from unittest import skip, skipIf
 
 from jx_base.expressions import NULL
 from mo_dots import set_default, to_data
-from mo_future import text
+from mo_future import text, first
+from mo_math import to_integer
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 
@@ -424,7 +425,7 @@ class TestgroupBy1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(int(global_settings.elasticsearch.version.split(".")[0]) <= 4, "version 4 and below do not implement")
+    @skipIf(to_integer(first(global_settings.elasticsearch.version.split("."))) <= 4, "version 4 and below do not implement")
     def test_count_values(self):
         # THIS IS NOT PART OF THE JX SPEC, IT IS AN INTERMEDIATE FORM FOR DEBUGGING
         test = {

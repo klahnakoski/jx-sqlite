@@ -15,8 +15,4 @@ from jx_python.expressions._utils import with_var, Python
 
 class ToBooleanOp(ToBooleanOp_):
     def to_python(self, not_null=False, boolean=False, many=False):
-        return with_var(
-            "f",
-            self.term.to_python(),
-            "bool(f)",
-        )
+        return with_var("f", self.term.to_python(), "bool(f)",)

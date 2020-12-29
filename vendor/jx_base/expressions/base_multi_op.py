@@ -11,22 +11,20 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions._utils import builtin_ops, operators
-from jx_base.expressions.and_op import AndOp
-from jx_base.expressions.coalesce_op import CoalesceOp
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.literal import Literal, ZERO, ONE, is_literal
-from jx_base.expressions.null_op import NULL
-from jx_base.expressions.or_op import OrOp
 from jx_base.expressions.true_op import TRUE
-from jx_base.expressions.when_op import WhenOp
 from mo_dots import coalesce
-from mo_json import NUMBER
+from mo_imports import expect
+from mo_json.types import T_NUMBER
+
+AndOp, CoalesceOp, NULL, OrOp, WhenOp = expect("AndOp", "CoalesceOp", "NULL", "OrOp", "WhenOp")
 
 
 class BaseMultiOp(Expression):
     has_simple_form = True
-    data_type = NUMBER
+    data_type = T_NUMBER
     op = None
 
     def __init__(self, terms, **clauses):

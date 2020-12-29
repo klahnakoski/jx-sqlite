@@ -9,12 +9,12 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import FALSE, SqlEqOp as SqlEqOp_, is_literal
-from jx_sqlite.expressions._utils import SQLang, check
+from jx_base.expressions import SqlEqOp as SqlEqOp_, is_literal, AndOp, FALSE
+from jx_sqlite.expressions._utils import SQLang, check, with_var, SQLScript
 from jx_sqlite.expressions.to_boolean_op import ToBooleanOp
-from mo_dots import wrap
+from jx_sqlite.sqlite import SQL_IS_NULL, SQL_OR, ConcatSQL, SQL_EQ, SQL, SQL_AND
+from mo_json import T_BOOLEAN
 from mo_logs import Log
-from jx_sqlite.sqlite import SQL_IS_NULL, SQL_OR, sql_iso, ConcatSQL, JoinSQL, SQL_EQ
 
 
 class SqlEqOp(SqlEqOp_):
@@ -22,29 +22,41 @@ class SqlEqOp(SqlEqOp_):
     def to_sql(self, schema):
         lhs = self.lhs.partial_eval(SQLang)
         rhs = self.rhs.partial_eval(SQLang)
-        lhs_sql = lhs.to_sql(schema, not_null=True)
-        rhs_sql = rhs.to_sql(schema, not_null=True)
-        if is_literal(rhs) and lhs_sql != None and rhs.value in ("T", "F"):
-            rhs_sql = ToBooleanOp(rhs).to_sql(schema)
-        if is_literal(lhs) and rhs_sql != None and lhs.value in ("T", "F"):
-            lhs_sql = ToBooleanOp(lhs).to_sql(schema)
+        if is_literal(lhs) and lhs.value in ("T", "F"):
+            lhs = ToBooleanOp(lhs).to_sql(schema)
+        if is_literal(rhs) and rhs.value in ("T", "F"):
+            rhs = ToBooleanOp(rhs).to_sql(schema)
 
-        if len(lhs_sql) != len(rhs_sql):
-            Log.error("lhs and rhs have different dimensionality!?")
+        lhs_sql = lhs.to_sql(schema)
+        rhs_sql = rhs.to_sql(schema)
 
-        acc = []
-        for l, r in zip(lhs_sql, rhs_sql):
-            for t in "bsnj":
-                if r.sql[t] == None:
-                    if l.sql[t] == None:
-                        pass
-                    else:
-                        acc.append(ConcatSQL(l.sql[t], SQL_IS_NULL))
-                elif l.sql[t] == None:
-                    acc.append(ConcatSQL(r.sql[t], SQL_IS_NULL))
-                else:
-                    acc.append(ConcatSQL(sql_iso(l.sql[t]), SQL_EQ, sql_iso(r.sql[t])))
-        if not acc:
-            return FALSE.to_sql(schema)
+        lleaves = list(lhs_sql.type.leaves())
+        rleaves = list(rhs_sql.type.leaves())
+        if len(lleaves) == 1 and len(rleaves) == 1 and lleaves[0][1] == rleaves[0][1]:
+            pass
         else:
-            return wrap([{"name": ".", "sql": {"b": JoinSQL(SQL_OR, acc)}}])
+            Log.error("Not supported yet")
+
+        null_match = AndOp([lhs.missing(SQLang), rhs.missing(SQLang)]).partial_eval(SQLang)
+        if null_match is FALSE:
+            sql = ConcatSQL(
+                lhs_sql,
+                SQL_EQ,
+                rhs_sql
+            )
+        else:
+            sql = ConcatSQL(
+                lhs_sql,
+                SQL_EQ,
+                rhs_sql,
+                SQL_OR,
+                null_match.to_sql(schema)
+            )
+
+        return SQLScript(
+            data_type=T_BOOLEAN,
+            expr=sql,
+            frum=self,
+            miss=FALSE,
+            schema=schema
+        )

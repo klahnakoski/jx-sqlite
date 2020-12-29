@@ -22,7 +22,7 @@ from jx_sqlite.expressions.literal import Literal
 from jx_sqlite.expressions.sql_eq_op import SqlEqOp
 from jx_sqlite.expressions.sql_script import SQLScript
 from jx_sqlite.expressions.when_op import WhenOp
-from mo_json import BOOLEAN
+from mo_json.types import T_BOOLEAN
 from mo_logs import Log
 from jx_sqlite.sqlite import SQL_FALSE, SQL_IS_NULL, SQL_OR, sql_iso, SQL_EQ
 
@@ -65,7 +65,7 @@ class EqOp(EqOp_):
             return SQLScript(
                 expr=SQL_OR.join(acc),
                 frum=self,
-                data_type=BOOLEAN,
+                data_type=T_BOOLEAN,
                 miss=FALSE,
                 schema=schema,
             )

@@ -16,17 +16,14 @@ import math
 import re
 import string
 from datetime import date, datetime as builtin_datetime, timedelta
-from json.encoder import encode_basestring
 
 from mo_dots import (
     Data,
     coalesce,
-    get_module,
     is_data,
     is_list,
     to_data,
     is_sequence,
-    NullType,
     is_many,
 )
 from mo_future import (
@@ -39,7 +36,9 @@ from mo_future import (
     xrange,
     zip_longest,
     binary_type,
+    encode_basestring,
 )
+from mo_imports import delay_import
 from mo_logs.convert import (
     datetime2string,
     datetime2unix,
@@ -48,35 +47,14 @@ from mo_logs.convert import (
     value2json,
 )
 
+Log = delay_import("mo_logs")
+json_encoder = delay_import("mo_json.encoder.json_encoder")
+Except = delay_import("mo_logs.exceptions.Except")
+Duration = delay_import("mo_times.durations.Duration")
+
+
 FORMATTERS = {}
 CR = text("\n")
-
-_json_encoder, _Log, _Except, _Duration = [None] * 4  # EXPECTED IMPORT
-
-
-def _late_import():
-    global _json_encoder
-    global _Log
-    global _Except
-    global _Duration
-
-    try:
-        _json_encoder = get_module("mo_json.encoder").json_encoder
-    except Exception:
-        _json_encoder = lambda value, pretty: _json.dumps(value)
-    from mo_logs import Log as _Log
-    from mo_logs.exceptions import Except as _Except
-
-    try:
-        from mo_times.durations import Duration as _Duration
-    except Exception as e:
-        _Duration = NullType
-        _Log.warning("It would be nice to pip install mo-times", cause=e)
-
-    _ = _json_encoder
-    _ = _Log
-    _ = _Except
-    _ = _Duration
 
 
 def formatter(func):
@@ -208,9 +186,7 @@ def json(value, pretty=True):
     :param pretty:
     :return:
     """
-    if _Duration is None:
-        _late_import()
-    return _json_encoder(value, pretty=pretty)
+    return json_encoder(value, pretty=pretty)
 
 
 @formatter
@@ -267,10 +243,7 @@ def outdent(value):
                 num = min(num, len(l) - len(l.lstrip()))
         return CR.join([l[num:] for l in lines])
     except Exception as e:
-        if not _Log:
-            _late_import()
-
-        _Log.error("can not outdent value", e)
+        Log.error("can not outdent value", e)
 
 
 @formatter
@@ -539,9 +512,7 @@ def limit(value, length):
             rhs = length - len(_SNIP) - lhs
             return value[:lhs] + _SNIP + value[-rhs:]
     except Exception as e:
-        if _Duration is None:
-            _late_import()
-        _Log.error("Not expected", cause=e)
+        Log.error("Not expected", cause=e)
 
 
 @formatter
@@ -657,10 +628,7 @@ def _expand(template, seq):
     elif is_list(template):
         return "".join(_expand(t, seq) for t in template)
     else:
-        if not _Log:
-            _late_import()
-
-        _Log.error("can not handle")
+        Log.error("can not handle")
 
 
 def _simple_expand(template, seq):
@@ -700,10 +668,7 @@ def _simple_expand(template, seq):
                     val = toString(val)
                     return val
             except Exception as f:
-                if not _Log:
-                    _late_import()
-
-                _Log.warning(
+                Log.warning(
                     "Can not expand "
                     + "|".join(ops)
                     + " in template: {{template_|json}}",
@@ -716,18 +681,15 @@ def _simple_expand(template, seq):
 
 
 def toString(val):
-    if _Duration is None:
-        _late_import()
-
     if val == None:
         return ""
     elif is_data(val) or is_many(val):
-        return _json_encoder(val, pretty=True)
+        return json_encoder(val, pretty=True)
     elif hasattr(val, "__data__"):
-        return _json_encoder(val.__data__(), pretty=True)
+        return json_encoder(val.__data__(), pretty=True)
     elif hasattr(val, "__json__"):
         return val.__json__()
-    elif isinstance(val, _Duration):
+    elif isinstance(val, Duration):
         return text(round(val.seconds, places=4)) + " seconds"
     elif isinstance(val, timedelta):
         duration = val.total_seconds()
@@ -743,20 +705,14 @@ def toString(val):
         try:
             return val.decode("latin1")
         except Exception as e:
-            if not _Log:
-                _late_import()
-
-            _Log.error(
+            Log.error(
                 text(type(val)) + " type can not be converted to unicode", cause=e
             )
     else:
         try:
             return text(val)
         except Exception as e:
-            if not _Log:
-                _late_import()
-
-            _Log.error(
+            Log.error(
                 text(type(val)) + " type can not be converted to unicode", cause=e
             )
 
@@ -833,10 +789,7 @@ def apply_diff(text, diff, reverse=False, verify=True):
     for header, hunk_body in reversed(hunks) if reverse else hunks:
         matches = DIFF_PREFIX.match(header.strip())
         if not matches:
-            if not _Log:
-                _late_import()
-
-            _Log.error("Can not handle \n---\n{{diff}}\n---\n", diff=diff)
+            Log.error("Can not handle \n---\n{{diff}}\n---\n", diff=diff)
 
         removes = tuple(
             int(i.strip()) for i in matches.group(1).split(",")
@@ -925,9 +878,7 @@ def apply_diff(text, diff, reverse=False, verify=True):
                 if t in ["reports: https://goo.gl/70o6w6\r"]:
                     break  # KNOWN INCONSISTENCIES
                 if t != o:
-                    if not _Log:
-                        _late_import()
-                    _Log.error("logical verification check failed")
+                    Log.error("logical verification check failed")
                     break
 
     return output

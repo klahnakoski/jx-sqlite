@@ -89,7 +89,7 @@ class Expecting(object):
 
     def __call__(self, *args, **kwargs):
         _error(
-            'missing expected call export("'
+            'too late, missing expected call export("'
             + self.module.__name__
             + '", '
             + self.name
@@ -171,6 +171,8 @@ def export(module, name, value=_nothing):
                 _error(module.__name__ + " is not expecting an export to " + name)
         if DEBUG:
             print(">>> " + module.__name__ + " got expected " + name)
+    # elif isinstance(value, type(desc)):
+    #     return  # Already Assigned
     else:
         _error(module.__name__ + " is not expecting an export to " + name)
 
@@ -193,14 +195,10 @@ def worker(please_stop):
 
             done, _expectations = _expectations, []
 
+        done = sorted(done, key=lambda d: d.name)
+        sys.stderr.write("missing expected calls:\n")
         for d in done:
-            sys.stderr.write(
-                'missing expected call export("'
-                + d.module.__name__
-                + '", '
-                + d.name
-                + ")\n"
-            )
+            sys.stderr.write('\texport("' + d.module.__name__ + '", ' + d.name + ")\n")
         _error("Missing export() calls")
 
     if DEBUG:

@@ -12,10 +12,11 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.expression import Expression
 from mo_json import STRING
+from mo_json.types import T_STRING
 
 
 class IsStringOp(Expression):
-    data_type = STRING
+    data_type = T_STRING
 
     def __init__(self, term):
         Expression.__init__(self, [term])
@@ -28,7 +29,7 @@ class IsStringOp(Expression):
         return self.term.vars()
 
     def map(self, map_):
-        return (IsStringOp(self.term.map(map_)))
+        return IsStringOp(self.term.map(map_))
 
     def missing(self, lang):
         return self.expr.missing()
@@ -40,4 +41,3 @@ class IsStringOp(Expression):
             return term
         else:
             return NULL
-

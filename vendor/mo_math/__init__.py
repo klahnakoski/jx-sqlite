@@ -150,6 +150,20 @@ def is_integer(s):
         return False
 
 
+def to_integer(s):
+    if s is True:
+        return 1
+    if s is False:
+        return 0
+
+    try:
+        if float(s) == round(float(s), 0):
+            return int(s)
+        return Null
+    except Exception:
+        return Null
+
+
 def round(value, decimal=0, digits=None):
     """
     ROUND TO GIVEN NUMBER OF DIGITS, OR GIVEN NUMBER OF DECIMAL PLACES

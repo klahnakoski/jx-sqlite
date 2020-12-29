@@ -31,7 +31,7 @@ class ToIntegerOp(Expression):
         return self.term.vars()
 
     def map(self, map_):
-        return (ToIntegerOp(self.term.map(map_)))
+        return ToIntegerOp(self.term.map(map_))
 
     def missing(self, lang):
         return self.term.missing(lang)
@@ -39,7 +39,7 @@ class ToIntegerOp(Expression):
     def partial_eval(self, lang):
         term = FirstOp(self.term).partial_eval(lang)
         if is_op(term, CoalesceOp):
-            return (CoalesceOp([ToIntegerOp(t) for t in term.terms]))
+            return CoalesceOp([ToIntegerOp(t) for t in term.terms])
         if term.type == INTEGER:
             return term
-        return (ToIntegerOp(term))
+        return ToIntegerOp(term)

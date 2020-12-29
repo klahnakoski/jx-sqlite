@@ -11,7 +11,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import IsBooleanOp as ToBooleanOp_, FALSE, TRUE, is_literal
 from jx_sqlite.expressions._utils import SQLang, check
-from mo_json import BOOLEAN
+from mo_json.types import T_BOOLEAN
 
 
 class IsBooleanOp(ToBooleanOp_):

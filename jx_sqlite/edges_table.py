@@ -202,7 +202,7 @@ class EdgesTable(SetOpTable):
                     is_edge=True,
                     push_name=query_edge.name,
                     push_column_name=query_edge.name,
-                    push_column=edge_index,
+                    push_column_index=edge_index,
                     num_push_columns=num_push_columns,
                     push_child=push_child,  # CAN NOT HANDLE TUPLES IN COLUMN
                     pull=pull,
@@ -554,7 +554,7 @@ class EdgesTable(SetOpTable):
                 index_to_column[column_number] = ColumnMapping(
                     push_name=s.name,
                     push_column_name=s.name,
-                    push_column=si,
+                    push_column_index=si,
                     push_child=".",
                     pull=get_column(column_number),
                     sql=sql,
@@ -574,7 +574,7 @@ class EdgesTable(SetOpTable):
                 index_to_column[column_number] = ColumnMapping(
                     push_name=s.name,
                     push_column_name=s.name,
-                    push_column=si,
+                    push_column_index=si,
                     push_child=".",
                     pull=get_column(column_number),
                     sql=sql,
@@ -598,7 +598,7 @@ class EdgesTable(SetOpTable):
                         index_to_column[column_number] = ColumnMapping(
                             push_name=s.name,
                             push_column_name=s.name,
-                            push_column=si,
+                            push_column_index=si,
                             push_child=".",
                             pull=get_column(column_number),
                             sql=count_sql,
@@ -616,7 +616,7 @@ class EdgesTable(SetOpTable):
                         index_to_column[column_number] = ColumnMapping(
                             push_name=s.name,
                             push_column_name=s.name,
-                            push_column=si,
+                            push_column_index=si,
                             push_child=".",  # join_field(split_field(details.name)[1::]),
                             pull=sql_text_array_to_set(column_number),
                             sql=sql,
@@ -636,7 +636,7 @@ class EdgesTable(SetOpTable):
                         index_to_column[column_number] = ColumnMapping(
                             push_name=s.name,
                             push_column_name=s.name,
-                            push_column=si,
+                            push_column_index=si,
                             push_child=name,
                             pull=get_column(column_number),
                             sql=full_sql,
@@ -656,7 +656,7 @@ class EdgesTable(SetOpTable):
                         index_to_column[column_number] = ColumnMapping(
                             push_name=s.name,
                             push_column_name=s.name,
-                            push_column=si,
+                            push_column_index=si,
                             push_child=".",  # join_field(split_field(details.name)[1::]),
                             pull=get_column(column_number),
                             sql=sql,

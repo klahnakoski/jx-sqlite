@@ -99,7 +99,7 @@ class ConcatOp(ConcatOp_):
 
         return SQLScript(
             expr=expr_,
-            data_type=STRING,
+            data_type=T_STRING,
             frum=self,
             miss=self.missing(),
             many=False,

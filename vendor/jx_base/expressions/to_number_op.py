@@ -22,13 +22,13 @@ from jx_base.expressions.true_op import TRUE
 from jx_base.expressions.when_op import WhenOp
 from jx_base.language import is_op
 from mo_future import text
-from mo_json import NUMBER
+from mo_json.types import T_NUMBER
 from mo_logs import Log
 from mo_times import Date
 
 
 class ToNumberOp(Expression):
-    data_type = NUMBER
+    data_type = T_NUMBER
 
     def __init__(self, term):
         Expression.__init__(self, [term])
@@ -41,7 +41,7 @@ class ToNumberOp(Expression):
         return self.term.vars()
 
     def map(self, map_):
-        return (ToNumberOp(self.term.map(map_)))
+        return ToNumberOp(self.term.map(map_))
 
     def missing(self, lang):
         return self.term.missing(lang)
@@ -59,20 +59,24 @@ class ToNumberOp(Expression):
 
             v = term.value
             if isinstance(v, (text, Date)):
-                return (Literal(float(v)))
+                return Literal(float(v))
             elif isinstance(v, (int, float)):
                 return term
             else:
                 Log.error("can not convert {{value|json}} to number", value=term.value)
         elif is_op(term, CaseOp):  # REWRITING
             return CaseOp(
-                [WhenOp(t.when, **{"then": ToNumberOp(t.then)}) for t in term.whens[:-1]]
+                [
+                    WhenOp(t.when, **{"then": ToNumberOp(t.then)})
+                    for t in term.whens[:-1]
+                ]
                 + [ToNumberOp(term.whens[-1])]
             ).partial_eval(lang)
         elif is_op(term, WhenOp):  # REWRITING
             return WhenOp(
-                term.when, **{"then": ToNumberOp(term.then), "else": ToNumberOp(term.els_)}
+                term.when,
+                **{"then": ToNumberOp(term.then), "else": ToNumberOp(term.els_)}
             ).partial_eval(lang)
         elif is_op(term, CoalesceOp):
-            return (CoalesceOp([ToNumberOp(t) for t in term.terms]))
-        return (ToNumberOp(term))
+            return CoalesceOp([ToNumberOp(t) for t in term.terms])
+        return ToNumberOp(term)

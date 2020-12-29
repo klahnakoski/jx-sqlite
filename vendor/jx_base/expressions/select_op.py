@@ -12,6 +12,8 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions._utils import simplified
 from jx_base.expressions.expression import jx_expression, Expression, _jx_expression
+from jx_base.expressions.null_op import NULL
+from jx_base.language import is_op
 from jx_base.utils import is_variable_name
 from mo_dots import to_data, listwrap
 from mo_future import is_text
@@ -26,7 +28,9 @@ class SelectOp(Expression):
         """
         :param terms: list OF {"name":name, "value":value} DESCRIPTORS
         """
-        if not isinstance(terms, list) or not all(isinstance(term, dict) for term in terms):
+        if not isinstance(terms, list) or not all(
+            isinstance(term, dict) for term in terms
+        ):
             Log.error("expecting list of dicts")
         Expression.__init__(self, None)
         self.terms = terms

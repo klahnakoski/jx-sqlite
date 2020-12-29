@@ -11,7 +11,6 @@ from __future__ import absolute_import, division, unicode_literals
 
 
 class Table:
-
     def __init__(self, full_name):
         self.name = full_name
 

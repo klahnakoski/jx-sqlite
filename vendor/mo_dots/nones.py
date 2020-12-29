@@ -45,10 +45,10 @@ class NullType(object):
         return False
 
     def __int__(self):
-        return Null
+        return None
 
     def __float__(self):
-        return Null
+        return float
 
     def __nonzero__(self):
         return False

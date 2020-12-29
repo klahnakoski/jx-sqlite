@@ -10,6 +10,7 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+from mo_imports import export
 from jx_base.expressions.and_op import AndOp
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.first_op import FirstOp
@@ -65,3 +66,6 @@ class CoalesceOp(Expression):
             return terms[0]
         else:
             return CoalesceOp(terms)
+
+
+export("jx_base.expressions.base_multi_op", CoalesceOp)

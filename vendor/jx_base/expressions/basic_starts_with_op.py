@@ -14,7 +14,7 @@ from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.to_string_op import ToStringOp
 from jx_base.language import is_op
-from mo_json import BOOLEAN
+from mo_json.types import T_BOOLEAN
 
 
 class BasicStartsWithOp(Expression):
@@ -22,7 +22,7 @@ class BasicStartsWithOp(Expression):
     PLACEHOLDER FOR BASIC value.startsWith(find, start) (CAN NOT DEAL WITH NULLS)
     """
 
-    data_type = BOOLEAN
+    data_type = T_BOOLEAN
 
     def __init__(self, params):
         Expression.__init__(self, params)

@@ -38,8 +38,8 @@ class SQL(object):
     def __iter__(self):
         raise Log.error("not implemented")
 
-    def __len__(self):
-        return len(self.sql)
+    # def __len__(self):
+    #     return len(self.sql)
 
     def __add__(self, other):
         if not isinstance(other, SQL):

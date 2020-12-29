@@ -10,15 +10,15 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+from mo_imports import export
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.null_op import NULL
-from jx_base.expressions.true_op import TRUE
-from mo_json import BOOLEAN
+from mo_json.types import T_BOOLEAN
 
 
 class ToBooleanOp(Expression):
-    data_type = BOOLEAN
+    data_type = T_BOOLEAN
 
     def __init__(self, term):
         Expression.__init__(self, [term])
@@ -38,14 +38,14 @@ class ToBooleanOp(Expression):
 
     def partial_eval(self, lang):
         term = self.term.partial_eval(lang)
-        if term is TRUE:
-            return TRUE
-        elif term in (FALSE, NULL):
+        if term is NULL:
             return FALSE
-        elif term.type is BOOLEAN:
+        elif term.type is T_BOOLEAN:
             return term
         elif term is self.term:
             return self
 
-        exists = term.exists().partial_eval(lang)
+        exists = term.exists(lang).partial_eval(lang)
         return exists
+
+export("jx_base.expressions.and_op", ToBooleanOp)

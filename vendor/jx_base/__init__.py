@@ -23,7 +23,15 @@ from mo_dots.datas import register_data
 from mo_dots.lists import last
 from mo_future import is_text, text
 from mo_imports import export
-from mo_json import value2json, true, false, null, EXISTS, OBJECT, NESTED, python_type_to_json_type
+from mo_json import (
+    value2json,
+    true,
+    false,
+    null,
+    EXISTS,
+    OBJECT,
+    NESTED,
+)
 from mo_json.typed_encoder import EXISTS_TYPE
 from mo_logs import Log
 from mo_logs.strings import expand_template, quote

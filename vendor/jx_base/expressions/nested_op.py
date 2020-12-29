@@ -22,13 +22,14 @@ from jx_base.expressions.or_op import OrOp
 from jx_base.expressions.true_op import TRUE
 from jx_base.language import is_op
 from mo_dots import Null, startswith_field, coalesce, listwrap
-from mo_json import BOOLEAN
+from mo_imports import export
+from mo_json.types import T_BOOLEAN
 
 select_nothing = ESSelectOp()
 
 
 class NestedOp(Expression):
-    data_type = BOOLEAN
+    data_type = T_BOOLEAN
     has_simple_form = False
 
     __slots__ = ["path", "select", "where", "sort", "limit"]
@@ -43,7 +44,7 @@ class NestedOp(Expression):
 
     def partial_eval(self, lang):
         if self.missing(lang) is TRUE:
-            return (NestedOp(path=self.path.partial_eval(lang), where=FALSE))
+            return NestedOp(path=self.path.partial_eval(lang), where=FALSE)
         return NestedOp(
             self.path.partial_eval(lang),
             self.select.partial_eval(lang),
@@ -131,3 +132,6 @@ class NestedOp(Expression):
     @property
     def many(self):
         return True
+
+
+export("jx_base.expressions.basic_in_op", NestedOp)

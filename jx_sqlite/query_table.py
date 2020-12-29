@@ -170,10 +170,10 @@ class QueryTable(GroupbyTable, Facts):
             output = QueryTable(new_table, db=self.db, uid=self.uid, exists=True)
         elif query.format == "cube" or (not query.format and query.edges):
             column_names = [None] * (
-                max(c.push_column for c in index_to_columns.values()) + 1
+                max(c.push_column_index for c in index_to_columns.values()) + 1
             )
             for c in index_to_columns.values():
-                column_names[c.push_column] = c.push_column_name
+                column_names[c.push_column_index] = c.push_column_name
 
             if len(query.edges) == 0 and len(query.groupby) == 0:
                 data = {n: Data() for n in column_names}
@@ -323,28 +323,28 @@ class QueryTable(GroupbyTable, Facts):
             )
         elif query.format == "table" or (not query.format and query.groupby):
             column_names = [None] * (
-                max(c.push_column for c in index_to_columns.values()) + 1
+                max(c.push_column_index for c in index_to_columns.values()) + 1
             )
             for c in index_to_columns.values():
-                column_names[c.push_column] = c.push_column_name
+                column_names[c.push_column_index] = c.push_column_name
             data = []
             for d in result.data:
                 row = [None for _ in column_names]
                 for s in index_to_columns.values():
                     if s.push_child == ".":
-                        row[s.push_column] = s.pull(d)
+                        row[s.push_column_index] = s.pull(d)
                     elif s.num_push_columns:
-                        tuple_value = row[s.push_column]
+                        tuple_value = row[s.push_column_index]
                         if tuple_value == None:
-                            tuple_value = row[s.push_column] = (
+                            tuple_value = row[s.push_column_index] = (
                                 [None] * s.num_push_columns
                             )
                         tuple_value[s.push_child] = s.pull(d)
-                    elif row[s.push_column] == None:
-                        row[s.push_column] = Data()
-                        row[s.push_column][s.push_child] = s.pull(d)
+                    elif row[s.push_column_index] == None:
+                        row[s.push_column_index] = Data()
+                        row[s.push_column_index][s.push_child] = s.pull(d)
                     else:
-                        row[s.push_column][s.push_child] = s.pull(d)
+                        row[s.push_column_index][s.push_child] = s.pull(d)
                 data.append(tuple(unwrap(r) for r in row))
 
             output = Data(meta={"format": "table"}, header=column_names, data=data)

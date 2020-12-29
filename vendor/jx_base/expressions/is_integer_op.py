@@ -28,7 +28,7 @@ class IsIntegerOp(Expression):
         return self.term.vars()
 
     def map(self, map_):
-        return (IsIntegerOp(self.term.map(map_)))
+        return IsIntegerOp(self.term.map(map_))
 
     def missing(self, lang):
         return self.expr.missing()

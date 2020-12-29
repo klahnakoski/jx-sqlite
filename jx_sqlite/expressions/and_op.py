@@ -13,7 +13,7 @@ from jx_base.expressions import AndOp as AndOp_
 from jx_sqlite.expressions._utils import SQLang, check, SQLScript
 from jx_sqlite.expressions.to_boolean_op import ToBooleanOp
 from jx_sqlite.sqlite import SQL_AND, SQL_FALSE, SQL_TRUE, sql_iso
-from mo_json import BOOLEAN
+from mo_json.types import T_BOOLEAN
 from mo_json.types import T_BOOLEAN
 
 
@@ -24,7 +24,7 @@ class AndOp(AndOp_):
             return SQLScript(data_type=T_BOOLEAN, expr=SQL_TRUE, frum=self)
         elif all(self.terms):
             return SQLScript(
-                data_type=BOOLEAN,
+                data_type=T_BOOLEAN,
                 expr=SQL_AND.join([
                     sql_iso(ToBooleanOp(t).partial_eval(SQLang).to_sql(schema))
                     for t in self.terms
@@ -32,4 +32,4 @@ class AndOp(AndOp_):
                 frum=self,
             )
         else:
-            return SQLScript(data_type=BOOLEAN, expr=SQL_FALSE, frum=self)
+            return SQLScript(data_type=T_BOOLEAN, expr=SQL_FALSE, frum=self)

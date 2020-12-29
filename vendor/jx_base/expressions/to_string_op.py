@@ -19,10 +19,11 @@ from jx_base.expressions.literal import is_literal
 from jx_base.expressions.null_op import NULL
 from jx_base.language import is_op
 from mo_json import STRING, IS_NULL
+from mo_json.types import T_STRING
 
 
 class ToStringOp(Expression):
-    data_type = STRING
+    data_type = T_STRING
 
     def __init__(self, term):
         Expression.__init__(self, [term])
@@ -35,7 +36,7 @@ class ToStringOp(Expression):
         return self.term.vars()
 
     def map(self, map_):
-        return (ToStringOp(self.term.map(map_)))
+        return ToStringOp(self.term.map(map_))
 
     def missing(self, lang):
         return self.term.missing(lang)
@@ -48,14 +49,12 @@ class ToStringOp(Expression):
         if is_op(term, ToStringOp):
             return term.term.partial_eval(lang)
         elif is_op(term, CoalesceOp):
-            return CoalesceOp([
-                (ToStringOp(t)).partial_eval(lang) for t in term.terms
-            ])
+            return CoalesceOp([(ToStringOp(t)).partial_eval(lang) for t in term.terms])
         elif is_literal(term):
             if term.type == STRING:
                 return term
             else:
-                return (Literal(mo_json.value2json(term.value)))
+                return Literal(mo_json.value2json(term.value))
         return self
 
     def __eq__(self, other):

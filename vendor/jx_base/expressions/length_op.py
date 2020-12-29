@@ -37,7 +37,7 @@ class LengthOp(Expression):
         return self.term.vars()
 
     def map(self, map_):
-        return (LengthOp(self.term.map(map_)))
+        return LengthOp(self.term.map(map_))
 
     def missing(self, lang):
         return self.term.missing(lang)
@@ -46,8 +46,8 @@ class LengthOp(Expression):
         term = self.term.partial_eval(lang)
         if is_literal(term):
             if is_text(term.value):
-                return (Literal(len(term.value)))
+                return Literal(len(term.value))
             else:
                 return NULL
         else:
-            return (LengthOp(term))
+            return LengthOp(term)

@@ -76,7 +76,7 @@ def to_sql(self, schema):
 @check
 def to_sql(self, schema):
     return SQLScript(
-        data_type=BOOLEAN, expr=SQL_TRUE, frum=self, miss=FalseOp, schema=schema
+        data_type=T_BOOLEAN, expr=SQL_TRUE, frum=self, miss=FalseOp, schema=schema
     )
 
 
@@ -84,7 +84,7 @@ def to_sql(self, schema):
 @check
 def to_sql(self, schema):
     return SQLScript(
-        data_type=BOOLEAN, expr=SQL_FALSE, frum=self, miss=FalseOp, schema=schema
+        data_type=T_BOOLEAN, expr=SQL_FALSE, frum=self, miss=FalseOp, schema=schema
     )
 
 
@@ -95,7 +95,7 @@ def _inequality_to_sql(self, schema):
     sql = sql_iso(lhs) + op + sql_iso(rhs)
 
     output = SQLScript(
-        data_type=BOOLEAN,
+        data_type=T_BOOLEAN,
         expr=sql,
         frum=self,
         miss=OrOp([self.lhs.missing(), self.rhs.missing()]),

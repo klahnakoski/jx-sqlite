@@ -17,13 +17,14 @@ from jx_base.expressions.literal import NULL
 from jx_base.expressions.not_op import NotOp
 from jx_base.expressions.or_op import OrOp
 from jx_base.expressions.true_op import TRUE
-from jx_base.expressions.when_op import WhenOp
 from jx_base.language import is_op
 from mo_dots import is_sequence
 from mo_future import first
-from mo_imports import export
+from mo_imports import expect
 from mo_json import OBJECT, BOOLEAN
 from mo_logs import Log
+
+WhenOp = expect("WhenOp")
 
 
 class CaseOp(Expression):
@@ -66,10 +67,7 @@ class CaseOp(Expression):
             elif when is TRUE:
                 m = w.then.partial_eval(lang).missing(lang)
             else:
-                m = OrOp([
-                    AndOp([when, w.then.partial_eval(lang).missing(lang)]),
-                    m,
-                ])
+                m = OrOp([AndOp([when, w.then.partial_eval(lang).missing(lang)]), m,])
         return m.partial_eval(lang)
 
     def invert(self, lang):
@@ -94,18 +92,14 @@ class CaseOp(Expression):
             elif when is FALSE:
                 pass
             else:
-                whens.append(WhenOp(
-                    when, **{"then": w.then.partial_eval(lang)}
-                ))
+                whens.append(WhenOp(when, **{"then": w.then.partial_eval(lang)}))
         else:
             whens.append((self.whens[-1]).partial_eval(lang))
 
         if len(whens) == 1:
             return whens[0]
         elif len(whens) == 2:
-            return WhenOp(
-                whens[0].when, **{"then": whens[0].then, "else": whens[1]}
-            )
+            return WhenOp(whens[0].when, **{"then": whens[0].then, "else": whens[1]})
         else:
             return CaseOp(whens)
 
@@ -116,7 +110,3 @@ class CaseOp(Expression):
             return OBJECT
         else:
             return first(types)
-
-
-export("jx_base.expressions.eq_op", CaseOp)
-export("jx_base.expressions.first_op", CaseOp)

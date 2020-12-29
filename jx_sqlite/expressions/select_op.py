@@ -57,7 +57,7 @@ class SelectOp(SelectOp_):
                         "value": Variable(col.es_column, col.jx_type),
                     })
             else:
-                type |= name + expr.type
+                type |= name + ToJsonType(expr.type)
                 sql_terms.append({"name": name, "value": expr})
 
         if diff:

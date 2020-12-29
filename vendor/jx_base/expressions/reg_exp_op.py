@@ -13,12 +13,12 @@ from __future__ import absolute_import, division, unicode_literals
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.true_op import TRUE
-from mo_json import BOOLEAN
+from mo_json.types import T_BOOLEAN
 
 
 class RegExpOp(Expression):
     has_simple_form = True
-    data_type = BOOLEAN
+    data_type = T_BOOLEAN
 
     def __init__(self, terms):
         Expression.__init__(self, terms)
@@ -31,7 +31,7 @@ class RegExpOp(Expression):
         return {self.var}
 
     def map(self, map_):
-        return (RegExpOp([self.var.map(map_), self.pattern]))
+        return RegExpOp([self.var.map(map_), self.pattern])
 
     def missing(self, lang):
         return FALSE

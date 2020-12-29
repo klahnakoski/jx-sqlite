@@ -304,7 +304,7 @@ def pretty_json(value):
 
                 Log.error(
                     "problem making dict pretty: keys={{keys}}:",
-                    keys=[k for k in value.keys()],
+                    keys=list(value.keys()),
                     cause=cause,
                 )
         elif value.__class__ in (binary_type, text):

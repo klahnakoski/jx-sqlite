@@ -23,9 +23,9 @@ class AbsOp(AbsOp_):
         expr = IsNumberOp(self.term).partial_eval(SQLang).to_sql(schema)
         if not expr:
             return SQLScript(
-                expr=SQL_NULL, data_type=IS_NULL, frum=self, miss=TRUE, schema=schema,
+                expr=SQL_NULL, data_type=T_IS_NULL, frum=self, miss=TRUE, schema=schema,
             )
 
         return SQLScript(
-            expr=sql_call("ABS", expr), data_type=NUMBER, frum=self, schema=schema,
+            expr=sql_call("ABS", expr), data_type=T_NUMBER, frum=self, schema=schema,
         )
