@@ -30,9 +30,10 @@ class SelectOp(SelectOp_):
                 cols = list(schema.leaves(var_name))
                 if len(cols) == 1:
                     col0 = cols[0]
-                    type |= col0.es_column + ToJsonType(col0.jx_type)
-                    sql_terms.append({"name": name, "value": expr})
-                    continue
+                    if col0.es_column == var_name:
+                        type |= col0.es_column + ToJsonType(col0.jx_type)
+                        sql_terms.append({"name": name, "value": expr})
+                        continue
 
                 diff = True
                 for col in cols:

@@ -92,3 +92,4 @@ class OrOp(Expression):
 
 export("jx_base.expressions.and_op", OrOp)
 export("jx_base.expressions.base_binary_op", OrOp)
+export("jx_base.expressions.base_multi_op", OrOp)

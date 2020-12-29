@@ -393,7 +393,7 @@ def UNION(values, *others):
 
     output = set()
     for v in values:
-        if values == None:
+        if v == None:
             continue
         if is_container(v):
             output.update(v)

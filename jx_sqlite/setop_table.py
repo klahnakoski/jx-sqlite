@@ -55,7 +55,7 @@ from mo_dots import (
     startswith_field,
     unwrap,
     unwraplist,
-    exists,
+    exists, to_data,
 )
 from mo_future import text, unichr
 from mo_json.types import IS_NULL, STRUCT, FromJsonType
@@ -335,15 +335,14 @@ class SetOpTable(InsertTable):
                     }],
                 )
             else:
+                key = query.select.name
+
                 num_rows = len(data)
-                map_index_to_name = {
-                    c.push_column_index: c.push_column_name for c in cols
-                }
-                temp_data = [data]
+                temp_data = [d[key] for d in data]
 
                 return Data(
                     meta={"format": "cube"},
-                    data={n: temp_data[c] for c, n in map_index_to_name.items()},
+                    data={key: temp_data},
                     edges=[{
                         "name": "rownum",
                         "domain": {
@@ -356,25 +355,6 @@ class SetOpTable(InsertTable):
                 )
 
         elif query.format == "table":
-            # for f, _ in self.snowflake.tables:
-            #     if frum.endswith(f):
-            #         num_column = MAX([c.push_column_index for c in cols]) + 1
-            #         header = [None] * num_column
-            #         for c in cols:
-            #             header[c.push_column_index] = c.push_column_name
-            #
-            #         output_data = []
-            #         for d in result.data:
-            #             row = [None] * num_column
-            #             for c in cols:
-            #                 set_column(row, c.push_column_index, c.push_child, c.pull(d))
-            #             output_data.append(row)
-            #
-            #         return Data(
-            #             meta={"format": "table"},
-            #             header=header,
-            #             data=output_data
-            #         )
             if is_list(query.select) or is_op(query.select.value, LeavesOp):
                 num_cols = max(c.push_column_index for c in cols) + 1
                 columns = [None] * num_cols
@@ -393,47 +373,24 @@ class SetOpTable(InsertTable):
                     data=temp_data,
                 )
             else:
-                column_names = listwrap(query.select).name
+                key = query.select.name
+
                 return Data(
                     meta={"format": "table"},
-                    header=columns_names,
-                    data=[[d] for d in data],
+                    header=[key],
+                    data=[[d[key]] for d in data],
                 )
 
         else:
-            # for f, _ in self.snowflake.tables:
-            #     if frum.endswith(f) or (test_dots(cols) and is_list(query.select)):
-            #         data = []
-            #         for d in result.data:
-            #             row = Data()
-            #             for c in cols:
-            #                 if c.push_child == ".":
-            #                     row[c.push_name] = c.pull(d)
-            #                 elif c.num_push_columns:
-            #                     tuple_value = row[c.push_name]
-            #                     if not tuple_value:
-            #                         tuple_value = row[c.push_name] = [None] * c.num_push_columns
-            #                     tuple_value[c.push_child] = c.pull(d)
-            #                 else:
-            #                     row[c.push_name][c.push_child] = c.pull(d)
-            #
-            #             data.append(row)
-            #
-            #         return Data(
-            #             meta={"format": "list"},
-            #             data=data
-            #         )
-
             if is_list(query.select) or is_op(query.select.value, LeavesOp):
                 temp_data = []
                 for rownum, d in enumerate(data):
-                    row = {}
-                    for c in cols:
-                        row[c.push_column_name] = d[c.push_name]
+                    row = {c.push_column_name: d[c.push_name] for c in cols}
                     temp_data.append(row)
                 return Data(meta={"format": "list"}, data=temp_data)
             else:
-                return Data(meta={"format": "list"}, data=data)
+                values = to_data(data).get(query.select.name)
+                return Data(meta={"format": "list"}, data=values)
 
     def _make_sql_for_one_nest_in_set_op(
         self,
