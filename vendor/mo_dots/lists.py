@@ -99,6 +99,8 @@ class FlatList(object):
         """
         simple `select`
         """
+        if key == ".":
+            return self
         output = []
         for v in _get(self, LIST):
             element = datawrap(v).get(key)

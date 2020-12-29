@@ -332,9 +332,11 @@ class SetOpTable(InsertTable):
                 )
             else:
                 key = query.select.name
-
                 num_rows = len(data)
-                temp_data = [d[key] for d in data]
+                if key == ".":
+                    temp_data = data
+                else:
+                    temp_data = [d[key] for d in data]
 
                 return Data(
                     meta={"format": "cube"},
@@ -360,22 +362,28 @@ class SetOpTable(InsertTable):
 
                 temp_data = []
                 for rownum, d in enumerate(data):
-                    row = [d[push_name] for push_name in push_names]
+                    row = tuple(d[push_name] for push_name in push_names)
                     temp_data.append(row)
 
                 return Data(
                     meta={"format": "table"},
-                    header=[c.push_column_name for c in columns],
+                    header=tuple(c.push_column_name for c in columns),
                     data=temp_data,
                 )
             else:
                 key = query.select.name
-
-                return Data(
-                    meta={"format": "table"},
-                    header=[key],
-                    data=[[d[key]] for d in data],
-                )
+                if key==".":
+                    return Data(
+                        meta={"format": "table"},
+                        header=(key, ),
+                        data=[(d, ) for d in data],
+                    )
+                else:
+                    return Data(
+                        meta={"format": "table"},
+                        header=(key, ),
+                        data=[(d[key], ) for d in data],
+                    )
 
         else:
             if is_list(query.select) or is_op(query.select.value, LeavesOp):

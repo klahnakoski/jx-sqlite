@@ -250,7 +250,6 @@ Column = DataClass(
         "es_index",
         "es_type",
         "jx_type",
-        {"name": "useSource", "default": False},
         "nested_path",  # AN ARRAY OF PATHS (FROM DEEPEST TO SHALLOWEST) INDICATING THE JSON SUB-ARRAYS
         {"name": "count", "nulls": True},
         {"name": "cardinality", "nulls": True},
@@ -268,7 +267,7 @@ Column = DataClass(
             "else": True,
         },
         {
-            "when": {"eq": {"name": "."}},
+            "when": {"eq": {"es_column": "."}},
             "then": {"in": {"jx_type": ["nested", "object"]}},
             "else": True,
         },
