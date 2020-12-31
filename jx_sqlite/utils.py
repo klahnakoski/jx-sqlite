@@ -16,7 +16,7 @@ from math import isnan
 
 from jx_base import DataClass
 from jx_base import Snowflake
-from jx_sqlite.sqlite import quote_column
+from jx_sqlite.sqlite import quote_column, SQL
 from mo_dots import (
     Data,
     concat_field,
@@ -88,6 +88,14 @@ def get_jx_type(v):
     elif is_sequence(v):
         return NESTED
     return None
+
+
+def table_alias(i):
+    """
+    :param i:
+    :return:
+    """
+    return "__t" + text(i) + "__"
 
 
 def get_document_value(document, column):

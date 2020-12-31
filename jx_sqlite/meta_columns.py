@@ -9,6 +9,8 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
+from copy import copy
+
 import jx_base
 from jx_base import Table, Container, Column, Schema
 from jx_base.meta_columns import (
@@ -30,7 +32,7 @@ from mo_dots import (
     startswith_field,
     tail_field,
     unwraplist,
-    wrap,
+    wrap, list_to_data,
 )
 from mo_json import STRUCT, IS_NULL
 from mo_json.typed_encoder import unnest_path, untyped
@@ -69,12 +71,12 @@ class ColumnList(Table, Container):
         self.es_index = None
         self.last_load = Null
         self.todo = Queue("update columns to es")  # HOLD (action, column) PAIR, WHERE action in ['insert', 'update']
-        self._snowflakes = Data()
+        self._snowflakes = {}
         self._load_from_database()
 
     def _query(self, query):
         result = Data()
-        curr = self.es_cluster.execute(query)
+        curr = self.db.execute(query)
         result.meta.format = "table"
         result.header = [d[0] for d in curr.description] if curr.description else None
         result.data = curr.fetchall()
@@ -87,7 +89,7 @@ class ColumnList(Table, Container):
             "where": {"eq": {"type": "table"}},
             "orderby": "name",
         }))
-        tables = wrap([
+        tables = list_to_data([
             {k: d for k, d in zip(result.header, row)} for row in result.data
         ])
         last_nested_path = ["."]
@@ -108,7 +110,7 @@ class ColumnList(Table, Container):
                     last_nested_path = []
 
             full_nested_path = [nested_path] + last_nested_path
-            self._snowflakes[literal_field(base_table)] += [full_nested_path]
+            self._snowflakes.setdefault(base_table, []).append(full_nested_path)
 
             # LOAD THE COLUMNS
             details = self.db.about(table.name)
@@ -119,7 +121,7 @@ class ColumnList(Table, Container):
                 cname, ctype = untyped_column(name)
                 self.add(Column(
                     name=cname,
-                    jx_type=coalesce(sql_type_to_json_type.get(ctype), IS_NULL),
+                    jx_type=coalesce(sql_type_to_json_type.get(ctype), sql_type_to_json_type.get(dtype), IS_NULL),
                     nested_path=full_nested_path,
                     es_type=dtype,
                     es_column=name,
@@ -129,15 +131,24 @@ class ColumnList(Table, Container):
                 ))
             last_nested_path = full_nested_path
 
-    def find(self, es_index, abs_column_name=None):
-        with self.locker:
-            if es_index.startswith("meta."):
-                self._update_meta()
+    def find(self, fact_table, abs_column_name=None):
+        try:
+            with self.locker:
+                if fact_table.startswith("meta."):
+                    self._update_meta()
 
-            if not abs_column_name:
-                return [c for cs in self.data.get(es_index, {}).values() for c in cs]
-            else:
-                return self.data.get(es_index, {}).get(abs_column_name, [])
+                if not abs_column_name:
+                    return [
+                        cc
+                        for table, cs in self.data.items()
+                        if startswith_field(table, fact_table)
+                        for c in cs.values()
+                        for cc in c
+                    ]
+                else:
+                    return self.data.get(fact_table, {}).get(abs_column_name, [])
+        except Exception as cause:
+            Log.error("not expected", cause=cause)
 
     def extend(self, columns):
         self.dirty = True
@@ -165,10 +176,10 @@ class ColumnList(Table, Container):
     def _add(self, column):
         """
         :param column: ANY COLUMN OBJECT
-        :return:  None IF column IS canonical ALREADY (NET-ZERO EFFECT)
+        :return: None IF column IS canonical ALREADY (NET-ZERO EFFECT)
         """
         columns_for_table = self.data.setdefault(column.es_index, {})
-        existing_columns = columns_for_table.setdefault(column.name, [])
+        existing_columns = columns_for_table.setdefault(column.es_column, [])
 
         for canonical in existing_columns:
             if canonical is column:
@@ -254,7 +265,7 @@ class ColumnList(Table, Container):
     def update(self, command):
         self.dirty = True
         try:
-            command = wrap(command)
+            command = list_to_data(command)
             DEBUG and Log.note(
                 "Update {{timestamp}}: {{command|json}}",
                 command=command,
@@ -383,6 +394,13 @@ class ColumnList(Table, Container):
         if table_name != META_COLUMNS_NAME:
             Log.error("this container has only the " + META_COLUMNS_NAME)
         return self._all_columns()
+
+    def get_query_paths(self, fact_name):
+        """
+        RETURN LIST OF QUERY PATHS FOR GIVEN FACT
+        :return:
+        """
+        return copy(self._snowflakes[fact_name])
 
     def denormalized(self):
         """

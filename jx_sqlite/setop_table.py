@@ -13,7 +13,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base import Column, jx_expression
 from jx_base.language import is_op
-from jx_sqlite.expressions._utils import SQLang, sql_type_to_json_type
+from jx_sqlite.expressions._utils import SQLang
 from jx_sqlite.expressions.leaves_op import LeavesOp
 from jx_sqlite.expressions.to_boolean_op import ToBooleanOp
 from jx_sqlite.insert_table import InsertTable
@@ -34,7 +34,7 @@ from jx_sqlite.sqlite import (
     ConcatSQL,
     SQL_STAR,
     SQL_EQ,
-    SQL_ZERO, SQL_GT,
+    SQL_ZERO, SQL_GT, SQL_DESC,
 )
 from jx_sqlite.sqlite import quote_column, quote_value, sql_alias
 from jx_sqlite.utils import (
@@ -44,7 +44,7 @@ from jx_sqlite.utils import (
     _make_column_name,
     get_column,
     UID,
-    PARENT,
+    PARENT, table_alias,
 )
 from mo_dots import (
     Data,
@@ -53,12 +53,10 @@ from mo_dots import (
     is_list,
     listwrap,
     startswith_field,
-    unwrap,
     unwraplist,
-    exists, to_data,
-)
-from mo_future import text, unichr
-from mo_json.types import IS_NULL, STRUCT, FromJsonType
+    exists, to_data, )
+from mo_future import text
+from mo_json.types import IS_NULL, FromJsonType
 from mo_logs import Log
 from mo_math import UNION
 from mo_times import Date
@@ -75,7 +73,7 @@ class SetOpTable(InsertTable):
 
         active_columns = {".": set()}
         for v in vars_:
-            for c in schema.leaves(v):
+            for c in schema.snowflake.leaves(v):
                 nest = c.nested_path[0]
                 active_columns.setdefault(nest, set()).add(c)
 
@@ -98,7 +96,7 @@ class SetOpTable(InsertTable):
         index_to_uid = {}  # FROM NESTED PATH TO THE INDEX OF UID
         sql_selects = []  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE)
         nest_to_alias = {
-            nested_path[0]: "__" + unichr(ord("a") + i) + "__"
+            nested_path: table_alias(i)
             for i, nested_path in enumerate(self.snowflake.query_paths)
         }
 
@@ -110,42 +108,40 @@ class SetOpTable(InsertTable):
                 # SQL HAS ABS TABLE REFERENCE
                 column_alias = _make_column_name(column_number)
                 sql_selects.append(sql_alias(sql, column_alias))
+                sorts.append(quote_column(column_alias) + SQL_IS_NULL)
+                sorts.append(quote_column(column_alias))
                 if select.sort == -1:
-                    sorts.append(quote_column(column_alias) + SQL_IS_NULL)
-                    sorts.append(quote_column(column_alias) + " DESC")
-                else:
-                    sorts.append(quote_column(column_alias) + SQL_IS_NULL)
-                    sorts.append(quote_column(column_alias))
+                    sorts.append(SQL_DESC)
 
         primary_doc_details = Data()
         # EVERY SELECT STATEMENT THAT WILL BE REQUIRED, NO MATTER THE DEPTH
         # WE WILL CREATE THEM ACCORDING TO THE DEPTH REQUIRED
-        nested_path = []
         for step, sub_table in self.snowflake.tables:
-            nested_path.insert(0, step)
             nested_doc_details = {
                 "sub_table": sub_table,
                 "children": [],
-                "index_to_column": {},
-                "nested_path": nested_path,
+                "index_to_column": {}
             }
 
             # INSERT INTO TREE
             if not primary_doc_details:
                 primary_doc_details = nested_doc_details
+                nested_doc_details['nested_path'] = ['.']
             else:
 
                 def place(parent_doc_details):
                     if step == parent_doc_details["nested_path"][0]:
-                        pass  # IGNORE
-                    elif startswith_field(step, parent_doc_details["nested_path"][0]):
+                        return True
+                    if startswith_field(step, parent_doc_details["nested_path"][0]):
                         for c in parent_doc_details["children"]:
                             if place(c):
                                 return True
                         parent_doc_details["children"].append(nested_doc_details)
+                        nested_doc_details['nested_path'] = [step]+parent_doc_details['nested_path']
 
                 place(primary_doc_details)
 
+            nested_path = nested_doc_details['nested_path']
             alias = nested_doc_details["alias"] = nest_to_alias[step]
 
             # WE ALWAYS ADD THE UID
@@ -153,13 +149,14 @@ class SetOpTable(InsertTable):
             sql_select = quote_column(alias, UID)
             sql_selects.append(sql_alias(sql_select, _make_column_name(column_number)))
             if step != ".":
-                # ID AND ORDER FOR CHILD TABLES
+                # ID FOR CHILD TABLE
                 index_to_column[column_number] = ColumnMapping(
                     sql=sql_select,
                     type="number",
                     nested_path=nested_path,
                     column_alias=_make_column_name(column_number),
                 )
+                # ORDER FOR CHILD TABLE
                 column_number = len(sql_selects)
                 sql_select = quote_column(alias, ORDER)
                 sql_selects.append(sql_alias(
@@ -221,13 +218,15 @@ class SetOpTable(InsertTable):
             quote_value(query.limit),
         )
         result = self.db.query(ordered_sql)
+        rows = result.data
 
         def _accumulate_nested(
-            rows, row, nested_doc_details, parent_doc_id, parent_id_coord
+            rownum, nested_doc_details, parent_doc_id, parent_id_coord
         ):
             """
-            :param rows: REVERSED STACK OF ROWS (WITH push() AND pop())
             :param row: CURRENT ROW BEING EXTRACTED
+            :param rownum: index into rows for row
+            :param rows: all the rows
             :param nested_doc_details: {
                     "nested_path": wrap_nested_path(nested_path),
                     "index_to_column": map from column number to column details
@@ -235,7 +234,7 @@ class SetOpTable(InsertTable):
                  }
             :param parent_doc_id: the id of the parent doc (for detecting when to step out of loop)
             :param parent_id_coord: the column number for the parent id (so we ca extract from each row)
-            :return: the nested property (usually an array)
+            :return: the nested property (usually an array), rownum
             """
             previous_doc_id = None
             doc = Null
@@ -247,14 +246,15 @@ class SetOpTable(InsertTable):
             )
 
             while True:
+                row = rows[rownum]
                 doc_id = row[id_coord]
 
                 if doc_id == None or (
                     parent_id_coord is not None
                     and row[parent_id_coord] != parent_doc_id
                 ):
-                    rows.append(row)  # UNDO PREVIOUS POP (RECORD IS NOT A NESTED RECORD OF parent_doc)
-                    return output
+                    rownum -= 1  # NEXT DOCUMENT, BACKUP A BIT
+                    return rownum, output
 
                 if doc_id != previous_doc_id:
                     previous_doc_id = doc_id
@@ -274,8 +274,8 @@ class SetOpTable(InsertTable):
                     # EACH NESTED TABLE MUST BE ASSEMBLED INTO A LIST OF OBJECTS
                     child_id = row[child_details["id_coord"]]
                     if child_id is not None:
-                        nested_value = _accumulate_nested(
-                            rows, row, child_details, doc_id, id_coord
+                        rownum, nested_value = _accumulate_nested(
+                            rownum, child_details, doc_id, id_coord
                         )
                         if nested_value != None:
                             push_name = child_details["nested_path"][0]
@@ -296,17 +296,14 @@ class SetOpTable(InsertTable):
 
                 output.append(doc)
 
-                try:
-                    row = rows.pop()
-                except IndexError:
-                    return output
+                rownum += 1
+                if rownum >= len(rows):
+                    return rownum, output
 
         cols = tuple(i for i in index_to_column.values() if i.push_name != None)
-        # TODO: VERY EXPENSIVE TO reverse() ALL DATA!
-        rows = list(reversed(unwrap(result.data)))
+
         if rows:
-            row = rows.pop()
-            data = _accumulate_nested(rows, row, primary_doc_details, None, None)
+            _, data = _accumulate_nested(0, primary_doc_details, None, None)
         else:
             data = result.data
 
@@ -422,11 +419,12 @@ class SetOpTable(InsertTable):
         done = []
 
         # STATEMENT FOR EACH NESTED PATH
-        for i, (nested_path, sub_table) in enumerate(self.snowflake.tables):
+        tables = self.snowflake.tables
+        for i, (nested_path, sub_table_name) in enumerate(tables):
             if any(startswith_field(nested_path, d) for d in done):
                 continue
 
-            alias = "__" + unichr(ord("a") + i) + "__"
+            alias = table_alias(i)
 
             if primary_nested_path == nested_path:
                 select_clause = []
@@ -455,7 +453,7 @@ class SetOpTable(InsertTable):
                 else:
                     from_clause.append(SQL_LEFT_JOIN)
                     from_clause.append(sql_alias(
-                        quote_column(self.snowflake.fact_name, sub_table.name), alias
+                        quote_column(sub_table_name), alias
                     ))
                     from_clause.append(SQL_ON)
                     from_clause.append(quote_column(alias, PARENT))
@@ -479,10 +477,10 @@ class SetOpTable(InsertTable):
                         quote_column(self.snowflake.fact_name), alias
                     ))
                 else:
-                    parent_alias = alias = unichr(ord("a") + i - 1)
+                    parent_alias = alias = table_alias(i)
                     from_clause.append(SQL_LEFT_JOIN)
                     from_clause.append(sql_alias(
-                        quote_column(self.snowflake.fact_name, sub_table.name), alias
+                        quote_column(sub_table_name), alias
                     ))
                     from_clause.append(SQL_ON)
                     from_clause.append(quote_column(alias, PARENT))
@@ -503,7 +501,7 @@ class SetOpTable(InsertTable):
                 from_clause.append(ConcatSQL(
                     SQL_LEFT_JOIN,
                     sql_alias(
-                        quote_column(self.snowflake.fact_name, sub_table.name), alias
+                        quote_column(sub_table_name), alias
                     ),
                     SQL_ON,
                     quote_column(alias, PARENT),

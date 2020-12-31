@@ -503,9 +503,14 @@ class RegisterThread(object):
                     "Thread {{thread|quote}} has not joined with child threads {{children|json}}",
                     children=[c.name for c in self.thread.children],
                     thread=self.thread.name
+
                 )
-        with all_lock:
-            del all[self.thread.id]
+        try:
+            with all_lock:
+                del all[self.thread.id]
+        except KeyError as cause:
+            pass
+
 
 
 def register_thread(func):

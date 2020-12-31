@@ -25,7 +25,7 @@ from jx_sqlite.utils import (
     untyped_column,
     PARENT,
     UID,
-    DIGITS_TABLE,
+    DIGITS_TABLE, table_alias,
 )
 from jx_sqlite.expressions._utils import SQLang, sql_type_to_json_type
 from jx_sqlite.expressions.tuple_op import TupleOp
@@ -91,7 +91,7 @@ class EdgesTable(SetOpTable):
         outer_selects = []  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE)
         base_table, path = schema.snowflake.fact_name, schema.nested_path
         nest_to_alias = {
-            nested_path: "__" + unichr(ord("a") + i) + "__"
+            nested_path: table_alias(i)
             for i, (nested_path, sub_table) in enumerate(self.snowflake.tables)
         }
 

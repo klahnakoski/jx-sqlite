@@ -18,7 +18,7 @@ from jx_sqlite.utils import (
     get_column,
     sql_aggs,
     PARENT,
-    UID,
+    UID, table_alias,
 )
 from jx_sqlite.edges_table import EdgesTable
 from jx_sqlite.expressions._utils import SQLang, sql_type_to_json_type
@@ -54,7 +54,7 @@ class GroupbyTable(EdgesTable):
         # schema = self.snowflake.tables[path].schema
         index_to_column = {}
         nest_to_alias = {
-            nested_path: "__" + unichr(ord("a") + i) + "__"
+            nested_path: table_alias(i)
             for i, nested_path in enumerate(self.schema.snowflake.query_paths)
         }
         tables = []

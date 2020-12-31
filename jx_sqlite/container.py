@@ -17,7 +17,7 @@ from jx_sqlite.sqlite import (
     SQL_SELECT,
     SQL_FROM,
     SQL_UPDATE,
-    SQL_SET,
+    SQL_SET, ConcatSQL,
 )
 from jx_sqlite.sqlite import (
     Sqlite,
@@ -74,21 +74,21 @@ class Container(object):
                 with self.db.transaction() as t:
                     top_id = first(first(
                         t
-                        .query(
-                            SQL_SELECT
-                            + quote_column("next_id")
-                            + SQL_FROM
-                            + quote_column(ABOUT_TABLE)
-                        )
+                        .query(ConcatSQL(
+                            SQL_SELECT,
+                            quote_column("next_id"),
+                            SQL_FROM,
+                            quote_column(ABOUT_TABLE)
+                        ))
                         .data
                     ))
                     max_id = top_id + 1000
-                    t.execute(
-                        SQL_UPDATE
-                        + quote_column(ABOUT_TABLE)
-                        + SQL_SET
-                        + sql_eq(next_id=max_id)
-                    )
+                    t.execute(ConcatSQL(
+                        SQL_UPDATE,
+                        quote_column(ABOUT_TABLE),
+                        SQL_SET,
+                        sql_eq(next_id=max_id)
+                    ))
                 while top_id < max_id:
                     yield top_id
                     top_id += 1

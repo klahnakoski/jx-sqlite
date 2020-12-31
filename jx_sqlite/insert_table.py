@@ -41,7 +41,7 @@ from mo_dots import (
     unwrap,
     wrap,
     is_many,
-    is_data,
+    is_data, to_data,
 )
 from mo_future import text, first
 from mo_json import STRUCT, NESTED, OBJECT
@@ -68,6 +68,7 @@ from jx_sqlite.sqlite import (
     SQL_ON,
     SQL_COMMA,
 )
+from mo_threads import register_thread
 from mo_times import Date
 
 
@@ -75,6 +76,7 @@ class InsertTable(BaseTable):
     def add(self, doc):
         self.insert([doc])
 
+    @register_thread
     def insert(self, docs):
         if not is_many(docs):
             Log.error("Expecting a list of documents")
@@ -85,7 +87,7 @@ class InsertTable(BaseTable):
         """
         :param command:  EXPECTING dict WITH {"set": s, "clear": c, "where": w} FORMAT
         """
-        command = wrap(command)
+        command = to_data(command)
         clear_columns = set(listwrap(command["clear"]))
 
         # REJECT DEEP UPDATES
@@ -302,7 +304,7 @@ class InsertTable(BaseTable):
         # TODO: COMMAND TO NEST EXISTING COLUMNS
         # COLLECT AS MANY doc THAT DO NOT REQUIRE SCHEMA CHANGE
 
-        _insertion = Data(active_columns=Queue(), rows=[])
+        _insertion = Data(active_columns=Queue(), rows=[], query_paths=[])
         doc_collection = {".": _insertion}
         # KEEP TRACK OF WHAT TABLE WILL BE MADE (SHORTLY)
         required_changes = []
@@ -330,7 +332,7 @@ class InsertTable(BaseTable):
 
             if is_data(data):
                 items = [
-                    (concat_field(full_path, k), v) for k, v in wrap(data).leaves()
+                    (concat_field(full_path, k), v) for k, v in to_data(data).leaves()
                 ]
             else:
                 # PRIMITIVE VALUES
@@ -342,26 +344,24 @@ class InsertTable(BaseTable):
                     continue
 
                 insertion = doc_collection[nested_path[0]]
+                columns = snowflake.get_schema(nested_path).columns + list(insertion.active_columns)
                 if jx_type == NESTED:
                     c = first(
                         cc
-                        for cc in insertion.active_columns + snowflake.columns
+                        for cc in columns
                         if cc.jx_type in STRUCT and untyped_column(cc.name)[0] == cname
                     )
                 else:
                     c = first(
                         cc
-                        for cc in insertion.active_columns + snowflake.columns
+                        for cc in columns
                         if cc.jx_type == jx_type and cc.name == cname
                     )
-
-                if isinstance(c, list):
-                    Log.error("confused")
 
                 if not c:
                     # WHAT IS THE NESTING LEVEL FOR THIS PATH?
                     deeper_nested_path = "."
-                    for path in snowflake.query_paths:
+                    for path in snowflake.query_paths + insertion.query_paths:
                         if startswith_field(cname, path[0]) and len(
                             deeper_nested_path
                         ) < len(path):
@@ -381,7 +381,7 @@ class InsertTable(BaseTable):
                         last_updated=Date.now(),
                     )
                     if jx_type == NESTED:
-                        snowflake.query_paths.append(c.es_column)
+                        insertion.query_paths.append(c.es_column)
                         required_changes.append({"nest": c})
                     else:
                         insertion.active_columns.add(c)
@@ -428,9 +428,9 @@ class InsertTable(BaseTable):
 
                 # BE SURE TO NEST VALUES, IF NEEDED
                 if jx_type == NESTED:
-                    deeper_nested_path = [cname] + nested_path
+                    deeper_nested_path = [c.es_column] + nested_path
                     if not doc_collection.get(cname):
-                        doc_collection[cname] = Data(active_columns=Queue(), rows=[])
+                        doc_collection[c.es_column] = Data(active_columns=Queue(), rows=[])
                     for i, r in enumerate(v):
                         child_uid = self.container.next_uid()
                         _flatten(r, child_uid, uid, i, cname, deeper_nested_path)
@@ -457,7 +457,7 @@ class InsertTable(BaseTable):
 
     def _insert(self, collection):
         for nested_path, details in collection.items():
-            active_columns = wrap(list(details.active_columns))
+            active_columns = to_data(list(details.active_columns))
             rows = details.rows
             table_name = concat_field(self.name, nested_path)
 

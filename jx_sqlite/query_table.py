@@ -128,8 +128,9 @@ class QueryTable(GroupbyTable, Facts):
             where_sql,
         ))
 
-        return wrap([{c: v for c, v in zip(column_names, r)} for r in result.data])
+        return list_to_data([{c: v for c, v in zip(column_names, r)} for r in result.data])
 
+    @register_thread
     def query(self, query=None):
         """
         :param query:  JSON Query Expression, SET `format="container"` TO MAKE NEW TABLE OF RESULT
@@ -255,7 +256,7 @@ class QueryTable(GroupbyTable, Facts):
                 elif e.domain.type == "time":
                     domain = wrap(mo_json.scrub(e.domain))
                 elif e.domain.type == "duration":
-                    domain = wrap(mo_json.scrub(e.domain))
+                    domain = data(mo_json.scrub(e.domain))
                 elif is_op(e.value, TupleOp):
                     pulls = (
                         jx

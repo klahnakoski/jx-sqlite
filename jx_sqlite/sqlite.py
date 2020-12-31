@@ -17,7 +17,7 @@ from collections import Mapping, namedtuple
 
 from jx_base import jx_expression
 from jx_python.convert import table2csv
-from mo_dots import Data, coalesce, unwraplist, listwrap, wrap
+from mo_dots import Data, coalesce, unwraplist, listwrap, wrap, to_data
 from mo_files import File
 from mo_future import allocate_lock as _allocate_lock, text, first, zip_longest
 from mo_json import BOOLEAN, INTEGER, NESTED, NUMBER, OBJECT, STRING
@@ -640,7 +640,7 @@ def sql_query(command):
     :param command: jx-expression
     :return: SQL
     """
-    command = wrap(command)
+    command = to_data(command)
     acc = [SQL_SELECT]
     if command.select:
         acc.append(JoinSQL(SQL_COMMA, map(quote_column, listwrap(command.select))))

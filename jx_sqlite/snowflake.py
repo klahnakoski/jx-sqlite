@@ -9,15 +9,7 @@
 from __future__ import absolute_import, division, unicode_literals
 
 import jx_base
-from jx_sqlite.utils import quoted_ORDER, quoted_PARENT, quoted_UID, untyped_column
-from jx_sqlite.expressions._utils import SQL_NESTED_TYPE
 from jx_sqlite.schema import Schema
-from jx_sqlite.sqlite import quote_column
-from jx_sqlite.table import Table
-from mo_dots import concat_field, wrap
-from mo_future import text
-from mo_json import NESTED
-from mo_logs import Log
 from jx_sqlite.sqlite import (
     SQL_FROM,
     SQL_LIMIT,
@@ -35,6 +27,13 @@ from jx_sqlite.sqlite import (
     SQL_RENAME_TO,
     SQL_TO,
 )
+from jx_sqlite.sqlite import quote_column
+from jx_sqlite.table import Table
+from jx_sqlite.utils import quoted_ORDER, quoted_PARENT, quoted_UID, GUID
+from mo_dots import concat_field, to_data, startswith_field
+from mo_future import text
+from mo_json import NESTED, OBJECT, EXISTS
+from mo_logs import Log
 
 
 class Snowflake(jx_base.Snowflake):
@@ -58,7 +57,7 @@ class Snowflake(jx_base.Snowflake):
         :param required_changes:
         :return: None
         """
-        required_changes = wrap(required_changes)
+        required_changes = to_data(required_changes)
         for required_change in required_changes:
             if required_change.add:
                 self._add_column(required_change.add)
@@ -124,18 +123,16 @@ class Snowflake(jx_base.Snowflake):
         self.namespace.columns.remove(column)
 
     def _nest_column(self, column):
-        new_path, type_ = untyped_column(column.es_column)
-        if type_ != SQL_NESTED_TYPE:
-            Log.error("only nested types can be nested")
-        destination_table = concat_field(self.fact_name, new_path)
+        new_nest = column.es_column
+        destination_table = concat_field(self.fact_name, new_nest)
         existing_table = concat_field(self.fact_name, column.nested_path[0])
 
         # FIND THE INNER COLUMNS WE WILL BE MOVING
         moving_columns = []
         for c in self.columns:
-            if destination_table != column.es_index and column.es_column == c.es_column:
+            if destination_table != column.es_index and startswith_field(c.es_column, new_nest):
                 moving_columns.append(c)
-                c.nested_path = new_path
+                c.nested_path = [new_nest] + c.nested_path
 
         # TODO: IF THERE ARE CHILD TABLES, WE MUST UPDATE THEIR RELATIONS TOO?
 
@@ -160,7 +157,7 @@ class Snowflake(jx_base.Snowflake):
             )
             with self.namespace.db.transaction() as t:
                 t.execute(command)
-                self.add_table([new_path] + column.nested_path)
+                self.add_table([new_nest] + column.nested_path)
 
         # TEST IF THERE IS ANY DATA IN THE NEW NESTED ARRAY
         if not moving_columns:
@@ -172,7 +169,7 @@ class Snowflake(jx_base.Snowflake):
                 SQL_ALTER_TABLE,
                 quote_column(destination_table),
                 SQL_ADD_COLUMN,
-                quote_column(column.es_column),
+                quote_column(new_nest),
                 column.es_type,
             ))
 
@@ -214,7 +211,7 @@ class Snowflake(jx_base.Snowflake):
         query_paths = self.namespace.columns._snowflakes[self.fact_name]
         if nested_path in query_paths:
             Log.error("table exists")
-        query_paths.append(nested_path)
+        query_paths.append(nested_path[0])
         return Table(nested_path, self)
 
     @property
@@ -223,7 +220,7 @@ class Snowflake(jx_base.Snowflake):
         :return:  LIST OF (nested_path, full_name) PAIRS
         """
         return [
-            (path[0], concat_field(self.fact_name, path[0]))
+            (path, concat_field(self.fact_name, path))
             for path in self.query_paths
         ]
 
@@ -240,4 +237,13 @@ class Snowflake(jx_base.Snowflake):
 
     @property
     def query_paths(self):
-        return self.namespace.columns._snowflakes[self.fact_name]
+        return self.namespace.columns.get_query_paths(self.fact_name)
+
+    def leaves(self, prefix):
+        return set(
+            c
+            for c in self.namespace.columns.find(self.fact_name)
+            for k in [c.name, c.es_column]
+            if startswith_field(k, prefix) and k != GUID or k == prefix
+            if c.jx_type not in [OBJECT, EXISTS]
+        )
