@@ -120,15 +120,12 @@ class SetOpTable(InsertTable):
             nested_doc_details = {
                 "sub_table": sub_table,
                 "children": [],
-                "index_to_column": {}
+                "index_to_column": {},
+                "nested_path": ['.']
             }
 
-            # INSERT INTO TREE
-            if not primary_doc_details:
-                primary_doc_details = nested_doc_details
-                nested_doc_details['nested_path'] = ['.']
-            else:
-
+            if step != ".":
+                # INSERT INTO TREE
                 def place(parent_doc_details):
                     if step == parent_doc_details["nested_path"][0]:
                         return True
@@ -140,6 +137,9 @@ class SetOpTable(InsertTable):
                         nested_doc_details['nested_path'] = [step]+parent_doc_details['nested_path']
 
                 place(primary_doc_details)
+            else:
+                # ROOT OF TREE
+                primary_doc_details = nested_doc_details
 
             nested_path = nested_doc_details['nested_path']
             alias = nested_doc_details["alias"] = nest_to_alias[step]
@@ -149,7 +149,7 @@ class SetOpTable(InsertTable):
             sql_select = quote_column(alias, UID)
             sql_selects.append(sql_alias(sql_select, _make_column_name(column_number)))
             if step != ".":
-                # ID FOR CHILD TABLE
+                # ID FOR CHILD TABLE (REPLACE UID)
                 index_to_column[column_number] = ColumnMapping(
                     sql=sql_select,
                     type="number",
