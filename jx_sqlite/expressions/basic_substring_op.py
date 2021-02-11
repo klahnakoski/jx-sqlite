@@ -9,32 +9,29 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import BasicSubstringOp as BasicSubstringOp_
+from jx_base.expressions import BasicSubstringOp as BasicSubstringOp_, FALSE
 from jx_sqlite.expressions._utils import SQLang, check
 from jx_sqlite.expressions.add_op import AddOp
 from jx_sqlite.expressions.literal import Literal
+from jx_sqlite.expressions.sql_script import SQLScript
 from jx_sqlite.expressions.sub_op import SubOp
 from jx_sqlite.sqlite import sql_call
-from mo_dots import wrap
+from mo_json import T_STRING
 
 
 class BasicSubstringOp(BasicSubstringOp_):
     @check
     def to_sql(self, schema):
-        value = self.value.partial_eval(SQLang).to_sql(schema, not_null=True)
+        value = self.value.partial_eval(SQLang).to_sql(schema)
         start = (
             AddOp([self.start, Literal(1)])
             .partial_eval(SQLang)
-            .to_sql(schema, not_null=True)[0]
-            .sql
-            .n
+            .to_sql(schema)
         )
         length = (
             SubOp([self.end, self.start])
             .partial_eval(SQLang)
-            .to_sql(schema, not_null=True)[0]
-            .sql
-            .n
+            .to_sql(schema)
         )
-        sql = sql_call("SUBSTR", value, start, length)
-        return wrap([{"name": ".", "sql": {"s": sql}}])
+        sql = sql_call("SUBSTR", value.expr, start.expr, length.expr)
+        return SQLScript(data_type=T_STRING, expr=sql, frum=self, miss=FALSE, schema=schema)
