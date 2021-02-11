@@ -149,7 +149,7 @@ class Sqlite(DB):
         self.too_long = None
         self.delayed_queries = []
         self.delayed_transactions = []
-        self.worker = Thread.run("sqlite db thread", self._worker)
+        self.worker = Thread.run("sqlite db thread", self._worker, parent_thread=self)
 
         self.debug and Log.note(
             "Sqlite version {{version}}",
@@ -224,7 +224,7 @@ class Sqlite(DB):
             Log.error("Problem with Sqlite call", cause=result.exception)
         return result
 
-    def close(self):
+    def stop(self):
         """
         OPTIONAL COMMIT-AND-CLOSE
         IF THIS IS NOT DONE, THEN THE THREAD THAT SPAWNED THIS INSTANCE
@@ -235,14 +235,17 @@ class Sqlite(DB):
         signal.acquire()
         self.queue.add(CommandItem(COMMIT, None, signal, None, None))
         signal.acquire()
-        self.worker.please_stop.go()
+        self.worker.stop()
         return
+
+    def close(self):
+        Log.error("Use stop()")
 
     def __enter__(self):
         pass
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
+        self.stop()
 
     def _load_functions(self):
         global _load_extension_warning_sent

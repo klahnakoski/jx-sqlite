@@ -496,14 +496,20 @@ class RegisterThread(object):
         all_lock = ALL_LOCK
         all = ALL
 
+        with self.thread.child_locker:
+            children = copy(self.thread.children)
+        for c in children:
+            DEBUG and c.name and Log.note("Stopping thread {{name|quote}}", name=c.name)
+            c.stop()
+
         self.thread.cprofiler.__exit__(exc_type, exc_val, exc_tb)
+
         with self.thread.child_locker:
             if self.thread.children:
                 Log.error(
                     "Thread {{thread|quote}} has not joined with child threads {{children|json}}",
                     children=[c.name for c in self.thread.children],
                     thread=self.thread.name
-
                 )
         try:
             with all_lock:

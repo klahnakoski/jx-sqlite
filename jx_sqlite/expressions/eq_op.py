@@ -13,7 +13,7 @@ from jx_base.expressions import (
     EqOp as EqOp_,
     FALSE,
     TRUE,
-    ZERO,
+    ZERO, BasicEqOp,
 )
 from jx_base.expressions._utils import builtin_ops, simplified
 from jx_sqlite.expressions._utils import SQLang, check
@@ -82,6 +82,6 @@ class EqOp(EqOp_):
             output = CaseOp([
                 WhenOp(lhs.missing(SQLang), then=rhs_missing),
                 WhenOp(rhs_missing, then=FALSE),
-                SqlEqOp([lhs, rhs]),
+                BasicEqOp([lhs, rhs]),
             ]).partial_eval(SQLang)
             return output
