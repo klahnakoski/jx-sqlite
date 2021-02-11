@@ -31,6 +31,7 @@ from jx_sqlite.sqlite import (
 )
 from mo_future import PY2, text
 from mo_imports import export
+from mo_json import JsonType
 from mo_logs import Log
 
 
@@ -43,6 +44,8 @@ class SQLScript(SQLScript_, SQL):
             Log.error("expecting expr")
         if not isinstance(expr, SQL):
             Log.error("Expecting SQL")
+        if not isinstance(data_type, JsonType):
+            Log.error("Expecting JsonType")
         if miss is None:
             self.miss = frum.missing(SQLang)
         else:

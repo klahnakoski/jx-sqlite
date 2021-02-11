@@ -9,11 +9,10 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import ToNumberOp as NumberOp_, Variable
-from jx_base.language import is_op
+from jx_base.expressions import ToNumberOp as NumberOp_
 from jx_sqlite.expressions._utils import SQLang, check
 from mo_imports import export
-from mo_json import T_NUMBER, Log
+from mo_json import Log, T_NUMBER_TYPES
 
 
 class ToNumberOp(NumberOp_):
@@ -21,7 +20,7 @@ class ToNumberOp(NumberOp_):
     def to_sql(self, schema):
         value = self.term.partial_eval(SQLang).to_sql(schema)
 
-        if is_op(value.frum, Variable) and value.frum.type == T_NUMBER:
+        if value.type in T_NUMBER_TYPES:
             return value
         else:
             Log.error("not supported")

@@ -18,8 +18,8 @@ from jx_base.expressions._utils import (
 from jx_base.language import BaseExpression, ID, is_expression, is_op
 from mo_dots import is_data, is_sequence, is_container
 from mo_future import items as items_, text
-from mo_imports import expect, export
-from mo_json import BOOLEAN, OBJECT, value2json
+from mo_imports import expect
+from mo_json import BOOLEAN, value2json, T_IS_NULL
 from mo_logs import Log
 from mo_threads import register_thread
 
@@ -37,7 +37,7 @@ TRUE, FALSE, Literal, is_literal, MissingOp, NotOp, NULL, Variable, AndOp = expe
 
 
 class Expression(BaseExpression):
-    data_type = OBJECT
+    data_type = T_IS_NULL
     has_simple_form = False
 
     def __init__(self, args):

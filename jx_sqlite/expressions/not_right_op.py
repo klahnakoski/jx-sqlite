@@ -9,22 +9,32 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import NotRightOp as NotRightOp_
-from jx_sqlite.expressions._utils import check
+from jx_base.expressions import NotRightOp as NotRightOp_, LengthOp, MaxOp, SubOp, Literal, ZERO
+from jx_sqlite.expressions._utils import check, OrOp, SQLang
+from jx_sqlite.expressions.sql_script import SQLScript
+from jx_sqlite.sqlite import SQL_ONE
 from jx_sqlite.sqlite import sql_call
-from mo_dots import wrap
-from jx_sqlite.sqlite import SQL_ONE, SQL_ZERO, SQL
+from mo_json import T_STRING
 
 
 class NotRightOp(NotRightOp_):
     @check
     def to_sql(self, schema):
-        v = self.value.to_sql(schema, not_null=True)
-        r = self.length.to_sql(schema, not_null=True)
-        l = sql_call(
-            "MAX",
-            SQL_ZERO,
-            sql_call("length", v) + SQL(" - ") + sql_call("MAX", SQL_ZERO, r),
+        v = self.value.to_sql(schema)
+        if self.length == ZERO:
+            return v
+
+        r = self.length.to_sql(schema)
+        end = (
+            MaxOp([ZERO, SubOp([LengthOp(self.value), MaxOp([ZERO, self.length])])])
+            .partial_eval(SQLang)
+            .to_sql(schema)
         )
-        sql = sql_call("SUBSTR", v, SQL_ONE, l)
-        return wrap([{"name": ".", "sql": {"s": sql}}])
+        sql = sql_call("SUBSTR", v.expr, SQL_ONE, end)
+        return SQLScript(
+            data_type=T_STRING,
+            expr=sql,
+            frum=self,
+            miss=OrOp([r.miss, v.miss]),
+            schema=schema,
+        )

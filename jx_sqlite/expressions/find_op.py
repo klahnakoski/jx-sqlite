@@ -19,6 +19,7 @@ from jx_sqlite.expressions.not_left_op import NotLeftOp
 from jx_sqlite.expressions.not_right_op import NotRightOp
 from jx_sqlite.expressions.or_op import OrOp
 from jx_sqlite.expressions.sql_instr_op import SqlInstrOp
+from jx_sqlite.expressions.sql_script import SQLScript
 from jx_sqlite.sqlite import sql_call, quote_column
 from mo_dots import coalesce, wrap
 from jx_sqlite.sqlite import (
@@ -34,6 +35,7 @@ from jx_sqlite.sqlite import (
     SQL_ONE,
     SQL_PLUS,
 )
+from mo_json import T_INTEGER
 
 
 class FindOp(FindOp_):
@@ -77,7 +79,7 @@ class FindOp(FindOp_):
                 SQL_END,
             ),
         )
-        return wrap([{"name": ".", "sql": {"n": sql}}])
+        return SQLScript(data_type=T_INTEGER, expr=sql, frum=self, schema=schema)
 
     def exists(self):
 

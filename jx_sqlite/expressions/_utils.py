@@ -139,20 +139,18 @@ def multiop_to_sql(self, schema, many=False):
 
 def with_var(var, expression, eval):
     """
-    :param var: NAME GIVEN TO expression
+    :param var: NAME (AS SQL) GIVEN TO expression
     :param expression: THE EXPRESSION TO COMPUTE FIRST
     :param eval: THE EXPRESSION TO COMPUTE SECOND, WITH var ASSIGNED
     :return: PYTHON EXPRESSION
     """
     x = SQL("x")
 
-    return ConcatSQL(
-        sql_iso(
-            SQL_WITH,
-            x,
-            SQL_AS,
-            sql_iso(SQL_SELECT, sql_iso(expression), SQL_AS, quote_column(var)),
-        ),
+    return sql_iso(
+        SQL_WITH,
+        x,
+        SQL_AS,
+        sql_iso(SQL_SELECT, sql_iso(expression), SQL_AS, var),
         SQL_SELECT,
         eval,
         SQL_FROM,
