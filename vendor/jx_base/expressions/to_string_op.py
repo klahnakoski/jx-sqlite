@@ -18,8 +18,7 @@ from jx_base.expressions.literal import Literal
 from jx_base.expressions.literal import is_literal
 from jx_base.expressions.null_op import NULL
 from jx_base.language import is_op
-from mo_json import STRING, IS_NULL
-from mo_json.types import T_STRING
+from mo_json.types import T_STRING, T_IS_NULL
 
 
 class ToStringOp(Expression):
@@ -43,7 +42,7 @@ class ToStringOp(Expression):
 
     def partial_eval(self, lang):
         term = self.term
-        if term.type is IS_NULL:
+        if term.type is T_IS_NULL:
             return NULL
         term = (FirstOp(term)).partial_eval(lang)
         if is_op(term, ToStringOp):
@@ -51,7 +50,7 @@ class ToStringOp(Expression):
         elif is_op(term, CoalesceOp):
             return CoalesceOp([(ToStringOp(t)).partial_eval(lang) for t in term.terms])
         elif is_literal(term):
-            if term.type == STRING:
+            if term.type == T_STRING:
                 return term
             else:
                 return Literal(mo_json.value2json(term.value))

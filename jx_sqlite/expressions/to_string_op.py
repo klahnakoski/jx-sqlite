@@ -9,58 +9,63 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_sqlite.sqlite import quote_value
-
 from jx_base.expressions import ToStringOp as StringOp_
-from jx_sqlite.expressions._utils import SQLang, check
-from mo_dots import wrap
+from jx_sqlite.expressions._utils import check
+from jx_sqlite.expressions.sql_script import SQLScript
 from jx_sqlite.sqlite import (
     SQL_CASE,
     SQL_ELSE,
     SQL_END,
-    SQL_NULL,
     SQL_THEN,
     SQL_WHEN,
-    sql_coalesce,
     sql_iso,
+    ConcatSQL,
 )
+from jx_sqlite.sqlite import quote_value, sql_call
+from mo_json import T_STRING, T_BOOLEAN, T_NUMBER_TYPES
 
 
 class ToStringOp(StringOp_):
     @check
     def to_sql(self, schema):
-        test = self.term.partial_eval(SQLang).missing().to_sql(schema, boolean=True)
-        value = self.term.partial_eval(SQLang).to_sql(schema, not_null=True)[0].sql
-        acc = []
-        for t, v in value.items():
-            if t == "b":
-                acc.append(
-                    SQL_CASE
-                    + SQL_WHEN
-                    + sql_iso(test)
-                    + SQL_THEN
-                    + SQL_NULL
-                    + SQL_WHEN
-                    + sql_iso(v)
-                    + SQL_THEN
-                    + "'true'"
-                    + SQL_ELSE
-                    + "'false'"
-                    + SQL_END
-                )
-            elif t == "s":
-                acc.append(v)
-            else:
-                acc.append(
-                    "RTRIM(RTRIM(CAST"
-                    + sql_iso(v + " as TEXT), " + quote_value("0"))
-                    + ", "
-                    + quote_value(".")
-                    + ")"
-                )
-        if not acc:
-            return wrap([{}])
-        elif len(acc) == 1:
-            return wrap([{"name": ".", "sql": {"s": acc[0]}}])
+        expr = self.term.to_sql(schema)
+        if expr.type == T_STRING:
+            return expr
+        elif expr.type == T_BOOLEAN:
+            return SQLScript(
+                data_type=T_STRING,
+                expr=ConcatSQL(
+                    SQL_CASE,
+                    SQL_WHEN,
+                    sql_iso(expr.expr),
+                    SQL_THEN,
+                    quote_value("true"),
+                    SQL_ELSE,
+                    quote_value("false"),
+                    SQL_END,
+                ),
+                frum=self,
+                schema=schema,
+            )
+        elif expr.type in T_NUMBER_TYPES:
+            return SQLScript(
+                data_type=T_STRING,
+                expr=sql_call(
+                    "RTRIM",
+                    sql_call(
+                        "RTRIM",
+                        ConcatSQL("CAST", sql_iso(expr.expr, " as TEXT")),
+                        quote_value("0"),
+                    ),
+                    quote_value("."),
+                ),
+                frum=self,
+                schema=schema,
+            )
         else:
-            return wrap([{"name": ".", "sql": {"s": sql_coalesce(acc)}}])
+            return SQLScript(
+                data_type=T_STRING,
+                expr=ConcatSQL("CAST", sql_iso(expr.expr, " as TEXT")),
+                frum=self,
+                schema=schema,
+            )

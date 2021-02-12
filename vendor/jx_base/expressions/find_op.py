@@ -64,3 +64,7 @@ class FindOp(Expression):
             start=self.start.map(map_),
             default=self.default.map(map_),
         )
+
+    def invert(self, lang):
+        return lang.MissingOp(self)
+

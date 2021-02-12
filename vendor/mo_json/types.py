@@ -9,7 +9,7 @@ from datetime import datetime, date
 from decimal import Decimal
 
 from mo_dots import split_field, NullType, is_many, is_data, concat_field
-from mo_future import text, none_type, PY2, long, items
+from mo_future import text, none_type, PY2, long, items, first
 from mo_logs import Log
 from mo_times import Date
 
@@ -106,14 +106,30 @@ class JsonType(object):
             if other is T_INTEGER or other is T_NUMBER:
                 return True
 
-        sd = self.__dict__
-        od = other.__dict__
-        for k, sv in sd.items():
-            ov = od.get(k)
-            if sv != ov:
-                return False
+        # DETECT DIFFERENCE BY ONLY NAME DEPTH
+        sd = _interesting(self).__dict__
+        od = _interesting(other).__dict__
 
-        return len(sd) == len(od)
+        if len(sd) != len(od):
+            return False
+
+        try:
+            for k, sv in sd.items():
+                ov = od.get(k)
+                if sv != ov:
+                    return False
+            return True
+        except Exception as cause:
+            sd = self.__dict__
+            od = other.__dict__
+
+            # DETECT DIFFERENCE BY ONLY NAME DEPTH
+            sd = _interesting(sd)
+            od = _interesting(od)
+
+
+            Log.error("not expected", cause)
+
 
     def __radd__(self, path):
         """
@@ -131,6 +147,19 @@ class JsonType(object):
 
     def __str__(self):
         return str(self.__data__())
+
+
+def _interesting(v):
+    d = v.__dict__
+    ld = len(d)
+    while ld == 1:
+        kk, vv = first(d.items())
+        if kk in _special:
+            return v
+        v = vv
+        d = vv.__dict__
+        ld = len(d)
+    return v
 
 
 def union_type(*types):
@@ -178,6 +207,8 @@ NUMBER_TYPES = (INTEGER, NUMBER, TIME, INTERVAL)
 PRIMITIVE = (EXISTS, BOOLEAN, INTEGER, NUMBER, TIME, INTERVAL, STRING)
 INTERNAL = (EXISTS, OBJECT, NESTED)
 STRUCT = (OBJECT, NESTED)
+
+_special = "~b~i~n~t~d~s~u~a~"
 
 NESTED_KEY = "~a~"  # "a" FOR ARRAY
 

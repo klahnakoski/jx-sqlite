@@ -39,6 +39,8 @@ class NotOp(NotOp_):
                     miss=FALSE,
                     expr=ConcatSQL(SQL_NOT, sql_iso(is_expr.to_sql(schema))),
                     frum=is_expr,
+                    schema=schema
                 )
         else:
             return term.to_sql(schema)
+

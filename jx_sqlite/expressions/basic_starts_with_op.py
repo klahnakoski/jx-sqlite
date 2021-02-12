@@ -38,7 +38,7 @@ class BasicStartsWithOp(BasicStartsWithOp_):
             else:
                 sql = ConcatSQL(value, SQL_LIKE, quote_value(prefix + "%"))
             return SQLScript(
-                data_type=T_BOOLEAN, expr=sql, frum=self, miss=FALSE, scheam=schema
+                data_type=T_BOOLEAN, expr=sql, frum=self, miss=FALSE, schema=schema
             )
         else:
             return (
