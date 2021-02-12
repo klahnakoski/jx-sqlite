@@ -130,7 +130,6 @@ class QueryTable(GroupbyTable, Facts):
 
         return list_to_data([{c: v for c, v in zip(column_names, r)} for r in result.data])
 
-    @register_thread
     def query(self, query=None):
         """
         :param query:  JSON Query Expression, SET `format="container"` TO MAKE NEW TABLE OF RESULT

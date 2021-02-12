@@ -91,6 +91,7 @@ class SQLiteUtils(object):
 
         return Data({"index": subtest.query["from"]})
 
+    @register_thread
     def send_queries(self, subtest):
         subtest = wrap(subtest)
 
@@ -110,7 +111,17 @@ class SQLiteUtils(object):
 
                 subtest.query.format = format
                 subtest.query.meta.testing = True  # MARK ALL QUERIES FOR TESTING SO FULL METADATA IS AVAILABLE BEFORE QUERY EXECUTION
-                result = self.execute_query(subtest.query)
+                try:
+                    result = self.execute_query(subtest.query)
+                except Exception as cause:
+                    cause = Except.wrap(cause)
+                    if format == "error":
+                        if expected in cause:
+                            return
+                        else:
+                            Log.error("Query failed, but for wrong reason; expected {{expected}}, got {{reason}}", expected=expected, reason=cause)
+                    else:
+                        Log.error("did not expected error", cause=cause)
 
                 compare_to_expected(subtest.query, result, expected)
             if num_expectations == 0:
