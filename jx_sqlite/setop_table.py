@@ -56,7 +56,7 @@ from mo_dots import (
     unwraplist,
     exists, to_data, is_null, )
 from mo_future import text
-from mo_json.types import IS_NULL, FromJsonType
+from mo_json.types import IS_NULL, FromJsonType, OBJECT
 from mo_logs import Log
 from mo_math import UNION
 from mo_times import Date
@@ -82,12 +82,13 @@ class SetOpTable(InsertTable):
             if not any(startswith_field(cname, v) for cname in known_vars):
                 active_columns["."].add(Column(
                     name=v,
-                    jx_type=IS_NULL,
+                    jx_type=OBJECT,
                     es_column=".",
                     es_index=".",
                     es_type="NULL",
                     nested_path=["."],
                     multi=1,
+                    cardinality=0,
                     last_updated=Date.now(),
                 ))
 
