@@ -54,7 +54,7 @@ from mo_dots import (
     listwrap,
     startswith_field,
     unwraplist,
-    exists, to_data, )
+    exists, to_data, is_null, )
 from mo_future import text
 from mo_json.types import IS_NULL, FromJsonType
 from mo_logs import Log
@@ -386,7 +386,7 @@ class SetOpTable(InsertTable):
             if is_list(query.select) or is_op(query.select.value, LeavesOp):
                 temp_data = []
                 for rownum, d in enumerate(data):
-                    row = {c.push_column_name: d[c.push_name] for c in cols}
+                    row = {c.push_column_name: v for c in cols for v in [d[c.push_name]] if not is_null(v)}
                     temp_data.append(row)
                 return Data(meta={"format": "list"}, data=temp_data)
             else:

@@ -9,16 +9,12 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import MissingOp as MissingOp_, FALSE, TRUE, Variable, SelectOp
+from jx_base.expressions import MissingOp as MissingOp_, FALSE
 from jx_base.language import is_op
 from jx_sqlite.expressions._utils import SQLang, check
 from jx_sqlite.expressions.sql_script import SQLScript
-from jx_sqlite.sqlite import (
-    sql_iso,
-    ConcatSQL,
-    SQL_IS_NULL,
-)
-from mo_json.types import T_BOOLEAN
+from jx_sqlite.sqlite import ConcatSQL, SQL_IS_NULL, SQL_NOT, sql_call, SQL_OR, sql_iso
+from mo_json.types import T_BOOLEAN, T_STRING
 
 
 class MissingOp(MissingOp_):
@@ -27,17 +23,25 @@ class MissingOp(MissingOp_):
         sql = self.expr.partial_eval(SQLang).to_sql(schema)
 
         if is_op(sql.miss, MissingOp):
+            if sql.type == T_STRING:
+                return SQLScript(
+                    data_type=T_BOOLEAN,
+                    miss=FALSE,
+                    expr=sql_iso(sql.expr, SQL_IS_NULL, SQL_OR, SQL_NOT, sql_call("LENGTH", sql.expr)),
+                    frum=self,
+                )
+
             return SQLScript(
-                miss=FALSE,
                 data_type=T_BOOLEAN,
+                miss=FALSE,
                 expr=ConcatSQL(sql.expr, SQL_IS_NULL),
                 frum=self,
             )
 
         expr = sql.miss.to_sql(schema)
         return SQLScript(
-            miss=FALSE,
             data_type=T_BOOLEAN,
+            miss=FALSE,
             expr=expr,
             frum=sql.miss,
         )

@@ -136,9 +136,9 @@ class TestSetOps(BaseTestCase):
     def test_concat(self):
         test = {
             "data": [
-                {"v": "hello", "w": None},
-                {"v": "hello", "w": ""},
-                {"v": "hello", "w": "world"},
+                {"o": 0, "v": "hello", "w": None},
+                {"o": 1, "v": "hello", "w": ""},
+                {"o": 2, "v": "hello", "w": "world"},
             ],
             "query": {
                 "from": TEST_TABLE,
@@ -156,10 +156,33 @@ class TestSetOps(BaseTestCase):
                         "value": {"concat": [{"literal": ""}, "v"], "separator": "-"},
                     },
                 ],
+                "sort": "o"
             },
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
+                    {
+                        "a": NULL,
+                        "b": "hellotest",
+                        "c": "hello",
+                        "d": "hello",
+                        "e": NULL,
+                        "f": "hello-0",
+                        "g": "hello",
+                        "h": "hello",
+                        "i": "hello",
+                    },
+                    {
+                        "a": NULL,
+                        "b": "hellotest",
+                        "c": "hello",
+                        "d": "hello",
+                        "e": NULL,
+                        "f": "hello-0",
+                        "g": "hello",
+                        "h": "hello",
+                        "i": "hello",
+                    },
                     {
                         "a": NULL,
                         "b": "hellotest",
@@ -169,28 +192,6 @@ class TestSetOps(BaseTestCase):
                         "f": "hello-0",
                         "g": "hello-world",
                         "h": "world-hello",
-                        "i": "hello",
-                    },
-                    {
-                        "a": NULL,
-                        "b": "hellotest",
-                        "c": "hello",
-                        "d": "hello",
-                        "e": NULL,
-                        "f": "hello-0",
-                        "g": "hello",
-                        "h": "hello",
-                        "i": "hello",
-                    },
-                    {
-                        "a": NULL,
-                        "b": "hellotest",
-                        "c": "hello",
-                        "d": "hello",
-                        "e": NULL,
-                        "f": "hello-0",
-                        "g": "hello",
-                        "h": "hello",
                         "i": "hello",
                     },
                 ],
