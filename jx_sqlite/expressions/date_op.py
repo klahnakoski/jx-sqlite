@@ -11,11 +11,16 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import DateOp as DateOp_
 from jx_sqlite.expressions._utils import check
+from jx_sqlite.expressions.sql_script import SQLScript
 from jx_sqlite.sqlite import quote_value
-from mo_dots import wrap
 
 
 class DateOp(DateOp_):
     @check
     def to_sql(self, schema):
-        return wrap([{"name": ".", "sql": {"n": quote_value(self.value)}}])
+        value = self.value
+        return SQLScript(
+            data_type=self.data_type,
+            expr=quote_value(value),
+            frum=self
+        )
