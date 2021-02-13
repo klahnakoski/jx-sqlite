@@ -15,6 +15,7 @@ from jx_sqlite.expressions._utils import check, SQLang
 from jx_sqlite.expressions.sql_script import SQLScript
 from jx_sqlite.sqlite import quote_column, SQL_COMMA, SQL_AS, SQL_SELECT, SQL, Log
 from mo_dots import concat_field, relative_field, literal_field
+from mo_future import flatten
 from mo_json.types import ToJsonType, T_IS_NULL
 
 
@@ -44,19 +45,19 @@ class SelectOp(SelectOp_):
                         "value": Variable(col.es_column, col.jx_type),
                     })
             elif is_op(expr, LeavesOp):
-                # SAME AS Variable EXCEPT PATHS ARE LITERAL
-                var_name = expr.var
-                cols = list(schema.leaves(var_name))
-                diff = True
-                for col in cols:
-                    abs_name = concat_field(
-                        name, literal_field(relative_field(col.name, var_name))
-                    )
-                    type |= abs_name + ToJsonType(col.jx_type)
-                    sql_terms.append({
-                        "name": abs_name,
-                        "value": Variable(col.es_column, col.jx_type),
-                    })
+                var_names = expr.term.vars()
+                for var_name in var_names:
+                    cols = schema.leaves(var_name.var)
+                    diff = True
+                    for col in cols:
+                        abs_name = concat_field(
+                            name, literal_field(relative_field(col.name, var_name))
+                        )
+                        type |= abs_name + ToJsonType(col.jx_type)
+                        sql_terms.append({
+                            "name": abs_name,
+                            "value": Variable(col.es_column, col.jx_type),
+                        })
             else:
                 type |= name + ToJsonType(expr.type)
                 sql_terms.append({"name": name, "value": expr})
