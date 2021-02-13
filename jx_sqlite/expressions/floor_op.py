@@ -11,9 +11,9 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import FloorOp as FloorOp_
 from jx_sqlite.expressions._utils import SQLang, check
+from jx_sqlite.sqlite import sql_iso, SQL_DIV, SQL_STAR
 from mo_dots import wrap
 from mo_future import text
-from jx_sqlite.sqlite import sql_iso
 
 
 class FloorOp(FloorOp_):
@@ -24,10 +24,10 @@ class FloorOp(FloorOp_):
         modifier = lhs + " < 0 "
 
         if text(rhs).strip() != "1":
-            floor = "CAST" + sql_iso(lhs + "/" + rhs + " AS INTEGER")
-            sql = sql_iso(sql_iso(floor) + "-" + sql_iso(modifier)) + "*" + rhs
+            floor = "CAST" + sql_iso(lhs, SQL_DIV, rhs, " AS INTEGER")
+            sql = sql_iso(sql_iso(floor) + "-" + sql_iso(modifier)) + SQL_STAR + rhs
         else:
-            floor = "CAST" + sql_iso(lhs + " AS INTEGER")
+            floor = "CAST" + sql_iso(lhs, " AS INTEGER")
             sql = sql_iso(floor) + "-" + sql_iso(modifier)
 
         return wrap([{"name": ".", "sql": {"n": sql}}])

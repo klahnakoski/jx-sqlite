@@ -9,10 +9,11 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import DivOp as DivOp_
-from jx_sqlite.expressions._utils import SQLang, check
+from jx_base.expressions import DivOp as DivOp_, TRUE, MissingOp
+from jx_sqlite.expressions._utils import SQLang, check, SQLScript, OrOp
 from mo_dots import Null, wrap
-from jx_sqlite.sqlite import sql_coalesce, sql_iso
+from jx_sqlite.sqlite import sql_coalesce, sql_iso, ConcatSQL, sql_call, SQL_DIV
+from mo_json import T_NUMBER
 
 
 class DivOp(DivOp_):
@@ -22,19 +23,17 @@ class DivOp(DivOp_):
         rhs = self.rhs.partial_eval(SQLang).to_sql(schema)
         d = self.default.partial_eval(SQLang).to_sql(schema)
 
-        if lhs and rhs:
-            if d == None:
-                return wrap([{
-                    "name": ".",
-                    "sql": {"n": sql_iso(lhs) + " / " + sql_iso(rhs)},
-                }])
-            else:
-                return wrap([{
-                    "name": ".",
-                    "sql": {"n": sql_coalesce([
-                        sql_iso(lhs) + " / " + sql_iso(rhs),
-                        d,
-                    ])},
-                }])
+        if d.miss is TRUE:
+            return SQLScript(
+                data_type=T_NUMBER,
+                expr = ConcatSQL(sql_iso(lhs) , SQL_DIV,  sql_iso(rhs)),
+                frum = self,
+                miss = OrOp([MissingOp(self.lhs), MissingOp(self.rhs)])
+            )
         else:
-            return Null
+            return SQLScript(
+                data_type=T_NUMBER,
+                expr=sql_call("COALESCE", ConcatSQL(sql_iso(lhs), SQL_DIV, sql_iso(rhs)), d),
+                frum=self,
+                miss=OrOp([MissingOp(self.lhs), MissingOp(self.rhs), MissingOp(self.default)])
+            )

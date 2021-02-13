@@ -33,7 +33,7 @@ from jx_sqlite.sqlite import (
     SQL_AS,
     SQL_SELECT,
     SQL_FROM,
-    SQL_WITH,
+    SQL_WITH, SQL_DIV, SQL_GT, SQL_LE, SQL_GE,
 )
 from jx_sqlite.sqlite import sql_call
 from mo_dots import wrap
@@ -179,12 +179,12 @@ _sql_operators = {
     "sum": (SQL_PLUS, SQL_ZERO),
     "mul": (SQL_STAR, SQL_ONE),
     "sub": (SQL(" - "), None),
-    "div": (SQL(" / "), None),
+    "div": (SQL_DIV, None),
     "exp": (SQL(" ** "), None),
     "mod": (SQL(" % "), None),
-    "gt": (SQL(" > "), None),
-    "gte": (SQL(" >= "), None),
-    "lte": (SQL(" <= "), None),
+    "gt": (SQL_GT, None),
+    "gte": (SQL_GE, None),
+    "lte": (SQL_LE, None),
     "lt": (SQL_LT, None),
 }
 

@@ -148,6 +148,7 @@ class ConcatSQL(SQL):
 NO_SQL = tuple()
 SQL_STAR = SQL(" * ")
 SQL_PLUS = SQL(" + ")
+SQL_DIV = SQL(" / ")
 
 SQL_AND = SQL(" AND ")
 SQL_OR = SQL(" OR ")
