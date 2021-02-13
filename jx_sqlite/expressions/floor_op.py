@@ -9,11 +9,12 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import FloorOp as FloorOp_
+from jx_base.expressions import FloorOp as FloorOp_, OrOp
 from jx_sqlite.expressions._utils import SQLang, check
-from jx_sqlite.sqlite import sql_iso, SQL_DIV, SQL_STAR
-from mo_dots import wrap
+from jx_sqlite.expressions.sql_script import SQLScript
+from jx_sqlite.sqlite import sql_iso, SQL_DIV, SQL_STAR, ConcatSQL, SQL, SQL_CAST, SQL_SUB, SQL_LT, SQL_ZERO
 from mo_future import text
+from mo_json import T_NUMBER
 
 
 class FloorOp(FloorOp_):
@@ -21,13 +22,22 @@ class FloorOp(FloorOp_):
     def to_sql(self, schema):
         lhs = self.lhs.partial_eval(SQLang).to_sql(schema)
         rhs = self.rhs.partial_eval(SQLang).to_sql(schema)
-        modifier = lhs + " < 0 "
+        modifier = sql_iso(lhs.expr, SQL_LT, SQL_ZERO)
 
         if text(rhs).strip() != "1":
-            floor = "CAST" + sql_iso(lhs, SQL_DIV, rhs, " AS INTEGER")
-            sql = sql_iso(sql_iso(floor) + "-" + sql_iso(modifier)) + SQL_STAR + rhs
+            floor = sql_iso(SQL_CAST, sql_iso(sql_iso(lhs.expr), SQL_DIV, sql_iso(rhs.expr), AS_INTEGER))
+            sql = ConcatSQL(sql_iso(floor, SQL_SUB, modifier), SQL_STAR, rhs)
         else:
-            floor = "CAST" + sql_iso(lhs, " AS INTEGER")
-            sql = sql_iso(floor) + "-" + sql_iso(modifier)
+            floor = sql_iso(SQL_CAST, sql_iso(lhs.expr, AS_INTEGER))
+            sql = ConcatSQL(floor, SQL_SUB, modifier)
 
-        return wrap([{"name": ".", "sql": {"n": sql}}])
+        return SQLScript(
+            data_type=T_NUMBER,
+            expr=sql,
+            frum=self,
+            miss=OrOp([self.lhs.missing(SQLang), self.rhs.missing(SQLang)]),
+            schema=schema
+        )
+
+
+AS_INTEGER = SQL(" AS INTEGER")
