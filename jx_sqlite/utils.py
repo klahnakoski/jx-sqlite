@@ -277,7 +277,6 @@ ColumnMapping = DataClass(
         {"name": "pull", "nulls": True},  # A FUNCTION THAT WILL RETURN A VALUE
         {  # A LIST OF MULTI-SQL REQUIRED TO GET THE VALUE FROM THE DATABASE
             "name": "sql",
-            "type": list,
         },
         "type",  # THE NAME OF THE JSON DATA TYPE EXPECTED
         {  # A LIST OF PATHS EACH INDICATING AN ARRAY

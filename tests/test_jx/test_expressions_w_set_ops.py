@@ -1102,6 +1102,31 @@ class TestSetOps(BaseTestCase):
 
         self.utils.execute_tests(test)
 
+    def test_boolean_in_expression2(self):
+        test = {
+            "data": [
+                {"result": {"ok": True}},
+                {"result": {"ok": True}},
+                {"result": {"ok": True}},
+                {"result": {"ok": True}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": {
+                    "name": "failures",
+                    "aggregate": "sum",
+                    "value": {"when": {"eq": {"result.ok": False}}, "then": 1, "else": 0},
+                },
+            },
+            "expecting_list": {"meta": {"format": "value"}, "data": 4},
+        }
+
+        self.utils.execute_tests(test)
+
     def test_boolean_in_where_clause1(self):
         test = {
             "data": [
@@ -1154,6 +1179,33 @@ class TestSetOps(BaseTestCase):
         }
 
         self.utils.execute_tests(test)
+
+    def test_boolean_in_where_clause3(self):
+        test = {
+            "data": [
+                {"result": {"ok": True}},
+                {"result": {"ok": True}},
+                {"result": {"ok": True}},
+                {"result": {"ok": True}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}},
+            ],
+            "query": {"from": TEST_TABLE, "where": {"in": {"result.ok": [False]}}},
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"result": {"ok": False}},
+                    {"result": {"ok": False}},
+                    {"result": {"ok": False}},
+                    {"result": {"ok": False}},
+                ],
+            },
+        }
+
+        self.utils.execute_tests(test)
+
 
     def test_in_with_singlton(self):
         test = {

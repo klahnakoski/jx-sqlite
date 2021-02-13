@@ -18,7 +18,7 @@ class IsBooleanOp(ToBooleanOp_):
     @check
     def to_sql(self, schema):
         term = self.term.partial_eval(SQLang)
-        if term.type is BOOLEAN:
+        if term.type is T_BOOLEAN:
             return term.to_sql(schema)
         elif is_literal(term) and term.value in ("T", "F"):
             if term.value == "T":

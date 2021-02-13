@@ -9,17 +9,31 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import BasicEqOp as BasicEqOp_, FALSE
+from jx_base.expressions import BasicEqOp as BasicEqOp_, FALSE, is_literal, IsBooleanOp, NotOp
 from jx_sqlite.expressions._utils import check, SQLang
 from jx_sqlite.expressions.sql_script import SQLScript
 from jx_sqlite.sqlite import sql_iso, SQL_EQ
 from mo_json.types import T_BOOLEAN
 from mo_sql import ConcatSQL
+from pyLibrary.convert import value2boolean
 
 
 class BasicEqOp(BasicEqOp_):
     @check
     def to_sql(self, schema):
+        rhs = self.rhs.partial_eval(SQLang)
+        lhs = self.lhs.partial_eval(SQLang)
+
+        if is_literal(lhs):
+            lhs, rhs = rhs, lhs
+        if is_literal(rhs):
+            lhs = lhs.to_sql(schema)
+            if lhs.data_type == T_BOOLEAN:
+                if value2boolean(rhs.value):
+                    return lhs
+                else:
+                    return NotOp(lhs.frum).partial_eval(SQLang).to_sql(schema)
+
         return SQLScript(
             data_type=T_BOOLEAN,
             expr=ConcatSQL(

@@ -31,6 +31,14 @@ class IsBooleanOp(Expression):
         else:
             return IsBooleanOp(term)
 
+    def __call__(self, row=None, rownum=None, rows=None):
+        value = self.term(row, rownum, rows)
+        if value is True:
+            return True
+        elif value is False:
+            return False
+        else:
+            return None
 
     def __data__(self):
         return {"is_boolean": self.term.__data__()}

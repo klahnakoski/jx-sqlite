@@ -133,7 +133,7 @@ class ConcatSQL(SQL):
         A SEQUENCE OF SQL FOR EVENTUAL CONCATENATION
         """
         if ENABLE_TYPE_CHECKING:
-            if len(concat) == 1:
+            if len(concat) == 1 and not isinstance(concat[0], SQL):
                 Log.error("Expecting at least 2 parameters")
             if any(not isinstance(s, SQL) for s in concat):
                 Log.error("Can only join other SQL")

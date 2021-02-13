@@ -19,12 +19,11 @@ from jx_base.expressions._utils import builtin_ops, simplified
 from jx_sqlite.expressions._utils import SQLang, check
 from jx_sqlite.expressions.case_op import CaseOp
 from jx_sqlite.expressions.literal import Literal
-from jx_sqlite.expressions.sql_eq_op import SqlEqOp
 from jx_sqlite.expressions.sql_script import SQLScript
 from jx_sqlite.expressions.when_op import WhenOp
+from jx_sqlite.sqlite import SQL_FALSE, SQL_IS_NULL, SQL_OR, sql_iso, SQL_EQ
 from mo_json.types import T_BOOLEAN
 from mo_logs import Log
-from jx_sqlite.sqlite import SQL_FALSE, SQL_IS_NULL, SQL_OR, sql_iso, SQL_EQ
 
 
 class EqOp(EqOp_):

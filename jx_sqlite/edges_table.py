@@ -13,6 +13,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 import mo_math
 from jx_base.domains import DefaultDomain, DurationDomain, TimeDomain
+from jx_base.expressions import ToBooleanOp
 from jx_base.language import is_op
 from jx_python import jx
 from jx_sqlite.utils import (
@@ -40,6 +41,7 @@ from mo_dots import (
     startswith_field,
 )
 from mo_future import text, unichr
+from mo_json import ToJsonType, FromJsonType
 from mo_logs import Log
 from jx_sqlite.sqlite import (
     SQL,
@@ -76,7 +78,7 @@ from jx_sqlite.sqlite import (
     SQL_PLUS,
     ConcatSQL,
     SQL_EQ,
-    SQL_LT,
+    SQL_LT, SQL_LE, sql_call,
 )
 from jx_sqlite.sqlite import quote_column, quote_value, sql_alias
 
@@ -101,20 +103,20 @@ class EdgesTable(SetOpTable):
                 tables.append({"nest": n, "alias": a})
         tables = jx.sort(tables, {"value": {"length": "nest"}})
 
-        from_sql = sql_alias(
+        from_sql = [sql_alias(
             quote_column(concat_field(base_table, tables[0].nest)), tables[0].alias
-        )
+        )]
         for previous, t in zip(tables, tables[1::]):
-            from_sql += (
-                SQL_LEFT_JOIN
-                + sql_alias(quote_column(concat_field(base_table, t.nest)), t.alias)
-                + SQL_ON
-                + quote_column(t.alias, PARENT)
-                + SQL_EQ
-                + quote_column(previous.alias, UID)
-            )
+            from_sql.append(ConcatSQL(
+                SQL_LEFT_JOIN,
+                sql_alias(quote_column(concat_field(base_table, t.nest)), t.alias),
+                SQL_ON,
+                quote_column(t.alias, PARENT),
+                SQL_EQ,
+                quote_column(previous.alias, UID)
+            ))
 
-        main_filter = query.where.to_sql(schema, boolean=True)
+        main_filter = ToBooleanOp(query.where).partial_eval(SQLang).to_sql(schema).expr
 
         # SHIFT THE COLUMN DEFINITIONS BASED ON THE NESTED QUERY DEPTH
         ons = []
@@ -283,20 +285,23 @@ class EdgesTable(SetOpTable):
                         SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
                     )
                     on_clause = SQL_AND.join(
-                        quote_column(edge_alias)
-                        + SQL_DOT
-                        + k
-                        + " <= "
-                        + v
-                        + SQL_AND
-                        + v
-                        + " < ("
-                        + quote_column(edge_alias)
-                        + SQL_DOT
-                        + k
-                        + SQL_PLUS
-                        + text(d.interval)
-                        + ")"
+                        ConcatSQL(
+                            quote_column(edge_alias),
+                            SQL_DOT,
+                            k,
+                            SQL_LE,
+                            v,
+                            SQL_AND,
+                            v,
+                            SQL_LT,
+                            sql_iso(
+                                quote_column(edge_alias),
+                                SQL_DOT,
+                                k,
+                                SQL_PLUS,
+                                text(d.interval),
+                            )
+                        )
                         for k, (t, v) in zip(domain_names, edge_values)
                     )
                     null_on_clause = None
@@ -364,16 +369,16 @@ class EdgesTable(SetOpTable):
                 on_clause = SQL_AND.join(
                     sql_iso(
                         sql_iso(
-                            quote_column(edge_alias, k)
-                            + SQL_IS_NULL
-                            + SQL_AND
-                            + v
-                            + SQL_IS_NULL
-                        )
-                        + SQL_OR
-                        + quote_column(edge_alias, k)
-                        + SQL_EQ
-                        + v
+                            quote_column(edge_alias, k),
+                            SQL_IS_NULL,
+                            SQL_AND,
+                            v,
+                            SQL_IS_NULL
+                        ),
+                        SQL_OR,
+                        quote_column(edge_alias, k),
+                        SQL_EQ,
+                        v
                     )
                     for k, v in zip(domain_names, vals)
                 )
@@ -644,41 +649,40 @@ class EdgesTable(SetOpTable):
                             type="number",
                         )
             else:  # STANDARD AGGREGATES
-                for details in s.value.partial_eval(SQLang).to_sql(schema):
-                    for sql_type, sql in details.sql.items():
-                        column_number = len(outer_selects)
-                        sql = sql_aggs[s.aggregate] + sql_iso(sql)
-                        if s.default != None:
-                            sql = sql_coalesce([sql, quote_value(s.default)])
-                        outer_selects.append(sql_alias(
-                            sql, _make_column_name(column_number)
-                        ))
-                        index_to_column[column_number] = ColumnMapping(
-                            push_name=s.name,
-                            push_column_name=s.name,
-                            push_column_index=si,
-                            push_child=".",  # join_field(split_field(details.name)[1::]),
-                            pull=get_column(column_number),
-                            sql=sql,
-                            column_alias=_make_column_name(column_number),
-                            type=sql_type_to_json_type[sql_type],
-                        )
+                items_sql = s.value.partial_eval(SQLang).to_sql(schema)
+                column_number = len(outer_selects)
+                sql = sql_call(sql_aggs[s.aggregate], items_sql)
+                if s.default != None:
+                    sql = sql_coalesce([sql, quote_value(s.default)])
+                outer_selects.append(sql_alias(
+                    sql, _make_column_name(column_number)
+                ))
+                index_to_column[column_number] = ColumnMapping(
+                    push_name=s.name,
+                    push_column_name=s.name,
+                    push_column_index=si,
+                    push_child=".",  # join_field(split_field(details.name)[1::]),
+                    pull=get_column(column_number),
+                    sql=sql,
+                    column_alias=_make_column_name(column_number),
+                    type=FromJsonType(items_sql.data_type)
+                )
 
         for w in query.window:
             outer_selects.append(self._window_op(self, query, w))
 
         all_parts = []
 
-        primary = (
+        primary = sql_alias(
             sql_iso(
-                SQL_SELECT
-                + sql_list(select_clause)
-                + SQL_FROM
-                + from_sql
-                + SQL_WHERE
-                + main_filter
-            )
-            + nest_to_alias["."]
+                SQL_SELECT,
+                sql_list(select_clause),
+                SQL_FROM,
+                ConcatSQL(*from_sql),
+                SQL_WHERE,
+                main_filter
+            ),
+            nest_to_alias["."]
         )
 
         edge_sql = []
