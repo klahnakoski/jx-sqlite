@@ -24,9 +24,10 @@ def ToJsonType(value):
 
 
 def FromJsonType(value):
-    for k, v in _type_to_json_type.items():
-        if k is value or v is value or v == value:
-            return k
+    value = _single_value(value)
+    for simple_type, complex_type in _type_to_json_type.items():
+        if simple_type is value or complex_type is value or complex_type == value:
+            return simple_type
     return OBJECT
 
 
@@ -107,8 +108,8 @@ class JsonType(object):
                 return True
 
         # DETECT DIFFERENCE BY ONLY NAME DEPTH
-        sd = _interesting(self).__dict__
-        od = _interesting(other).__dict__
+        sd = _single_value(self).__dict__
+        od = _single_value(other).__dict__
 
         if len(sd) != len(od):
             return False
@@ -124,12 +125,11 @@ class JsonType(object):
             od = other.__dict__
 
             # DETECT DIFFERENCE BY ONLY NAME DEPTH
-            sd = _interesting(sd)
-            od = _interesting(od)
+            sd = _single_value(sd)
+            od = _single_value(od)
 
 
             Log.error("not expected", cause)
-
 
     def __radd__(self, path):
         """
@@ -149,12 +149,14 @@ class JsonType(object):
         return str(self.__data__())
 
 
-def _interesting(v):
+def _single_value(v):
     d = v.__dict__
     ld = len(d)
     while ld == 1:
         kk, vv = first(d.items())
-        if kk in _special:
+        if kk in _primitive_type_keys:
+            return v
+        if kk in (_A, _U):
             return v
         v = vv
         d = vv.__dict__
@@ -208,19 +210,25 @@ PRIMITIVE = (EXISTS, BOOLEAN, INTEGER, NUMBER, TIME, INTERVAL, STRING)
 INTERNAL = (EXISTS, OBJECT, NESTED)
 STRUCT = (OBJECT, NESTED)
 
-_special = "~b~i~n~t~d~s~u~a~"
-
-NESTED_KEY = "~a~"  # "a" FOR ARRAY
+_B = "~b~"
+_I = "~i~"
+_N = "~n~"
+_T = "~t~"
+_D = "~d~"
+_S = "~s~"
+_U = "~u~"
+_A = "~a~"
+_primitive_type_keys = (_B, _I, _N, _T, _D, _S)
 
 T_IS_NULL = _new(JsonType)
-T_BOOLEAN = _primitive("~b~", BOOLEAN)
-T_INTEGER = _primitive("~i~", INTEGER)
-T_NUMBER = _primitive("~n~", NUMBER)
-T_TIME = _primitive("~t~", TIME)
-T_INTERVAL = _primitive("~d~", INTERVAL)
-T_STRING = _primitive("~s~", STRING)
-T_NESTED = _primitive(NESTED_KEY, NESTED)
-T_UNKNOWN = _primitive("~u~", "unknown")
+T_BOOLEAN = _primitive(_B, BOOLEAN)
+T_INTEGER = _primitive(_I, INTEGER)
+T_NUMBER = _primitive(_N, NUMBER)
+T_TIME = _primitive(_T, TIME)
+T_INTERVAL = _primitive(_D, INTERVAL)  # d FOR DELTA
+T_STRING = _primitive(_S, STRING)
+T_NESTED = _primitive(_A, NESTED)
+T_UNKNOWN = _primitive(_U, "unknown")
 
 T_PRIMITIVE = T_BOOLEAN | T_INTEGER | T_NUMBER | T_TIME | T_INTERVAL | T_STRING
 T_NUMBER_TYPES = T_INTEGER | T_NUMBER | T_TIME | T_INTERVAL
@@ -239,7 +247,7 @@ _type_to_json_type = {
 
 def value_to_json_type(value):
     if is_many(value):
-        return _primitive(NESTED_KEY, union_type(*value))
+        return _primitive(_A, union_type(*value))
     elif is_data(value):
         return {k: value_to_json_type(v) for k, v in value.items()}
     else:

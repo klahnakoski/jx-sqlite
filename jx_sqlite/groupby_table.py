@@ -11,26 +11,16 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+from jx_base.expressions import TRUE, Variable
+from jx_base.language import is_op
 from jx_python import jx
-from jx_sqlite.utils import (
-    ColumnMapping,
-    _make_column_name,
-    get_column,
-    sql_aggs,
-    PARENT,
-    UID, table_alias,
-)
 from jx_sqlite.edges_table import EdgesTable
 from jx_sqlite.expressions._utils import SQLang, sql_type_to_json_type
-from mo_dots import concat_field, join_field, listwrap, split_field, startswith_field
-from mo_future import unichr
-from mo_logs import Log
 from jx_sqlite.sqlite import (
     SQL_FROM,
     SQL_GROUPBY,
     SQL_IS_NULL,
     SQL_LEFT_JOIN,
-    SQL_NULL,
     SQL_ON,
     SQL_ONE,
     SQL_ORDERBY,
@@ -40,10 +30,19 @@ from jx_sqlite.sqlite import (
     sql_iso,
     sql_list,
     SQL_EQ,
-    sql_coalesce,
-    SQL,
+    sql_coalesce, ConcatSQL, SQL_ASC, SQL_DESC, SQL_COMMA,
 )
-from jx_sqlite.sqlite import quote_column, sql_alias, sql_call, quote_value
+from jx_sqlite.sqlite import quote_column, sql_alias, sql_call
+from jx_sqlite.utils import (
+    ColumnMapping,
+    _make_column_name,
+    get_column,
+    sql_aggs,
+    PARENT,
+    UID, table_alias,
+)
+from mo_dots import listwrap, split_field, startswith_field
+from mo_json import FromJsonType
 
 
 class GroupbyTable(EdgesTable):
@@ -63,68 +62,58 @@ class GroupbyTable(EdgesTable):
                 tables.append({"nest": n, "alias": a})
         tables = jx.sort(tables, {"value": {"length": "nest"}})
 
-        from_sql = (
-            join_field([base_table] + split_field(tables[0].nest))
-            + " "
-            + tables[0].alias
-        )
+        from_sql = [sql_alias(
+            quote_column(base_table, *split_field(tables[0].nest)),
+            tables[0].alias
+        )]
         previous = tables[0]
         for t in tables[1::]:
-            from_sql += (
-                SQL_LEFT_JOIN
-                + quote_column(concat_field(base_table, t.nest))
-                + " "
-                + t.alias
-                + SQL_ON
-                + quote_column(t.alias, PARENT)
-                + SQL_EQ
-                + quote_column(previous.alias, UID)
-            )
+            from_sql.append(ConcatSQL(
+                SQL_LEFT_JOIN,
+                quote_column(base_table, *split_field(t.nest)),
+                t.alias,
+                SQL_ON,
+                quote_column(t.alias, PARENT),
+                SQL_EQ,
+                quote_column(previous.alias, UID)
+            ))
 
         selects = []
         groupby = []
         for i, e in enumerate(query.groupby):
-            for edge_sql in e.value.partial_eval(SQLang).to_sql(schema):
-                column_number = len(selects)
-                sql_type, sql = edge_sql.sql.items()[0]
-                if sql is SQL_NULL and not e.value.var in schema.keys():
-                    Log.error("No such column {{var}}", var=e.value.var)
+            edge_sql = e.value.partial_eval(SQLang).to_sql(schema)
+            column_number = len(selects)
+            sql = edge_sql.expr
+            data_type = edge_sql.data_type
 
-                column_alias = _make_column_name(column_number)
-                groupby.append(sql)
-                selects.append(sql_alias(sql, column_alias))
-                if edge_sql.nested_path == ".":
-                    select_name = edge_sql.name
-                else:
-                    select_name = "."
-                index_to_column[column_number] = ColumnMapping(
-                    is_edge=True,
-                    push_name=e.name,
-                    push_column_name=e.name.replace("\\.", "."),
-                    push_column_index=i,
-                    push_child=select_name,
-                    pull=get_column(column_number),
-                    sql=sql,
-                    column_alias=column_alias,
-                    type=sql_type_to_json_type[sql_type],
-                )
+            column_alias = _make_column_name(column_number)
+            groupby.append(sql)
+            selects.append(sql_alias(sql, column_alias))
+            index_to_column[column_number] = ColumnMapping(
+                is_edge=True,
+                push_name=e.name,
+                push_column_name=e.name.replace("\\.", "."),
+                push_column_index=i,
+                push_child=".",
+                pull=get_column(column_number),
+                sql=sql,
+                column_alias=column_alias,
+                type=FromJsonType(data_type),
+            )
 
         for i, select in enumerate(listwrap(query.select)):
             column_number = len(selects)
-            sql_type, sql = (
-                select.value.partial_eval(SQLang).to_sql(schema)[0].sql.items()[0]
-            )
-            if sql == "NULL" and not select.value.var in schema.keys():
-                Log.error("No such column {{var}}", var=select.value.var)
+            sql = select.value.partial_eval(SQLang).to_sql(schema)
+            data_type = sql.data_type
 
             # AGGREGATE
-            if select.value == "." and select.aggregate == "count":
+            if is_op(select.value, Variable) and select.value.var == "." and select.aggregate == "count":
                 sql = sql_count(SQL_ONE)
             else:
                 sql = sql_call(sql_aggs[select.aggregate], sql)
 
-            if select.default != None:
-                sql = sql_coalesce([sql, quote_value(select.default)])
+            if select.default.missing(SQLang) != TRUE and select.aggregate != "count":
+                sql = sql_coalesce([sql, select.default.partial_eval(SQLang).to_sql(schema)])
 
             selects.append(sql_alias(sql, select.name))
 
@@ -135,8 +124,8 @@ class GroupbyTable(EdgesTable):
                 push_child=".",
                 pull=get_column(column_number),
                 sql=sql,
-                column_alias=quote_column(select.name),
-                type=sql_type_to_json_type[sql_type],
+                column_alias=select.name,
+                type=FromJsonType(data_type),
             )
 
         for w in query.window:
@@ -144,30 +133,25 @@ class GroupbyTable(EdgesTable):
 
         where = query.where.partial_eval(SQLang).to_sql(schema)
 
-        command = (
-            SQL_SELECT
-            + (sql_list(selects))
-            + SQL_FROM
-            + from_sql
-            + SQL_WHERE
-            + where
-            + SQL_GROUPBY
-            + sql_list(groupby)
-        )
+        command = [ConcatSQL(
+            SQL_SELECT,
+            sql_list(selects),
+            SQL_FROM,
+            ConcatSQL(*from_sql),
+            SQL_WHERE,
+            where,
+            SQL_GROUPBY,
+            sql_list(groupby)
+        )]
 
         if query.sort:
-            command += SQL_ORDERBY + sql_list(
-                sql_iso(sql[t])
-                + SQL_IS_NULL
-                + ","
-                + sql[t]
-                + (" DESC" if s.sort == -1 else "")
-                for s, sql in [
-                    (s, s.value.partial_eval(SQLang).to_sql(schema)[0].sql)
+            command.append(ConcatSQL(
+                SQL_ORDERBY,
+                sql_list(
+                    ConcatSQL(sql_iso(sql), SQL_IS_NULL, SQL_COMMA, sql_iso(sql), SQL_DESC if s.sort == -1 else SQL_ASC)
                     for s in query.sort
-                ]
-                for t in "bns"
-                if sql[t]
-            )
+                    for sql in [s.value.partial_eval(SQLang).to_sql(schema)]
+                )
+            ))
 
-        return command, index_to_column
+        return ConcatSQL(*command), index_to_column

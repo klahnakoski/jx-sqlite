@@ -56,9 +56,9 @@ class SQL(object):
     def __radd__(self, other):
         if not isinstance(other, SQL):
             if (
-                    is_text(other)
-                    and ENABLE_TYPE_CHECKING
-                    and all(c not in other for c in ('"', "'", "`", "\\"))
+                is_text(other)
+                and ENABLE_TYPE_CHECKING
+                and all(c not in other for c in ('"', "'", "`", "\\"))
             ):
                 return ConcatSQL(SQL(other), self)
             Log.error("Can only concat other SQL")
@@ -72,6 +72,7 @@ class SQL(object):
         return self.sql
 
     if PY2:
+
         def __unicode__(self):
             return "".join(self)
 
@@ -132,11 +133,8 @@ class ConcatSQL(SQL):
         """
         A SEQUENCE OF SQL FOR EVENTUAL CONCATENATION
         """
-        if ENABLE_TYPE_CHECKING:
-            if len(concat) == 1 and not isinstance(concat[0], SQL):
-                Log.error("Expecting at least 2 parameters")
-            if any(not isinstance(s, SQL) for s in concat):
-                Log.error("Can only join other SQL")
+        if ENABLE_TYPE_CHECKING and any(not isinstance(s, SQL) for s in concat):
+            Log.error("Can only join other SQL")
         self.concat = concat
 
     def __iter__(self):

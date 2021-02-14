@@ -17,10 +17,11 @@ from jx_base.dimensions import Dimension
 from jx_base.domains import DefaultDomain, Domain, SetDomain
 from jx_base.expressions._utils import jx_expression
 from jx_base.expressions.expression import Expression
-from jx_base.expressions.true_op import TRUE
 from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.leaves_op import LeavesOp
+from jx_base.expressions.literal import ZERO
 from jx_base.expressions.script_op import ScriptOp
+from jx_base.expressions.true_op import TRUE
 from jx_base.expressions.variable import Variable
 from jx_base.language import is_expression, is_op
 from jx_base.table import Table
@@ -60,7 +61,7 @@ BAD_SELECT = "Expecting `value` or `aggregate` in select clause not {{select}}"
 DEFAULT_LIMIT = 10
 MAX_LIMIT = 10000
 DEFAULT_SELECT = Data(
-    name="count", value=jx_expression("."), aggregate="count", default=0
+    name="count", value=jx_expression("."), aggregate="count", default=ZERO
 )
 
 
@@ -476,6 +477,8 @@ def _normalize_select_no_context(select, schema=None):
         output.value = jx_expression(select.value, schema=schema)
     else:
         output.value = jx_expression(select.value, schema=schema)
+
+    output.default = jx_expression(select.default, schema=schema)
 
     if not output.name:
         Log.error("expecting select to have a name: {{select}}", select=select)
