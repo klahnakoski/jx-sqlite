@@ -10,9 +10,11 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+from unittest import skipIf
+
 from jx_base.expressions import NULL
 from mo_dots import list_to_data
-from tests.test_jx import BaseTestCase, TEST_TABLE
+from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 lots_of_data = list_to_data([{"a": i} for i in range(30)])
 
@@ -470,7 +472,8 @@ class TestFilters(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    def test_find_uses_regex(self):
+    @skipIf(not global_settings.elasticsearch.version, "only for ES")
+    def test_find_uses_regex_es(self):
         test = {
             "data": [
                 {"v": "this-is-a-test"},
@@ -492,6 +495,28 @@ class TestFilters(BaseTestCase):
                         "size": 10
                     },
                 },
+                "data": [
+                    {"v": "this-is-a-test"},
+                    {"v": "test"},
+                ]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_find(self):
+        test = {
+            "data": [
+                {"v": "this-is-a-test"},
+                {"v": "this-is-a-vest"},
+                {"v": "test"},
+                {"v": ""},
+                {"v": None}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "where": {"find": {"v": "test"}}
+            },
+            "expecting_list": {
                 "data": [
                     {"v": "this-is-a-test"},
                     {"v": "test"},

@@ -11,7 +11,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions._utils import simplified
 
-from jx_base.expressions import FindOp as FindOp_, ZERO
+from jx_base.expressions import FindOp as FindOp_, ZERO, BasicEqOp
 from jx_sqlite.expressions._utils import SQLang, check, with_var
 from jx_sqlite.expressions.and_op import AndOp
 from jx_sqlite.expressions.ne_op import NeOp
@@ -81,15 +81,15 @@ class FindOp(FindOp_):
         )
         return SQLScript(data_type=T_INTEGER, expr=sql, frum=self, schema=schema)
 
-    def exists(self):
-
-        found = NeOp([
+    def missing(self, lang):
+        not_found = BasicEqOp([
             SqlInstrOp([NotLeftOp([self.value, self.start]), self.find]),
             ZERO,
         ])
 
-        output = OrOp([
-            self.default.exists(),
-            AndOp([self.value.exists(), self.find.exists(), found]),
+        output = AndOp([
+            self.default.missing(lang),
+            OrOp([self.value.missing(lang), self.find.missing(lang), not_found]),
         ]).partial_eval(self.lang)
         return output
+

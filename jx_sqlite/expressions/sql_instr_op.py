@@ -9,19 +9,25 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import SqlInstrOp as SqlInstrOp_
-from jx_sqlite.expressions._utils import check, SQLang
+from jx_base.expressions import SqlInstrOp as SqlInstrOp_, OrOp
+from jx_sqlite.expressions._utils import check, SQLang, SQLScript
 from jx_sqlite.sqlite import sql_call
-from mo_dots import wrap
+from mo_json import T_INTEGER
 
 
 class SqlInstrOp(SqlInstrOp_):
     @check
     def to_sql(self, schema):
-        value = self.value.to_sql(schema, not_null=True)
-        find = self.find.to_sql(schema, not_null=True)
+        value = self.value.to_sql(schema)
+        find = self.find.to_sql(schema)
 
-        return wrap([{"name": ".", "sql": {"n": sql_call("INSTR", value, find)}}])
+        return SQLScript(
+            data_type=T_INTEGER,
+            expr=sql_call("INSTR", value.expr, find.expr),
+            frum=self,
+            miss=OrOp([self.value.missing(SQLang), self.find.missing(SQLang)]),
+            schema=schema,
+        )
 
     def partial_eval(self, lang):
         value = self.value.partial_eval(SQLang)

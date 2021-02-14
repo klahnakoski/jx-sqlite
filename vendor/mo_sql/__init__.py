@@ -147,7 +147,7 @@ class ConcatSQL(SQL):
 
 NO_SQL = tuple()
 SQL_STAR = SQL(" * ")
-SQL_PLUS = SQL(" + ")
+SQL_PLUS = SQL_ADD = SQL_SUM = SQL(" + ")
 SQL_DIV = SQL(" / ")
 SQL_SUB = SQL(" - ")
 

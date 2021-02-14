@@ -14,6 +14,7 @@ from mo_imports import export
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.null_op import NULL
+from jx_base.expressions.not_op import NotOp
 from mo_json.types import T_BOOLEAN
 
 
@@ -45,7 +46,8 @@ class ToBooleanOp(Expression):
         elif term is self.term:
             return self
 
-        exists = term.exists(lang).partial_eval(lang)
+        exists = NotOp(term.missing(lang)).partial_eval(lang)
         return exists
+
 
 export("jx_base.expressions.and_op", ToBooleanOp)

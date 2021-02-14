@@ -9,18 +9,29 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import NotLeftOp as NotLeftOp_
-from jx_sqlite.expressions._utils import check
-from mo_dots import wrap
+from jx_base.expressions import NotLeftOp as NotLeftOp_, GteOp, LengthOp
+from jx_sqlite.expressions._utils import check, SQLang, SQLScript, OrOp
+from jx_sqlite.sqlite import sql_call, SQL_ZERO, ConcatSQL, SQL_ONE, SQL_PLUS
+from mo_json import T_STRING
 
 
 class NotLeftOp(NotLeftOp_):
     @check
     def to_sql(self, schema):
-        # test_v = self.value.missing().to_sql(boolean=True)
-        # test_l = self.length.missing().to_sql(boolean=True)
-        v = self.value.to_sql(schema, not_null=True)
-        l = "max(0, " + self.length.to_sql(schema, not_null=True) + ")"
+        v = self.value.to_sql(schema)
+        start = ConcatSQL(
+            sql_call("MAX", SQL_ZERO, self.length.to_sql(schema)), SQL_PLUS, SQL_ONE
+        )
 
-        expr = "substr(" + v + ", " + l + "+1)"
-        return wrap([{"name": ".", "sql": {"s": expr}}])
+        expr = sql_call("SUBSTR", v, start)
+        return SQLScript(
+            data_type=T_STRING,
+            expr=expr,
+            frum=self,
+            missing=OrOp([
+                self.value.missing(SQLang),
+                self.length.missing(SQLang),
+                GteOp([self.length, LengthOp(self.value)]),
+            ]),
+            schema=schema,
+        )
