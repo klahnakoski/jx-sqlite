@@ -26,10 +26,13 @@ from pyLibrary.convert import value2boolean
 
 class BasicEqOp(BasicEqOp_):
     def partial_eval(self, lang):
-        if is_literal(self.lhs) and self.lhs.value == 0:
+        lhs = self.lhs.partial_eval(lang)
+        if is_literal(lhs) and lhs.value == 0:
             return NotOp(ToBooleanOp(self.rhs)).partial_eval(lang)
-        if is_literal(self.rhs) and self.rhs.value == 0:
+        rhs = self.rhs.partial_eval(lang)
+        if is_literal(rhs) and rhs.value == 0:
             return NotOp(ToBooleanOp(self.lhs)).partial_eval(lang)
+        return BasicEqOp([lhs, rhs])
 
     @check
     def to_sql(self, schema):

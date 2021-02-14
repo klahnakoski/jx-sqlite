@@ -113,6 +113,10 @@ def partial_eval(self, lang):
         output.simplified = True
         return output
     except Exception as cause:
+        try:
+            func(self, lang)
+        except:
+            pass
         Log.error("Not expected", cause=cause)
 
 
