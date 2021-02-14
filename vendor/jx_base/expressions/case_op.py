@@ -88,11 +88,11 @@ class CaseOp(Expression):
 
         whens = []
         for w in self.whens[:-1]:
-            when = (w.when).partial_eval(lang)
+            when = w.when.partial_eval(lang)
             if when is TRUE:
-                whens.append((w.then).partial_eval(lang))
+                whens.append(w.then.partial_eval(lang))
                 break
-            elif when is FALSE:
+            elif when is FALSE or when is NULL:
                 pass
             else:
                 whens.append(WhenOp(when, **{"then": w.then.partial_eval(lang)}))

@@ -9,13 +9,16 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import LengthOp as LengthOp_, is_literal
+from jx_base.expressions import (
+    LengthOp as LengthOp_,
+    is_literal,
+    ToBooleanOp,
+    IsStringOp,
+)
 from jx_sqlite.expressions._utils import SQLang, check, SQLScript
-from jx_sqlite.sqlite import SQL, sql_iso, ConcatSQL
-from jx_sqlite.sqlite import quote_value
-from mo_dots import Null
+from jx_sqlite.sqlite import quote_value, sql_call, SQL_NULL
 from mo_future import text
-from mo_json import value2json, T_INTEGER
+from mo_json import T_INTEGER
 
 
 class LengthOp(LengthOp_):
@@ -25,12 +28,19 @@ class LengthOp(LengthOp_):
         if is_literal(term):
             val = term.value
             if isinstance(val, text):
-                sql = quote_value(len(val))
-            elif isinstance(val, (float, int)):
-                sql = quote_value(len(value2json(val)))
+                if not val:
+                    sql = SQL_NULL
+                else:
+                    sql = quote_value(len(val))
             else:
-                return Null
+                return SQL_NULL
         else:
             value = term.to_sql(schema)
-            sql = ConcatSQL(SQL("LENGTH"), sql_iso(value.expr))
-        return SQLScript(data_type=T_INTEGER, expr=sql, frum=self, schema=schema)
+            sql = sql_call("LENGTH", value.expr)
+        return SQLScript(
+            data_type=T_INTEGER,
+            expr=sql,
+            frum=self,
+            miss=ToBooleanOp(IsStringOp(self.term)),
+            schema=schema,
+        )

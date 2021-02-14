@@ -13,7 +13,7 @@ from __future__ import absolute_import, division, unicode_literals
 from jx_base.expressions.and_op import AndOp
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
-from jx_base.expressions.is_boolean_op import IsBooleanOp
+from jx_base.expressions.to_boolean_op import ToBooleanOp
 from jx_base.expressions.true_op import TRUE
 from jx_base.language import is_op
 from mo_imports import export
@@ -63,7 +63,7 @@ class OrOp(Expression):
         terms = []
         ands = []
         for t in self.terms:
-            simple = IsBooleanOp(t).partial_eval(lang)
+            simple = ToBooleanOp(t).partial_eval(lang)
             if simple is TRUE:
                 return TRUE
             elif simple is FALSE:

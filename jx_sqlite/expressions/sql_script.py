@@ -89,19 +89,16 @@ class SQLScript(SQLScript_, SQL):
         elif self.miss is FALSE or is_op(self.frum, Variable):
             return self.expr
 
-        missing = list(sql_iso(self.miss.partial_eval(SQLang).to_sql(self.schema)))
-        if missing[-1] is SQL_IS_NOT_NULL:
-            return self.expr
-        else:
-            return ConcatSQL(
-                SQL_CASE,
-                SQL_WHEN,
-                SQL_NOT,
-                sql_iso(*missing),
-                SQL_THEN,
-                self.expr,
-                SQL_END,
-            )
+        missing = self.miss.partial_eval(SQLang).to_sql(self.schema)
+        return ConcatSQL(
+            SQL_CASE,
+            SQL_WHEN,
+            SQL_NOT,
+            sql_iso(missing),
+            SQL_THEN,
+            self.expr,
+            SQL_END,
+        )
 
     def __str__(self):
         return str(self.sql)

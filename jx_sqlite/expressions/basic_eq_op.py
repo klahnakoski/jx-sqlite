@@ -9,7 +9,13 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import BasicEqOp as BasicEqOp_, FALSE, is_literal, IsBooleanOp, NotOp
+from jx_base.expressions import (
+    BasicEqOp as BasicEqOp_,
+    FALSE,
+    is_literal,
+    NotOp,
+    ToBooleanOp,
+)
 from jx_sqlite.expressions._utils import check, SQLang
 from jx_sqlite.expressions.sql_script import SQLScript
 from jx_sqlite.sqlite import sql_iso, SQL_EQ
@@ -19,6 +25,12 @@ from pyLibrary.convert import value2boolean
 
 
 class BasicEqOp(BasicEqOp_):
+    def partial_eval(self, lang):
+        if is_literal(self.lhs) and self.lhs.value == 0:
+            return NotOp(ToBooleanOp(self.rhs)).partial_eval(lang)
+        if is_literal(self.rhs) and self.rhs.value == 0:
+            return NotOp(ToBooleanOp(self.lhs)).partial_eval(lang)
+
     @check
     def to_sql(self, schema):
         rhs = self.rhs.partial_eval(SQLang)

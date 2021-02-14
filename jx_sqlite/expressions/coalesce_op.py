@@ -11,6 +11,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import CoalesceOp as CoalesceOp_
 from jx_sqlite.expressions._utils import SQLang, check, SQLScript
+from mo_json import union_type, base_type
 from mo_sql import sql_coalesce
 
 
@@ -18,6 +19,6 @@ class CoalesceOp(CoalesceOp_):
     @check
     def to_sql(self, schema):
         terms = [t.partial_eval(SQLang).to_sql(schema) for t in self.terms]
-        data_type = merge_types(t.data_type for t in terms)
+        data_type = union_type(*(base_type(t.data_type) for t in terms))
 
         return SQLScript(data_type=data_type, expr=sql_coalesce(terms), frum=self)

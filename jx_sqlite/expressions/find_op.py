@@ -11,7 +11,15 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions._utils import simplified
 
-from jx_base.expressions import FindOp as FindOp_, ZERO, BasicEqOp
+from jx_base.expressions import (
+    FindOp as FindOp_,
+    ZERO,
+    BasicEqOp,
+    WhenOp,
+    SqlSubstrOp,
+    NULL,
+)
+from jx_base.expressions.sql_not_op import SqlNotOp
 from jx_sqlite.expressions._utils import SQLang, check, with_var
 from jx_sqlite.expressions.and_op import AndOp
 from jx_sqlite.expressions.ne_op import NeOp
@@ -34,6 +42,7 @@ from jx_sqlite.sqlite import (
     ConcatSQL,
     SQL_ONE,
     SQL_PLUS,
+    SQL_SUB,
 )
 from mo_json import T_INTEGER
 
@@ -51,6 +60,11 @@ class FindOp(FindOp_):
 
     @check
     def to_sql(self, schema):
+        # WithOp([
+        #     {"i": SqlSubstrOp([NotRightOp([self.value, self.start]), self.find])},
+        #     WhenOp(SqlNotOp("i"), **{"then": NULL, "else": "i"}),
+        # ])
+
         value = self.value.partial_eval(SQLang).to_sql(schema)
         find = self.find.partial_eval(SQLang).to_sql(schema)
         start = self.start.partial_eval(SQLang).to_sql(schema)
@@ -70,7 +84,7 @@ class FindOp(FindOp_):
                 i,
                 SQL_THEN,
                 i,
-                SQL(" - "),
+                SQL_SUB,
                 SQL_ONE,
                 SQL_PLUS,
                 start,
@@ -92,4 +106,3 @@ class FindOp(FindOp_):
             OrOp([self.value.missing(lang), self.find.missing(lang), not_found]),
         ]).partial_eval(self.lang)
         return output
-

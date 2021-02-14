@@ -24,7 +24,7 @@ def ToJsonType(value):
 
 
 def FromJsonType(value):
-    value = _single_value(value)
+    value = base_type(value)
     for simple_type, complex_type in _type_to_json_type.items():
         if simple_type is value or complex_type is value or complex_type == value:
             return simple_type
@@ -32,7 +32,6 @@ def FromJsonType(value):
 
 
 class JsonType(object):
-
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
             if isinstance(v, JsonType):
@@ -51,6 +50,14 @@ class JsonType(object):
             if sv is ov:
                 continue
             if sv is None:
+                if k in T_NUMBER_TYPES.__dict__ and sd.get(_N):
+                    continue
+                elif k is _N and any(sd.get(kk) for kk in T_NUMBER_TYPES.__dict__.keys()):
+                    for kk in T_NUMBER_TYPES.__dict__.keys():
+                        del sd[kk]
+                    sd[k] = T_NUMBER.__dict__[k]
+                    dirty = True
+                    continue
                 sd[k] = ov
                 dirty = True
                 continue
@@ -108,8 +115,8 @@ class JsonType(object):
                 return True
 
         # DETECT DIFFERENCE BY ONLY NAME DEPTH
-        sd = _single_value(self).__dict__
-        od = _single_value(other).__dict__
+        sd = base_type(self).__dict__
+        od = base_type(other).__dict__
 
         if len(sd) != len(od):
             return False
@@ -125,9 +132,8 @@ class JsonType(object):
             od = other.__dict__
 
             # DETECT DIFFERENCE BY ONLY NAME DEPTH
-            sd = _single_value(sd)
-            od = _single_value(od)
-
+            sd = base_type(sd)
+            od = base_type(od)
 
             Log.error("not expected", cause)
 
@@ -143,25 +149,36 @@ class JsonType(object):
         return acc
 
     def __data__(self):
-        return {k: v.__data__() if isinstance(v, JsonType) else str(v) for k, v in self.__dict__.items()}
+        return {
+            k: v.__data__() if isinstance(v, JsonType) else str(v)
+            for k, v in self.__dict__.items()
+        }
 
     def __str__(self):
         return str(self.__data__())
 
 
-def _single_value(v):
-    d = v.__dict__
+def base_type(type_):
+    """
+    TYPES OFTEN COME WITH SIMPLE NAMES THAT GET IN THE WAY OF THE "BASE TYPE"
+    THIS WILL STRIP EXTRANOIUS NAMES, RETURNING THE MOST BASIC TYPE
+    EITHER A PRIMITIVE, OR A STRUCTURE
+
+    USE THIS WHEN MANIPULATING FUNCTIONS THAT ACT ON VALUES, NOT STRUCTURES
+    EXAMPLE: {"a": {"~n~": number}} REPRESENTS BOTH A STRUCTURE {"a": 1} AND A NUMBER
+    """
+    d = type_.__dict__
     ld = len(d)
     while ld == 1:
-        kk, vv = first(d.items())
-        if kk in _primitive_type_keys:
-            return v
-        if kk in (_A, _U):
-            return v
-        v = vv
-        d = vv.__dict__
+        n, t = first(d.items())
+        if n in _primitive_type_codes:
+            return type_
+        if n in (_A, _U):
+            return type_
+        type_ = t
+        d = t.__dict__
         ld = len(d)
-    return v
+    return type_
 
 
 def union_type(*types):
@@ -218,7 +235,7 @@ _D = "~d~"
 _S = "~s~"
 _U = "~u~"
 _A = "~a~"
-_primitive_type_keys = (_B, _I, _N, _T, _D, _S)
+_primitive_type_codes = (_B, _I, _N, _T, _D, _S)
 
 T_IS_NULL = _new(JsonType)
 T_BOOLEAN = _primitive(_B, BOOLEAN)
@@ -230,8 +247,30 @@ T_STRING = _primitive(_S, STRING)
 T_NESTED = _primitive(_A, NESTED)
 T_UNKNOWN = _primitive(_U, "unknown")
 
-T_PRIMITIVE = T_BOOLEAN | T_INTEGER | T_NUMBER | T_TIME | T_INTERVAL | T_STRING
-T_NUMBER_TYPES = T_INTEGER | T_NUMBER | T_TIME | T_INTERVAL
+T_PRIMITIVE = _new(JsonType)
+T_PRIMITIVE.__dict__ = [
+    (x, x.update(d))[0]
+    for x in [{}]
+    for d in [
+        T_BOOLEAN.__dict__,
+        T_INTEGER.__dict__,
+        T_NUMBER.__dict__,
+        T_TIME.__dict__,
+        T_INTERVAL.__dict__,
+        T_STRING.__dict__,
+    ]
+][0]
+T_NUMBER_TYPES = _new(JsonType)
+T_NUMBER_TYPES.__dict__ = [
+    (x, x.update(d))[0]
+    for x in [{}]
+    for d in [
+        T_INTEGER.__dict__,
+        T_NUMBER.__dict__,
+        T_TIME.__dict__,
+        T_INTERVAL.__dict__,
+    ]
+][0]
 
 _type_to_json_type = {
     IS_NULL: T_IS_NULL,
@@ -241,7 +280,7 @@ _type_to_json_type = {
     TIME: T_TIME,
     INTERVAL: T_INTERVAL,
     STRING: T_STRING,
-    NESTED: T_NESTED
+    NESTED: T_NESTED,
 }
 
 
@@ -278,4 +317,3 @@ if PY2:
 
 for k, v in items(_python_type_to_json_type):
     _python_type_to_json_type[k.__name__] = v
-

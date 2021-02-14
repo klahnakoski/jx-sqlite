@@ -12,8 +12,9 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.null_op import NULL
+from jx_base.expressions.literal import is_literal
 from mo_json import NUMBER_TYPES
-from mo_json.types import T_NUMBER
+from mo_json.types import T_NUMBER, python_type_to_json_type
 
 
 class IsNumberOp(Expression):
@@ -40,6 +41,11 @@ class IsNumberOp(Expression):
 
         if term is NULL:
             return NULL
+        elif is_literal(term):
+            if python_type_to_json_type(term.value.__class__) in NUMBER_TYPES:
+                return term
+            else:
+                return NULL
         elif term.type in NUMBER_TYPES:
             return term
         else:
