@@ -13,6 +13,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base import Column, jx_expression
 from jx_base.language import is_op
+from jx_python import jx
 from jx_sqlite.expressions._utils import SQLang
 from jx_sqlite.expressions.leaves_op import LeavesOp
 from jx_sqlite.expressions.to_boolean_op import ToBooleanOp
@@ -191,7 +192,7 @@ class SetOpTable(InsertTable):
                 index_to_column[column_number] = nested_doc_details["index_to_column"][column_number] = ColumnMapping(
                     push_name=name,
                     push_child=".",
-                    push_column_name=name,
+                    push_column_name=name.replace("\\.", "."),
                     push_column_index=i,
                     pull=get_column(column_number),
                     sql=sql,
@@ -352,16 +353,11 @@ class SetOpTable(InsertTable):
 
         elif query.format == "table":
             if is_list(query.select) or is_op(query.select.value, LeavesOp):
-                num_cols = max(c.push_column_index for c in cols) + 1
-                columns = [None] * num_cols
-                for c in cols:
-                    columns[c.push_column_index] = c
-                push_names = [c.push_name for c in columns]
-
-                temp_data = []
-                for rownum, d in enumerate(data):
-                    row = tuple(d[push_name] for push_name in push_names)
-                    temp_data.append(row)
+                columns = jx.sort(cols, "push_column_index")
+                temp_data = [
+                    tuple(d[c.push_name] for c in columns)
+                    for d in data
+                ]
 
                 return Data(
                     meta={"format": "table"},
@@ -384,15 +380,7 @@ class SetOpTable(InsertTable):
                     )
 
         else:
-            if is_list(query.select) or is_op(query.select.value, LeavesOp):
-                temp_data = []
-                for rownum, d in enumerate(data):
-                    row = {c.push_column_name: v for c in cols for v in [d[c.push_name]] if not is_null(v)}
-                    temp_data.append(row)
-                return Data(meta={"format": "list"}, data=temp_data)
-            else:
-                values = to_data(data).get(query.select.name)
-                return Data(meta={"format": "list"}, data=values)
+            return Data(meta={"format": "list"}, data=data)
 
     def _make_sql_for_one_nest_in_set_op(
         self,

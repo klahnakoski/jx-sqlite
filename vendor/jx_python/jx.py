@@ -560,8 +560,12 @@ def _deeper_iterator(columns, nested_path, path, data):
 
 def sort(data, fieldnames=None, already_normalized=False):
     """
-    PASS A FIELD NAME, OR LIST OF FIELD NAMES, OR LIST OF STRUCTS WITH {"field":field_name, "sort":direction}
+    :param data: THE DATA TO SORT
+    :param fieldnames: A FIELDNAME, LIST OF FIELD NAMES
+    :param already_normalized: True IF fieldnames IS SORT STRUCTURE:  {"field":field_name, "sort":direction}
+    :return: A NEW LIST OF DATA, BUT SORTED
     """
+
     try:
         if data == None:
             return Null
@@ -571,12 +575,7 @@ def sort(data, fieldnames=None, already_normalized=False):
         else:
             if not fieldnames:
                 return to_data(sort_using_cmp(data, value_compare))
-
-            if already_normalized:
-                formal = fieldnames
-            else:
-                formal = _normalize_sort(fieldnames)
-
+            formal = fieldnames if already_normalized else _normalize_sort(fieldnames)
             funcs = [(get(f.value), f.sort) for f in formal]
 
         def comparer(left, right):
@@ -590,16 +589,17 @@ def sort(data, fieldnames=None, already_normalized=False):
             return 0
 
         if is_list(data):
-            output = FlatList([unwrap(d) for d in sort_using_cmp(data, cmp=comparer)])
+            output = list_to_data([
+                unwrap(d) for d in sort_using_cmp(data, cmp=comparer)
+            ])
         elif is_text(data):
             Log.error("Do not know how to handle")
         elif hasattr(data, "__iter__"):
-            output = FlatList([
+            output = list_to_data([
                 unwrap(d) for d in sort_using_cmp(list(data), cmp=comparer)
             ])
         else:
-            Log.error("Do not know how to handle")
-            output = None
+            raise Log.error("Do not know how to handle")
 
         return output
     except Exception as e:
