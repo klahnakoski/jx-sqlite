@@ -380,7 +380,11 @@ class SetOpTable(InsertTable):
                     )
 
         else:
-            return Data(meta={"format": "list"}, data=data)
+            if is_list(query.select) or is_op(query.select.value, LeavesOp):
+                return Data(meta={"format": "list"}, data=data)
+            else:
+                values = to_data(data).get(query.select.name)
+                return Data(meta={"format": "list"}, data=values)
 
     def _make_sql_for_one_nest_in_set_op(
         self,
