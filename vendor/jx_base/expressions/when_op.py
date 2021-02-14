@@ -51,8 +51,8 @@ class WhenOp(Expression):
 
     def missing(self, lang):
         return OrOp([
-            AndOp([self.when, self.then.missing(lang)]),
-            AndOp([NotOp(self.when), self.els_.missing(lang)]),
+            AndOp([self.when, self.then.invert(lang)]),
+            AndOp([NotOp(self.when), self.els_.invert(lang)]),
         ]).partial_eval(lang)
 
     def invert(self, lang):

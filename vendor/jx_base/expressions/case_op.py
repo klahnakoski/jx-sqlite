@@ -71,7 +71,10 @@ class CaseOp(Expression):
         return m.partial_eval(lang)
 
     def invert(self, lang):
-        return CaseOp([w.invert(lang) for w in self.whens]).partial_eval(lang)
+        return CaseOp(
+            [WhenOp(w.when, then=w.then.invert(lang)) for w in self.whens[:-1]]
+            + [self.whens[-1]]
+        ).partial_eval(lang)
 
     def partial_eval(self, lang):
         if self.type == BOOLEAN:
