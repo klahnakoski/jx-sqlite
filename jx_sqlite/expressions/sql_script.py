@@ -27,7 +27,6 @@ from jx_sqlite.sqlite import (
     sql_iso,
     ConcatSQL,
     SQL_NOT,
-    SQL_IS_NOT_NULL,
 )
 from mo_future import PY2, text
 from mo_imports import export

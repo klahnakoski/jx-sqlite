@@ -10,9 +10,11 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import ToNumberOp as NumberOp_
-from jx_sqlite.expressions._utils import SQLang, check
+from jx_base.language import is_op
+from jx_sqlite.expressions._utils import SQLang, check, SQLScript
+from jx_sqlite.sqlite import ConcatSQL, SQL_CAST, SQL_OP, SQL_CP, SQL_AS, TextSQL, json_type_to_sqlite_type
 from mo_imports import export
-from mo_json import Log, T_NUMBER_TYPES
+from mo_json import T_NUMBER, base_type
 
 
 class ToNumberOp(NumberOp_):
@@ -20,11 +22,26 @@ class ToNumberOp(NumberOp_):
     def to_sql(self, schema):
         value = self.term.partial_eval(SQLang).to_sql(schema)
 
-        if value.type in T_NUMBER_TYPES:
+        if base_type(value.data_type) == T_NUMBER:
             return value
         else:
-            Log.error("not supported")
-            #  acc.append("CAST(" + v + " as FLOAT)")
+            refined = ToNumberOp(value.frum).partial_eval(SQLang)
+            if is_op(refined, ToNumberOp):
+                return SQLScript(
+                    data_type=T_NUMBER,
+                    expr=ConcatSQL(
+                        SQL_CAST,
+                        SQL_OP,
+                        value,
+                        SQL_AS,
+                        TextSQL(json_type_to_sqlite_type[T_NUMBER]),
+                        SQL_CP,
+                    ),
+                    frum=self,
+                    miss=self.term.missing(SQLang),
+                    schema=schema,
+                )
+            return ToNumberOp(value.frum).partial_eval(SQLang).to_sql(schema)
 
 
 export("jx_sqlite.expressions._utils", ToNumberOp)

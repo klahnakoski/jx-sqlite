@@ -197,7 +197,7 @@ SQL_STRING_TYPE = "s"
 SQL_OBJECT_TYPE = "j"
 SQL_NESTED_TYPE = "a"
 
-json_type_to_sql_type = {
+json_type_to_sql_key = {
     IS_NULL: SQL_IS_NULL_TYPE,
     BOOLEAN: SQL_BOOLEAN_TYPE,
     NUMBER: SQL_NUMBER_TYPE,

@@ -292,7 +292,7 @@ ColumnMapping = DataClass(
     ]},
 )
 
-json_types = {
+sqlite_types_to_json_types = {
     "TEXT": "string",
     "REAL": "number",
     "INTEGER": "integer",

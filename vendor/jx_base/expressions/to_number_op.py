@@ -20,10 +20,10 @@ from jx_base.expressions.literal import is_literal
 from jx_base.expressions.null_op import NULL
 from jx_base.expressions.true_op import TRUE
 from jx_base.expressions.when_op import WhenOp
+from jx_base.expressions.select_op import SelectOp
 from jx_base.language import is_op
-from mo_imports import export
 from mo_future import text
-from mo_json.types import T_NUMBER
+from mo_json.types import T_NUMBER, base_type
 from mo_logs import Log
 from mo_times import Date
 
@@ -65,6 +65,8 @@ class ToNumberOp(Expression):
                 return term
             else:
                 Log.error("can not convert {{value|json}} to number", value=term.value)
+        elif base_type(term.type) == T_NUMBER:
+            return term
         elif is_op(term, CaseOp):  # REWRITING
             return CaseOp(
                 [
@@ -80,5 +82,7 @@ class ToNumberOp(Expression):
             ).partial_eval(lang)
         elif is_op(term, CoalesceOp):
             return CoalesceOp([ToNumberOp(t) for t in term.terms])
+        elif is_op(term, SelectOp):
+            return CoalesceOp([ToNumberOp(s['value']).partial_eval(lang) for s in term.terms])
         return ToNumberOp(term)
 

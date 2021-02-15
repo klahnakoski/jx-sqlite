@@ -24,7 +24,7 @@ from jx_sqlite.utils import (
     untyped_column,
 )
 from jx_sqlite.base_table import BaseTable
-from jx_sqlite.expressions._utils import json_type_to_sql_type, SQLang
+from jx_sqlite.expressions._utils import json_type_to_sql_key, SQLang
 from jx_sqlite.sqlite import (
     json_type_to_sqlite_type,
     quote_column,
@@ -372,7 +372,7 @@ class InsertTable(BaseTable):
                         jx_type=jx_type,
                         es_type=json_type_to_sqlite_type.get(jx_type, jx_type),
                         es_column=typed_column(
-                            cname, json_type_to_sql_type.get(jx_type)
+                            cname, json_type_to_sql_key.get(jx_type)
                         ),
                         es_index=table,
                         cardinality=0,
@@ -401,7 +401,7 @@ class InsertTable(BaseTable):
                         jx_type=jx_type,
                         es_type=json_type_to_sqlite_type.get(jx_type, jx_type),
                         es_column=typed_column(
-                            cname, json_type_to_sql_type.get(jx_type)
+                            cname, json_type_to_sql_key.get(jx_type)
                         ),
                         es_index=table,
                         nested_path=nested_path,
