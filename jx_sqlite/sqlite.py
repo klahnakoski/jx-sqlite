@@ -12,6 +12,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 import os
 import re
+import string
 import sys
 from collections import Mapping, namedtuple
 
@@ -560,7 +561,13 @@ CommandItem = namedtuple(
     "CommandItem", ("command", "result", "is_done", "trace", "transaction")
 )
 
-_simple_word = re.compile(r"^\w+$", re.UNICODE)
+_simple_word = re.compile(r"^[_0-9a-zA-Z]+$", re.UNICODE)
+
+
+def _simple_quote_column(name):
+    if _simple_word.match(name):
+        return name
+    return quote(name)
 
 
 def quote_column(*path):
@@ -572,7 +579,7 @@ def quote_column(*path):
                 Log.error("expecting strings, not {{type}}", type=p.__class__.__name__)
     try:
         output = ConcatSQL(
-            SQL_SPACE, JoinSQL(SQL_DOT, [SQL(quote(p)) for p in path]), SQL_SPACE
+            SQL_SPACE, JoinSQL(SQL_DOT, [SQL(_simple_quote_column(p)) for p in path]), SQL_SPACE
         )
         return output
     except Exception as e:
