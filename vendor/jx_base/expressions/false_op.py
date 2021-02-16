@@ -51,6 +51,10 @@ class FalseOp(Literal):
     def invert(self, lang):
         return TRUE
 
+    @property
+    def type(self):
+        return T_BOOLEAN
+
     def __call__(self, row=None, rownum=None, rows=None):
         return False
 

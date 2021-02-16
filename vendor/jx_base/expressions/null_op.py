@@ -78,6 +78,10 @@ class NullOp(Literal):
     def exists(self):
         return FALSE
 
+    @property
+    def type(self):
+        return T_IS_NULL
+
     def __call__(self, row=None, rownum=None, rows=None):
         return Null
 
@@ -86,10 +90,6 @@ class NullOp(Literal):
 
     def __str__(self):
         return b"null"
-
-    @property
-    def type(self):
-        return T_IS_NULL
 
     def __hash__(self):
         return id(None)

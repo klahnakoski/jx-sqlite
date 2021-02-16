@@ -52,9 +52,9 @@ class BasicEqOp(BasicEqOp_):
         return SQLScript(
             data_type=T_BOOLEAN,
             expr=ConcatSQL(
-                sql_iso(self.rhs.partial_eval(SQLang).to_sql(schema)),
+                sql_iso(lhs.to_sql(schema)),
                 SQL_EQ,
-                sql_iso(self.lhs.partial_eval(SQLang).to_sql(schema)),
+                sql_iso(rhs.to_sql(schema)),
             ),
             frum=self,
             miss=FALSE,

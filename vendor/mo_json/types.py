@@ -286,7 +286,7 @@ _type_to_json_type = {
 
 def value_to_json_type(value):
     if is_many(value):
-        return _primitive(_A, union_type(*value))
+        return _primitive(_A, union_type(*(value_to_json_type(v) for v in value)))
     elif is_data(value):
         return {k: value_to_json_type(v) for k, v in value.items()}
     else:

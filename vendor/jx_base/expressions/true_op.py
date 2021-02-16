@@ -50,6 +50,10 @@ class TrueOp(Literal):
     def invert(self, lang):
         return FALSE
 
+    @property
+    def type(self):
+        return T_BOOLEAN
+
     def __call__(self, row=None, rownum=None, rows=None):
         return True
 

@@ -151,13 +151,13 @@ class Expression(BaseExpression):
         """
         :return: TRUE IF FALSE
         """
-        inv = self.partial_eval(lang)
-        if inv is TRUE:
+        better = self.partial_eval(lang)
+        if better is TRUE:
             return FALSE
-        elif inv is FALSE:
+        elif better is FALSE:
             return TRUE
         else:
-            return NotOp(inv)
+            return NotOp(better)
 
     def partial_eval(self, lang):
         """

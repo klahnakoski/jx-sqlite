@@ -33,13 +33,6 @@ class InOp(Expression):
     has_simple_form = True
     data_type = T_BOOLEAN
 
-    def __new__(cls, terms):
-        if is_op(terms[0], Variable) and is_op(terms[1], Literal):
-            name, value = terms
-            if not is_many(value.value):
-                return EqOp([name, Literal([value.value])])
-        return object.__new__(cls)
-
     def __init__(self, term):
         Expression.__init__(self, term)
         self.value, self.superset = term
@@ -68,8 +61,13 @@ class InOp(Expression):
             return FALSE
         elif value is NULL:
             return FALSE
-        elif is_literal(value) and is_literal(superset):
-            return Literal(value() in superset())
+        elif is_literal(superset):
+            if is_literal(value):
+                return Literal(value() in listwrap(superset.value))
+            elif is_many(superset.value):
+                return InOp([value, superset])
+            else:
+                return EqOp([value, superset])
         elif is_op(value, NestedOp):
             return (
                 NestedOp(
