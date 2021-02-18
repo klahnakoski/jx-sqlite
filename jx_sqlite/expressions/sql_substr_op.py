@@ -19,12 +19,12 @@ from mo_dots import wrap
 class SqlSubstrOp(SqlSubstrOp_):
     @check
     def to_sql(self, schema):
-        value = self.value.partial_eval(SQLang).to_sql(schema, not_null=True)
-        start = self.start.partial_eval(SQLang).to_sql(schema, not_null=True)
+        value = self.value.partial_eval(SQLang).to_sql(schema)
+        start = self.start.partial_eval(SQLang).to_sql(schema)
         if self.length is NULL:
             sql = sql_call("SUBSTR", value, start)
         else:
-            length = self.length.partial_eval(SQLang).to_sql(schema, not_null=True)
+            length = self.length.partial_eval(SQLang).to_sql(schema)
             sql = sql_call("SUBSTR", value, start, length)
         return wrap([{"name": ".", "sql": {"s": sql}}])
 

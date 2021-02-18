@@ -10,26 +10,22 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import ToIntegerOp as IntegerOp_
-from jx_sqlite.expressions._utils import check
-from mo_dots import wrap
-from jx_sqlite.sqlite import sql_coalesce
+from jx_sqlite.expressions._utils import check, SQLScript
+from jx_sqlite.sqlite import sql_call, ConcatSQL, SQL_AS, TextSQL
+from mo_json import base_type, T_STRING, T_INTEGER
 
 
 class ToIntegerOp(IntegerOp_):
     @check
     def to_sql(self, schema):
-        value = self.term.to_sql(schema, not_null=True)
-        acc = []
-        for c in value:
-            for t, v in c.sql.items():
-                if t == "s":
-                    acc.append("CAST(" + v + " as INTEGER)")
-                else:
-                    acc.append(v)
+        value = self.term.to_sql(schema)
 
-        if not acc:
-            return wrap([])
-        elif len(acc) == 1:
-            return wrap([{"name": ".", "sql": {"n": acc[0]}}])
-        else:
-            return wrap([{"name": ".", "sql": {"n": sql_coalesce(acc)}}])
+        if base_type(value) == T_STRING:
+            return SQLScript(
+                data_type=T_INTEGER,
+                expr=sql_call("CAST", ConcatSQL(value, SQL_AS, TextSQL("INTEGER"))),
+                frum=self,
+                miss=value.miss,
+                schea=schema
+            )
+        return value;

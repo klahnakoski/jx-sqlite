@@ -91,15 +91,15 @@ def to_sql(self, schema):
 
 def _inequality_to_sql(self, schema):
     op, identity = _sql_operators[self.op]
-    lhs = ToNumberOp(self.lhs).partial_eval(SQLang).to_sql(schema, not_null=True)
-    rhs = ToNumberOp(self.rhs).partial_eval(SQLang).to_sql(schema, not_null=True)
-    sql = sql_iso(lhs) + op + sql_iso(rhs)
+    lhs = ToNumberOp(self.lhs).partial_eval(SQLang).to_sql(schema)
+    rhs = ToNumberOp(self.rhs).partial_eval(SQLang).to_sql(schema)
+    sql = sql_iso(lhs.expr) + op + sql_iso(rhs.expr)
 
     output = SQLScript(
         data_type=T_BOOLEAN,
         expr=sql,
         frum=self,
-        miss=OrOp([self.lhs.missing(), self.rhs.missing()]),
+        miss=OrOp([lhs.frum.missing(SQLang), rhs.frum.missing(SQLang)]),
         schema=schema,
     )
     return output
