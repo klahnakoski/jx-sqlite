@@ -44,7 +44,7 @@ from mo_dots import (
     is_data, to_data,
 )
 from mo_future import text, first
-from mo_json import STRUCT, NESTED, OBJECT
+from mo_json import STRUCT, ARRAY, OBJECT
 from mo_logs import Log
 from jx_sqlite.sqlite import (
     SQL_AND,
@@ -120,7 +120,7 @@ class InsertTable(BaseTable):
             )
             self.add_column(column)
 
-        # UPDATE THE NESTED VALUES
+        # UPDATE THE ARRAY VALUES
         for nested_column_name, nested_value in command.set.items():
             if get_jx_type(nested_value) == "nested":
                 nested_table_name = concat_field(self.name, nested_column_name)
@@ -263,7 +263,7 @@ class InsertTable(BaseTable):
                     + SQL_EQ
                     + quote_value(get_if_type(v, c.jx_type))
                     for c in self.schema.columns
-                    if c.jx_type != NESTED and len(c.nested_path) == 1
+                    if c.jx_type != ARRAY and len(c.nested_path) == 1
                     for v in [command.set[c.name]]
                     if v != None
                 ]
@@ -273,7 +273,7 @@ class InsertTable(BaseTable):
                     if (
                         c.name in clear_columns
                         and command.set[c.name] != None
-                        and c.jx_type != NESTED
+                        and c.jx_type != ARRAY
                         and len(c.nested_path) == 1
                     )
                 ]
@@ -345,7 +345,7 @@ class InsertTable(BaseTable):
 
                 insertion = doc_collection[nested_path[0]]
                 columns = snowflake.get_schema(nested_path).columns + list(insertion.active_columns)
-                if jx_type == NESTED:
+                if jx_type == ARRAY:
                     c = first(
                         cc
                         for cc in columns
@@ -380,15 +380,15 @@ class InsertTable(BaseTable):
                         nested_path=nested_path,
                         last_updated=Date.now(),
                     )
-                    if jx_type == NESTED:
+                    if jx_type == ARRAY:
                         insertion.query_paths.append(c.es_column)
                         required_changes.append({"nest": c})
                     else:
                         insertion.active_columns.add(c)
                         required_changes.append({"add": c})
-                elif c.jx_type == NESTED and jx_type == OBJECT:
+                elif c.jx_type == ARRAY and jx_type == OBJECT:
                     # ALWAYS PROMOTE OBJECTS TO NESTED
-                    jx_type = NESTED
+                    jx_type = ARRAY
                     v = [v]
                 elif len(c.nested_path) < len(nested_path):
                     from_doc = doc_collection.get(c.nested_path[0], None)
@@ -427,7 +427,7 @@ class InsertTable(BaseTable):
                     insertion.rows.append(row)
 
                 # BE SURE TO NEST VALUES, IF NEEDED
-                if jx_type == NESTED:
+                if jx_type == ARRAY:
                     deeper_nested_path = [c.es_column] + nested_path
                     if not doc_collection.get(cname):
                         doc_collection[c.es_column] = Data(active_columns=Queue(), rows=[])

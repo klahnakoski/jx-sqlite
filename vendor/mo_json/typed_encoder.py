@@ -41,7 +41,7 @@ from mo_json import (
     ESCAPE_DCT,
     EXISTS,
     INTEGER,
-    NESTED,
+    ARRAY,
     NUMBER,
     STRING,
     float2json,
@@ -93,7 +93,7 @@ def unnest_path(encoded):
     path = split_field(encoded)
     if not path:
         return "."
-    if path[-1] == NESTED_TYPE:
+    if path[-1] == ARRAY_TYPE:
         path = path[:-1]
         if not path:
             return "."
@@ -110,7 +110,7 @@ def get_nested_path(typed_path):
     parent = "."
     nested_path = (parent,)
     for i, p in enumerate(path[:-1]):
-        if p == NESTED_TYPE:
+        if p == ARRAY_TYPE:
             step = concat_field(parent, join_field(path[0 : i + 1]))
             nested_path = (step,) + nested_path
     return nested_path
@@ -143,7 +143,7 @@ def _untype_dict(value):
         if k.startswith(TYPE_PREFIX):
             if k == EXISTS_TYPE:
                 continue
-            elif k == NESTED_TYPE:
+            elif k == ARRAY_TYPE:
                 return _untype_list(v)
             else:
                 return v
@@ -197,7 +197,7 @@ def typed_encode(value, sub_schema, path, net_new_properties, buffer):
 
             if same_json_type(value_json_type, column_json_type):
                 pass  # ok
-            elif value_json_type == NESTED and all(
+            elif value_json_type == ARRAY and all(
                 python_type_to_json_type[v.__class__] == column_json_type
                 for v in value
                 if v != None
@@ -242,16 +242,16 @@ def typed_encode(value, sub_schema, path, net_new_properties, buffer):
 
                 Log.error("Can not handle {{column|json}}", column=sub_schema)
 
-            if NESTED_TYPE in sub_schema:
+            if ARRAY_TYPE in sub_schema:
                 # PREFER NESTED, WHEN SEEN BEFORE
                 if value:
                     append(buffer, "{")
-                    append(buffer, QUOTED_NESTED_TYPE)
+                    append(buffer, QUOTED_ARRAY_TYPE)
                     append(buffer, "[")
                     _dict2json(
                         value,
-                        sub_schema[NESTED_TYPE],
-                        path + [NESTED_TYPE],
+                        sub_schema[ARRAY_TYPE],
+                        path + [ARRAY_TYPE],
                         net_new_properties,
                         buffer,
                     )
@@ -262,7 +262,7 @@ def typed_encode(value, sub_schema, path, net_new_properties, buffer):
                 else:
                     # SINGLETON LIST
                     append(buffer, "{")
-                    append(buffer, QUOTED_NESTED_TYPE)
+                    append(buffer, QUOTED_ARRAY_TYPE)
                     append(buffer, "[{")
                     append(buffer, QUOTED_EXISTS_TYPE)
                     append(buffer, "1}]")
@@ -332,13 +332,13 @@ def typed_encode(value, sub_schema, path, net_new_properties, buffer):
             ):
                 # THIS IS NOT DONE BECAUSE
                 if len(value) == 1:
-                    if NESTED_TYPE in sub_schema:
+                    if ARRAY_TYPE in sub_schema:
                         append(buffer, "{")
-                        append(buffer, QUOTED_NESTED_TYPE)
+                        append(buffer, QUOTED_ARRAY_TYPE)
                         _list2json(
                             value,
-                            sub_schema[NESTED_TYPE],
-                            path + [NESTED_TYPE],
+                            sub_schema[ARRAY_TYPE],
+                            path + [ARRAY_TYPE],
                             net_new_properties,
                             buffer,
                         )
@@ -349,15 +349,15 @@ def typed_encode(value, sub_schema, path, net_new_properties, buffer):
                             value[0], sub_schema, path, net_new_properties, buffer
                         )
                 else:
-                    if NESTED_TYPE not in sub_schema:
-                        sub_schema[NESTED_TYPE] = {}
-                        net_new_properties.append(path + [NESTED_TYPE])
+                    if ARRAY_TYPE not in sub_schema:
+                        sub_schema[ARRAY_TYPE] = {}
+                        net_new_properties.append(path + [ARRAY_TYPE])
                     append(buffer, "{")
-                    append(buffer, QUOTED_NESTED_TYPE)
+                    append(buffer, QUOTED_ARRAY_TYPE)
                     _list2json(
                         value,
-                        sub_schema[NESTED_TYPE],
-                        path + [NESTED_TYPE],
+                        sub_schema[ARRAY_TYPE],
+                        path + [ARRAY_TYPE],
                         net_new_properties,
                         buffer,
                     )
@@ -371,13 +371,13 @@ def typed_encode(value, sub_schema, path, net_new_properties, buffer):
                 ))
                 if len(types) == 0:  # HANDLE LISTS WITH Nones IN THEM
                     append(buffer, "{")
-                    append(buffer, QUOTED_NESTED_TYPE)
+                    append(buffer, QUOTED_ARRAY_TYPE)
                     append(buffer, "[]}")
                 elif len(types) > 1:
                     _list2json(
                         value,
                         sub_schema,
-                        path + [NESTED_TYPE],
+                        path + [ARRAY_TYPE],
                         net_new_properties,
                         buffer,
                     )
@@ -442,16 +442,16 @@ def typed_encode(value, sub_schema, path, net_new_properties, buffer):
         elif hasattr(value, "__data__"):
             typed_encode(value.__data__(), sub_schema, path, net_new_properties, buffer)
         elif hasattr(value, "__iter__"):
-            if NESTED_TYPE not in sub_schema:
-                sub_schema[NESTED_TYPE] = {}
-                net_new_properties.append(path + [NESTED_TYPE])
+            if ARRAY_TYPE not in sub_schema:
+                sub_schema[ARRAY_TYPE] = {}
+                net_new_properties.append(path + [ARRAY_TYPE])
 
             append(buffer, "{")
-            append(buffer, QUOTED_NESTED_TYPE)
+            append(buffer, QUOTED_ARRAY_TYPE)
             _iter2json(
                 value,
-                sub_schema[NESTED_TYPE],
-                path + [NESTED_TYPE],
+                sub_schema[ARRAY_TYPE],
+                path + [ARRAY_TYPE],
                 net_new_properties,
                 buffer,
             )
@@ -541,7 +541,7 @@ TYPE_PREFIX = "~"  # u'\u0442\u0443\u0440\u0435-'  # "туре"
 BOOLEAN_TYPE = TYPE_PREFIX + "b~"
 NUMBER_TYPE = TYPE_PREFIX + "n~"
 STRING_TYPE = TYPE_PREFIX + "s~"
-NESTED_TYPE = TYPE_PREFIX + "N~"
+ARRAY_TYPE = TYPE_PREFIX + "N~"
 EXISTS_TYPE = TYPE_PREFIX + "e~"
 
 append = UnicodeBuilder.append
@@ -549,7 +549,7 @@ append = UnicodeBuilder.append
 QUOTED_BOOLEAN_TYPE = quote(BOOLEAN_TYPE) + COLON
 QUOTED_NUMBER_TYPE = quote(NUMBER_TYPE) + COLON
 QUOTED_STRING_TYPE = quote(STRING_TYPE) + COLON
-QUOTED_NESTED_TYPE = quote(NESTED_TYPE) + COLON
+QUOTED_ARRAY_TYPE = quote(ARRAY_TYPE) + COLON
 QUOTED_EXISTS_TYPE = quote(EXISTS_TYPE) + COLON
 
 inserter_type_to_json_type = {
@@ -563,7 +563,7 @@ json_type_to_inserter_type = {
     INTEGER: NUMBER_TYPE,
     NUMBER: NUMBER_TYPE,
     STRING: STRING_TYPE,
-    NESTED: NESTED_TYPE,
+    ARRAY: ARRAY_TYPE,
     EXISTS: EXISTS_TYPE,
 }
 

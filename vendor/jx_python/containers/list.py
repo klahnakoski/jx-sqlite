@@ -37,7 +37,7 @@ from mo_dots import (
 )
 from mo_future import first, sort_using_key
 from mo_imports import export, expect
-from mo_json import NESTED
+from mo_json import ARRAY
 from mo_logs import Log
 from mo_threads import Lock
 
@@ -221,7 +221,7 @@ class ListContainer(Container, Namespace, Table):
                 )
                 column.update({
                     "name": ".",
-                    "jx_type": NESTED,
+                    "jx_type": ARRAY,
                     "es_type": "nested",
                     "multi": 1001,
                     "cardinality": 1,

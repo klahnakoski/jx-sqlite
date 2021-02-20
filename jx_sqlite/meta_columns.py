@@ -98,7 +98,7 @@ class ColumnList(Table, Container):
                 continue
             base_table, nested_path = tail_field(table.name)
 
-            # FIND COMMON NESTED PATH SUFFIX
+            # FIND COMMON ARRAY PATH SUFFIX
             if nested_path == ".":
                 last_nested_path = []
             else:

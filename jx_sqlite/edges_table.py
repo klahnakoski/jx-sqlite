@@ -118,7 +118,7 @@ class EdgesTable(SetOpTable):
 
         main_filter = ToBooleanOp(query.where).partial_eval(SQLang).to_sql(schema).expr
 
-        # SHIFT THE COLUMN DEFINITIONS BASED ON THE NESTED QUERY DEPTH
+        # SHIFT THE COLUMN DEFINITIONS BASED ON THE ARRAY QUERY DEPTH
         ons = []
         join_types = []
         wheres = []

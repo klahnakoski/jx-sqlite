@@ -38,7 +38,7 @@ from jx_sqlite.sqlite import (
 from jx_sqlite.sqlite import sql_call
 from mo_dots import wrap
 from mo_future import decorate
-from mo_json import BOOLEAN, NESTED, OBJECT, STRING, NUMBER, IS_NULL, TIME, INTERVAL
+from mo_json import BOOLEAN, ARRAY, OBJECT, STRING, NUMBER, IS_NULL, TIME, INTERVAL
 from mo_json.types import T_IS_NULL, T_BOOLEAN, T_NUMBER, T_TIME, T_INTERVAL, T_STRING
 from mo_logs import Log
 
@@ -195,7 +195,7 @@ SQL_TIME_TYPE = "t"
 SQL_INTERVAL_TYPE = "n"
 SQL_STRING_TYPE = "s"
 SQL_OBJECT_TYPE = "j"
-SQL_NESTED_TYPE = "a"
+SQL_ARRAY_TYPE = "a"
 
 json_type_to_sql_key = {
     IS_NULL: SQL_IS_NULL_TYPE,
@@ -205,7 +205,7 @@ json_type_to_sql_key = {
     INTERVAL: SQL_INTERVAL_TYPE,
     STRING: SQL_STRING_TYPE,
     OBJECT: SQL_OBJECT_TYPE,
-    NESTED: SQL_NESTED_TYPE,
+    ARRAY: SQL_ARRAY_TYPE,
     T_IS_NULL: SQL_IS_NULL_TYPE,
     T_BOOLEAN: SQL_BOOLEAN_TYPE,
     T_NUMBER: SQL_NUMBER_TYPE,

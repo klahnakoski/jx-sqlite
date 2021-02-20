@@ -9,7 +9,7 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import NotLeftOp as NotLeftOp_, GteOp, LengthOp
+from jx_base.expressions import NotLeftOp as NotLeftOp_, GteOp, LengthOp, AddOp, MaxOp, ZERO, ONE
 from jx_sqlite.expressions._utils import check, SQLang, SQLScript, OrOp
 from jx_sqlite.sqlite import sql_call, SQL_ZERO, ConcatSQL, SQL_ONE, SQL_PLUS
 from mo_json import T_STRING
@@ -19,16 +19,14 @@ class NotLeftOp(NotLeftOp_):
     @check
     def to_sql(self, schema):
         v = self.value.to_sql(schema)
-        start = ConcatSQL(
-            sql_call("MAX", SQL_ZERO, self.length.to_sql(schema)), SQL_PLUS, SQL_ONE
-        )
+        start = AddOp([MaxOp([ZERO, self.length]), ONE]).partial_eval(SQLang).to_sql(schema)
 
         expr = sql_call("SUBSTR", v, start)
         return SQLScript(
             data_type=T_STRING,
             expr=expr,
             frum=self,
-            missing=OrOp([
+            miss=OrOp([
                 self.value.missing(SQLang),
                 self.length.missing(SQLang),
                 GteOp([self.length, LengthOp(self.value)]),

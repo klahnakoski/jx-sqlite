@@ -10,13 +10,12 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_imports import expect
 from jx_base.expressions._utils import builtin_ops
 from jx_base.expressions.expression import Expression
+from jx_base.expressions.false_op import FALSE
+from jx_base.expressions.literal import is_literal, Literal
 from jx_base.language import is_op
 from mo_json.types import T_BOOLEAN
-
-Literal, is_literal, Variable = expect("Literal", "is_literal", "Variable")
 
 
 class BaseInequalityOp(Expression):

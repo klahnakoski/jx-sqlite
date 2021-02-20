@@ -15,7 +15,7 @@ from jx_base.expressions import TRUE, Variable
 from jx_base.language import is_op
 from jx_python import jx
 from jx_sqlite.edges_table import EdgesTable
-from jx_sqlite.expressions._utils import SQLang, sql_type_to_json_type
+from jx_sqlite.expressions._utils import SQLang
 from jx_sqlite.sqlite import (
     SQL_FROM,
     SQL_GROUPBY,

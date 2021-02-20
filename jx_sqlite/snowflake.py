@@ -32,7 +32,7 @@ from jx_sqlite.table import Table
 from jx_sqlite.utils import quoted_ORDER, quoted_PARENT, quoted_UID, GUID
 from mo_dots import concat_field, to_data, startswith_field
 from mo_future import text
-from mo_json import NESTED, OBJECT, EXISTS
+from mo_json import ARRAY, OBJECT, EXISTS
 from mo_logs import Log
 
 
@@ -66,7 +66,7 @@ class Snowflake(jx_base.Snowflake):
 
     def _add_column(self, column):
         cname = column.name
-        if column.jx_type == NESTED:
+        if column.jx_type == ARRAY:
             # WE ARE ALSO NESTING
             self._nest_column(column, [cname] + column.nested_path)
 

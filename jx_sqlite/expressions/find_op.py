@@ -71,7 +71,7 @@ class FindOp(FindOp_):
         default = coalesce(self.default.partial_eval(SQLang).to_sql(schema), SQL_NULL)
 
         if start.sql != SQL_ZERO.sql:
-            value = NotRightOp([self.value, self.start]).to_sql(schema)
+            value = NotLeftOp([self.value, self.start]).to_sql(schema)
 
         index = sql_call("INSTR", value, find)
         i = quote_column("i")

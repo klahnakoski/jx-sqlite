@@ -9,51 +9,27 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import CountOp as CountOp_
+from jx_base.expressions import CountOp as CountOp_, NotOp
+from jx_sqlite.expressions import AndOp
 from jx_sqlite.expressions._utils import SQLang, check
-from mo_dots import wrap
-from jx_sqlite.sqlite import (
-    SQL,
-    SQL_CASE,
-    SQL_ELSE,
-    SQL_END,
-    SQL_IS_NULL,
-    SQL_THEN,
-    SQL_TRUE,
-    SQL_WHEN,
-    sql_iso,
-    SQL_ZERO,
-    SQL_ONE,
-    ConcatSQL,
-)
+from jx_sqlite.expressions.sql_script import SQLScript
+from jx_sqlite.sqlite import JoinSQL, SQL_SUM, sql_iso
+from mo_json import T_INTEGER
 
 
 class CountOp(CountOp_):
     @check
     def to_sql(self, schema):
         acc = []
+        miss = []
         for term in self.terms:
-            sqls = term.partial_eval(SQLang).to_sql(schema)
-            if len(sqls) > 1:
-                acc.append(SQL_TRUE)
-            else:
-                for t, v in sqls[0].sql.items():
-                    if t in ["b", "s", "n"]:
-                        acc.append(ConcatSQL(
-                            SQL_CASE,
-                            SQL_WHEN,
-                            sql_iso(v),
-                            SQL_IS_NULL,
-                            SQL_THEN,
-                            SQL_ZERO,
-                            SQL_ELSE,
-                            SQL_ONE,
-                            SQL_END,
-                        ))
-                    else:
-                        acc.append(SQL_TRUE)
-
-        if not acc:
-            return wrap([{}])
-        else:
-            return wrap([{"nanme": ".", "sql": {"n": SQL("+").join(acc)}}])
+            m = NotOp(term.missing(SQLang)).partial_eval(SQLang)
+            miss.append(m)
+            acc.append(sql_iso(m.to_sql(schema).expr))
+        return SQLScript(
+            data_type=T_INTEGER,
+            expr=JoinSQL(SQL_SUM, acc),
+            frum=self,
+            miss=AndOp(miss),
+            schema=schema
+        )

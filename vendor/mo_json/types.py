@@ -189,6 +189,10 @@ def union_type(*types):
     return output
 
 
+def array_type(item_type):
+    return _primitive(_A, item_type)
+
+
 _new = object.__new__
 
 
@@ -206,7 +210,7 @@ TIME = "time"
 INTERVAL = "interval"
 STRING = "string"
 OBJECT = "object"
-NESTED = "nested"
+ARRAY = "nested"
 EXISTS = "exists"
 
 ALL_TYPES = {
@@ -218,14 +222,14 @@ ALL_TYPES = {
     INTERVAL: INTERVAL,
     STRING: STRING,
     OBJECT: OBJECT,
-    NESTED: NESTED,
+    ARRAY: ARRAY,
     EXISTS: EXISTS,
 }
 JSON_TYPES = (BOOLEAN, INTEGER, NUMBER, STRING, OBJECT)
 NUMBER_TYPES = (INTEGER, NUMBER, TIME, INTERVAL)
 PRIMITIVE = (EXISTS, BOOLEAN, INTEGER, NUMBER, TIME, INTERVAL, STRING)
-INTERNAL = (EXISTS, OBJECT, NESTED)
-STRUCT = (OBJECT, NESTED)
+INTERNAL = (EXISTS, OBJECT, ARRAY)
+STRUCT = (OBJECT, ARRAY)
 
 _B = "~b~"
 _I = "~i~"
@@ -244,7 +248,7 @@ T_NUMBER = _primitive(_N, NUMBER)
 T_TIME = _primitive(_T, TIME)
 T_INTERVAL = _primitive(_D, INTERVAL)  # d FOR DELTA
 T_STRING = _primitive(_S, STRING)
-T_NESTED = _primitive(_A, NESTED)
+T_ARRAY = _primitive(_A, ARRAY)
 T_UNKNOWN = _primitive(_U, "unknown")
 
 T_PRIMITIVE = _new(JsonType)
@@ -280,7 +284,7 @@ _type_to_json_type = {
     TIME: T_TIME,
     INTERVAL: T_INTERVAL,
     STRING: T_STRING,
-    NESTED: T_NESTED,
+    ARRAY: T_ARRAY,
 }
 
 

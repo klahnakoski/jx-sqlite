@@ -30,7 +30,7 @@ from mo_json import (
     null,
     EXISTS,
     OBJECT,
-    NESTED,
+    ARRAY,
 )
 from mo_json.typed_encoder import EXISTS_TYPE
 from mo_logs import Log
@@ -290,7 +290,7 @@ Column = DataClass(
             "else": True,
         },
         {
-            "when": {"eq": {"jx_type": NESTED}},
+            "when": {"eq": {"jx_type": ARRAY}},
             "then": {"in": {"cardinality": [0, 1]}},
             "else": True,
         },

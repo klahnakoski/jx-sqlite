@@ -21,7 +21,7 @@ from jx_python.convert import table2csv
 from mo_dots import Data, coalesce, unwraplist, listwrap, wrap, to_data
 from mo_files import File
 from mo_future import allocate_lock as _allocate_lock, text, first, zip_longest
-from mo_json import BOOLEAN, INTEGER, NESTED, NUMBER, OBJECT, STRING, T_NUMBER, T_BOOLEAN, T_INTEGER, T_STRING, T_TIME, \
+from mo_json import BOOLEAN, INTEGER, ARRAY, NUMBER, OBJECT, STRING, T_NUMBER, T_BOOLEAN, T_INTEGER, T_STRING, T_TIME, \
     T_INTERVAL
 from mo_kwargs import override
 from mo_logs.exceptions import ERROR, Except, get_stacktrace, format_trace
@@ -767,7 +767,7 @@ json_type_to_sqlite_type = {
     NUMBER: "REAL",
     STRING: "TEXT",
     OBJECT: "TEXT",
-    NESTED: "TEXT",
+    ARRAY: "TEXT",
 
     T_BOOLEAN: "TINYINT",
     T_INTEGER: "INTEGER",

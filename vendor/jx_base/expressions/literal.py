@@ -131,12 +131,6 @@ def is_literal(l):
         return False
 
 
-export("jx_base.expressions._utils", Literal)
 export("jx_base.expressions.expression", Literal)
-export("jx_base.expressions.base_binary_op", Literal)
-export("jx_base.expressions.base_inequality_op", Literal)
-
 export("jx_base.expressions.expression", is_literal)
-export("jx_base.expressions.base_binary_op", is_literal)
-export("jx_base.expressions.base_inequality_op", is_literal)
-
+export("jx_base.expressions._utils", Literal)

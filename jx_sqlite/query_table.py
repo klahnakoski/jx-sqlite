@@ -50,7 +50,7 @@ from mo_dots import (
     startswith_field,
     unwrap,
     unwraplist,
-    wrap,
+    wrap, list_to_data,
 )
 from mo_future import text, transpose
 from mo_json import STRING, STRUCT

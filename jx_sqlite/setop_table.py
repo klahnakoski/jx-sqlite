@@ -95,7 +95,7 @@ class SetOpTable(InsertTable):
 
         # EVERY COLUMN, AND THE INDEX IT TAKES UP
         index_to_column = {}  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
-        index_to_uid = {}  # FROM NESTED PATH TO THE INDEX OF UID
+        index_to_uid = {}  # FROM ARRAY PATH TO THE INDEX OF UID
         sql_selects = []  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE)
         nest_to_alias = {
             nested_path: table_alias(i)

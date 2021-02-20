@@ -14,7 +14,7 @@ from jx_base.language import is_op
 from jx_sqlite.expressions._utils import check
 from jx_sqlite.expressions.variable import Variable
 from mo_dots import join_field, split_field, startswith_field, wrap
-from mo_json import EXISTS, NESTED, OBJECT
+from mo_json import EXISTS, ARRAY, OBJECT
 from mo_logs import Log
 
 
@@ -34,7 +34,7 @@ class LeavesOp(LeavesOp_):
             if startswith_field(c.name, term)
             and (
                 (
-                    c.jx_type not in (EXISTS, OBJECT, NESTED)
+                    c.jx_type not in (EXISTS, OBJECT, ARRAY)
                     and startswith_field(schema.nested_path[0], c.nested_path[0])
                 )
                 or (

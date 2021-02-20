@@ -27,7 +27,7 @@ from mo_dots import (
     is_sequence,
 )
 from mo_future import is_text, text
-from mo_json import BOOLEAN, NESTED, NUMBER, OBJECT, STRING, json2value
+from mo_json import BOOLEAN, ARRAY, NUMBER, OBJECT, STRING, json2value
 from mo_json.typed_encoder import untype_path
 from mo_logs import Log
 from mo_math import randoms
@@ -86,7 +86,7 @@ def get_jx_type(v):
     elif isinstance(v, (int, Date)):
         return NUMBER
     elif is_sequence(v):
-        return NESTED
+        return ARRAY
     return None
 
 
