@@ -55,7 +55,7 @@ from mo_dots import (
     listwrap,
     startswith_field,
     unwraplist,
-    exists, to_data, is_null, )
+    exists, to_data, is_null, relative_field, is_not_null, dict_to_data, )
 from mo_future import text
 from mo_json.types import IS_NULL, FromJsonType, OBJECT
 from mo_logs import Log
@@ -69,12 +69,12 @@ class SetOpTable(InsertTable):
         vars_ = UNION([
             v.var for select in listwrap(query.select) for v in select.value.vars()
         ])
-        schema = self.schema
+        schema = query.frum.schema
         known_vars = schema.keys()
 
         active_columns = {".": set()}
         for v in vars_:
-            for c in schema.snowflake.leaves(v):
+            for c in schema.leaves(v):
                 nest = c.nested_path[0]
                 active_columns.setdefault(nest, set()).add(c)
 
@@ -238,8 +238,8 @@ class SetOpTable(InsertTable):
             :param parent_id_coord: the column number for the parent id (so we ca extract from each row)
             :return: the nested property (usually an array), rownum
             """
-            previous_doc_id = None
-            doc = Null
+            previous_doc_id = -1
+            doc = dict_to_data({})
             output = []
             id_coord = nested_doc_details["id_coord"]
             index_to_column = tuple(
@@ -260,17 +260,15 @@ class SetOpTable(InsertTable):
 
                 if doc_id != previous_doc_id:
                     previous_doc_id = doc_id
-                    doc = Null
+                    doc = dict_to_data({})
                     curr_nested_path = nested_doc_details["nested_path"][0]
-                    for i, c, relative_field in index_to_column:
+                    for i, c, rel_field in index_to_column:
                         value = row[i]
-                        if relative_field == ".":
+                        if rel_field == ".":
                             if exists(value):
                                 doc = value
                         elif exists(value):
-                            if doc is Null:
-                                doc = Data()
-                            doc[relative_field] = value
+                            doc[rel_field] = value
 
                 for child_details in nested_doc_details["children"]:
                     # EACH NESTED TABLE MUST BE ASSEMBLED INTO A LIST OF OBJECTS
@@ -279,22 +277,22 @@ class SetOpTable(InsertTable):
                         rownum, nested_value = _accumulate_nested(
                             rownum, child_details, doc_id, id_coord
                         )
-                        if nested_value != None:
+                        if is_not_null(nested_value):
                             push_name = child_details["nested_path"][0]
                             if is_list(query.select) or is_op(
                                 query.select.value, LeavesOp
                             ):
                                 # ASSIGN INNER PROPERTIES
-                                relative_field = relative_field(
+                                rel_field = relative_field(
                                     push_name, curr_nested_path
                                 )
                             else:  # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT
-                                relative_field = "."
+                                rel_field = "."
 
-                            if relative_field == ".":
+                            if rel_field == ".":
                                 doc = unwraplist(nested_value)
                             else:
-                                doc[relative_field] = unwraplist(nested_value)
+                                doc[rel_field] = unwraplist(nested_value)
 
                 output.append(doc)
 

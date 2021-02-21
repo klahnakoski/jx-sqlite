@@ -17,10 +17,8 @@ from mo_json.types import T_NUMBER
 class IsNumberOp(IsNumberOp_):
     @check
     def to_sql(self, schema):
-        @check
-        def to_sql(self, schema):
-            value = self.term.to_sql(schema)
-            if value.data_type == T_NUMBER:
-                return value
-            else:
-                return NULL.to_sql()
+        value = self.term.to_sql(schema)
+        if value.data_type == T_NUMBER:
+            return value
+        else:
+            return NULL.to_sql(schema)

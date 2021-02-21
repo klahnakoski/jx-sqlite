@@ -22,7 +22,10 @@ class Schema(object):
 
     def __init__(self, nested_path, snowflake):
         if nested_path[-1] != ".":
-            Log.error("Expecting full nested path")
+            Log.error(
+                "Expecting full nested path so we can track the tables, and deal with"
+                " abiguity in the event the names are not typed"
+            )
         self.path = concat_field(snowflake.fact_name, nested_path[0])
         self.nested_path = nested_path
         self.snowflake = snowflake
@@ -46,7 +49,7 @@ class Schema(object):
 
     def keys(self):
         """
-        :return: ALL COLUMN NAMES
+        :return: ALL DYNAMIC TYPED COLUMN NAMES
         """
         return set(c.name for c in self.columns)
 
@@ -65,14 +68,16 @@ class Schema(object):
         )
 
     def leaves(self, prefix):
-        full_name = concat_field(self.nested_path, prefix)
-        return set(
+        full_name = concat_field(self.nested_path[0], prefix)
+        candidates = self.snowflake.namespace.columns.find(self.path)
+        output = set(
             c
-            for c in self.snowflake.namespace.columns.find(self.snowflake.fact_name)
+            for c in candidates
             for k in [c.name, c.es_column]
             if startswith_field(k, full_name) and k != GUID or k == full_name
             if c.jx_type not in [OBJECT, EXISTS]
         )
+        return output
 
     def map_to_sql(self, var=""):
         """

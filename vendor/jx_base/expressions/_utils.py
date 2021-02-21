@@ -13,13 +13,13 @@ from __future__ import absolute_import, division, unicode_literals
 import operator
 
 from jx_base.language import is_expression, Language
-from mo_dots import is_sequence
+from mo_dots import is_sequence, is_null
 from mo_future import (
     get_function_name,
     is_text,
     items as items_,
     text,
-    utf8_json_encoder,
+    utf8_json_encoder
 )
 from mo_imports import expect
 from mo_json import BOOLEAN, INTEGER, IS_NULL, NUMBER, OBJECT, STRING, scrub
@@ -94,11 +94,15 @@ def _jx_expression(expr, lang):
         return expr
         # return new_op(expr.args)  # THIS CAN BE DONE, BUT IT NEEDS MORE CODING, AND I WOULD EXPECT IT TO BE SLOW
 
-    if expr is None:
+    if expr is True:
         return TRUE
+    elif expr is False:
+        return FALSE
+    elif is_null(expr):
+        return NULL
     elif is_text(expr):
         return Variable(expr)
-    elif expr in (True, False, None) or expr == None or is_number(expr):
+    elif is_number(expr):
         return Literal(expr)
     elif expr.__class__ is Date:
         return Literal(expr.unix)

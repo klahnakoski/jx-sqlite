@@ -26,12 +26,13 @@ from jx_sqlite.sqlite import (
     SQL_RENAME_COLUMN,
     SQL_RENAME_TO,
     SQL_TO,
+    TextSQL,
 )
 from jx_sqlite.sqlite import quote_column
 from jx_sqlite.table import Table
-from jx_sqlite.utils import quoted_ORDER, quoted_PARENT, quoted_UID, GUID
+from jx_sqlite.utils import quoted_ORDER, quoted_PARENT, quoted_UID, GUID, untype_field
 from mo_dots import concat_field, to_data, startswith_field
-from mo_future import text
+from mo_future import text, first
 from mo_json import ARRAY, OBJECT, EXISTS
 from mo_logs import Log
 
@@ -42,7 +43,7 @@ class Snowflake(jx_base.Snowflake):
     """
 
     def __init__(self, fact_name, namespace):
-        if not namespace.columns._snowflakes[fact_name]:
+        if not namespace.columns._snowflakes.get(fact_name):
             Log.error("{{name}} does not exist", name=fact_name)
 
         self.fact_name = fact_name  # THE CENTRAL FACT TABLE
@@ -130,7 +131,9 @@ class Snowflake(jx_base.Snowflake):
         # FIND THE INNER COLUMNS WE WILL BE MOVING
         moving_columns = []
         for c in self.columns:
-            if destination_table != column.es_index and startswith_field(c.es_column, new_nest):
+            if destination_table != column.es_index and startswith_field(
+                c.es_column, new_nest
+            ):
                 moving_columns.append(c)
                 c.nested_path = [new_nest] + c.nested_path
 
@@ -140,20 +143,22 @@ class Snowflake(jx_base.Snowflake):
         data = self.namespace.db.about(destination_table)
         if not data:
             # DEFINE A NEW TABLE
-            command = (
-                SQL_CREATE
-                + quote_column(destination_table)
-                + sql_iso(sql_list([
-                    quoted_UID + "INTEGER",
-                    quoted_PARENT + "INTEGER",
-                    quoted_ORDER + "INTEGER",
-                    "PRIMARY KEY " + sql_iso(quoted_UID),
-                    "FOREIGN KEY "
-                    + sql_iso(quoted_PARENT)
-                    + " REFERENCES "
-                    + quote_column(existing_table)
-                    + sql_iso(quoted_UID),
-                ]))
+            command = ConcatSQL(
+                SQL_CREATE,
+                quote_column(destination_table),
+                sql_iso(sql_list([
+                    ConcatSQL(quoted_UID, TextSQL("INTEGER")),
+                    ConcatSQL(quoted_PARENT, TextSQL("INTEGER")),
+                    ConcatSQL(quoted_ORDER, TextSQL("INTEGER")),
+                    ConcatSQL(TextSQL("PRIMARY KEY "),sql_iso(quoted_UID)),
+                    ConcatSQL(
+                        TextSQL("FOREIGN KEY "),
+                        sql_iso(quoted_PARENT),
+                        TextSQL(" REFERENCES "),
+                        quote_column(existing_table),
+                        sql_iso(quoted_UID),
+                    ),
+                ])),
             )
             with self.namespace.db.transaction() as t:
                 t.execute(command)
@@ -219,10 +224,20 @@ class Snowflake(jx_base.Snowflake):
         """
         :return:  LIST OF (nested_path, full_name) PAIRS
         """
-        return [
-            (path, concat_field(self.fact_name, path))
-            for path in self.query_paths
-        ]
+        return [(path, concat_field(self.fact_name, path)) for path in self.query_paths]
+
+    def get_table(self, query_path):
+        """
+        RETURN TABLE FOR query_path (WITH SOME PATTERN MATCHING)
+        """
+        path, type = untype_field(query_path)
+
+        best = first(p for p in self.query_paths if untype_field(p)[0] == path)
+        if not best:
+            Log.error("Can not find table with name {{table}}", table=best)
+        nested_path = list(reversed(sorted(p for p in self.query_paths if startswith_field(best, p))))
+
+        return Table(nested_path , self)
 
     def get_schema(self, nested_path):
         return Schema(nested_path, self)
@@ -238,6 +253,15 @@ class Snowflake(jx_base.Snowflake):
     @property
     def query_paths(self):
         return self.namespace.columns.get_query_paths(self.fact_name)
+
+
+    def values(self, name):
+        """
+        RETURN THE POSSIBLE COLUMNS THIS name REPRESENTS
+        :param name:
+        :return:
+        """
+        return self.namespace.columns.find(name)
 
     def leaves(self, prefix):
         return set(

@@ -10,7 +10,16 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from mo_imports import expect
-from jx_base.expressions import FALSE, FalseOp, NULL, NullOp, TrueOp, extend, AndOp
+from jx_base.expressions import (
+    FALSE,
+    FalseOp,
+    NULL,
+    NullOp,
+    TrueOp,
+    extend,
+    AndOp,
+    TRUE,
+)
 from jx_base.language import Language
 from jx_sqlite.sqlite import (
     SQL,
@@ -33,7 +42,11 @@ from jx_sqlite.sqlite import (
     SQL_AS,
     SQL_SELECT,
     SQL_FROM,
-    SQL_WITH, SQL_DIV, SQL_GT, SQL_LE, SQL_GE,
+    SQL_WITH,
+    SQL_DIV,
+    SQL_GT,
+    SQL_LE,
+    SQL_GE,
 )
 from jx_sqlite.sqlite import sql_call
 from mo_dots import wrap
@@ -69,7 +82,7 @@ def check(func):
 @check
 def to_sql(self, schema):
     return SQLScript(
-        data_type=T_IS_NULL, expr=SQL_NULL, frum=self, miss=TrueOp, schema=schema
+        data_type=T_IS_NULL, expr=SQL_NULL, frum=self, miss=TRUE, schema=schema
     )
 
 
@@ -77,7 +90,7 @@ def to_sql(self, schema):
 @check
 def to_sql(self, schema):
     return SQLScript(
-        data_type=T_BOOLEAN, expr=SQL_TRUE, frum=self, miss=FalseOp, schema=schema
+        data_type=T_BOOLEAN, expr=SQL_TRUE, frum=self, miss=FALSE, schema=schema
     )
 
 
@@ -85,24 +98,25 @@ def to_sql(self, schema):
 @check
 def to_sql(self, schema):
     return SQLScript(
-        data_type=T_BOOLEAN, expr=SQL_FALSE, frum=self, miss=FalseOp, schema=schema
+        data_type=T_BOOLEAN, expr=SQL_FALSE, frum=self, miss=FALSE, schema=schema
     )
 
 
 def _inequality_to_sql(self, schema):
     op, identity = _sql_operators[self.op]
+
     lhs = ToNumberOp(self.lhs).partial_eval(SQLang).to_sql(schema)
     rhs = ToNumberOp(self.rhs).partial_eval(SQLang).to_sql(schema)
-    sql = sql_iso(lhs.expr) + op + sql_iso(rhs.expr)
 
-    output = SQLScript(
-        data_type=T_BOOLEAN,
-        expr=sql,
-        frum=self,
-        miss=OrOp([lhs.frum.missing(SQLang), rhs.frum.missing(SQLang)]),
-        schema=schema,
+    if lhs.miss is TRUE or rhs.miss is TRUE:
+        return FALSE.to_sql(schema)
+
+    sql = ConcatSQL(sql_iso(lhs.expr), op, sql_iso(rhs.expr))
+    missing = OrOp([lhs.frum.missing(SQLang), rhs.frum.missing(SQLang)])
+
+    return SQLScript(
+        data_type=T_BOOLEAN, expr=sql, frum=self, miss=missing, schema=schema
     )
-    return output
 
 
 @check
@@ -111,10 +125,12 @@ def _binaryop_to_sql(self, schema):
 
     lhs = ToNumberOp(self.lhs).partial_eval(SQLang).to_sql(schema)
     rhs = ToNumberOp(self.rhs).partial_eval(SQLang).to_sql(schema)
-    script = ConcatSQL(sql_iso(lhs), op, sql_iso(rhs))
-    missing = OrOp([self.lhs.missing(SQLang), self.rhs.missing(SQLang)]).partial_eval(SQLang)
+
+    sql = ConcatSQL(sql_iso(lhs.expr), op, sql_iso(rhs.expr))
+    missing = OrOp([self.lhs.missing(SQLang), self.rhs.missing(SQLang),])
+
     return SQLScript(
-        data_type=T_NUMBER, expr=script, frum=self, miss=missing, schema=schema,
+        data_type=T_NUMBER, expr=sql, frum=self, miss=missing, schema=schema,
     )
 
 

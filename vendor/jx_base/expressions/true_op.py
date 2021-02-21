@@ -20,7 +20,7 @@ class TrueOp(Literal):
     data_type = T_BOOLEAN
 
     def __new__(cls, *args, **kwargs):
-        return object.__new__(cls, *args, **kwargs)
+        return object.__new__(cls)
 
     def __init__(self, op=None, term=None):
         Literal.__init__(self, True)

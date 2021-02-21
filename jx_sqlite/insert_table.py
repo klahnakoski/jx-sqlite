@@ -19,7 +19,7 @@ from jx_sqlite.utils import (
     PARENT,
     UID,
     get_if_type,
-    get_jx_type,
+    value_to_jx_type,
     typed_column,
     untyped_column,
 )
@@ -109,7 +109,7 @@ class InsertTable(BaseTable):
         new_columns = set(command.set.keys()) - set(c.name for c in self.schema.columns)
         for new_column_name in new_columns:
             nested_value = command.set[new_column_name]
-            ctype = get_jx_type(nested_value)
+            ctype = value_to_jx_type(nested_value)
             column = Column(
                 name=new_column_name,
                 jx_type=ctype,
@@ -122,7 +122,7 @@ class InsertTable(BaseTable):
 
         # UPDATE THE ARRAY VALUES
         for nested_column_name, nested_value in command.set.items():
-            if get_jx_type(nested_value) == "nested":
+            if value_to_jx_type(nested_value) == "nested":
                 nested_table_name = concat_field(self.name, nested_column_name)
                 nested_table = nested_tables[nested_column_name]
                 self_primary_key = sql_list(
@@ -131,31 +131,34 @@ class InsertTable(BaseTable):
                 extra_key_name = UID + text(len(self.uid))
                 extra_key = [e for e in nested_table.columns[extra_key_name]][0]
 
-                sql_command = (
-                    SQL_DELETE
-                    + SQL_FROM
-                    + quote_column(nested_table.name)
-                    + SQL_WHERE
-                    + "EXISTS"
-                    + sql_iso(
-                        SQL_SELECT
-                        + SQL_ONE
-                        + SQL_FROM
-                        + sql_alias(quote_column(nested_table.name), "n")
-                        + SQL_INNER_JOIN
-                        + sql_iso(
-                            SQL_SELECT
-                            + self_primary_key
-                            + SQL_FROM
-                            + quote_column(abs_schema.fact)
-                            + SQL_WHERE
-                            + where_sql
-                        )
-                        + " t ON "
-                        + SQL_AND.join(
-                            quote_column("t", c.es_column)
-                            + SQL_EQ
-                            + quote_column("n", c.es_column)
+                sql_command = ConcatSQL(
+                    SQL_DELETE,
+                    SQL_FROM,
+                    quote_column(nested_table.name),
+                    SQL_WHERE,
+                    "EXISTS",
+                    sql_iso(
+                        SQL_SELECT,
+                        SQL_ONE,
+                        SQL_FROM,
+                        sql_alias(quote_column(nested_table.name), "n"),
+                        SQL_INNER_JOIN,
+                        sql_iso(
+                            SQL_SELECT,
+                            self_primary_key,
+                            SQL_FROM,
+                            quote_column(abs_schema.fact),
+                            SQL_WHERE,
+                            where_sql
+                        ),
+                        quote_column("t"),
+                        SQL_ON,
+                        SQL_AND.join(
+                            ConcatSQL(
+                                quote_column("t", c.es_column),
+                                SQL_EQ,
+                                quote_column("n", c.es_column)
+                            )
                             for u in self.uid
                             for c in self.columns[u]
                         )
@@ -173,10 +176,10 @@ class InsertTable(BaseTable):
                         d, Data(), doc_collection, path=nested_column_name
                     )
 
-                prefix = (
-                    SQL_INSERT
-                    + quote_column(nested_table.name)
-                    + sql_iso(sql_list(
+                prefix = ConcatSQL(
+                    SQL_INSERT,
+                    quote_column(nested_table.name),
+                    sql_iso(sql_list(
                         [self_primary_key]
                         + [quote_column(extra_key)]
                         + [
@@ -187,31 +190,33 @@ class InsertTable(BaseTable):
                 )
 
                 # BUILD THE PARENT TABLES
-                parent = (
-                    SQL_SELECT
-                    + self_primary_key
-                    + SQL_FROM
-                    + quote_column(abs_schema.fact)
-                    + SQL_WHERE
-                    + jx_expression(command.where).to_sql(schema)
+                parent = ConcatSQL(
+                    SQL_SELECT,
+                    self_primary_key,
+                    SQL_FROM,
+                    quote_column(abs_schema.fact),
+                    SQL_WHERE,
+                    jx_expression(command.where).to_sql(schema)
                 )
 
                 # BUILD THE RECORDS
                 children = SQL_UNION_ALL.join(
-                    SQL_SELECT
-                    + sql_alias(quote_value(i), extra_key.es_column)
-                    + SQL_COMMA
-                    + sql_list(
-                        sql_alias(quote_value(row[c.name]), quote_column(c.es_column))
-                        for c in doc_collection.get(".", Null).active_columns
+                    ConcatSQL(
+                        SQL_SELECT,
+                        sql_alias(quote_value(i), extra_key.es_column),
+                        SQL_COMMA,
+                        sql_list(
+                            sql_alias(quote_value(row[c.name]), quote_column(c.es_column))
+                            for c in doc_collection.get(".", Null).active_columns
+                        )
                     )
                     for i, row in enumerate(doc_collection.get(".", Null).rows)
                 )
 
-                sql_command = (
-                    prefix
-                    + SQL_SELECT
-                    + sql_list(
+                sql_command = ConcatSQL(
+                    prefix,
+                    SQL_SELECT,
+                    sql_list(
                         [
                             quote_column("p", c.es_column)
                             for u in self.uid
@@ -222,15 +227,15 @@ class InsertTable(BaseTable):
                             quote_column("c", c.es_column)
                             for c in doc_collection.get(".", Null).active_columns
                         ]
-                    )
-                    + SQL_FROM
-                    + sql_iso(parent)
-                    + " p"
-                    + SQL_INNER_JOIN
-                    + sql_iso(children)
-                    + " c"
-                    + SQL_ON
-                    + SQL_TRUE
+                    ),
+                    SQL_FROM,
+                    sql_iso(parent),
+                    quote_column("p"),
+                    SQL_INNER_JOIN,
+                    sql_iso(children),
+                    quote_column("c"),
+                    SQL_ON,
+                    SQL_TRUE
                 )
 
                 self.db.execute(sql_command)
@@ -259,16 +264,22 @@ class InsertTable(BaseTable):
             SQL_SET,
             sql_list(
                 [
-                    quote_column(c.es_column)
-                    + SQL_EQ
-                    + quote_value(get_if_type(v, c.jx_type))
+                    ConcatSQL(
+                        quote_column(c.es_column),
+                        SQL_EQ,
+                        quote_value(get_if_type(v, c.jx_type))
+                    )
                     for c in self.schema.columns
                     if c.jx_type != ARRAY and len(c.nested_path) == 1
                     for v in [command.set[c.name]]
                     if v != None
                 ]
                 + [
-                    quote_column(c.es_column) + SQL_EQ + SQL_NULL
+                    ConcatSQL(
+                        quote_column(c.es_column),
+                        SQL_EQ,
+                        SQL_NULL
+                    )
                     for c in self.schema.columns
                     if (
                         c.name in clear_columns
@@ -312,19 +323,19 @@ class InsertTable(BaseTable):
         snowflake = facts.snowflake
 
         def _flatten(
-            data, uid, parent_id, order, full_path, nested_path, row=None, guid=None
+            data, uid, parent_id, order, data_path, nested_path, row=None, guid=None
         ):
             """
             :param data: the data we are pulling apart
             :param uid: the uid we are giving this doc
             :param parent_id: the parent id of this (sub)doc
             :param order: the number of siblings before this one
-            :param full_path: path to this (sub)doc
-            :param nested_path: list of paths, deepest first
+            :param data_path: path to this (sub)doc
+            :param nested_path: list of paths, deepest first, pointing to table
             :param row: we will be filling this
             :return:
             """
-            table = concat_field(self.name, nested_path[0])
+            table_name = concat_field(self.name, nested_path[0])
             insertion = doc_collection[nested_path[0]]
             if not row:
                 row = {GUID: guid, UID: uid, PARENT: parent_id, ORDER: order}
@@ -332,14 +343,15 @@ class InsertTable(BaseTable):
 
             if is_data(data):
                 items = [
-                    (concat_field(full_path, k), v) for k, v in to_data(data).leaves()
+                    (k, v) for k, v in to_data(data).leaves()
                 ]
             else:
                 # PRIMITIVE VALUES
-                items = [(full_path, data)]
+                items = [(".", data)]
 
-            for cname, v in items:
-                jx_type = get_jx_type(v)
+            for rel_name, v in items:
+                abs_name = concat_field(data_path, rel_name)
+                jx_type = value_to_jx_type(v)
                 if jx_type is None:
                     continue
 
@@ -349,32 +361,32 @@ class InsertTable(BaseTable):
                     c = first(
                         cc
                         for cc in columns
-                        if cc.jx_type in STRUCT and untyped_column(cc.name)[0] == cname
+                        if cc.jx_type in STRUCT and untyped_column(cc.name)[0] == abs_name
                     )
                 else:
                     c = first(
                         cc
                         for cc in columns
-                        if cc.jx_type == jx_type and cc.name == cname
+                        if cc.jx_type == jx_type and cc.name == abs_name
                     )
 
                 if not c:
                     # WHAT IS THE NESTING LEVEL FOR THIS PATH?
                     deeper_nested_path = "."
                     for path in snowflake.query_paths + insertion.query_paths:
-                        if startswith_field(cname, path[0]) and len(
+                        if startswith_field(abs_name, path[0]) and len(
                             deeper_nested_path
                         ) < len(path):
                             deeper_nested_path = path
 
                     c = Column(
-                        name=cname,
+                        name=abs_name,
                         jx_type=jx_type,
                         es_type=json_type_to_sqlite_type.get(jx_type, jx_type),
                         es_column=typed_column(
-                            cname, json_type_to_sql_key.get(jx_type)
+                            concat_field(nested_path[0], rel_name), json_type_to_sql_key.get(jx_type)
                         ),
-                        es_index=table,
+                        es_index=table_name,
                         cardinality=0,
                         multi=1,
                         nested_path=nested_path,
@@ -397,13 +409,13 @@ class InsertTable(BaseTable):
                     snowflake._remove_column(c)
                     required_changes.append({"nest": c})
                     deep_c = Column(
-                        name=cname,
+                        name=abs_name,
                         jx_type=jx_type,
                         es_type=json_type_to_sqlite_type.get(jx_type, jx_type),
                         es_column=typed_column(
-                            cname, json_type_to_sql_key.get(jx_type)
+                            abs_name, json_type_to_sql_key.get(jx_type)
                         ),
-                        es_index=table,
+                        es_index=table_name,
                         nested_path=nested_path,
                         last_updated=Date.now(),
                     )
@@ -429,13 +441,13 @@ class InsertTable(BaseTable):
                 # BE SURE TO NEST VALUES, IF NEEDED
                 if jx_type == ARRAY:
                     deeper_nested_path = [c.es_column] + nested_path
-                    if not doc_collection.get(cname):
+                    if not doc_collection.get(abs_name):
                         doc_collection[c.es_column] = Data(active_columns=Queue(), rows=[])
                     for i, r in enumerate(v):
                         child_uid = self.container.next_uid()
-                        _flatten(r, child_uid, uid, i, cname, deeper_nested_path)
+                        _flatten(r, child_uid, uid, i, abs_name, deeper_nested_path)
                 elif jx_type == OBJECT:
-                    _flatten(v, uid, parent_id, order, cname, nested_path, row=row)
+                    _flatten(v, uid, parent_id, order, abs_name, nested_path, row=row)
                 elif c.jx_type:
                     row[c.es_column] = v
 
@@ -445,7 +457,7 @@ class InsertTable(BaseTable):
                 self.container.next_uid(),
                 0,
                 0,
-                full_path=path,
+                data_path=path,
                 nested_path=["."],
                 guid=generateGuid(),
             )

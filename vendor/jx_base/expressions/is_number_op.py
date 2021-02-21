@@ -49,4 +49,4 @@ class IsNumberOp(Expression):
         elif term.type in NUMBER_TYPES:
             return term
         else:
-            return NULL
+            return IsNumberOp(term)

@@ -52,7 +52,9 @@ class JsonType(object):
             if sv is None:
                 if k in T_NUMBER_TYPES.__dict__ and sd.get(_N):
                     continue
-                elif k is _N and any(sd.get(kk) for kk in T_NUMBER_TYPES.__dict__.keys()):
+                elif k is _N and any(
+                    sd.get(kk) for kk in T_NUMBER_TYPES.__dict__.keys()
+                ):
                     for kk in T_NUMBER_TYPES.__dict__.keys():
                         del sd[kk]
                     sd[k] = T_NUMBER.__dict__[k]
@@ -231,14 +233,7 @@ PRIMITIVE = (EXISTS, BOOLEAN, INTEGER, NUMBER, TIME, INTERVAL, STRING)
 INTERNAL = (EXISTS, OBJECT, ARRAY)
 STRUCT = (OBJECT, ARRAY)
 
-_B = "~b~"
-_I = "~i~"
-_N = "~n~"
-_T = "~t~"
-_D = "~d~"
-_S = "~s~"
-_U = "~u~"
-_A = "~a~"
+_B, _I, _N, _T, _D, _S, _U, _A = "~b~", "~i~", "~n~", "~t~", "~d~", "~s~", "~u~", "~a~"
 _primitive_type_codes = (_B, _I, _N, _T, _D, _S)
 
 T_IS_NULL = _new(JsonType)
@@ -292,7 +287,7 @@ def value_to_json_type(value):
     if is_many(value):
         return _primitive(_A, union_type(*(value_to_json_type(v) for v in value)))
     elif is_data(value):
-        return {k: value_to_json_type(v) for k, v in value.items()}
+        return JsonType(**{k: value_to_json_type(v) for k, v in value.items()})
     else:
         return _python_type_to_json_type[value.__class__]
 

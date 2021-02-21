@@ -16,7 +16,7 @@ from datetime import datetime
 from decimal import Decimal
 from math import isnan
 
-from mo_dots import Data, data_types, listwrap, NullType, startswith_field
+from mo_dots import Data, data_types, listwrap, NullType, startswith_field, null_types
 from mo_dots.lists import list_types, is_many
 from mo_future import (
     boolean_type,
@@ -357,16 +357,13 @@ def value_compare(left, right, ordering=1):
 def type_order(dtype, ordering):
     o = TYPE_ORDER.get(dtype)
     if o is None:
-        if dtype in NULL_TYPES:
+        if dtype in null_types:
             return ordering * 10
         else:
             Log.warning("type will be treated as its own type while sorting")
             TYPE_ORDER[dtype] = 6
             return 6
     return o
-
-
-NULL_TYPES = (none_type, NullType)
 
 
 TYPE_ORDER = {

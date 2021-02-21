@@ -20,7 +20,6 @@ from mo_future import (
     generator_types,
     iteritems,
     long,
-    none_type,
     text,
     MutableMapping,
     OrderedDict,
@@ -35,6 +34,7 @@ from mo_imports import expect
     literal_field,
     from_data,
     to_data,
+    null_types,
 ) = expect(
     "_getdefault",
     "coalesce",
@@ -43,6 +43,7 @@ from mo_imports import expect
     "literal_field",
     "from_data",
     "to_data",
+    "null_types"
 )
 
 
@@ -193,7 +194,7 @@ class Data(object):
             m = _new(Data)
             _set(m, SLOT, v)
             return m
-        elif t in (none_type, NullType):
+        elif t in null_types:
             return NullType(d, key)
         elif t is list:
             return FlatList(v)

@@ -52,7 +52,7 @@ from mo_dots import (
     unwraplist,
     wrap, list_to_data,
 )
-from mo_future import text, transpose
+from mo_future import text, transpose, is_text
 from mo_json import STRING, STRUCT
 from mo_logs import Log
 from mo_threads import register_thread
@@ -139,7 +139,8 @@ class QueryTable(GroupbyTable, Facts):
             query = {}
         if not query.get("from"):
             query["from"] = self.name
-        elif not startswith_field(query["from"], self.name):
+
+        if is_text(query['from']) and not startswith_field(query["from"], self.name):
             Log.error("Expecting table, or some nested table")
         query = QueryOp.wrap(query, self.container, self.namespace)
         new_table = "temp_" + unique_name()

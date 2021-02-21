@@ -70,7 +70,7 @@ def column_key(k, v):
 POS_INF = float("+inf")
 
 
-def get_jx_type(v):
+def value_to_jx_type(v):
     if v == None:
         return None
     elif isinstance(v, bool):
@@ -154,6 +154,9 @@ def untyped_column(column_name):
         return column_name, "n"
     else:
         return column_name, None
+
+
+untype_field = untyped_column
 
 
 def _make_column_name(number):

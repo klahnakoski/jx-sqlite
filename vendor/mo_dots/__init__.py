@@ -528,7 +528,7 @@ def lower_match(value, candidates):
 
 def dict_to_data(d):
     """
-    DO NOT CHECK TYPE
+    FASTEST WAY TO MAKE Data, DO NOT CHECK TYPE
     :param d: dict
     :return: Data
     """
@@ -727,7 +727,7 @@ def tuplewrap(value):
 def is_null(t):
     # RETURN True IF EFFECTIVELY NOTHING
     class_ = t.__class__
-    if class_ in (none_type, NullType):
+    if class_ in null_types:
         return True
     else:
         try:
@@ -736,10 +736,23 @@ def is_null(t):
             return False
 
 
+def is_not_null(t):
+    # RETURN True IF EFFECTIVELY SOMETHING
+    class_ = t.__class__
+    if class_ in null_types:
+        return False
+    elif class_ in data_types:
+        return True
+    elif class_ in finite_types and t:
+        return True
+    else:
+        return t != None
+
+
 def is_missing(t):
     # RETURN True IF EFFECTIVELY NOTHING
     class_ = t.__class__
-    if class_ in (none_type, NullType):
+    if class_ in null_types:
         return True
     elif class_ in data_types:
         return False
@@ -749,8 +762,11 @@ def is_missing(t):
         return t == None
 
 
+null_types = (none_type, NullType)
+
 # EXPORT
 export("mo_dots.nones", to_data)
+export("mo_dots.nones", null_types)
 
 export("mo_dots.datas", to_data)
 export("mo_dots.datas", from_data)
@@ -759,6 +775,7 @@ export("mo_dots.datas", _getdefault)
 export("mo_dots.datas", hash_value)
 export("mo_dots.datas", listwrap)
 export("mo_dots.datas", literal_field)
+export("mo_dots.datas", null_types)
 
 export("mo_dots.lists", list_to_data)
 export("mo_dots.lists", to_data)

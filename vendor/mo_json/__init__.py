@@ -21,7 +21,7 @@ from mo_dots import (
     Null,
     SLOT,
     to_data,
-    leaves_to_data,
+    leaves_to_data, null_types,
 )
 from mo_dots.objects import DataObject
 from mo_future import (
@@ -174,7 +174,7 @@ def _scrub(value, is_done, stack, scrub_text, scrub_number):
         stack = stack + [_id]
     type_ = value.__class__
 
-    if type_ in (none_type, NullType):
+    if type_ in null_types:
         return None
     elif type_ is text:
         return scrub_text(value)
