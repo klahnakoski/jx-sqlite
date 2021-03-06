@@ -76,7 +76,6 @@ class InsertTable(BaseTable):
     def add(self, doc):
         self.insert([doc])
 
-    @register_thread
     def insert(self, docs):
         if not is_many(docs):
             Log.error("Expecting a list of documents")

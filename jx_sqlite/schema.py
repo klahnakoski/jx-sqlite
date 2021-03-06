@@ -68,15 +68,18 @@ class Schema(object):
         )
 
     def leaves(self, prefix):
-        full_name = concat_field(self.nested_path[0], prefix)
-        candidates = self.snowflake.namespace.columns.find(self.path)
-        output = set(
-            c
-            for c in candidates
-            for k in [c.name, c.es_column]
-            if startswith_field(k, full_name) and k != GUID or k == full_name
-            if c.jx_type not in [OBJECT, EXISTS]
-        )
+        for np in self.nested_path:
+            full_name = concat_field(np, prefix)
+            candidates = self.snowflake.namespace.columns.find(self.path)
+            output = set(
+                c
+                for c in candidates
+                for k in [c.name, c.es_column]
+                if startswith_field(k, full_name) and k != GUID or k == full_name
+                if c.jx_type not in [OBJECT, EXISTS]
+            )
+            if output:
+                return output
         return output
 
     def map_to_sql(self, var=""):

@@ -42,7 +42,6 @@ class SQLiteUtils(object):
     def __init__(self, kwargs=None):
         self._index = None
 
-    @register_thread
     def setUp(self):
         container = Container(db=test_jx.global_settings.db)
         self._index = QueryTable(name="testing", container=container)
@@ -60,7 +59,6 @@ class SQLiteUtils(object):
     def not_real_service(self):
         return True
 
-    @register_thread
     def execute_tests(self, subtest, tjson=False, places=6):
         subtest = wrap(subtest)
         subtest.name = get_stacktrace()[1]["method"]
@@ -91,7 +89,6 @@ class SQLiteUtils(object):
 
         return Data({"index": subtest.query["from"]})
 
-    @register_thread
     def send_queries(self, subtest):
         subtest = wrap(subtest)
 

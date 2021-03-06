@@ -68,25 +68,19 @@ class QueryTable(GroupbyTable, Facts):
 
     @register_thread
     def __len__(self):
-        counter = self.db.query(
-            SQL_SELECT
-            + sql_count("*")
-            + SQL_FROM
-            + quote_column(self.snowflake.fact_name)
-        )[0][0]
+        counter = self.db.query(ConcatSQL(
+            SQL_SELECT,
+            sql_count("*"),
+            SQL_FROM,
+            quote_column(self.snowflake.fact_name)
+        ))[0][0]
         return counter
 
     def __nonzero__(self):
-        counter = self.db.query(
-            SQL_SELECT
-            + sql_count("*")
-            + SQL_FROM
-            + quote_column(self.snowflake.fact_name)
-        )[0][0]
-        return bool(counter)
+        return bool(self.__len__())
 
     def delete(self, where):
-        filter = jx_expression(where).partial_eval(SQLang).to_sql(self.schema).sql.b
+        filter = jx_expression(where).partial_eval(SQLang).to_sql(self.schema)
         with self.db.transaction() as t:
             t.execute(ConcatSQL(
                 SQL_DELETE,

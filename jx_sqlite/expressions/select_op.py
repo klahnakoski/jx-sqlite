@@ -9,13 +9,13 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import SelectOp as SelectOp_, FALSE, LeavesOp, Variable, AndOp
+from jx_base.expressions import SelectOp as SelectOp_, LeavesOp, Variable, AndOp
 from jx_base.language import is_op
 from jx_sqlite.expressions._utils import check, SQLang
 from jx_sqlite.expressions.sql_script import SQLScript
 from jx_sqlite.sqlite import quote_column, SQL_COMMA, SQL_AS, SQL_SELECT, SQL, Log
-from mo_dots import concat_field, relative_field, literal_field
-from mo_future import flatten
+from jx_sqlite.utils import untype_field
+from mo_dots import concat_field, relative_field, literal_field, startswith_field
 from mo_json.types import ToJsonType, T_IS_NULL
 
 
@@ -32,13 +32,20 @@ class SelectOp(SelectOp_):
                 if len(cols) == 1:
                     col0 = cols[0]
                     if col0.es_column == var_name:
+                        # WHEN WE REQUEST AN ES_COLUMN DIRECTLY, BREAK THE RECURSIVE LOOP
                         type |= col0.es_column + ToJsonType(col0.jx_type)
                         sql_terms.append({"name": name, "value": expr})
                         continue
 
                 diff = True
+                full_var_name = concat_field(schema.nested_path[0], var_name)
                 for col in cols:
-                    abs_name = concat_field(name, relative_field(col.name, var_name))
+                    if startswith_field(col.es_column, full_var_name):
+                        rel_name, _ = untype_field(relative_field(col.es_column, full_var_name))
+                    else:
+                        rel_name = col.name
+
+                    abs_name = concat_field(name, rel_name)
                     type |= abs_name + ToJsonType(col.jx_type)
                     sql_terms.append({
                         "name": abs_name,
@@ -68,7 +75,7 @@ class SelectOp(SelectOp_):
         return SQLScript(
             data_type=type,
             expr=LazySelectClause(sql_terms, schema),
-            miss=AndOp([t['value'].missing(SQLang) for t in sql_terms]),
+            miss=AndOp([t["value"].missing(SQLang) for t in sql_terms]),
             frum=self,
             schema=schema,
         )
@@ -94,9 +101,9 @@ class LazySelectClause(SQL):
             for s in comma:
                 yield s
             comma = SQL_COMMA
-            for s in quote_column(name):
+            for s in value.to_sql(self.schema):
                 yield s
             for s in SQL_AS:
                 yield s
-            for s in value.to_sql(self.schema):
+            for s in quote_column(name):
                 yield s

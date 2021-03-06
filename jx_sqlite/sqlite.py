@@ -327,7 +327,7 @@ class Sqlite(DB):
             assert old_trans not in self.transaction_stack
         if not self.transaction_stack:
             # NESTED TRANSACTIONS NOT ALLOWED IN sqlite3
-            self.debug and Log.note(FORMAT_COMMAND, command=query)
+            self.debug and Log.note(FORMAT_COMMAND, command=query, **command_item.trace[0])
             self.db.execute(query)
 
         has_been_too_long = False
@@ -399,7 +399,7 @@ class Sqlite(DB):
                 # ENSURE THE CURRENT TRANSACTION IS UP TO DATE FOR THIS query
                 if not self.transaction_stack:
                     # sqlite3 ALLOWS ONLY ONE TRANSACTION AT A TIME
-                    self.debug and Log.note(FORMAT_COMMAND, command=BEGIN)
+                    self.debug and Log.note(FORMAT_COMMAND, command=BEGIN, **command_item.trace[0])
                     self.db.execute(BEGIN)
                     self.transaction_stack.append(transaction)
                 elif transaction is not self.transaction_stack[-1]:
@@ -446,7 +446,7 @@ class Sqlite(DB):
 
                 # EXECUTE QUERY
                 self.last_command_item = command_item
-                self.debug and Log.note(FORMAT_COMMAND, command=query)
+                self.debug and Log.note(FORMAT_COMMAND, command=query, **command_item.trace[0])
                 curr = self.db.execute(text(query))
                 result.meta.format = "table"
                 result.header = (
@@ -529,8 +529,7 @@ class Transaction(object):
                 self.db.debug and Log.note(
                     FORMAT_COMMAND,
                     command=c.command,
-                    file=c.trace[0]["file"],
-                    line=c.trace[0]["line"],
+                    **c.trace[0]
                 )
                 self.db.db.execute(text(c.command))
         except Exception as e:

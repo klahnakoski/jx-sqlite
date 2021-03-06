@@ -724,7 +724,7 @@ def tuplewrap(value):
     return (from_data(value),)
 
 
-def is_null(t):
+def missing(t):
     # RETURN True IF EFFECTIVELY NOTHING
     class_ = t.__class__
     if class_ in null_types:
@@ -736,7 +736,7 @@ def is_null(t):
             return False
 
 
-def is_not_null(t):
+def exists(t):
     # RETURN True IF EFFECTIVELY SOMETHING
     class_ = t.__class__
     if class_ in null_types:

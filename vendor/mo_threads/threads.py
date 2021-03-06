@@ -486,6 +486,9 @@ class RegisterThread(object):
 
     def __enter__(self):
         with ALL_LOCK:
+            thread = ALL.get(self.thread.id)
+            if thread:
+                Log.error("not expecting a second registration")
             ALL[self.thread.id] = self.thread
         cprofiler = self.thread.cprofiler = CProfiler()
         cprofiler.__enter__()
@@ -516,7 +519,6 @@ class RegisterThread(object):
                 del all[self.thread.id]
         except KeyError as cause:
             pass
-
 
 
 def register_thread(func):

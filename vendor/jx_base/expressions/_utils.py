@@ -13,7 +13,7 @@ from __future__ import absolute_import, division, unicode_literals
 import operator
 
 from jx_base.language import is_expression, Language
-from mo_dots import is_sequence, is_null
+from mo_dots import is_sequence, missing
 from mo_future import (
     get_function_name,
     is_text,
@@ -98,7 +98,7 @@ def _jx_expression(expr, lang):
         return TRUE
     elif expr is False:
         return FALSE
-    elif is_null(expr):
+    elif missing(expr):
         return NULL
     elif is_text(expr):
         return Variable(expr)
