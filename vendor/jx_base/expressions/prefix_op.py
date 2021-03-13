@@ -43,8 +43,12 @@ class PrefixOp(Expression):
         if not term:
             return PrefixOp(NULL, NULL)
         elif is_data(term):
-            expr, const = first(term.items())
-            return PrefixOp(Variable(expr), Literal(const))
+            kv_pair = first(term.items())
+            if kv_pair:
+                expr, const = first(term.items())
+                return PrefixOp(Variable(expr), Literal(const))
+            else:
+                return TRUE
         else:
             expr, const = term
             return PrefixOp(jx_expression(expr), jx_expression(const))
