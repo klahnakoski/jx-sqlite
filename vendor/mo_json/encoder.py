@@ -312,10 +312,9 @@ def pretty_json(value):
                 value = value.decode("utf8")
             try:
                 if "\n" in value and value.strip():
-                    return pretty_json({
-                        "$concat": value.split("\n"),
-                        "separator": "\n",
-                    })
+                    if "'''" in value:
+                        value = value.replace("'''", "\\'''")
+                    return "\n'''" + value + "'''"
                 else:
                     return quote(value)
             except Exception as cause:

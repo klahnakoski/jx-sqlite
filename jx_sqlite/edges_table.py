@@ -50,7 +50,7 @@ from jx_sqlite.sqlite import (
     SQL_PLUS,
     ConcatSQL,
     SQL_EQ,
-    SQL_LT, SQL_LE, sql_call,
+    SQL_LT, SQL_LE, sql_call, SQL_AS,
 )
 from jx_sqlite.sqlite import quote_column, quote_value, sql_alias
 from jx_sqlite.utils import (
@@ -120,7 +120,7 @@ class EdgesTable(SetOpTable):
         orderby = []
         domains = []
 
-        select_clause = [SQL_ONE + EXISTS_COLUMN] + [
+        select_clause = [ConcatSQL(SQL_ONE, SQL_AS, EXISTS_COLUMN)] + [
             quote_column(c.es_column) for c in self.snowflake.columns
         ]
 
@@ -374,57 +374,48 @@ class EdgesTable(SetOpTable):
             elif query_edge.domain.type == "default" or isinstance(
                 query_edge.domain, DefaultDomain
             ):
+
                 domain_names = [
                     "d" + text(edge_index) + "c" + text(i)
                     for i, _ in enumerate(edge_names)
                 ]
-                domain_columns = [
-                    c
-                    for c in self.snowflake.columns
-                    if quote_column(c.es_column) in vals
-                ]
-                if not domain_columns:
-                    domain_nested_path = "."
-                    Log.note("expecting a known column")
-                else:
-                    domain_nested_path = domain_columns[0].nested_path
-                domain_table = quote_column(concat_field(
-                    self.snowflake.fact_name, domain_nested_path[0]
-                ))
                 limit = mo_math.min(query.limit, query_edge.domain.limit)
-                domain = ConcatSQL(
-                    SQL_SELECT,
-                    sql_list(sql_alias(g, n) for n, g in zip(domain_names, vals)),
-                    SQL_FROM,
-                    sql_alias(domain_table, nest_to_alias["."]),
-                    SQL_WHERE,
-                    SQL_AND.join(ConcatSQL(g, SQL_IS_NOT_NULL) for g in vals),
-                    SQL_GROUPBY,
-                    sql_list(g for g in vals),
-                    SQL_ORDERBY,
-                    sql_list(sql_count(SQL_ONE) + SQL_DESC for _ in vals),
-                    SQL_LIMIT,
-                    quote_value(limit)
-                )
+
+                domain_parts = sql_list(map(quote_column, domain_names))
 
                 domain = [ConcatSQL(
                     SQL_SELECT,
-                    sql_list(map(quote_column, domain_names)),
+                    SQL_STAR,
                     SQL_FROM,
-                    sql_iso(domain)
-                )]
-                if query_edge.allowNulls:
-                    domain.append(ConcatSQL(
-                        SQL_UNION_ALL,
+                    sql_iso(
                         SQL_SELECT,
-                        sql_list(sql_alias(SQL_NULL, n) for n in domain_names)
-                    ))
+                        domain_parts,
+                        SQL_FROM,
+                        sql_iso(
+                            SQL_SELECT,
+                            sql_list(sql_alias(g, n) for n, g in zip(domain_names, vals)),
+                            SQL_FROM,
+                            ConcatSQL(*from_sql)
+                        ),
+                        SQL_WHERE,
+                        SQL_AND.join(ConcatSQL(quote_column(d), SQL_IS_NOT_NULL) for d in domain_names),
+                        SQL_GROUPBY,
+                        domain_parts,
+                        SQL_ORDERBY,
+                        sql_list(ConcatSQL(sql_count(SQL_ONE), SQL_DESC) for _ in domain_names),
+                        SQL_LIMIT,
+                        quote_value(limit)
+                    ),
+                    SQL_UNION_ALL,
+                    SQL_SELECT,
+                    sql_list(SQL_NULL for _ in domain_names)
+                )]
 
                 where = None
                 join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
                 on_clause = ConcatSQL(
                     SQL_OR.join(  # "OR" IS FOR MATCHING DIFFERENT TYPES OF SAME NAME
-                        quote_column(edge_alias, k) + SQL_EQ + v
+                        ConcatSQL(quote_column(edge_alias, k), SQL_EQ, v)
                         for k, v in zip(domain_names, vals)
                     ),
                     SQL_OR,
@@ -484,7 +475,7 @@ class EdgesTable(SetOpTable):
                         null_on_clause = None
                     else:
                         null_on_clause = SQL_AND.join(
-                            quote_column(edge_alias, k) + SQL_IS_NOT_NULL
+                            ConcatSQL(quote_column(edge_alias, k), SQL_IS_NOT_NULL)
                             for k in domain_names
                         )
                 elif query_edge.range:
@@ -530,12 +521,69 @@ class EdgesTable(SetOpTable):
                     orderby.append(quote_column(k))
 
         offset = len(query.edges)
+        self.aggregates(index_to_column, offset, outer_selects, query, schema)
+
+        for w in query.window:
+            outer_selects.append(self._window_op(self, query, w))
+
+        primary = sql_alias(
+            sql_iso(
+                SQL_SELECT,
+                sql_list(select_clause),
+                SQL_FROM,
+                ConcatSQL(*from_sql),
+                SQL_WHERE,
+                main_filter
+            ),
+            nest_to_alias["."]
+        )
+
+        edge_sql = []
+        for edge_index, query_edge in enumerate(query.edges):
+            edge_alias = "e" + text(edge_index)
+            domain = domains[edge_index]
+            edge_sql.append(sql_alias(sql_iso(domain), edge_alias))
+
+        # COORDINATES OF ALL primary DATA
+        all_parts = []
+        clauses = [ConcatSQL(SQL_SELECT, sql_list(outer_selects), SQL_FROM, primary)]
+        for t, s, j in zip(join_types, edge_sql, ons):
+            clauses.append(ConcatSQL(t, s, SQL_ON, j))
+        if any(wheres):
+            clauses.append(ConcatSQL(SQL_WHERE, SQL_AND.join(sql_iso(w) for w in wheres if w)))
+        if groupby:
+            clauses.append(ConcatSQL(SQL_GROUPBY, sql_list(groupby)))
+        all_parts.append(ConcatSQL(*clauses))
+
+        # ALL COORDINATES MISSED BY primary DATA
+        if query.edges:
+            clauses = [ConcatSQL(SQL_SELECT, sql_list(outer_selects), SQL_FROM, edge_sql[0])]
+            for s in edge_sql[1:]:
+                clauses.append(ConcatSQL(SQL_LEFT_JOIN, s, SQL_ON, SQL_TRUE))
+            clauses.append(ConcatSQL(
+                SQL_LEFT_JOIN, primary, SQL_ON, SQL_AND.join(sql_iso(o) for o in ons)
+            ))
+            clauses.append(ConcatSQL(SQL_WHERE ,  SQL_AND.join(sql_iso(w) for w in null_ons if w)))
+            if groupby:
+                clauses.append(ConcatSQL(SQL_GROUPBY + sql_list(groupby)))
+            all_parts.append(ConcatSQL(*clauses))
+
+        command = ConcatSQL(
+            SQL_SELECT, SQL_STAR, SQL_FROM, sql_iso(SQL_UNION_ALL.join(all_parts))
+        )
+
+        if orderby:
+            command = ConcatSQL(command, SQL_ORDERBY, sql_list(orderby))
+
+        return command, index_to_column
+
+    def aggregates(self, index_to_column, offset, outer_selects, query, schema):
         for ssi, s in enumerate(listwrap(query.select)):
             si = ssi + offset
             if (
-                is_op(s.value, Variable)
-                and s.value.var == "."
-                and s.aggregate == "count"
+                    is_op(s.value, Variable)
+                    and s.value.var == "."
+                    and s.aggregate == "count"
             ):
                 # COUNT RECORDS, NOT ANY ONE VALUE
                 sql = sql_alias(sql_count(EXISTS_COLUMN), s.name)
@@ -653,60 +701,6 @@ class EdgesTable(SetOpTable):
                     column_alias=_make_column_name(column_number),
                     type=FromJsonType(items_sql.data_type)
                 )
-
-        for w in query.window:
-            outer_selects.append(self._window_op(self, query, w))
-
-        primary = sql_alias(
-            sql_iso(
-                SQL_SELECT,
-                sql_list(select_clause),
-                SQL_FROM,
-                ConcatSQL(*from_sql),
-                SQL_WHERE,
-                main_filter
-            ),
-            nest_to_alias["."]
-        )
-
-        edge_sql = []
-        for edge_index, query_edge in enumerate(query.edges):
-            edge_alias = "e" + text(edge_index)
-            domain = domains[edge_index]
-            edge_sql.append(sql_alias(sql_iso(domain), edge_alias))
-
-        # COORDINATES OF ALL primary DATA
-        all_parts = []
-        clauses = [ConcatSQL(SQL_SELECT, sql_list(outer_selects), SQL_FROM, primary)]
-        for t, s, j in zip(join_types, edge_sql, ons):
-            clauses.append(ConcatSQL(t, s, SQL_ON, j))
-        if any(wheres):
-            clauses.append(ConcatSQL(SQL_WHERE, SQL_AND.join(sql_iso(w) for w in wheres if w)))
-        if groupby:
-            clauses.append(ConcatSQL(SQL_GROUPBY, sql_list(groupby)))
-        all_parts.append(ConcatSQL(*clauses))
-
-        # ALL COORDINATES MISSED BY primary DATA
-        if query.edges:
-            clauses = [ConcatSQL(SQL_SELECT, sql_list(outer_selects), SQL_FROM, edge_sql[0])]
-            for s in edge_sql[1:]:
-                clauses.append(ConcatSQL(SQL_LEFT_JOIN, s, SQL_ON, SQL_TRUE))
-            clauses.append(ConcatSQL(
-                SQL_LEFT_JOIN, primary, SQL_ON, SQL_AND.join(sql_iso(o) for o in ons)
-            ))
-            clauses.append(ConcatSQL(SQL_WHERE ,  SQL_AND.join(sql_iso(w) for w in null_ons if w)))
-            if groupby:
-                clauses.append(ConcatSQL(SQL_GROUPBY + sql_list(groupby)))
-            all_parts.append(ConcatSQL(*clauses))
-
-        command = ConcatSQL(
-            SQL_SELECT, SQL_STAR, SQL_FROM, sql_iso(SQL_UNION_ALL.join(all_parts))
-        )
-
-        if orderby:
-            command = ConcatSQL(command, SQL_ORDERBY, sql_list(orderby))
-
-        return command, index_to_column
 
     def _make_range_domain(self, domain, column_name):
         width = (domain.max - domain.min) / domain.interval
