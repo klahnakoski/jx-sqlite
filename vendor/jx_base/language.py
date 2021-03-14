@@ -122,9 +122,12 @@ def partial_eval(self, lang):
 
 def get_dispatcher_for(name):
     def dispatcher(self, lang):
-        func = self.lookups[name][lang.id]
-        output = func(self, lang)
-        return output
+        try:
+            func = self.lookups[name][lang.id]
+            output = func(self, lang)
+            return output
+        except Exception as cause:
+            Log.error("problem", cause=cause)
 
     return dispatcher
 

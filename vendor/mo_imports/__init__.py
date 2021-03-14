@@ -12,7 +12,7 @@ from __future__ import absolute_import, division, unicode_literals
 import importlib
 import sys
 from threading import Thread, Event
-from time import time, sleep
+from time import time
 
 from mo_future import text, allocate_lock
 

@@ -115,7 +115,6 @@ class Literal(Expression):
 ZERO = Literal(0)
 ONE = Literal(1)
 
-
 literal_op_ids = tuple()
 
 

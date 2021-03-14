@@ -13,7 +13,6 @@ from jx_base.expressions import NotOp as NotOp_, MissingOp, FALSE
 from jx_base.language import is_op
 from jx_sqlite.expressions._utils import check, SQLang
 from jx_sqlite.expressions.sql_script import SQLScript
-from jx_sqlite.expressions.to_boolean_op import ToBooleanOp
 from jx_sqlite.sqlite import sql_iso, SQL_NOT, ConcatSQL, SQL_IS_NOT_NULL
 from mo_json.types import T_BOOLEAN
 

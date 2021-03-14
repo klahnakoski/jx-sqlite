@@ -15,7 +15,7 @@ from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.null_op import NULL
 from jx_base.expressions.not_op import NotOp
-from mo_json.types import T_BOOLEAN
+from mo_json.types import T_BOOLEAN, T_INTEGER
 
 
 class ToBooleanOp(Expression):

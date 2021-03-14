@@ -20,18 +20,20 @@ from jx_sqlite.expressions._utils import check, SQLang
 from jx_sqlite.expressions.sql_script import SQLScript
 from jx_sqlite.sqlite import sql_iso, SQL_EQ
 from mo_json.types import T_BOOLEAN
-from mo_sql import ConcatSQL
+from mo_sql import ConcatSQL, SQL_NOT
 from pyLibrary.convert import value2boolean
 
 
 class BasicEqOp(BasicEqOp_):
     def partial_eval(self, lang):
         lhs = self.lhs.partial_eval(lang)
-        if is_literal(lhs) and lhs.value == 0:
-            return NotOp(ToBooleanOp(self.rhs)).partial_eval(lang)
         rhs = self.rhs.partial_eval(lang)
         if is_literal(rhs) and rhs.value == 0:
-            return NotOp(ToBooleanOp(self.lhs)).partial_eval(lang)
+            lhs.data_type = T_BOOLEAN
+            return NotOp(lhs)
+        if is_literal(lhs) and lhs.value == 0:
+            rhs.data_type = T_BOOLEAN
+            return NotOp(rhs)
         return BasicEqOp([lhs, rhs])
 
     @check
@@ -48,7 +50,6 @@ class BasicEqOp(BasicEqOp_):
                     return lhs
                 else:
                     return NotOp(lhs.frum).partial_eval(SQLang).to_sql(schema)
-
         return SQLScript(
             data_type=T_BOOLEAN,
             expr=ConcatSQL(
