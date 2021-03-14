@@ -67,4 +67,3 @@ class FindOp(Expression):
 
     def invert(self, lang):
         return lang.MissingOp(self)
-

@@ -19,6 +19,7 @@ from jx_base.expressions.to_string_op import ToStringOp
 from jx_base.language import is_op
 from mo_json import T_INTEGER
 
+
 class BasicIndexOfOp(Expression):
     """
     PLACEHOLDER FOR BASIC value.indexOf(find, start) (CAN NOT DEAL WITH NULLS)

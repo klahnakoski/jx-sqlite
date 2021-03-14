@@ -19,7 +19,9 @@ from mo_dots import coalesce
 from mo_imports import expect
 from mo_json.types import T_NUMBER
 
-AndOp, CoalesceOp, NULL, OrOp, WhenOp = expect("AndOp", "CoalesceOp", "NULL", "OrOp", "WhenOp")
+AndOp, CoalesceOp, NULL, OrOp, WhenOp = expect(
+    "AndOp", "CoalesceOp", "NULL", "OrOp", "WhenOp"
+)
 
 
 class BaseMultiOp(Expression):
@@ -100,12 +102,10 @@ class BaseMultiOp(Expression):
 
             output = WhenOp(
                 AndOp([t.missing(lang) for t in terms]),
-                **{
-                    "then": self.default,
-                    "else": operators["basic." + self.op]([
-                        CoalesceOp([t, _jx_identity[self.op]]) for t in terms
-                    ]),
-                }
+                then=self.default,
+                **{"else": operators["basic." + self.op]([
+                    CoalesceOp([t, _jx_identity[self.op]]) for t in terms
+                ])}
             ).partial_eval(lang)
         else:
             # CONSERVATIVE
@@ -114,7 +114,8 @@ class BaseMultiOp(Expression):
 
             output = WhenOp(
                 OrOp([t.missing(lang) for t in terms]),
-                **{"then": self.default, "else": operators["basic." + self.op](terms),}
+                then=self.default,
+                **{"else": operators["basic." + self.op](terms)}
             ).partial_eval(lang)
 
         return output

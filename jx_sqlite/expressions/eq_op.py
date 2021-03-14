@@ -24,8 +24,8 @@ class EqOp(EqOp_):
     def to_sql(self, schema):
         m_rhs = self.rhs.missing(SQLang)
         output = CaseOp([
-            WhenOp(self.lhs.missing(SQLang), **{"then": m_rhs}),
-            WhenOp(m_rhs, **{"then": FALSE}),
+            WhenOp(self.lhs.missing(SQLang), then=m_rhs),
+            WhenOp(m_rhs, then=FALSE),
             BasicEqOp([self.lhs, self.rhs])
         ]).partial_eval(SQLang).to_sql(schema)
         return output

@@ -22,6 +22,7 @@ class RangeOp(Expression):
     """
     DO NOT USE, NOT AN OPERATOR
     """
+
     has_simple_form = True
     data_type = T_BOOLEAN
 

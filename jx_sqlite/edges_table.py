@@ -132,7 +132,7 @@ class EdgesTable(SetOpTable):
 
             elif not query_edge.value and any(query_edge.domain.partitions.where):
                 edge_sql = CaseOp([
-                    WhenOp(p.where, **{"then": Literal(p.name)})
+                    WhenOp(p.where, then=Literal(p.name))
                     for pp, p in enumerate(query_edge.domain.partitions)
                 ]+[NULL]).partial_eval(SQLang).to_sql(schema)
 

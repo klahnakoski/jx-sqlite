@@ -107,8 +107,12 @@ class Expression(BaseExpression):
                 else:
                     return class_(_jx_expression(term, lang), **clauses)
         except Exception as cause:
-            Log.warning("programmer error expr = {{value|quote}}", value=expr, cause=cause)
-            Log.error("programmer error expr = {{value|quote}}", value=expr, cause=cause)
+            Log.warning(
+                "programmer error expr = {{value|quote}}", value=expr, cause=cause
+            )
+            Log.error(
+                "programmer error expr = {{value|quote}}", value=expr, cause=cause
+            )
 
     @property
     def name(self):

@@ -19,9 +19,7 @@ from mo_imports import expect
 from mo_json.types import T_NUMBER
 from mo_dots import coalesce
 
-OrOp, Variable = expect(
-    "OrOp", "Variable"
-)
+OrOp, Variable = expect("OrOp", "Variable")
 
 
 class BaseBinaryOp(Expression):

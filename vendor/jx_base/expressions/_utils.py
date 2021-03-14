@@ -19,7 +19,7 @@ from mo_future import (
     is_text,
     items as items_,
     text,
-    utf8_json_encoder
+    utf8_json_encoder,
 )
 from mo_imports import expect
 from mo_json import BOOLEAN, INTEGER, IS_NULL, NUMBER, OBJECT, STRING, scrub
@@ -28,6 +28,7 @@ from mo_logs import Except, Log
 from mo_math import is_number
 from mo_times import Date
 
+TYPE_CHECK = True  # A LITTLE FASTER IF False
 ALLOW_SCRIPTING = False
 EMPTY_DICT = {}
 

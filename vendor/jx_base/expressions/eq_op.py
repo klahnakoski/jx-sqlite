@@ -85,9 +85,10 @@ class EqOp(Expression):
             return FALSE if value_compare(lhs.value, rhs.value) else TRUE
         else:
             return CaseOp([
-                WhenOp(lhs.missing(lang), **{"then": rhs.missing(lang)}),
-                WhenOp(rhs.missing(lang), **{"then": FALSE}),
+                WhenOp(lhs.missing(lang), then=rhs.missing(lang)),
+                WhenOp(rhs.missing(lang), then=FALSE),
                 BasicEqOp([lhs, rhs]),
             ]).partial_eval(lang)
+
 
 export("jx_base.expressions.basic_in_op", EqOp)

@@ -9,7 +9,6 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_imports import expect
 from jx_base.expressions import (
     FALSE,
     FalseOp,
@@ -17,9 +16,9 @@ from jx_base.expressions import (
     NullOp,
     TrueOp,
     extend,
-    AndOp,
     TRUE,
 )
+from jx_base.expressions._utils import TYPE_CHECK
 from jx_base.language import Language
 from jx_sqlite.sqlite import (
     SQL,
@@ -33,12 +32,6 @@ from jx_sqlite.sqlite import (
     SQL_STAR,
     SQL_LT,
     ConcatSQL,
-    SQL_END,
-    SQL_THEN,
-    SQL_CASE,
-    SQL_WHEN,
-    SQL_ELSE,
-    quote_column,
     SQL_AS,
     SQL_SELECT,
     SQL_FROM,
@@ -49,8 +42,8 @@ from jx_sqlite.sqlite import (
     SQL_GE,
 )
 from jx_sqlite.sqlite import sql_call
-from mo_dots import wrap
 from mo_future import decorate
+from mo_imports import expect
 from mo_json import BOOLEAN, ARRAY, OBJECT, STRING, NUMBER, IS_NULL, TIME, INTERVAL
 from mo_json.types import T_IS_NULL, T_BOOLEAN, T_NUMBER, T_TIME, T_INTERVAL, T_STRING
 from mo_logs import Log
@@ -62,6 +55,8 @@ def check(func):
     """
     TEMPORARY TYPE CHECKING TO ENSURE to_sql() IS OUTPUTTING THE CORRECT FORMAT
     """
+    if not TYPE_CHECK:
+        return func
 
     @decorate(func)
     def to_sql(self, schema):

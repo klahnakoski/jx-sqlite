@@ -46,7 +46,8 @@ class WhenOp(Expression):
     def map(self, map_):
         return WhenOp(
             self.when.map(map_),
-            **{"then": self.then.map(map_), "else": self.els_.map(map_)}
+            then=self.then.map(map_),
+            **{"else": self.els_.map(map_)}
         )
 
     def missing(self, lang):
@@ -85,7 +86,7 @@ class WhenOp(Expression):
             elif els_ is TRUE:
                 return (NotOp(when)).partial_eval(lang)
 
-        return WhenOp(when, **{"then": then, "else": els_})
+        return WhenOp(when, then=then, **{"else": els_})
 
 
 export("jx_base.expressions.base_multi_op", WhenOp)

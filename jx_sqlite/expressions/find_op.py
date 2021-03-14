@@ -60,11 +60,6 @@ class FindOp(FindOp_):
 
     @check
     def to_sql(self, schema):
-        # WithOp([
-        #     {"i": SqlSubstrOp([NotRightOp([self.value, self.start]), self.find])},
-        #     WhenOp(SqlNotOp("i"), **{"then": NULL, "else": "i"}),
-        # ])
-
         value = self.value.partial_eval(SQLang).to_sql(schema)
         find = self.find.partial_eval(SQLang).to_sql(schema)
         start = self.start.partial_eval(SQLang).to_sql(schema)

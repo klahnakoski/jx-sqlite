@@ -45,7 +45,8 @@ from mo_dots import (
     to_data,
     list_to_data,
     split_field,
-    join_field, tail_field
+    join_field,
+    tail_field,
 )
 from mo_future import is_text, text
 from mo_imports import expect
@@ -241,8 +242,7 @@ class QueryOp(Expression):
             return query
         query = to_data(query)
 
-
-        table = query['from']
+        table = query["from"]
         if is_text(table):
             # FIND THE TABLE IN from CLAUSE
             base_name, query_path = tail_field(table)
