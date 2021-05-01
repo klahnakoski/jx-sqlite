@@ -451,7 +451,8 @@ class TestAggOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")    def test_union(self):
+    @skip("broken")
+    def test_union(self):
         test = {
             "data": [
                 {"b": "a"},

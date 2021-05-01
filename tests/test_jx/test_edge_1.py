@@ -1024,7 +1024,8 @@ class TestEdge1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")    def test_default_limit(self):
+    @skip("broken")
+    def test_default_limit(self):
         """
         TEST THAT THE DEFAULT LIMIT IS APPLIED
         """
@@ -1180,7 +1181,8 @@ class TestEdge1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")    def test_edge_limit_small(self):
+    @skip("broken")
+    def test_edge_limit_small(self):
         test = {
             "name": "sum column",
             "metadata": {},
@@ -1508,7 +1510,8 @@ class TestEdge1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")    def test_edge_using_between(self):
+    @skip("broken")
+    def test_edge_using_between(self):
         test = {
             "data": [
                 {"url": NULL},
