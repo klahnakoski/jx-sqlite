@@ -15,5 +15,5 @@ setup(
     name='jx-sqlite',
     packages=["jx_sqlite","jx_sqlite/expressions"],
     url='https://github.com/klahnakoski/jx-sqlite',
-    version='4.35.21121'
+    version='4.36.21121'
 )
