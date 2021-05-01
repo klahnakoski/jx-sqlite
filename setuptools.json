@@ -14,13 +14,13 @@
     "description": "JSON query expressions using SQLite",
     "include_package_data": true,
     "install_requires": [
-        "mo-collections>=3.38.20029",        "mo-dots>=3.41.20031",
-              "mo-files>=3.41.20031",      "mo-future>=3.40.20031",
-               "mo-json>=3.38.20029", "mo-json-config>=3.42.20031",
-             "mo-kwargs>=3.38.20029",        "mo-logs>=3.38.20029",
-               "mo-math>=3.41.20031",         "mo-sql>=3.38.20031",
-            "mo-testing>=3.38.20029",     "mo-threads>=3.42.20031",
-              "mo-times>=3.38.20029"
+             "jx-python==4.35.21121", "mo-collections==4.30.21121",
+               "mo-dots==4.22.21108",       "mo-files==4.25.21109",
+            "mo-future==3.147.20327",        "mo-json==4.23.21108",
+        "mo-json-config==3.77.20190",      "mo-kwargs==4.22.21108",
+               "mo-logs==4.23.21108",        "mo-math==4.23.21108",
+                "mo-sql==4.26.21119",     "mo-testing==4.33.21121",
+            "mo-threads==4.33.21121",       "mo-times==4.23.21108"
     ],
     "license": "MPL 2.0",
     "long_description": {
@@ -154,5 +154,5 @@
     "name": "jx-sqlite",
     "packages": ["jx_sqlite", "jx_sqlite/expressions"],
     "url": "https://github.com/klahnakoski/jx-sqlite",
-    "version": "3.42.20031"
+    "version": "4.35.21121"
 }
