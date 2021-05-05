@@ -16,5 +16,5 @@ setup(
     package_dir={"jx_base":"vendor/jx_base","jx_python":"vendor/jx_python","mo_collections":"vendor/mo_collections","mo_dots":"vendor/mo_dots","mo_files":"vendor/mo_files","mo_future":"vendor/mo_future","mo_imports":"vendor/mo_imports","mo_json":"vendor/mo_json","mo_json_config":"vendor/mo_json_config","mo_kwargs":"vendor/mo_kwargs","mo_logs":"vendor/mo_logs","mo_math":"vendor/mo_math","mo_sql":"vendor/mo_sql","mo_testing":"vendor/mo_testing","mo_threads":"vendor/mo_threads","mo_times":"vendor/mo_times","pyLibrary":"vendor/pyLibrary"},
     packages=["jx_sqlite","jx_sqlite.expressions","jx_base","jx_base.expressions","jx_python","jx_python.expressions","jx_python.containers","jx_python.cubes","jx_python.lists","jx_python.namespace","mo_collections","mo_dots","mo_files","mo_future","mo_imports","mo_json","mo_json_config","mo_kwargs","mo_logs","mo_math","mo_sql","mo_testing","mo_threads","mo_times","mo_times.vendor.dateutil.zoneinfo","mo_times.vendor.dateutil","mo_times.vendor","mo_times","pyLibrary","pyLibrary.env","mo_math.vendor","mo_math.vendor.aespython","mo_math.vendor.strangman"],
     url='https://github.com/klahnakoski/jx-sqlite',
-    version='4.39.21125'
+    version='4.40.21125'
 )
