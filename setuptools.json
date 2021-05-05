@@ -13,15 +13,7 @@
     ],
     "description": "JSON query expressions using SQLite",
     "include_package_data": true,
-    "install_requires": [
-             "jx-python==4.35.21121", "mo-collections==4.30.21121",
-               "mo-dots==4.22.21108",       "mo-files==4.25.21109",
-            "mo-future==3.147.20327",        "mo-json==4.23.21108",
-        "mo-json-config==3.77.20190",      "mo-kwargs==4.22.21108",
-               "mo-logs==4.23.21108",        "mo-math==4.23.21108",
-                "mo-sql==4.26.21119",     "mo-testing==4.33.21121",
-            "mo-threads==4.33.21121",       "mo-times==4.23.21108"
-    ],
+    "install_requires": [],
     "license": "MPL 2.0",
     "long_description": {
         "$concat": [
@@ -152,7 +144,7 @@
     },
     "long_description_content_type": "text/markdown",
     "name": "jx-sqlite",
-    "package_dir":  {
+    "package_dir": {
         "jx_base": "vendor/jx_base",
         "jx_python": "vendor/jx_python",
         "mo_collections": "vendor/mo_collections",
@@ -169,29 +161,17 @@
         "mo_testing": "vendor/mo_testing",
         "mo_threads": "vendor/mo_threads",
         "mo_times": "vendor/mo_times",
-        "pyLibrary": "vendor/pyLibrary",
+        "pyLibrary": "vendor/pyLibrary"
     },
     "packages": [
-        "jx_sqlite",
-        "jx_sqlite.expressions",
-        "jx_base",
-        "jx_python",
-        "mo_collections",
-        "mo_dots",
-        "mo_files",
-        "mo_future",
-        "mo_imports",
-        "mo_json",
-        "mo_json_config",
-        "mo_kwargs",
-        "mo_logs",
-        "mo_math",
-        "mo_sql",
-        "mo_testing",
-        "mo_threads",
-        "mo_times",
-        "pyLibrary"
+                    "jx_sqlite", "jx_sqlite.expressions",               "jx_base",
+                    "jx_python",        "mo_collections",               "mo_dots",
+                     "mo_files",             "mo_future",            "mo_imports",
+                      "mo_json",        "mo_json_config",             "mo_kwargs",
+                      "mo_logs",               "mo_math",                "mo_sql",
+                   "mo_testing",            "mo_threads",              "mo_times",
+                    "pyLibrary"
     ],
     "url": "https://github.com/klahnakoski/jx-sqlite",
-    "version": "4.36.21121"
+    "version": "4.37.21125"
 }
