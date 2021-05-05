@@ -223,7 +223,7 @@ class EdgesTable(SetOpTable):
                 domain_columns = [c for c in self.snowflake.columns if quote_column(c.es_column) in vals]
                 if not domain_columns:
                     domain_nested_path = "."
-                    Log.note("expecting a known column")
+                    # Log.note("expecting a known column")
                 else:
                     domain_nested_path = domain_columns[0].nested_path
                 domain_table = quote_column(concat_field(self.snowflake.fact_name, domain_nested_path[0]))
@@ -253,7 +253,7 @@ class EdgesTable(SetOpTable):
                 domain_columns = [c for c in self.snowflake.columns if quote_column(c.es_column) in vals]
                 if not domain_columns:
                     domain_nested_path = "."
-                    Log.note("expecting a known column")
+                    # Log.note("expecting a known column")
                 else:
                     domain_nested_path = domain_columns[0].nested_path
                 domain_table = quote_column(concat_field(self.snowflake.fact_name, domain_nested_path[0]))
