@@ -3,13 +3,13 @@
 	"db":{
 		"name": "testing",
 //		"filename":"test.sqlite",
-		"upgrade": true,
-		"load_functions": true
+		"upgrade": false,
+		"load_functions": false
 	},
 	"constants": {
 		"jx_sqlitel.sqlite.DEBUG": true
 	},
 	"debug": {
-		"trace":true
+		"trace":false
 	}
 }
