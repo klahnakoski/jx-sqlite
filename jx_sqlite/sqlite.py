@@ -55,8 +55,8 @@ from mo_sql import (
     SQL_DOT,
     SQL_LT, SQL_SPACE, SQL_AS, SQL_LIMIT)
 
-DEBUG = True
-TRACE = True
+DEBUG = False
+TRACE = False
 
 FORMAT_COMMAND = "Running command from \"{{file}}:{{line}}\"\n{{command|limit(1000)|indent}}"
 DOUBLE_TRANSACTION_ERROR = (
@@ -105,7 +105,7 @@ class Sqlite(DB):
         filename=None,
         db=None,
         get_trace=None,
-        upgrade=True,
+        upgrade=False,
         load_functions=False,
         debug=False,
         kwargs=None,
