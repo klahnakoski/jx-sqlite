@@ -2,22 +2,19 @@
 
 JSON query expressions using SQLite
 
-https://travis-ci.org/klahnakoski/jx-sqlite.svg?branch=master
 
-|Branch      |Status   | 
-|------------|---------|
-|master      | [![Build Status](https://travis-ci.org/klahnakoski/jx-sqlite.svg?branch=master)](https://travis-ci.org/klahnakoski/jx-sqlite) |
-|dev         | [![Build Status](https://travis-ci.org/klahnakoski/jx-sqlite.svg?branch=dev)](https://travis-ci.org/klahnakoski/jx-sqlite)    | 
+[![PyPI Latest Release](https://img.shields.io/pypi/v/jx-sqlite.svg)](https://pypi.org/project/m--sql-parsing/)
+[![Build Status](https://app.travis-ci.com/klahnakoski/jx-sqlite.svg?branch=master)](https://travis-ci.com/github/klahnakoski/jx-sqlite)
+
 
 ## Summary
 
 This library will manage your database schema to store JSON documents. You get all the speed of a well-formed database schema without the schema migration headaches. 
 
-https://www.youtube.com/watch?v=0_YLzb7BegI&list=PLSE8ODhjZXja7K1hjZ01UTVDnGQdx5v5U&index=26&t=260s
 
 ## Status
 
-Significant updates to the supporting libraries has broken this code.  It still works works for the simple cases that require it
+Significant updates to the supporting libraries has broken this code.  It still works for the simple cases that require it
 
 **Jan 2020** - 96/283 test failing  
 
@@ -110,10 +107,15 @@ This project is licensed under Mozilla Public License, v. 2.0. If a copy of the 
 
 ## GSOC
 
-Work done upto the deadline of GSoC'17:
+Good work by Rohit Kumar.  The [gsoc branch](https://github.com/klahnakoski/jx-sqlite/tree/gsoc) and 
+
+
+Work done up to the deadline of GSoC'17:
 
 * [Pull Requests](https://github.com/mozilla/jx-sqlite/pulls?utf8=%E2%9C%93&q=is%3Apr%20author%3Arohit-rk)
 * [Commits](https://github.com/mozilla/jx-sqlite/commits?author=rohit-rk)
+
+https://www.youtube.com/watch?v=0_YLzb7BegI&list=PLSE8ODhjZXja7K1hjZ01UTVDnGQdx5v5U&index=26&t=260s
 
 
 ## More Documentation
