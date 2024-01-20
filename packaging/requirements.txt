@@ -1,2 +1,5 @@
 hjson
 requests
+jx-python
+mo-logs
+mo-threads

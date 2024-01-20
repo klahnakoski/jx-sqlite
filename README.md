@@ -3,7 +3,7 @@
 JSON query expressions using SQLite
 
 
-[![PyPI Latest Release](https://img.shields.io/pypi/v/jx-sqlite.svg)](https://pypi.org/project/m--sql-parsing/)
+[![PyPI Latest Release](https://img.shields.io/pypi/v/jx-sqlite.svg)](https://pypi.org/project/jx-sqlite/)
 [![Build Status](https://app.travis-ci.com/klahnakoski/jx-sqlite.svg?branch=master)](https://travis-ci.com/github/klahnakoski/jx-sqlite)
 
 
@@ -28,6 +28,7 @@ Significant updates to the supporting libraries has broken this code.  It still 
 Open a database 
 
 ```python
+import jx_sqlite
 container = jx_sqlite.Container(filename="my.db")
 ```
 
@@ -107,7 +108,7 @@ This project is licensed under Mozilla Public License, v. 2.0. If a copy of the 
 
 ## GSOC
 
-Good work by Rohit Kumar.  You may see the end result on [gsoc branch](https://github.com/klahnakoski/jx-sqlite/tree/gsoc) or by using `pip install jx-sqlite==0.10.17243`
+Good work by Rohit Kumar.  You may see the end result on [gsoc branch](https://github.com/klahnakoski/jx-sqlite/tree/gsoc).  Installation requires python2.7,  and will require some version fixing to get running.
 
 See [the demonstration video](https://www.youtube.com/watch?v=0_YLzb7BegI&list=PLSE8ODhjZXja7K1hjZ01UTVDnGQdx5v5U&index=26&t=260s)
 
@@ -119,6 +120,3 @@ Work done up to the deadline of GSoC'17:
 
 
 
-## More Documentation
-
-* [The Future](https://github.com/mozilla/jx-sqlite/blob/master/docs/The%20Future.md)
