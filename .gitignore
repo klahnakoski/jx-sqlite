@@ -14,7 +14,8 @@
 /.venv
 /sql
 /setup.py
-
+/build
+*.egg-info
 
 /sql/a.sql
 /sql/b.sql

@@ -16,8 +16,8 @@
     "extras_require": {"tests": ["mo-testing"]},
     "include_package_data": true,
     "install_requires": [
-                          "hjson",  "jx-python==4.488.24020",    "mo-logs==8.477.24007",
-        "mo-threads==6.481.24007",                "requests"
+                         "hjson", "jx-python==4.488.24020",    "mo-sql==4.489.24020",
+                      "requests"
     ],
     "license": "MPL 2.0",
     "long_description": {
@@ -130,7 +130,7 @@
             "*Sep 2017* - GSoC work completed, all but a few tests pass.",
             " ",
             "",
-            "## GSOC",
+            "## GSoC 2017",
             "",
             "Good work by Rohit Kumar.  You may see the end result on [gsoc branch](https://github.com/klahnakoski/jx-sqlite/tree/gsoc).  Installation requires python2.7,  and will require some version fixing to get running.",
             "",
@@ -153,5 +153,5 @@
     "package_dir": {},
     "packages": ["jx_sqlite", "jx_sqlite.models", "jx_sqlite.expressions"],
     "url": "https://github.com/klahnakoski/jx-sqlite",
-    "version": "5.488.24020"
+    "version": "5.489.24020"
 }
