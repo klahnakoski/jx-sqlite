@@ -130,7 +130,7 @@
             "*Sep 2017* - GSoC work completed, all but a few tests pass.",
             " ",
             "",
-            "## GSoC 2017",
+            "## GSOC",
             "",
             "Good work by Rohit Kumar.  You may see the end result on [gsoc branch](https://github.com/klahnakoski/jx-sqlite/tree/gsoc).  Installation requires python2.7,  and will require some version fixing to get running.",
             "",
@@ -153,5 +153,5 @@
     "package_dir": {},
     "packages": ["jx_sqlite", "jx_sqlite.models", "jx_sqlite.expressions"],
     "url": "https://github.com/klahnakoski/jx-sqlite",
-    "version": "5.489.24020"
+    "version": "5.490.24020"
 }
