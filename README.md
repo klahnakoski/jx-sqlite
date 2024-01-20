@@ -107,7 +107,9 @@ This project is licensed under Mozilla Public License, v. 2.0. If a copy of the 
 
 ## GSOC
 
-Good work by Rohit Kumar.  The [gsoc branch](https://github.com/klahnakoski/jx-sqlite/tree/gsoc) and 
+Good work by Rohit Kumar.  You may see the end result on [gsoc branch](https://github.com/klahnakoski/jx-sqlite/tree/gsoc) or by using `pip install jx-sqlite==0.10.17243`
+
+See [the demonstration video](https://www.youtube.com/watch?v=0_YLzb7BegI&list=PLSE8ODhjZXja7K1hjZ01UTVDnGQdx5v5U&index=26&t=260s)
 
 
 Work done up to the deadline of GSoC'17:
@@ -115,7 +117,6 @@ Work done up to the deadline of GSoC'17:
 * [Pull Requests](https://github.com/mozilla/jx-sqlite/pulls?utf8=%E2%9C%93&q=is%3Apr%20author%3Arohit-rk)
 * [Commits](https://github.com/mozilla/jx-sqlite/commits?author=rohit-rk)
 
-https://www.youtube.com/watch?v=0_YLzb7BegI&list=PLSE8ODhjZXja7K1hjZ01UTVDnGQdx5v5U&index=26&t=260s
 
 
 ## More Documentation
