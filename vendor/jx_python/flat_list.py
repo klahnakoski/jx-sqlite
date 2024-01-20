@@ -8,11 +8,10 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 import functools
 
-from mo_dots import Data, FlatList, coalesce, is_data, is_list, split_field, wrap
+from mo_dots import Data, FlatList, coalesce, is_data, is_list, split_field, to_data
 from mo_future import is_text
 from mo_logs import Log
 from mo_math import MIN
@@ -52,7 +51,7 @@ class PartFlatList(list):
 
     def select(self, fields):
         if is_data(fields):
-            fields=fields.value
+            fields = fields.value
 
         if is_text(fields):
             # RETURN LIST OF VALUES
@@ -63,11 +62,13 @@ class PartFlatList(list):
                     return [d[0][fields] for d in self.data]
             else:
                 keys = split_field(fields)
-                depth = coalesce(MIN([i for i, (k, p) in enumerate(zip(keys, self.path)) if k != p]), len(self.path))  # LENGTH OF COMMON PREFIX
+                depth = coalesce(
+                    MIN([i for i, (k, p) in enumerate(zip(keys, self.path)) if k != p]), len(self.path),
+                )  # LENGTH OF COMMON PREFIX
                 short_key = keys[depth:]
 
                 output = FlatList()
-                _select1((wrap(d[depth]) for d in self.data), short_key, 0, output)
+                _select1((to_data(d[depth]) for d in self.data), short_key, 0, output)
                 return output
 
         if is_list(fields):
@@ -113,11 +114,11 @@ class PartFlatList(list):
         temp = [[]] * len(self.path)
         for d in self.data:
             for i, p in enumerate(self.path):
-                temp[i] = d[i][p]    # REMEMBER THE LIST THAT IS HERE
-                d[i][p] = d[i + 1]   # REPLACE WITH INSTANCE
-            yield d[0]               # DO THE WORK
+                temp[i] = d[i][p]  # REMEMBER THE LIST THAT IS HERE
+                d[i][p] = d[i + 1]  # REPLACE WITH INSTANCE
+            yield d[0]  # DO THE WORK
             for i, p in enumerate(self.path):
-                d[i][p] = temp[i]    # RETURN LIST BACK TO PLACE
+                d[i][p] = temp[i]  # RETURN LIST BACK TO PLACE
 
 
 def _select1(data, field, depth, output):

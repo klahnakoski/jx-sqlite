@@ -7,24 +7,19 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-
-
-from __future__ import absolute_import, division, unicode_literals
-
 from mo_dots import Data, listwrap, literal_field
 from mo_kwargs import override
-from mo_logs import Log
+from mo_logs import logger
 from mo_logs.exceptions import ALARM, NOTE
 from mo_logs.log_usingNothing import StructuredLogger
 from mo_logs.strings import expand_template
-from mo_math.randoms import Random
+from mo_math import randoms
 from mo_threads import Lock
 from mo_times import Date, Duration, HOUR, MINUTE
 from pyLibrary.env.emailer import Emailer
 
 
 class StructuredLogger_usingEmail(StructuredLogger):
-
     @override
     def __init__(
         self,
@@ -39,7 +34,7 @@ class StructuredLogger_usingEmail(StructuredLogger):
         cc=None,
         log_type="email",
         average_interval=HOUR,
-        kwargs=None
+        kwargs=None,
     ):
         """
         SEND WARNINGS AND ERRORS VIA EMAIL
@@ -69,7 +64,7 @@ class StructuredLogger_usingEmail(StructuredLogger):
 
     def write(self, template, params):
         with self.locker:
-            if params.context not in [NOTE, ALARM]:  # SEND ONLY THE NOT BORING STUFF
+            if params.severity not in [NOTE, ALARM]:  # SEND ONLY THE NOT BORING STUFF
                 self.accumulation.append((template, params))
 
             if Date.now() > self.next_send:
@@ -99,12 +94,11 @@ class StructuredLogger_usingEmail(StructuredLogger):
                         from_address=self.settings.from_address,
                         to_address=listwrap(to_address),
                         subject=self.settings.subject,
-                        text_data="\n\n".join(content)
+                        text_data="\n\n".join(content),
                     )
 
             self.accumulation = []
         except Exception as e:
-            Log.warning("Could not send", e)
+            logger.warning("Could not send", e)
         finally:
-            self.next_send = Date.now() + self.settings.average_interval * (2 * Random.float())
-
+            self.next_send = Date.now() + self.settings.average_interval * (2 * randoms.float())

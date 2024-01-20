@@ -1,13 +1,16 @@
 language: python
+cache: pip
 python:
-  - "2.7"
-  - "3.6"
+- "3.7"
+- "3.8"
+- "3.9"
+- "3.10"
 
 install:
-  - "pip install -r requirements.txt"
-
-env:
-  - PYTHONPATH=.:vendor
+- cp packaging/setup.py .
+- pip install .
 
 script:
-  - python -m unittest discover tests
+- export PYTHONPATH=.:vendor
+- export TEST_CONFIG=tests/config/travis.json
+- python -m unittest discover tests

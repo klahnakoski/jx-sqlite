@@ -5,9 +5,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-
-from __future__ import absolute_import, division, unicode_literals
-
 from copy import copy
 
 import jx_base
@@ -21,9 +18,10 @@ class Namespace(jx_base.Namespace):
     """
     MANAGE SQLITE DATABASE
     """
-    def __init__(self, db):
-        self.db = db
-        self.columns = ColumnList(db)
+
+    def __init__(self, container):
+        self.container = container
+        self.columns = ColumnList(container.db)
 
     def __copy__(self):
         output = object.__new__(Namespace)
@@ -36,11 +34,10 @@ class Namespace(jx_base.Namespace):
         return Facts(self, snowflake)
 
     def get_schema(self, fact_name):
-        return Schema(".", Snowflake(fact_name, self))
+        return Schema([fact_name], Snowflake(fact_name, self))
 
     def get_snowflake(self, fact_name):
         return Snowflake(fact_name, self)
 
     def add_column_to_schema(self, column):
         self.columns.add(column)
-

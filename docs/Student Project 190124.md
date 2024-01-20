@@ -81,7 +81,7 @@ The easy part is making the schema, and changing it dynamically as new JSON sche
 By dealing with JSON documents we are limiting ourselves to [snowflake schemas](https://en.wikipedia.org/wiki/Snowflake_schema). This limitation reduces the scope of the problem. Let's further restrict ourselves to a subset of schema transformations that can be handled automatically; we will call them "schema expansions":
 
 1.	Adding a property - This is a common migration
-2.	Changing the datatype of a property, or allowing multiple types - It is nice if numbers can be queried like numbers and strings as strings even if they are found in the same property..
+2.	Changing the data type of a property, or allowing multiple types - It is nice if numbers can be queried like numbers and strings as strings even if they are found in the same property..
 3.	Change a single-valued property to a multi-valued property - Any JSON property `{"a": 1}` can be interpreted as multi-valued `{"a": [1]}`. Then assigning multiple values is trivial expansion `{"a": [1, 2, 3]}`.
 4.	Change an inner object to nested array of objects - Like the multi-valued case: `{"a":{"b":"c"}}`, each inner object can be interpreted as a nested array `{"a": [{"b":"c"}]}`.  Which similarly trivializes schema expansion.
 
@@ -149,7 +149,7 @@ Even though Sqlite is preferred, the choice of datastore is not very important t
 ## The Future?
 
 * **Hetrogenous Shards** - Being able to send the same query to multiple backends allows us to pick a backend that best meets requirements; very big, or very fast
-* **Dimensions** - The next step in isolating queries from schema migrations involves declaring "dimensions": [Dimensions](https://en.wikipedia.org/wiki/Dimension_(data_warehouse)) are a level of indirection responsible for translating the complex reality of the data to a cleaner, and easy-to-query property. This can involve renaming, simple parsing, and adding business meaning to vectors in the multidimensional fact table.  
+* **Dimensions** - The next step in isolating queries from schema migrations involves declaring "dimensions": [Dimensions](https://en.wikipedia.org/wiki/_Dimension(data_warehouse)) are a level of indirection responsible for translating the complex reality of the data to a cleaner, and easy-to-query property. This can involve renaming, simple parsing, and adding business meaning to vectors in the multidimensional fact table.  
 * **Machine Managed indexes** - Databases indexes act much like a columnar datastore. If we account for the common queries received, we may be able to choose the right indexes to improve query response. We might just beat Elasticsearch!
 * **Subqueries** - Allowing heterogeneous datastores also allows us to split queries across platforms so each backend can handle the part it is best at; By dispatching data aggregation and filtering to a cluster we get fast response over big data, while a local database can use previous query results to perform sophisticated cross referencing and window functions.
 

@@ -5,15 +5,15 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
+
 
 from unittest import skip
 
 from jx_base.meta_columns import META_COLUMNS_NAME, META_TABLES_NAME
-from mo_dots import wrap
+from mo_dots import to_data, dict_to_data
 from mo_logs import Log
 from pyLibrary.meta import extenstion_method
 from tests.test_jx import BaseTestCase, TEST_TABLE
@@ -47,7 +47,7 @@ class TestMetadata(BaseTestCase):
 
     @skip("broken")
     def test_meta(self):
-        test = wrap({
+        test = dict_to_data({
             "query": {"from": TEST_TABLE},
             "data": [
                 {"a": "b"}
@@ -190,7 +190,7 @@ class TestMetadata(BaseTestCase):
 
     @skip("broken")
     def test_cardinality(self):
-        pre_test = wrap({
+        pre_test = dict_to_data({
             "data": [{"a": "b"}, {"a": "c"}],
             "query": {"from": TEST_TABLE},  # DUMMY QUERY
             "expecting_list": {
@@ -217,5 +217,5 @@ class TestMetadata(BaseTestCase):
             }
         }
         Log.note("table = {{table}}", table=pre_test.query['from'])
-        subtest = wrap(test)
+        subtest = to_data(test)
         self.utils.send_queries(subtest)

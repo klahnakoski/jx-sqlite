@@ -6,16 +6,17 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
 
-from __future__ import absolute_import, division, unicode_literals
+
 
 from unittest import skip
 
-from mo_dots import wrap as to_data
+from mo_dots import to_data
 from mo_json import value2json, json2value
 from tests import error
 from tests.test_jx import BaseTestCase, TEST_TABLE
 
-@skip("please fix me")
+
+@skip("meant for html endpoint (ES)")
 class TestOther(BaseTestCase):
 
     def test_tuple_w_cubes(self):
@@ -102,7 +103,6 @@ class TestOther(BaseTestCase):
                 {"data": [{"a": 1}]},
             ]
         })
-
 
     def test_many_tuple(self):
         test = to_data({

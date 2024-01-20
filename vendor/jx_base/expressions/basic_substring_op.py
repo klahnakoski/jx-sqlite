@@ -8,20 +8,10 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-"""
-# NOTE:
-
-THE self.lang[operator] PATTERN IS CASTING NEW OPERATORS TO OWN LANGUAGE;
-KEEPING Python AS# Python, ES FILTERS AS ES FILTERS, AND Painless AS
-Painless. WE COULD COPY partial_eval(), AND OTHERS, TO THIER RESPECTIVE
-LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
-
-"""
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
-from mo_json import STRING
+from mo_json.types import JX_TEXT
 
 
 class BasicSubstringOp(Expression):
@@ -29,20 +19,26 @@ class BasicSubstringOp(Expression):
     PLACEHOLDER FOR BASIC value.substring(start, end) (CAN NOT DEAL WITH NULLS)
     """
 
-    data_type = STRING
+    _jx_type = JX_TEXT
 
-    def __init__(self, terms):
-        Expression.__init__(self, terms)
-        self.value, self.start, self.end = terms
+    def __init__(self, value, start, end):
+        Expression.__init__(self, value, start, end)
+        self.value, self.start, self.end = value, start, end
+
+    def __call__(self, row, rownum=None, rows=None):
+        return self.value(row, rownum, rows)[self.start(row, rownum, rows) : self.end(row, rownum, rows)]
 
     def __data__(self):
-        return {
-            "basic.substring": [
-                self.value.__data__(),
-                self.start.__data__(),
-                self.end.__data__(),
-            ]
-        }
+        return {"basic.substring": [self.value.__data__(), self.start.__data__(), self.end.__data__()]}
 
-    def missing(self):
+    def map(self, map_):
+        return BasicSubstringOp(self.value.map(map_), self.start.map(map_), self.end.map(map_),)
+
+    def vars(self):
+        return self.value.vars() | self.start.vars() | self.end.vars()
+
+    def missing(self, lang):
+        return FALSE
+
+    def invert(self, lang):
         return FALSE

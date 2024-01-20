@@ -7,42 +7,15 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-
-"""
-# NOTE:
-
-THE self.lang[operator] PATTERN IS CASTING NEW OPERATORS TO OWN LANGUAGE;
-KEEPING Python AS# Python, ES FILTERS AS ES FILTERS, AND Painless AS
-Painless. WE COULD COPY partial_eval(), AND OTHERS, TO THIER RESPECTIVE
-LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
-
-"""
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions.expression import Expression
-from jx_base.expressions.false_op import FALSE
-from jx_base.language import is_op
-from mo_json import BOOLEAN
+from jx_base.expressions.base_inequality_op import BaseInequalityOp
 
 
-class BasicEqOp(Expression):
+class BasicEqOp(BaseInequalityOp):
     """
     PLACEHOLDER FOR BASIC `==` OPERATOR (CAN NOT DEAL WITH NULLS)
     """
+    op = "basic.eq"
 
-    data_type = BOOLEAN
 
-    def __init__(self, terms):
-        Expression.__init__(self, terms)
-        self.lhs, self.rhs = terms
-
-    def __data__(self):
-        return {"basic.eq": [self.lhs.__data__(), self.rhs.__data__()]}
-
-    def missing(self):
-        return FALSE
-
-    def __eq__(self, other):
-        if not is_op(other, BasicEqOp):
-            return False
-        return self.lhs == other.lhs and self.rhs == other.rhs
+    def __call__(self, row, rownum=None, rows=None):
+        return self.lhs(row, rownum, rows) == self.rhs(row, rownum, rows)

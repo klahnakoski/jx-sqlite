@@ -7,51 +7,45 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
+from typing import Tuple
 
-"""
-# NOTE:
-
-THE self.lang[operator] PATTERN IS CASTING NEW OPERATORS TO OWN LANGUAGE;
-KEEPING Python AS# Python, ES FILTERS AS ES FILTERS, AND Painless AS
-Painless. WE COULD COPY partial_eval(), AND OTHERS, TO THIER RESPECTIVE
-LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
-
-"""
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions._utils import simplified, builtin_ops, operators
-from jx_base.expressions.and_op import AndOp
-from jx_base.expressions.coalesce_op import CoalesceOp
+from jx_base.expressions._utils import builtin_ops
 from jx_base.expressions.expression import Expression
-from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.literal import Literal, ZERO, ONE, is_literal
-from jx_base.expressions.null_op import NULL
-from jx_base.expressions.or_op import OrOp
-from jx_base.expressions.true_op import TRUE
-from jx_base.expressions.when_op import WhenOp
-from mo_dots import coalesce
-from mo_json import NUMBER
+from jx_base.language import is_op
+from mo_imports import expect
+from mo_json.types import JX_NUMBER
+from mo_logs import logger
+
+AndOp, CoalesceOp, NULL, OrOp, WhenOp, ToNumberOp = expect(
+    "AndOp", "CoalesceOp", "NULL", "OrOp", "WhenOp", "ToNumberOp"
+)
 
 
 class BaseMultiOp(Expression):
+    """
+    conservative eval of multi-operand operators
+    """
     has_simple_form = True
-    data_type = NUMBER
-    op = None
+    _jx_type = JX_NUMBER
 
-    def __init__(self, terms, **clauses):
-        Expression.__init__(self, terms)
+    def __init__(self, *terms: Tuple[Expression], nulls=False):
+        if nulls is None:
+            logger.error("nulls must be specified")
+        Expression.__init__(self, *terms)
         self.terms = terms
-        self.default = coalesce(clauses.get("default"), NULL)
-        self.nulls = coalesce(
-            clauses.get("nulls"), FALSE
-        )  # nulls==True WILL HAVE OP RETURN null ONLY IF ALL OPERANDS ARE null
+        self.decisive = nulls
+        self.simplified = False
+
+    def __eq__(self, other):
+        if not is_op(other, self.__class__):
+            return False
+        if len(self.terms) != len(other.terms):
+            return False
+        return all(s == o for s, o in zip(self.terms, other.terms))
 
     def __data__(self):
-        return {
-            self.op: [t.__data__() for t in self.terms],
-            "default": self.default,
-            "nulls": self.nulls,
-        }
+        return {self.op: [t.__data__() for t in self.terms], "nulls": self.decisive}
 
     def vars(self):
         output = set()
@@ -60,83 +54,40 @@ class BaseMultiOp(Expression):
         return output
 
     def map(self, map_):
-        return self.__class__(
-            [t.map(map_) for t in self.terms],
-            **{"default": self.default, "nulls": self.nulls}
-        )
+        return self.__class__(*(t.map(map_) for t in self.terms), null=self.decisive)
 
-    def missing(self):
-        if self.nulls:
-            if self.default is NULL:
-                return self.lang[AndOp([t.missing() for t in self.terms])]
-            else:
-                return TRUE
+    def missing(self, lang):
+        if self.decisive:
+            return AndOp(*(t.missing(lang) for t in self.terms))
         else:
-            if self.default is NULL:
-                return self.lang[OrOp([t.missing() for t in self.terms])]
-            else:
-                return FALSE
+            return OrOp(*(t.missing(lang) for t in self.terms))
 
-    def exists(self):
-        if self.nulls:
-            return self.lang[OrOp([t.exists() for t in self.terms])]
-        else:
-            return self.lang[AndOp([t.exists() for t in self.terms])]
-
-    @simplified
-    def partial_eval(self):
-        acc = None
+    def partial_eval(self, lang):
+        literal_acc = None
         terms = []
         for t in self.terms:
-            simple = t.partial_eval()
+            simple = ToNumberOp(t).partial_eval(lang)
             if simple is NULL:
-                pass
-            elif is_literal(simple):
-                if acc is None:
-                    acc = simple.value
+                if self.decisive:
+                    pass
                 else:
-                    acc = builtin_ops[self.op](acc, simple.value)
+                    return NULL
+            elif is_literal(simple):
+                if literal_acc is None:
+                    literal_acc = simple.value
+                else:
+                    literal_acc = builtin_ops[self.op](literal_acc, simple.value)
             else:
                 terms.append(simple)
 
-        lang = self.lang
         if len(terms) == 0:
-            if acc == None:
-                return self.default.partial_eval()
-            else:
-                return lang[Literal(acc)]
-        elif self.nulls:
-            # DECISIVE
-            if acc is not None:
-                terms.append(Literal(acc))
-
-            output = lang[
-                WhenOp(
-                    AndOp([t.missing() for t in terms]),
-                    **{
-                        "then": self.default,
-                        "else": operators["basic." + self.op](
-                            [CoalesceOp([t, _jx_identity[self.op]]) for t in terms]
-                        ),
-                    }
-                )
-            ].partial_eval()
+            return Literal(literal_acc)
+        elif len(terms) == 1 and literal_acc is None:
+            return terms[0]
         else:
-            # CONSERVATIVE
-            if acc is not None:
-                terms.append(lang[Literal(acc)])
-
-            output = lang[
-                WhenOp(
-                    lang[OrOp([t.missing() for t in terms])],
-                    **{
-                        "then": self.default,
-                        "else": operators["basic." + self.op](terms),
-                    }
-                )
-            ].partial_eval()
-
-        return output
+            if literal_acc is not None:
+                terms.append(Literal(literal_acc))
+            return self.__class__(*terms, nulls=self.decisive)
 
 
-_jx_identity = {"add": ZERO, "mul": ONE}
+_jx_identity = {"add": ZERO, "mul": ONE, "cardinality": ZERO, "sum": ZERO, "product": ONE}

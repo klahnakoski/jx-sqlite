@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+
 
 import itertools
 
@@ -15,7 +15,8 @@ from jx_base.domains import DefaultDomain, SimpleSetDomain
 from jx_python import windows
 from jx_python.expressions import jx_expression_to_function
 from mo_collections.matrix import Matrix
-from mo_dots import coalesce, listwrap, wrap
+from mo_dots import to_data
+from jx_base.utils import coalesce, enlist
 from mo_logs import Log
 from mo_math import UNION
 from mo_times.dates import Date
@@ -24,14 +25,14 @@ _ = Date
 
 
 def is_aggs(query):
-    if query.edges or query.groupby or any(a != None and a != "none" for a in listwrap(query.select).aggregate):
+    if query.edges or query.groupby or any(a != None and a != "none" for a in enlist(query.select).aggregate):
         return True
     return False
 
 
 def list_aggs(frum, query):
-    frum = wrap(frum)
-    select = listwrap(query.select)
+    frum = to_data(frum)
+    select = enlist(query.select)
 
     for e in query.edges:
         if isinstance(e.domain, DefaultDomain):
@@ -49,15 +50,15 @@ def list_aggs(frum, query):
     result = {
         s.name: Matrix(
             dims=[len(e.domain.partitions) + (1 if e.allowNulls else 0) for e in query.edges],
-            zeros=lambda: windows.name2accumulator.get(s.aggregate)(**s)
+            zeros=lambda: windows.name_to_aggregate.get(s.aggregate)(**s),
         )
         for s in select
     }
     where = jx_expression_to_function(query.where)
-    coord = [None]*len(query.edges)
+    coord = [None] * len(query.edges)
     edge_accessor = [(i, make_accessor(e)) for i, e in enumerate(query.edges)]
 
-    net_new_edge_names = set(wrap(query.edges).name) - UNION(e.value.vars() for e in query.edges)
+    net_new_edge_names = set(to_data(query.edges).name) - UNION(e.value.vars() for e in query.edges)
     if net_new_edge_names & UNION(ss.value.vars() for ss in select):
         # s_accessor NEEDS THESE EDGES, SO WE PASS THEM ANYWAY
         for d in filter(where, frum):
@@ -106,16 +107,20 @@ def make_accessor(e):
     if e.value:
         accessor = jx_expression_to_function(e.value)
         if e.allowNulls:
+
             def output1(row):
                 return [d.getIndexByKey(accessor(row))]
+
             return output1
         else:
+
             def output2(row):
                 c = d.getIndexByKey(accessor(row))
                 if c == len(d.partitions):
                     return []
                 else:
                     return [c]
+
             return output2
     elif e.range:
         for p in d.partitions:
@@ -126,14 +131,17 @@ def make_accessor(e):
         ma_accessor = jx_expression_to_function(e.range.max)
 
         if e.range.mode == "inclusive":
+
             def output3(row):
                 mi, ma = mi_accessor(row), ma_accessor(row)
                 output = [p.dataIndex for p in d.partitions if mi <= p["max"] and p["min"] < ma]
                 if e.allowNulls and not output:
                     return [len(d.partitions)]  # ENSURE THIS IS NULL
                 return output
+
             return output3
         else:
+
             def output4(row):
                 mi, ma = mi_accessor(row), ma_accessor(row)
                 var = d.key
@@ -141,4 +149,5 @@ def make_accessor(e):
                 if e.allowNulls and not output:
                     return [len(d.partitions)]  # ENSURE THIS IS NULL
                 return output
+
             return output4

@@ -7,14 +7,15 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+from mo_imports import export
 
-from jx_base.expressions import ScriptOp as ScriptOp_
-from jx_python.expressions import _utils
+from jx_base.expressions import ScriptOp as _ScriptOp
+from jx_base.expressions.python_script import PythonScript
 
 
-class ScriptOp(ScriptOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        return self.script
+class ScriptOp(_ScriptOp):
+    def to_python(self, loop_depth=0):
+        return PythonScript({}, loop_depth, self.script)
 
-_utils.ScriptOp = ScriptOp
+
+export("jx_python.expressions._utils", ScriptOp)

@@ -7,18 +7,14 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions import SuffixOp as SuffixOp_
-from jx_python.expressions._utils import Python
 
 
-class SuffixOp(SuffixOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        return (
-            "("
-            + Python[self.expr].to_python()
-            + ").endswith("
-            + Python[self.suffix].to_python()
-            + ")"
+from jx_base.expressions import SuffixOp as _SuffixOp
+from jx_base.expressions.python_script import PythonScript
+
+
+class SuffixOp(_SuffixOp):
+    def to_python(self, loop_depth=0):
+        return PythonScript(
+            {}, loop_depth, f"({self.expr.to_python(loop_depth)}).endswith({self.suffix.to_python(loop_depth)})",
         )

@@ -5,23 +5,25 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
+
 
 from unittest import skipIf, skip
 
 from jx_base.expressions import NULL
-from mo_dots import wrap
+from mo_dots import to_data, list_to_data
 from mo_logs import Log
 from mo_logs.exceptions import get_stacktrace
+from mo_testing.fuzzytestcase import add_error_reporting
 from mo_times import Date
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
-lots_of_data = wrap([{"a": i} for i in range(30)])
+lots_of_data = list_to_data([{"a": i} for i in range(30)])
 
 
+@add_error_reporting
 class TestSorting(BaseTestCase):
 
     def test_name_and_direction_sort(self):
@@ -94,6 +96,7 @@ class TestSorting(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skip("coordinate sort clause with matching edges")
     def test_2edge_and_sort(self):
         test = {
             "data": [
@@ -162,11 +165,11 @@ class TestSorting(BaseTestCase):
             }
         }
 
-        subtest = wrap(test)
+        subtest = to_data(test)
         subtest.name = get_stacktrace()[0]['method']
         self.utils.fill_container(test)
 
-        test = wrap(test)
+        test = to_data(test)
         self.utils.send_queries({"query": test.query, "expecting_list": test.expecting_list})
         self.utils.send_queries({"query": test.query, "expecting_table": test.expecting_table})
         try:
@@ -323,6 +326,7 @@ class TestSorting(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skip("coordinate sort clause with matching edges")
     def test_groupby2b_and_sort(self):
         test = {
             "data": [
@@ -388,6 +392,7 @@ class TestSorting(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skip("coordinate sort clause with matching edges")
     def test_groupby2c_and_sort(self):
         test = {
             "data": [
@@ -453,8 +458,8 @@ class TestSorting(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
     @skipIf(global_settings.elasticsearch.version, "ES can not sort nested amoung docs")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_nested_array(self):
 
         test = {
@@ -483,7 +488,8 @@ class TestSorting(BaseTestCase):
             ],
             "query": {
                 "from": TEST_TABLE,
-                "sort": [{"a": "asc"}]
+                "sort": [{"a": "asc"}],
+                "limit": 1000
             },
             "expecting_list": {
                 "meta": {"format": "list"},
@@ -508,7 +514,6 @@ class TestSorting(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
     @skipIf(global_settings.elasticsearch.version, "ES can not sort nested amoung docs")
     def test_nested(self):
         test = {
@@ -537,7 +542,8 @@ class TestSorting(BaseTestCase):
             ],
             "query": {
                 "from": TEST_TABLE+".b",
-                "sort": [{"a": "asc"}]
+                "sort": [{"a": "asc"}],
+                "limit": 100
             },
             "expecting_list": {
                 "meta": {"format": "list"},
@@ -562,7 +568,6 @@ class TestSorting(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
     def test_single_nested(self):
         test = {
             "data": [

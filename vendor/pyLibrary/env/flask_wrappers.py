@@ -6,7 +6,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+
 
 from functools import update_wrapper
 from ssl import PROTOCOL_SSLv23, SSLContext
@@ -21,7 +21,7 @@ from mo_json import value2json
 from mo_logs import Log
 from mo_threads.threads import register_thread, Thread
 from pyLibrary.env import git
-from pyLibrary.env.big_data import ibytes2icompressed
+from mo_http.big_data import ibytes2icompressed
 
 TOO_SMALL_TO_COMPRESS = 510  # DO NOT COMPRESS DATA WITH LESS THAN THIS NUMBER OF BYTES
 
@@ -175,7 +175,7 @@ def add_version(flask_app):
                 "commit": rev,
             },
             pretty=True,
-        ).encode('utf8') + text("\n")
+        ).encode('utf8') + b"\n"
 
         Log.note("Using github version\n{{version}}", version=version_info)
 
@@ -231,7 +231,7 @@ def setup_flask_ssl(flask_app, flask_config):
                 context = SSLContext(PROTOCOL_SSLv23)
                 context.load_cert_chain(
                     tempfile.name,
-                    keyfile=File(ssl_flask.ssl_context.privatekey_file).abspath,
+                    keyfile=File(ssl_flask.ssl_context.privatekey_file).abs_path,
                 )
 
                 ssl_flask.ssl_context = context

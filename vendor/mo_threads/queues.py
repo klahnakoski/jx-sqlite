@@ -1,4 +1,3 @@
-
 # encoding: utf-8
 #
 #
@@ -12,16 +11,15 @@
 # THIS SIGNAL IS IMPORTANT FOR PROPER SIGNALLING WHICH ALLOWS
 # FOR FAST AND PREDICTABLE SHUTDOWN AND CLEANUP OF THREADS
 
-from __future__ import absolute_import, division, unicode_literals
 
 import types
 from collections import deque
+from copy import copy
 from datetime import datetime
 from time import time
 
 from mo_dots import Null, coalesce
-from mo_future import long
-from mo_logs import Except, Log
+from mo_logs import Except, logger
 
 from mo_threads.lock import Lock
 from mo_threads.signals import Signal
@@ -33,13 +31,15 @@ DEBUG = False
 # MAX_DATETIME = datetime(2286, 11, 20, 17, 46, 39)
 DEFAULT_WAIT_TIME = 10 * 60  # SECONDS
 
-datetime.strptime('2012-01-01', '%Y-%m-%d')  # http://bugs.python.org/issue7980
+datetime.strptime("2012-01-01", "%Y-%m-%d")  # http://bugs.python.org/issue7980
 
 
 class Queue(object):
     """
-     SIMPLE MESSAGE QUEUE, multiprocessing.Queue REQUIRES SERIALIZATION, WHICH
-     IS DIFFICULT TO USE JUST BETWEEN THREADS (SERIALIZATION REQUIRED)
+    SIMPLE MULTI-THREADED QUEUE
+
+    (processes.Queue REQUIRES SERIALIZATION, WHICH
+    IS DIFFICULT TO USE JUST BETWEEN THREADS)
     """
 
     def __init__(self, name, max=None, silent=False, unique=False, allow_add_after_close=False):
@@ -51,9 +51,11 @@ class Queue(object):
         self.name = name
         self.max = coalesce(max, 2 ** 10)
         self.silent = silent
-        self.allow_add_after_close=allow_add_after_close
+        self.allow_add_after_close = allow_add_after_close
         self.unique = unique
-        self.closed = Signal("stop adding signal for " + name)  # INDICATE THE PRODUCER IS DONE GENERATING ITEMS TO QUEUE
+        self.closed = Signal(
+            "queue is closed signal for " + name
+        )  # INDICATE THE PRODUCER IS DONE GENERATING ITEMS TO QUEUE
         self.lock = Lock("lock for queue " + name)
         self.queue = deque()
 
@@ -65,8 +67,8 @@ class Queue(object):
                     break
                 if value is not None:
                     yield value
-        except Exception as e:
-            Log.warning("Tell me about what happened here", e)
+        except Exception as cause:
+            logger.warning("Tell me about what happened here", cause)
 
     def add(self, value, timeout=None, force=False):
         """
@@ -85,7 +87,7 @@ class Queue(object):
             if not force:
                 self._wait_for_queue_space(timeout=timeout)
             if self.closed and not self.allow_add_after_close:
-                Log.error("Do not add to closed queue")
+                logger.error("Do not add to closed queue")
             if self.unique:
                 if value not in self.queue:
                     self.queue.append(value)
@@ -98,12 +100,25 @@ class Queue(object):
         SNEAK value TO FRONT OF THE QUEUE
         """
         if self.closed and not self.allow_add_after_close:
-            Log.error("Do not push to closed queue")
+            logger.error("Do not push to closed queue")
 
         with self.lock:
             self._wait_for_queue_space()
             if not self.closed:
                 self.queue.appendleft(value)
+        return self
+
+    def push_all(self, values):
+        """
+        SNEAK values TO FRONT OF THE QUEUE
+        """
+        if self.closed and not self.allow_add_after_close:
+            logger.error("Do not push to closed queue")
+
+        with self.lock:
+            self._wait_for_queue_space()
+            if not self.closed:
+                self.queue.extendleft(values)
         return self
 
     def pop_message(self, till=None):
@@ -112,13 +127,11 @@ class Queue(object):
         DUMMY IMPLEMENTATION FOR DEBUGGING
         """
 
-        if till is not None and not isinstance(till, Signal):
-            Log.error("Expecting a signal")
         return Null, self.pop(till=till)
 
     def extend(self, values):
         if self.closed and not self.allow_add_after_close:
-            Log.error("Do not push to closed queue")
+            logger.error("Do not push to closed queue")
 
         with self.lock:
             # ONCE THE queue IS BELOW LIMIT, ALLOW ADDING MORE
@@ -145,16 +158,19 @@ class Queue(object):
 
         :param timeout:  IN SECONDS
         """
+        if len(self.queue) < self.max:
+            return
+
         wait_time = 5
 
-        (DEBUG and len(self.queue) > 1 * 1000 * 1000) and Log.warning("Queue {{name}} has over a million items")
+        (DEBUG and len(self.queue) > 1 * 1000 * 1000) and logger.warning("Queue {name} has over a million items")
 
         start = time()
-        stop_waiting = Till(till=start+coalesce(timeout, DEFAULT_WAIT_TIME))
+        stop_waiting = Till(till=start + coalesce(timeout, DEFAULT_WAIT_TIME))
 
         while not self.closed and len(self.queue) >= self.max:
             if stop_waiting:
-                Log.error(THREAD_TIMEOUT)
+                logger.error(THREAD_TIMEOUT, name=self.name)
 
             if self.silent:
                 self.lock.wait(stop_waiting)
@@ -162,11 +178,12 @@ class Queue(object):
                 self.lock.wait(Till(seconds=wait_time))
                 if not stop_waiting and len(self.queue) >= self.max:
                     now = time()
-                    Log.alert(
-                        "Queue with name {{name|quote}} is full with ({{num}} items), thread(s) have been waiting {{wait_time}} sec",
+                    logger.alert(
+                        "Queue with name {name|quote} is full with ({num} items),"
+                        " thread(s) have been waiting {wait_time} sec",
                         name=self.name,
                         num=len(self.queue),
-                        wait_time=now-start
+                        wait_time=now - start,
                     )
 
     def __len__(self):
@@ -187,7 +204,7 @@ class Queue(object):
         :return:  A value, or a THREAD_STOP or None
         """
         if till is not None and not isinstance(till, Signal):
-            Log.error("expecting a signal")
+            logger.error("expecting a signal")
 
         with self.lock:
             while True:
@@ -199,7 +216,7 @@ class Queue(object):
                     if self.closed:
                         break
                     return None
-        (DEBUG or not self.silent) and Log.note(self.name + " queue closed")
+        (DEBUG or not self.silent) and logger.info("{name} queue closed", name=self.name, stack_depth=1)
         return THREAD_STOP
 
     def pop_all(self):
@@ -222,7 +239,7 @@ class Queue(object):
             elif not self.queue:
                 return None
             else:
-                v =self.queue.pop()
+                v = self.queue.popleft()
                 if v is THREAD_STOP:  # SENDING A STOP INTO THE QUEUE IS ALSO AN OPTION
                     self.closed.go()
                 return v
@@ -242,14 +259,19 @@ class Queue(object):
 
 class PriorityQueue(Queue):
     """
-        ADDS ITEMS TO THEIR PRIORITY AND POP'S THE HIGHEST PRIORITY VALUE (UNLESS REQUESTED OTHERWISE)
+    ADDS ITEMS TO THEIR PRIORITY AND POP'S THE HIGHEST PRIORITY VALUE (UNLESS REQUESTED OTHERWISE)
     """
-    def __init__(self, name, numpriorities, max=None, silent=False, unique=False, allow_add_after_close=False):
-        Queue.__init__(self, name=name, max=max, silent=silent, unique=False, allow_add_after_close=False)
+
+    def __init__(
+        self, name, numpriorities, max=None, silent=False, unique=False, allow_add_after_close=False,
+    ):
+        Queue.__init__(
+            self, name=name, max=max, silent=silent, unique=False, allow_add_after_close=False,
+        )
 
         self.numpriorities = numpriorities
         self.queue = [
-            Queue(name=name, max=max, silent=silent, unique=False, allow_add_after_close=False)
+            Queue(name=name, max=max, silent=silent, unique=False, allow_add_after_close=False,)
             for _ in range(numpriorities)
         ]
 
@@ -261,11 +283,11 @@ class PriorityQueue(Queue):
                     break
                 if value is not None:
                     yield value
-        except Exception as e:
-            Log.warning("Tell me about what happened here", e)
+        except Exception as cause:
+            logger.warning("Tell me about what happened here", cause)
 
         if not self.silent:
-            Log.note("queue iterator is done")
+            logger.info("queue iterator is done")
 
     def add(self, value, timeout=None, priority=0):
         with self.lock:
@@ -277,7 +299,7 @@ class PriorityQueue(Queue):
 
             self.queue[priority]._wait_for_queue_space(timeout=timeout)
             if self.closed and not self.queue[priority].allow_add_after_close:
-                Log.error("Do not add to closed queue")
+                logger.error("Do not add to closed queue")
             else:
                 if self.unique:
                     if value not in self.queue[priority].queue:
@@ -291,7 +313,7 @@ class PriorityQueue(Queue):
         SNEAK value TO FRONT OF THE QUEUE
         """
         if self.closed and not self.queue[priority].allow_add_after_close:
-            Log.error("Do not push to closed queue")
+            logger.error("Do not push to closed queue")
 
         with self.lock:
             self.queue[priority]._wait_for_queue_space()
@@ -323,7 +345,7 @@ class PriorityQueue(Queue):
         :return:  A value, or a THREAD_STOP or None
         """
         if till is not None and not isinstance(till, Signal):
-            Log.error("expecting a signal")
+            logger.error("expecting a signal")
 
         with self.lock:
             while True:
@@ -338,7 +360,7 @@ class PriorityQueue(Queue):
                     if self.closed:
                         break
                     return None
-        (DEBUG or not self.silent) and Log.note(self.name + " queue stopped")
+        (DEBUG or not self.silent) and logger.info(self.name + " queue stopped")
         return THREAD_STOP
 
     def pop_all(self, priority=None):
@@ -378,11 +400,10 @@ class PriorityQueue(Queue):
             elif not self.queue:
                 return None
             else:
-                v =self.pop(priority=priority)
+                v = self.pop(priority=priority)
                 if v is THREAD_STOP:  # SENDING A STOP INTO THE QUEUE IS ALSO AN OPTION
                     self.closed.go()
                 return v
-
 
 
 class ThreadedQueue(Queue):
@@ -396,25 +417,28 @@ class ThreadedQueue(Queue):
         name,
         slow_queue,  # THE SLOWER QUEUE
         batch_size=None,  # THE MAX SIZE OF BATCHES SENT TO THE SLOW QUEUE
-        max_size=None,   # SET THE MAXIMUM SIZE OF THE QUEUE, WRITERS WILL BLOCK IF QUEUE IS OVER THIS LIMIT
+        max_size=None,  # SET THE MAXIMUM SIZE OF THE QUEUE, WRITERS WILL BLOCK IF QUEUE IS OVER THIS LIMIT
         period=None,  # MAX TIME (IN SECONDS) BETWEEN FLUSHES TO SLOWER QUEUE
         silent=False,  # WRITES WILL COMPLAIN IF THEY ARE WAITING TOO LONG
-        error_target=None  # CALL THIS WITH ERROR **AND THE LIST OF OBJECTS ATTEMPTED**
-                           # BE CAREFUL!  THE THREAD MAKING THE CALL WILL NOT BE YOUR OWN!
-                           # DEFAULT BEHAVIOUR: THIS WILL KEEP RETRYING WITH WARNINGS
+        error_target=None  # CALL error_target(error, buffer) **buffer IS THE LIST OF OBJECTS ATTEMPTED**
+        # BE CAREFUL!  THE THREAD MAKING THE CALL WILL NOT BE YOUR OWN!
+        # DEFAULT BEHAVIOUR: THIS WILL KEEP RETRYING WITH WARNINGS
     ):
-        if period !=None and not isinstance(period, (int, float, long)):
-            Log.error("Expecting a float for the period")
-
+        if period != None and not isinstance(period, (int, float)):
+            logger.error("Expecting a float for the period")
+        period = coalesce(period, 1)  # SECONDS
         batch_size = coalesce(batch_size, int(max_size / 2) if max_size else None, 900)
         max_size = coalesce(max_size, batch_size * 2)  # REASONABLE DEFAULT
-        period = coalesce(period, 1)  # SECONDS
 
         Queue.__init__(self, name=name, max=max_size, silent=silent)
 
         self.name = name
         self.slow_queue = slow_queue
-        self.thread = Thread.run("threaded queue for " + name, self.worker_bee, batch_size, period, error_target) # parent_thread=self)
+        self.thread = (
+            Thread
+            .run(f"threaded queue for {name}", self.worker_bee, batch_size, period, error_target, parent_thread=self)
+            .release()
+        )
 
     def worker_bee(self, batch_size, period, error_target, please_stop):
         please_stop.then(lambda: self.add(THREAD_STOP))
@@ -426,6 +450,9 @@ class ThreadedQueue(Queue):
         last_push = now - period
 
         def push_to_queue():
+            if self.slow_queue.__class__.__name__ == "Index":
+                if self.slow_queue.settings.index.startswith("saved"):
+                    logger.alert("INSERT SAVED QUERY {data|json}", data=copy(_buffer))
             self.slow_queue.extend(_buffer)
             del _buffer[:]
             for ppf in _post_push_functions:
@@ -451,23 +478,17 @@ class ThreadedQueue(Queue):
                     _post_push_functions.append(item)
                 elif item is not None:
                     _buffer.append(item)
-            except Exception as e:
-                e = Except.wrap(e)
+            except Exception as cause:
+                cause = Except.wrap(cause)
                 if error_target:
                     try:
-                        error_target(e, _buffer)
+                        error_target(cause, _buffer)
                     except Exception as f:
-                        Log.warning(
-                            "`error_target` should not throw, just deal",
-                            name=self.name,
-                            cause=f
+                        logger.warning(
+                            "`error_target` should not throw, just deal", name=self.name, cause=f,
                         )
                 else:
-                    Log.warning(
-                        "Unexpected problem",
-                        name=self.name,
-                        cause=e
-                    )
+                    logger.warning("Unexpected problem", name=self.name, cause=cause)
 
             try:
                 if len(_buffer) >= batch_size or next_push:
@@ -475,29 +496,30 @@ class ThreadedQueue(Queue):
                         push_to_queue()
                         last_push = now = time()
                     next_push = Till(till=now + period)
-            except Exception as e:
-                e = Except.wrap(e)
+            except Exception as cause:
+                cause = Except.wrap(cause)
                 if error_target:
                     try:
-                        error_target(e, _buffer)
+                        error_target(cause, _buffer)
                     except Exception as f:
-                        Log.warning(
-                            "`error_target` should not throw, just deal",
-                            name=self.name,
-                            cause=f
+                        logger.warning(
+                            "`error_target` should not throw, just deal", name=self.name, cause=f,
                         )
                 else:
-                    Log.warning(
-                        "Problem with {{name}} pushing {{num}} items to data sink",
+                    logger.warning(
+                        "Problem with {name} pushing {num} items to data sink",
                         name=self.name,
                         num=len(_buffer),
-                        cause=e
+                        cause=cause,
                     )
 
         if _buffer:
             # ONE LAST PUSH, DO NOT HAVE TIME TO DEAL WITH ERRORS
             push_to_queue()
         self.slow_queue.add(THREAD_STOP)
+
+    def add_child(self, child):
+        pass
 
     def add(self, value, timeout=None):
         with self.lock:
@@ -513,7 +535,7 @@ class ThreadedQueue(Queue):
             if not self.closed:
                 self.queue.extend(values)
             if not self.silent:
-                Log.note("{{name}} has {{num}} items", name=self.name, num=len(self.queue))
+                logger.info("{name} has {num} items", name=self.name, num=len(self.queue))
         return self
 
     def __enter__(self):
@@ -528,5 +550,4 @@ class ThreadedQueue(Queue):
     def stop(self):
         self.add(THREAD_STOP)
         self.thread.join()
-
-
+        return self

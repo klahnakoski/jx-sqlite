@@ -7,23 +7,25 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import RowsOp as RowsOp_
-from jx_python.expressions._utils import Python
-from jx_python.expressions.integer_op import IntegerOp
+
 from mo_dots import split_field
+
+from jx_base.expressions.python_script import PythonScript
 from mo_json import json2value
 from mo_logs import strings
 
+from jx_base.expressions import RowsOp as _RowsOp
+from jx_python.expressions.to_integer_op import ToIntegerOp
 
-class RowsOp(RowsOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        agg = "rows[rownum+" + Python[IntegerOp(self.offset)].to_python() + "]"
+
+class RowsOp(_RowsOp):
+    def to_python(self, loop_depth=0):
+        agg = "rows[rownum+" + (ToIntegerOp(self.offset)).to_python(loop_depth) + "]"
         path = split_field(json2value(self.var.json))
         if not path:
-            return agg
+            return PythonScript({}, loop_depth, agg)
 
         for p in path[:-1]:
             agg = agg + ".get(" + strings.quote(p) + ", EMPTY_DICT)"
-        return agg + ".get(" + strings.quote(path[-1]) + ")"
+        return PythonScript({"EMPTY_DICT": {}}, loop_depth, agg + ".get(" + strings.quote(path[-1]) + ")",)

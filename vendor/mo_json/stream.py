@@ -7,8 +7,6 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
 import json
 from types import GeneratorType
 
@@ -20,8 +18,9 @@ from mo_dots import (
     relative_field,
     split_field,
     startswith_field,
-    wrap,
+    to_data,
 )
+from mo_future import NEXT
 from mo_logs import Log
 
 DEBUG = False
@@ -36,6 +35,7 @@ json_decoder = json.JSONDecoder().decode
 
 class Parser(object):
     def __init__(self, json, query_path, expected_vars=NO_VARS):
+
         if hasattr(json, "read"):
             # ASSUME IT IS A STREAM
             temp = json
@@ -47,16 +47,14 @@ class Parser(object):
         elif hasattr(json, "__call__"):
             self.json = List_usingStream(json)
         elif isinstance(json, GeneratorType):
-            self.json = List_usingStream(json.next)
+            self.json = List_usingStream(NEXT(json))
         else:
-            Log.error(
-                "Expecting json to be a stream, or a function that will return more bytes"
-            )
+            Log.error("Expecting json to be a stream, or a function that will return more bytes")
 
         if is_data(query_path) and query_path.get("items"):
-            self.path_list = split_field(query_path.get("items")) + [
-                "$items"
-            ]  # INSERT A MARKER SO THAT OBJECT IS STREAM DECODED
+            self.path_list = (
+                split_field(query_path.get("items")) + ["$items"]
+            )  # INSERT A MARKER SO THAT OBJECT IS STREAM DECODED
         else:
             self.path_list = split_field(query_path)
 
@@ -94,9 +92,7 @@ class Parser(object):
                     yield index
                     c, index = self.skip_whitespace(index)
             else:
-                for index in self._decode_token(
-                    index, c, parent_path, path, expected_vars
-                ):
+                for index in self._decode_token(index, c, parent_path, path, expected_vars):
                     c, index = self.skip_whitespace(index)
                     if c == b"]":
                         yield index
@@ -112,15 +108,12 @@ class Parser(object):
 
     def _decode_object(self, index, c, parent_path, query_path, expected_vars):
         if "." in expected_vars:
-            if len(self.done[0]) <= len(parent_path) and all(
-                d == p for d, p in zip(self.done[0], parent_path)
-            ):
+            if len(self.done[0]) <= len(parent_path) and all(d == p for d, p in zip(self.done[0], parent_path)):
                 Log.error("Can not pick up more variables, iterator is done")
 
             if query_path:
                 Log.error(
-                    "Can not extract objects that contain the iteration",
-                    var=join_field(query_path),
+                    "Can not extract objects that contain the iteration", var=join_field(query_path),
                 )
 
             index = self._assign_token(index, c, expected_vars)
@@ -147,9 +140,7 @@ class Parser(object):
                     if not query_path:
                         index = self._assign_token(index, c, child_expected)
                     elif query_path[0] == name:
-                        for index in self._decode_token(
-                            index, c, child_path, query_path[1:], child_expected
-                        ):
+                        for index in self._decode_token(index, c, child_path, query_path[1:], child_expected):
                             did_yield = True
                             yield index
                     else:
@@ -160,9 +151,7 @@ class Parser(object):
                             )
                         index = self._assign_token(index, c, child_expected)
                 elif query_path and query_path[0] == name:
-                    for index in self._decode_token(
-                        index, c, child_path, query_path[1:], child_expected
-                    ):
+                    for index in self._decode_token(index, c, child_path, query_path[1:], child_expected):
                         yield index
                 else:
                     index = self.jump_to_end(index, c)
@@ -206,9 +195,7 @@ class Parser(object):
                 child_expected = needed("value", expected_vars)
                 index = self._assign_token(index, c, child_expected)
                 c, index = self.skip_whitespace(index)
-                DEBUG and not num_items % 1000 and Log.note(
-                    "{{num}} items iterated", num=num_items
-                )
+                DEBUG and not num_items % 1000 and Log.note("{{num}} items iterated", num=num_items)
                 yield index
                 num_items += 1
             elif c == b"}":
@@ -218,9 +205,7 @@ class Parser(object):
         if c == b"{":
             if query_path and query_path[0] == "$items":
                 if any(expected_vars):
-                    for index in self._decode_object_items(
-                        index, c, parent_path, query_path[1:], expected_vars
-                    ):
+                    for index in self._decode_object_items(index, c, parent_path, query_path[1:], expected_vars):
                         yield index
                 else:
                     index = self.jump_to_end(index, c)
@@ -229,14 +214,10 @@ class Parser(object):
                 index = self.jump_to_end(index, c)
                 yield index
             else:
-                for index in self._decode_object(
-                    index, c, parent_path, query_path, expected_vars
-                ):
+                for index in self._decode_object(index, c, parent_path, query_path, expected_vars):
                     yield index
         elif c == b"[":
-            for index in self._iterate_list(
-                index, c, parent_path, query_path, expected_vars
-            ):
+            for index in self._iterate_list(index, c, parent_path, query_path, expected_vars):
                 yield index
         else:
             index = self._assign_token(index, c, expected_vars)
@@ -313,7 +294,7 @@ class Parser(object):
             self.json.mark(index - 1)
             index = self.jump_to_end(index, c)
             temp = self.json.release(index).decode("utf8")
-            value = wrap(json_decoder(temp))
+            value = to_data(json_decoder(temp))
             return value, index
         elif c == b"t" and self.json.slice(index, index + 3) == b"rue":
             return True, index + 3
@@ -345,7 +326,7 @@ class Parser(object):
         return c, index + 1
 
 
-def parse(json, query_path, expected_vars=NO_VARS):
+def parse(json, query_path=None, expected_vars=NO_VARS):
     """
     INTENDED TO TREAT JSON AS A STREAM; USING MINIMAL MEMORY WHILE IT ITERATES
     THROUGH THE STRUCTURE.  ASSUMING THE JSON IS LARGE, AND HAS A HIGH LEVEL
@@ -356,7 +337,7 @@ def parse(json, query_path, expected_vars=NO_VARS):
 
     LARGE MANY-PROPERTY OBJECTS CAN BE HANDLED BY `items()`
 
-    :param json:       SOME STRING-LIKE STRUCTURE THAT CAN ASSUME WE LOOK AT
+    :param json:       SOME STREAM, OR GENERATOR THAT CAN ASSUME WE LOOK AT
                        ONE CHARACTER AT A TIME, IN ORDER
     :param query_path: A DOT-SEPARATED STRING INDICATING THE PATH TO THE
                        NESTED ARRAY OPTIONALLY, {"items":query_path} TO
@@ -366,6 +347,8 @@ def parse(json, query_path, expected_vars=NO_VARS):
                           MORE-THAN-ONE PASS IS REQUIRED
     :return: RETURNS AN ITERATOR OVER ALL OBJECTS FROM ARRAY LOCATED AT query_path
     """
+    if not query_path:
+        query_path = "."
     for v, i in Parser(json, query_path, expected_vars).parse():
         yield v
 
@@ -391,10 +374,7 @@ def needed(name, required):
     """
     RETURN SUBSET IF name IN REQUIRED
     """
-    return [
-        relative_field(r, name) if r and startswith_field(r, name) else None
-        for r in required
-    ]
+    return [relative_field(r, name) if r and startswith_field(r, name) else None for r in required]
 
 
 class List_usingStream(object):
@@ -423,9 +403,7 @@ class List_usingStream(object):
 
         if offset < 0:
             Log.error(
-                "Can not go in reverse on stream index=={{index}} (offset={{offset}})",
-                index=index,
-                offset=offset,
+                "Can not go in reverse on stream index=={{index}} (offset={{offset}})", index=index, offset=offset,
             )
 
         if self._mark == -1:

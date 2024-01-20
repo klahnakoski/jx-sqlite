@@ -104,7 +104,7 @@ Decision code, like `if/else` or `when/then`, are easier to reason about when `n
 
 
 
-## Problems with conservative equality`
+## Problems with conservative equality
 
 We will let `==` represent conservative equality
 

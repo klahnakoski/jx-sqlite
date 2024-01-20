@@ -7,18 +7,21 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
 from jx_base.expressions import RegExpOp as RegExpOp_
-from jx_sqlite.expressions._utils import check
-from jx_sqlite.sqlite import quote_value
-from mo_dots import wrap
-from mo_json import json2value
+from jx_sqlite.expressions._utils import check, SQLang, SqlScript, OrOp
+from mo_sqlite.sqlite import TextSQL, ConcatSQL
+from mo_json import JX_BOOLEAN
 
 
 class RegExpOp(RegExpOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        pattern = quote_value(json2value(self.pattern.json))
-        value = self.var.to_sql(schema)[0].sql.s
-        return wrap([{"name": ".", "sql": {"b": value + " REGEXP " + pattern}}])
+    def to_sql(self, schema):
+        pattern = self.pattern.partial_eval(SQLang).to_sql(schema)
+        expr = self.expr.partial_eval(SQLang).to_sql(schema)
+        return SqlScript(
+            jx_type=JX_BOOLEAN,
+            expr=ConcatSQL(expr.expr, TextSQL(" REGEXP "), pattern.expr),
+            frum=self,
+            miss=OrOp(expr.missing(SQLang), pattern.missing(SQLang)),
+            schema=schema,
+        )

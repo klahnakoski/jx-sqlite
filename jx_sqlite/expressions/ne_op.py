@@ -7,19 +7,17 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions import NeOp as NeOp_
-from jx_sqlite.expressions._utils import check
+from jx_base.expressions import NeOp as _NeOp
+from jx_sqlite.expressions._utils import check, SQLang
 from jx_sqlite.expressions.eq_op import EqOp
 from jx_sqlite.expressions.not_op import NotOp
 
 
-class NeOp(NeOp_):
+class NeOp(_NeOp):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_sql(self, schema):
         return (
-            NotOp("not", EqOp([self.lhs, self.rhs]).partial_eval())
-            .partial_eval()
+            NotOp("not", EqOp(self.lhs, self.rhs).partial_eval(SQLang))
+            .partial_eval(SQLang)
             .to_sql(schema)
         )

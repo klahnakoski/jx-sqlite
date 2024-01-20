@@ -7,68 +7,83 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
-from collections import OrderedDict
+
 from copy import copy, deepcopy
 from decimal import Decimal
 
-from mo_future import generator_types, iteritems, long, none_type, text, MutableMapping
+from mo_future import (
+    generator_types,
+    iteritems,
+    long,
+    text,
+    MutableMapping,
+    OrderedDict,
+)
+from mo_imports import expect
 
-from mo_dots import _getdefault, coalesce, get_logger, hash_value, listwrap, literal_field
-from mo_dots.utils import CLASS
+from mo_dots.lists import is_list, FlatList, is_sequence, is_many
+from mo_dots.nones import Null, NullType
+from mo_dots.utils import CLASS, SLOT
+from mo_dots.utils import get_logger
+
+(
+    _getdefault,
+    coalesce,
+    hash_value,
+    listwrap,
+    literal_field,
+    from_data,
+    to_data,
+    null_types,
+    list_to_data,
+    dict_to_data,
+    concat_field,
+) = expect(
+    "_getdefault",
+    "coalesce",
+    "hash_value",
+    "listwrap",
+    "literal_field",
+    "from_data",
+    "to_data",
+    "null_types",
+    "list_to_data",
+    "dict_to_data",
+    "concat_field",
+)
+
 
 _get = object.__getattribute__
 _set = object.__setattr__
+_new = object.__new__
 
-SLOT = str("_internal_dict")
 DEBUG = False
 
 
-class Data(MutableMapping):
+class Data(object):
     """
-    Please see README.md
+    Please see https://github.com/klahnakoski/mo-dots/tree/dev/docs#data-replaces-pythons-dict
     """
 
     __slots__ = [SLOT]
 
     def __init__(self, *args, **kwargs):
         """
-        CALLING Data(**something) WILL RESULT IN A COPY OF something, WHICH
-        IS UNLIKELY TO BE USEFUL. USE wrap() INSTEAD
+        CONSTRUCT DATA WITH GIVEN PROPERTY VALUES
         """
-        if DEBUG:
-            d = self._internal_dict
-            for k, v in kwargs.items():
-                d[literal_field(k)] = unwrap(v)
-        else:
-            if args:
-                args0 = args[0]
-                class_ = _get(args0, CLASS)
-                if class_ is dict:
-                    _set(self, SLOT, args0)
-                elif class_ is Data:
-                    _set(self, SLOT, _get(args0, SLOT))
-                else:
-                    _set(self, SLOT, dict(args0))
-            elif kwargs:
-                _set(self, SLOT, unwrap(kwargs))
-            else:
-                _set(self, SLOT, {})
+        if args:
+            raise Exception("only keywords are allowed, not " + args[0].__class__.__name__)
+        _set(self, SLOT, kwargs)
 
     def __bool__(self):
-        d = self._internal_dict
+        d = _get(self, SLOT)
         if _get(d, CLASS) is dict:
-            return bool(d)
+            return True
         else:
             return d != None
 
-    def __nonzero__(self):
-        d = self._internal_dict
-        if _get(d, CLASS) is dict:
-            return True if d else False
-        else:
-            return d != None
+    __nonzero__ = __bool__
 
     def __contains__(self, item):
         value = Data.__getitem__(self, item)
@@ -77,21 +92,24 @@ class Data(MutableMapping):
         return False
 
     def __iter__(self):
-        d = self._internal_dict
-        return d.__iter__()
+        d = _get(self, SLOT)
+        if _get(d, CLASS) is dict:
+            yield from d.items()
+        else:
+            yield from d.__iter__()
 
     def __getitem__(self, key):
         if key == None:
             return Null
         if key == ".":
-            output = self._internal_dict
+            output = _get(self, SLOT)
             if _get(output, CLASS) in data_types:
                 return self
             else:
                 return output
 
         key = text(key)
-        d = self._internal_dict
+        d = _get(self, SLOT)
 
         if key.find(".") >= 0:
             seq = _split_field(key)
@@ -103,13 +121,13 @@ class Data(MutableMapping):
                 else:
                     d = _getdefault(d, n)  # EVERYTHING ELSE TREATS n AS LITERAL
 
-            return wrap(d)
+            return to_data(d)
         else:
             o = d.get(key)
 
         if o == None:
             return NullType(d, key)
-        return wrap(o)
+        return to_data(o)
 
     def __setitem__(self, key, value):
         if key == "":
@@ -118,15 +136,16 @@ class Data(MutableMapping):
             return Null
         if key == ".":
             # SOMETHING TERRIBLE HAPPENS WHEN value IS NOT A Mapping;
-            # HOPEFULLY THE ONLY OTHER METHOD RUN ON self IS unwrap()
-            v = unwrap(value)
+            # HOPEFULLY THE ONLY OTHER METHOD RUN ON self IS from_data()
+            v = from_data(value)
+            if is_many(v):
+                _set(self, CLASS, FlatList)
             _set(self, SLOT, v)
-            return v
-
+            return self
         try:
-            d = self._internal_dict
-            value = unwrap(value)
-            if key.find(".") == -1:
+            d = _get(self, SLOT)
+            value = from_data(value)
+            if "." not in key:
                 if value is None:
                     d.pop(key, None)
                 else:
@@ -141,13 +160,17 @@ class Data(MutableMapping):
                     d.pop(seq[-1], None)
                 except Exception as _:
                     pass
-            elif d==None:
+            elif d == None:
                 d[literal_field(seq[-1])] = value
+            elif is_sequence(d):
+                for dd in d:
+                    from_data(dd)[seq[-1]] = value
             else:
                 d[seq[-1]] = value
             return self
         except Exception as e:
             from mo_logs import Log
+
             Log.error("can not set key={{key}}", key=key, cause=e)
 
     def __getattr__(self, key):
@@ -155,25 +178,23 @@ class Data(MutableMapping):
         v = d.get(key)
         t = _get(v, CLASS)
 
-        # OPTIMIZED wrap()
+        # OPTIMIZED to_data()
         if t is dict:
-            m = object.__new__(Data)
-            _set(m, SLOT, v)
-            return m
-        elif t in (none_type, NullType):
+            return dict_to_data(v)
+        elif t in null_types:
             return NullType(d, key)
         elif t is list:
-            return FlatList(v)
+            return list_to_data(v)
         elif t in generator_types:
-            return FlatList(list(unwrap(vv) for vv in v))
+            return FlatList(list(from_data(vv) for vv in v))
         else:
             return v
 
     def __setattr__(self, key, value):
-        d = self._internal_dict
-        value = unwrap(value)
+        d = _get(self, SLOT)
+        value = from_data(value)
         if value is None:
-            d = self._internal_dict
+            d = _get(self, SLOT)
             d.pop(key, None)
         else:
             d[key] = value
@@ -189,41 +210,57 @@ class Data(MutableMapping):
         return _iadd(self, other)
 
     def __or__(self, other):
+        """
+        RECURSIVE COALESCE OF DATA PROPERTIES
+        """
         if not _get(other, CLASS) in data_types:
-            get_logger().error("Expecting a Mapping")
+            get_logger().error("Expecting Data")
 
-        output = object.__new__(Data)
-        output._internal_dict = {}
-        d = self._internal_dict
-        for ok, ov in other.items():
-            sv = d.get(ok)
-            output[ok] = sv | ov
+        d = _get(self, SLOT)
+        output = Data(**d)  # COPY
+        output.__ior__(other)
         return output
 
     def __ror__(self, other):
+        """
+        RECURSIVE COALESCE OF DATA PROPERTIES
+        """
         if not _get(other, CLASS) in data_types:
-            get_logger().error("Expecting a Mapping")
+            get_logger().error("Expecting Data")
 
-        return wrap(other).__or__(self)
+        return to_data(other).__or__(self)
 
     def __ior__(self, other):
+        """
+        RECURSIVE COALESCE OF DATA PROPERTIES
+        """
         if not _get(other, CLASS) in data_types:
-            get_logger().error("Expecting a Mapping")
-        d = self._internal_dict
+            get_logger().error("Expecting Data")
+        d = _get(self, SLOT)
         for ok, ov in other.items():
+            if ov == None:
+                continue
+
             sv = d.get(ok)
-            d[ok] = sv | ov
-        return d
+            if sv == None:
+                d[ok] = ov
+            elif isinstance(sv, Data):
+                sv |= ov
+            elif is_data(sv):
+                wv = _new(Data)
+                _set(wv, SLOT, sv)
+                wv |= ov
+        return self
 
     def __hash__(self):
-        d = self._internal_dict
+        d = _get(self, SLOT)
         return hash_value(d)
 
     def __eq__(self, other):
         if self is other:
             return True
 
-        d = self._internal_dict
+        d = _get(self, SLOT)
         if _get(d, CLASS) is not dict:
             return d == other
 
@@ -232,7 +269,7 @@ class Data(MutableMapping):
 
         if _get(other, CLASS) not in data_types:
             return False
-        e = unwrap(other)
+        e = other
         for k, v in d.items():
             if e.get(k) != v:
                 return False
@@ -244,13 +281,17 @@ class Data(MutableMapping):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    def get(self, key, default=None):
-        d = self._internal_dict
-        return d.get(key, default)
+    def get(self, key, default=Null):
+        v = self[key]
+        if _get(v, CLASS) == NullType:
+            if default is Null:
+                return NullType(self, key)
+            return default
+        return v
 
     def items(self):
-        d = self._internal_dict
-        return [(k, wrap(v)) for k, v in d.items() if v != None or _get(v, CLASS) in data_types]
+        d = _get(self, SLOT)
+        return [(k, to_data(v)) for k, v in d.items() if v != None or _get(v, CLASS) in data_types]
 
     def leaves(self, prefix=None):
         """
@@ -260,49 +301,78 @@ class Data(MutableMapping):
 
     def iteritems(self):
         # LOW LEVEL ITERATION, NO WRAPPING
-        d = self._internal_dict
-        return ((k, wrap(v)) for k, v in iteritems(d))
+        d = _get(self, SLOT)
+        return ((k, to_data(v)) for k, v in iteritems(d))
+
+    def pop(self, key, default=Null):
+        if key == None:
+            return Null
+        if key == ".":
+            raise NotImplemented()
+
+        key = text(key)
+        d = _get(self, SLOT)
+
+        if key.find(".") >= 0:
+            seq = _split_field(key)
+            for n in seq[:-1]:
+                if _get(d, CLASS) is NullType:
+                    d = NullType(d, n)  # OH DEAR, Null TREATS n AS PATH, NOT LITERAL
+                elif is_list(d):
+                    d = [_getdefault(dd, n) for dd in d]
+                else:
+                    d = _getdefault(d, n)  # EVERYTHING ELSE TREATS n AS LITERAL
+            key = seq[-1]
+
+        o = d.get(key)
+        if o == None:
+            if default is Null:
+                return NullType(d, key)
+            return default
+
+        d[key] = None
+        return to_data(o)
 
     def keys(self):
-        d = self._internal_dict
+        d = _get(self, SLOT)
         return set(d.keys())
 
     def values(self):
-        d = self._internal_dict
+        d = _get(self, SLOT)
         return listwrap(list(d.values()))
 
     def clear(self):
         get_logger().error("clear() not supported")
 
     def __len__(self):
-        d = self._internal_dict
+        d = _get(self, SLOT)
         return dict.__len__(d)
 
     def copy(self):
-        d = self._internal_dict
+        d = _get(self, SLOT)
         if _get(d, CLASS) is dict:
             return Data(**d)
         else:
             return copy(d)
 
     def __copy__(self):
-        d = self._internal_dict
+        d = _get(self, SLOT)
         if _get(d, CLASS) is dict:
             return Data(**self)
         else:
             return copy(d)
 
     def __deepcopy__(self, memo):
-        d = self._internal_dict
-        return wrap(deepcopy(d, memo))
+        d = _get(self, SLOT)
+        return to_data(deepcopy(d, memo))
 
     def __delitem__(self, key):
-        if key.find(".") == -1:
-            d = self._internal_dict
+        if "." not in key:
+            d = _get(self, SLOT)
             d.pop(key, None)
             return
 
-        d = self._internal_dict
+        d = _get(self, SLOT)
         seq = _split_field(key)
         for k in seq[:-1]:
             d = d[k]
@@ -310,94 +380,117 @@ class Data(MutableMapping):
 
     def __delattr__(self, key):
         key = text(key)
-        d = self._internal_dict
+        d = _get(self, SLOT)
         d.pop(key, None)
 
     def setdefault(self, k, d=None):
-        if self[k] == None:
+        v = self[k]
+        if v == None:
             self[k] = d
-        return self
+            return d
+        return v
 
     def __str__(self):
-        try:
-            return dict.__str__(self._internal_dict)
-        except Exception:
-            return "{}"
+        return str(_get(self, SLOT))
+
+    def __dir__(self):
+        d = _get(self, SLOT)
+        return d.keys()
 
     def __repr__(self):
         try:
-            return "Data("+dict.__repr__(self._internal_dict)+")"
+            return f"to_data({repr(_get(self, SLOT))})"
         except Exception as e:
-            return "Data()"
+            return "Data(?)"
+
+
+MutableMapping.register(Data)
 
 
 def leaves(value, prefix=None):
     """
     LIKE items() BUT RECURSIVE, AND ONLY FOR THE LEAVES (non dict) VALUES
-    SEE wrap_leaves FOR THE INVERSE
+    SEE leaves_to_data FOR THE INVERSE
 
     :param value: THE Mapping TO TRAVERSE
     :param prefix:  OPTIONAL PREFIX GIVEN TO EACH KEY
     :return: Data, WHICH EACH KEY BEING A PATH INTO value TREE
     """
-    prefix = coalesce(prefix, "")
-    output = []
-    for k, v in value.items():
+    if not prefix:
+        yield from _leaves(value, ".")
+    else:
+        for k, v in _leaves(value, "."):
+            yield prefix + k, v
+
+
+def _leaves(value, parent):
+    if isinstance(value, Data):
+        d = _get(value, SLOT)
+        if isinstance(d, dict):
+            items = d.items()
+        else:
+            yield parent, d
+            return
+    else:
+        items = value.items()
+
+    for k, v in items:
         try:
+            kk = concat_field(parent, literal_field(k))
             if _get(v, CLASS) in data_types:
-                output.extend(leaves(v, prefix=prefix + literal_field(k) + "."))
+                yield from _leaves(v, kk)
             else:
-                output.append((prefix + literal_field(k), unwrap(v)))
+                yield kk, to_data(v)
         except Exception as e:
             get_logger().error("Do not know how to handle", cause=e)
-    return output
 
 
 def _split_field(field):
     """
     SIMPLE SPLIT, NO CHECKS
     """
-    return [k.replace("\a", ".") for k in field.replace("\\.", "\a").split(".")]
-
-
-def _str(value, depth):
-    """
-    FOR DEBUGGING POSSIBLY RECURSIVE STRUCTURES
-    """
-    output = []
-    if depth >0 and _get(value, CLASS) in data_types:
-        for k, v in value.items():
-            output.append(str(k) + "=" + _str(v, depth - 1))
-        return "{" + ",\n".join(output) + "}"
-    elif depth >0 and is_list(value):
-        for v in value:
-            output.append(_str(v, depth-1))
-        return "[" + ",\n".join(output) + "]"
-    else:
-        return str(type(value))
+    return [k.replace("\b", ".") for k in field.replace("..", "\b").split(".")]
 
 
 def _iadd(self, other):
+    """
+    RECURSIVE ADDITION OF DATA PROPERTIES
+    * LISTS ARE CONCATENATED
+    * SETS ARE UNIONED
+    * NUMBERS ARE ADDED
+    """
+
     if not _get(other, CLASS) in data_types:
-        get_logger().error("Expecting a Mapping")
-    d = unwrap(self)
+        # HAPPENS WHEN _iadd WITH ['.'] SELF REFERENCE
+        d = _get(self, SLOT)
+        if isinstance(d, dict) and not len(d):
+            # LOOKS LIKE A FRESH Data OBJECT (AN IDENTITY ELEMENT)
+            # ∀ x, x += {} => x
+            d = Data()
+        else:
+            d = dict_to_data({"$": self})
+        d += dict_to_data({"$": other})
+        d["."] = d["$"]
+        return d
+
+    d = from_data(self)
     for ok, ov in other.items():
         sv = d.get(ok)
         if sv == None:
-            d[ok] = deepcopy(ov)
+            d[ok] = from_data(deepcopy(ov))
         elif isinstance(ov, (Decimal, float, long, int)):
             if _get(sv, CLASS) in data_types:
                 get_logger().error(
                     "can not add {{stype}} with {{otype}",
                     stype=_get(sv, CLASS).__name__,
-                    otype=_get(ov, CLASS).__name__
+                    otype=_get(ov, CLASS).__name__,
                 )
             elif is_list(sv):
                 d[ok].append(ov)
             else:
                 d[ok] = sv + ov
         elif is_list(ov):
-            d[ok] = listwrap(sv) + ov
+            d[ok] = from_data(listwrap(sv) + ov)
         elif _get(ov, CLASS) in data_types:
             if _get(sv, CLASS) in data_types:
                 _iadd(sv, ov)
@@ -407,14 +500,14 @@ def _iadd(self, other):
                 get_logger().error(
                     "can not add {{stype}} with {{otype}",
                     stype=_get(sv, CLASS).__name__,
-                    otype=_get(ov, CLASS).__name__
+                    otype=_get(ov, CLASS).__name__,
                 )
         else:
             if _get(sv, CLASS) in data_types:
                 get_logger().error(
                     "can not add {{stype}} with {{otype}",
                     stype=_get(sv, CLASS).__name__,
-                    otype=_get(ov, CLASS).__name__
+                    otype=_get(ov, CLASS).__name__,
                 )
             else:
                 d[ok].append(ov)
@@ -439,8 +532,3 @@ def is_data(d):
     :return: True IF d IS A TYPE THAT HOLDS DATA
     """
     return d.__class__ in data_types
-
-
-from mo_dots.nones import Null, NullType
-from mo_dots.lists import is_list, FlatList
-from mo_dots import unwrap, wrap

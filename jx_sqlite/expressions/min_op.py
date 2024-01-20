@@ -7,16 +7,16 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+from jx_base.expressions import MinOp as _MinOp
+from jx_sqlite.expressions._utils import check
+from jx_sqlite.expressions.sql_script import SqlScript
+from mo_json import JX_NUMBER
+from mo_sqlite.sqlite import sql_call
 
-from jx_base.expressions import MinOp as MinOp_
-from jx_sqlite.expressions._utils import SQLang, check
-from mo_dots import wrap
-from mo_sql import sql_iso, sql_list
 
-
-class MinOp(MinOp_):
+class MinOp(_MinOp):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        terms = [SQLang[t].partial_eval().to_sql(schema)[0].sql.n for t in self.terms]
-        return wrap([{"name": ".", "sql": {"n": "min" + sql_iso((sql_list(terms)))}}])
+    def to_sql(self, schema):
+        return SqlScript(
+            jx_type=JX_NUMBER, expr=sql_call("MIN", self.frum.to_sql(schema)), frum=self, schema=schema
+        )

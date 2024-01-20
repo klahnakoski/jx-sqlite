@@ -7,36 +7,27 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions import AndOp as AndOp_
+from jx_base.expressions import AndOp as _AndOp, ToBooleanOp
 from jx_sqlite.expressions._utils import SQLang, check
-from mo_dots import wrap
-from mo_sql import SQL_AND, SQL_FALSE, SQL_TRUE, sql_iso
+from jx_sqlite.expressions.sql_script import SqlScript
+from mo_sqlite.sqlite import SQL_AND, SQL_FALSE, SQL_TRUE, sql_iso
+from mo_json.types import JX_BOOLEAN
 
 
-class AndOp(AndOp_):
+class AndOp(_AndOp):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_sql(self, schema):
         if not self.terms:
-            return wrap([{"name": ".", "sql": {"b": SQL_TRUE}}])
+            return SqlScript(jx_type=JX_BOOLEAN, expr=SQL_TRUE, frum=self, schema=schema)
         elif all(self.terms):
-            return wrap(
-                [
-                    {
-                        "name": ".",
-                        "sql": {
-                            "b": SQL_AND.join(
-                                [
-                                    sql_iso(
-                                        SQLang[t].to_sql(schema, boolean=True)[0].sql.b
-                                    )
-                                    for t in self.terms
-                                ]
-                            )
-                        },
-                    }
-                ]
+            return SqlScript(
+                jx_type=JX_BOOLEAN,
+                expr=SQL_AND.join([
+                    sql_iso(ToBooleanOp(t).partial_eval(SQLang).to_sql(schema))
+                    for t in self.terms
+                ]),
+                frum=self,
+                schema=schema
             )
         else:
-            return wrap([{"name": ".", "sql": {"b": SQL_FALSE}}])
+            return SqlScript(jx_type=JX_BOOLEAN, expr=SQL_FALSE, frum=self, schema=schema)

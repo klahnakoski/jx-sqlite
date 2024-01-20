@@ -8,78 +8,50 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-"""
-# NOTE:
 
-THE self.lang[operator] PATTERN IS CASTING NEW OPERATORS TO OWN LANGUAGE;
-KEEPING Python AS# Python, ES FILTERS AS ES FILTERS, AND Painless AS
-Painless. WE COULD COPY partial_eval(), AND OTHERS, TO THIER RESPECTIVE
-LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
-
-"""
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions._utils import simplified
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
-from jx_base.expressions.literal import Literal
-from jx_base.expressions.literal import is_literal
-from jx_base.expressions.null_op import NULL
-from jx_base.expressions.null_op import NullOp
-from jx_base.language import is_op
-from mo_dots import is_many
-from mo_json import NUMBER
-from mo_math import MIN
+from jx_base.expressions.least_op import LeastOp
+from mo_json.types import JX_NUMBER
 
 
 class MinOp(Expression):
-    data_type = NUMBER
+    """
+    DECISIVE MINIMUM (SEE LeastOp FOR CONSERVATIVE MINIMUM)
+    """
 
-    def __init__(self, terms):
-        Expression.__init__(self, terms)
-        if terms == None:
-            self.terms = []
-        elif is_many(terms):
-            self.terms = terms
+    _jx_type = JX_NUMBER
+
+    def __new__(cls, *terms, frum=None):
+        if frum is not None:
+            op = object.__new__(MinOp)
+            op.__init__(frum=frum)
+            return op
+        elif len(terms) > 1:
+            return LeastOp(*terms, nulls=True)
         else:
-            self.terms = [terms]
+            op = object.__new__(MinOp)
+            op.__init__(frum=terms[0])
+            return op
+
+    def __init__(self, *terms, frum=None):
+        if terms:
+            frum = terms[0]
+
+        Expression.__init__(self, frum)
+        self.frum = frum
 
     def __data__(self):
-        return {"min": [t.__data__() for t in self.terms]}
+        return {"min": self.frum.__data__()}
 
     def vars(self):
-        output = set()
-        for t in self.terms:
-            output |= t.vars()
-        return output
+        return self.frum.vars()
 
     def map(self, map_):
-        return self.lang[MinOp([t.map(map_) for t in self.terms])]
+        return MinOp(frum=self.frum.map(map_))
 
-    def missing(self):
+    def missing(self, lang):
         return FALSE
 
-    @simplified
-    def partial_eval(self):
-        minimum = None
-        terms = []
-        for t in self.terms:
-            simple = t.partial_eval()
-            if is_op(simple, NullOp):
-                pass
-            elif is_literal(simple):
-                minimum = MIN([minimum, simple.value])
-            else:
-                terms.append(simple)
-        if len(terms) == 0:
-            if minimum == None:
-                return NULL
-            else:
-                return Literal(minimum)
-        else:
-            if minimum == None:
-                output = self.lang[MinOp(terms)]
-            else:
-                output = self.lang[MinOp([Literal(minimum)] + terms)]
-
-        return output
+    def partial_eval(self, lang):
+        return MinOp(frum=self.frum.partial_eval(lang))

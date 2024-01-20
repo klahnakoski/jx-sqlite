@@ -9,7 +9,7 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
+
 
 from collections import deque
 from copy import copy
@@ -57,6 +57,11 @@ class Queue(object):
             output.add(v)
         return output
 
+    def remove(self, value):
+        if value in self.set:
+            self.set.remove(value)
+            self.list.remove(value)
+
     def __data__(self):
         return list(self.list)
 
@@ -65,9 +70,6 @@ class Queue(object):
             return self
         self.set.add(value)
         self.list.append(value)
-
-    def __str__(self):
-        return str(list(self.list))
 
     def push(self, value):
         if value in self.set:

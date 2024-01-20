@@ -7,10 +7,8 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions import RowsOp as RowsOp_
+from jx_base.expressions import RowsOp as _RowsOp
 
 
-class RowsOp(RowsOp_):
+class RowsOp(_RowsOp):
     pass

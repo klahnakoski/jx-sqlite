@@ -8,32 +8,24 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-"""
-# NOTE:
 
-THE self.lang[operator] PATTERN IS CASTING NEW OPERATORS TO OWN LANGUAGE;
-KEEPING Python AS# Python, ES FILTERS AS ES FILTERS, AND Painless AS
-Painless. WE COULD COPY partial_eval(), AND OTHERS, TO THIER RESPECTIVE
-LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
-
-"""
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions.literal import is_literal
-from jx_base.expressions.null_op import NULL
-from jx_base.expressions._utils import simplified
+from mo_imports import export
 from jx_base.expressions.and_op import AndOp
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.first_op import FirstOp
+from jx_base.expressions.literal import is_literal
+from jx_base.expressions.null_op import NULL
 from jx_base.language import is_op
+from mo_json import union_type
 
 
 class CoalesceOp(Expression):
     has_simple_form = True
 
-    def __init__(self, terms):
-        Expression.__init__(self, terms)
+    def __init__(self, *terms):
+        Expression.__init__(self, *terms)
         self.terms = terms
+        self._jx_type = union_type(*(t.jx_type for t in terms))
 
     def __data__(self):
         return {"coalesce": [t.__data__() for t in self.terms]}
@@ -44,9 +36,9 @@ class CoalesceOp(Expression):
                 return all(s == o for s, o in zip(self.terms, other.terms))
         return False
 
-    def missing(self):
+    def missing(self, lang):
         # RETURN true FOR RECORDS THE WOULD RETURN NULL
-        return self.lang[AndOp([v.missing() for v in self.terms])]
+        return lang.AndOp(*(v.missing(lang) for v in self.terms))
 
     def vars(self):
         output = set()
@@ -55,13 +47,12 @@ class CoalesceOp(Expression):
         return output
 
     def map(self, map_):
-        return self.lang[CoalesceOp([v.map(map_) for v in self.terms])]
+        return CoalesceOp(*(v.map(map_) for v in self.terms))
 
-    @simplified
-    def partial_eval(self):
+    def partial_eval(self, lang):
         terms = []
         for t in self.terms:
-            simple = self.lang[FirstOp(t)].partial_eval()
+            simple = FirstOp(t).partial_eval(lang)
             if simple is NULL:
                 pass
             elif is_literal(simple):
@@ -75,4 +66,7 @@ class CoalesceOp(Expression):
         elif len(terms) == 1:
             return terms[0]
         else:
-            return self.lang[CoalesceOp(terms)]
+            return CoalesceOp(*terms)
+
+
+export("jx_base.expressions.base_multi_op", CoalesceOp)

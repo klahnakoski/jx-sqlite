@@ -7,8 +7,6 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, absolute_import, division, unicode_literals
-
 import ast
 import base64
 import cgi
@@ -22,12 +20,11 @@ from io import BytesIO
 from tempfile import TemporaryFile
 
 import mo_json
-import mo_math
-from mo_dots import concat_field, unwrap, unwraplist, wrap
+from mo_dots import concat_field, from_data, to_data, is_many, list_to_data, listwrap
 from mo_future import HTMLParser, PY3, StringIO, is_binary, is_text, long, text
 from mo_logs import Log
 from mo_logs.exceptions import suppress_exception
-from mo_logs.strings import expand_template, quote
+from mo_logs.strings import quote
 from mo_times.dates import Date
 
 """
@@ -40,16 +37,11 @@ json2value = mo_json.json2value
 
 
 def string2datetime(value, format=None):
-    return unix2datetime(Date(value, format).unix)
+    return Date(value, format).datetime
 
 
 def string2boolean(value):
-    if value in ["true", "T"]:
-        return True
-    elif value in ["false", "F"]:
-        return False
-    else:
-        return None
+    return _v2b.get(value)
 
 
 _v2b = {
@@ -70,7 +62,7 @@ def value2boolean(value):
 
 
 def str2datetime(value, format=None):
-    return unix2datetime(Date(value, format).unix)
+    return Date(value, format).datetime
 
 
 def datetime2string(value, format="%Y-%m-%d %H:%M:%S"):
@@ -133,7 +125,7 @@ def dict2Multiset(dic):
         return None
     from mo_collections.multiset import Multiset
     output = Multiset()
-    output.dic = unwrap(dic).copy()
+    output.dic = from_data(dic).copy()
     return output
 
 
@@ -150,7 +142,8 @@ def table2list(
     column_names, # tuple of columns names
     rows          # list of tuples
 ):
-    return wrap([dict(zip(column_names, r)) for r in rows])
+    return list_to_data([dict(zip(column_names, r)) for r in rows])
+
 
 def table2tab(
     column_names, # tuple of columns names
@@ -162,64 +155,17 @@ def table2tab(
     return row(column_names)+"\n"+("\n".join(row(r) for r in rows))
 
 
-
-def list2tab(rows):
+def list2tab(rows, separator="\t"):
     columns = set()
-    for r in wrap(rows):
+    for r in listwrap(rows):
         columns |= set(k for k, v in r.leaves())
     keys = list(columns)
 
     output = []
-    for r in wrap(rows):
-        output.append("\t".join(value2json(r[k]) for k in keys))
+    for r in to_data(rows):
+        output.append(separator.join(value2json(r[k]) for k in keys))
 
-    return "\t".join(keys) + "\n" + "\n".join(output)
-
-
-def list2table(rows, column_names=None):
-    if column_names:
-        keys = list(set(column_names))
-    else:
-        columns = set()
-        for r in rows:
-            columns |= set(r.keys())
-        keys = list(columns)
-
-    output = [[unwraplist(r.get(k)) for k in keys] for r in rows]
-
-    return wrap({
-        "meta": {"format": "table"},
-        "header": keys,
-        "data": output
-    })
-
-
-def list2cube(rows, column_names=None):
-    if column_names:
-        keys = column_names
-    else:
-        columns = set()
-        for r in rows:
-            columns |= set(r.keys())
-        keys = list(columns)
-
-    data = {k: [] for k in keys}
-    output = wrap({
-        "meta": {"format": "cube"},
-        "edges": [
-            {
-                "name": "rownum",
-                "domain": {"type": "rownum", "min": 0, "max": len(rows), "interval": 1}
-            }
-        ],
-        "data": data
-    })
-
-    for r in rows:
-        for k in keys:
-            data[k].append(unwraplist(r[k]))
-
-    return output
+    return separator.join(keys) + "\n" + "\n".join(output)
 
 
 def value2string(value):
@@ -253,56 +199,6 @@ def string2url(value):
         return "".join([_map2url[c] for c in value])
     else:
         Log.error("Expecting a string")
-
-
-# def url_param2value(param):
-#     """
-#     CONVERT URL QUERY PARAMETERS INTO DICT
-#     """
-#     if is_text(param):
-#         param = param.encode("ascii")
-#
-#     def _decode(v):
-#         output = []
-#         i = 0
-#         while i < len(v):
-#             c = v[i]
-#             if c == "%":
-#                 d = hex2bytes(v[i + 1:i + 3])
-#                 output.append(d)
-#                 i += 3
-#             else:
-#                 output.append(c)
-#                 i += 1
-#
-#         output = (b"".join(output)).decode("latin1")
-#         try:
-#             return json2value(output)
-#         except Exception:
-#             pass
-#         return output
-#
-#
-#     query = {}
-#     for p in param.split(b'&'):
-#         if not p:
-#             continue
-#         if p.find(b"=") == -1:
-#             k = p
-#             v = True
-#         else:
-#             k, v = p.split(b"=")
-#             v = _decode(v)
-#
-#         u = query.get(k)
-#         if u is None:
-#             query[k] = v
-#         elif is_list(u):
-#             u += [v]
-#         else:
-#             query[k] = [u, v]
-#
-#     return query
 
 
 def html2unicode(value):
@@ -398,7 +294,7 @@ def bytes2sha1(value):
 def value2intlist(value):
     if value == None:
         return []
-    elif hasattr(value, '__iter__'):
+    elif is_many(value):
         output = [int(d) for d in value if d != "" and d != None]
         return output
     elif isinstance(value, int):
@@ -407,6 +303,7 @@ def value2intlist(value):
         return []
     else:
         return [int(value)]
+
 
 def value2int(value):
     if value == None:
@@ -464,7 +361,7 @@ def zip2bytes(compressed):
 
     buff = BytesIO(compressed)
     archive = gzip.GzipFile(fileobj=buff, mode='r')
-    from pyLibrary.env.big_data import safe_size
+    from mo_http.big_data import safe_size
     return safe_size(archive)
 
 
@@ -479,7 +376,7 @@ def bytes2zip(bytes):
             archive.write(b)
         archive.close()
         buff.seek(0)
-        from pyLibrary.env.big_data import FileString, safe_size
+        from mo_http.big_data import FileString, safe_size
         return FileString(buff)
 
     buff = BytesIO()
@@ -504,7 +401,7 @@ def ini2value(ini_content):
         output[section]=s = {}
         for k, v in config.items(section):
             s[k]=v
-    return wrap(output)
+    return to_data(output)
 
 
 if PY3:
@@ -597,23 +494,7 @@ def json_schema_to_markdown(schema):
     return "\n".join(lines)
 
 
-def table2csv(table_data):
-    """
-    :param table_data: expecting a list of tuples
-    :return: text in nice formatted csv
-    """
-    text_data = [tuple(value2json(vals, pretty=True) for vals in rows) for rows in table_data]
-
-    col_widths = [max(len(t) for t in cols) for cols in zip(*text_data)]
-    template = ", ".join(
-        "{{" + text(i) + "|left_align(" + text(w) + ")}}"
-        for i, w in enumerate(col_widths)
-    )
-    output = "\n".join(expand_template(template, d) for d in text_data)
-    return output
-
-
-ZeroMoment2dict = mo_math.stats.ZeroMoment2dict
+from mo_math.stats import ZeroMoment2dict
 
 
 def text2QRCode(value):

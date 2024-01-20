@@ -8,18 +8,7 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-"""
-# NOTE:
 
-THE self.lang[operator] PATTERN IS CASTING NEW OPERATORS TO OWN LANGUAGE;
-KEEPING Python AS# Python, ES FILTERS AS ES FILTERS, AND Painless AS
-Painless. WE COULD COPY partial_eval(), AND OTHERS, TO THIER RESPECTIVE
-LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
-
-"""
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions._utils import simplified
 from jx_base.expressions.basic_substring_op import BasicSubstringOp
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.length_op import LengthOp
@@ -28,26 +17,21 @@ from jx_base.expressions.literal import is_literal
 from jx_base.expressions.max_op import MaxOp
 from jx_base.expressions.min_op import MinOp
 from jx_base.expressions.or_op import OrOp
-from jx_base.expressions.variable import Variable
+from jx_base.expressions.variable import is_variable
 from jx_base.expressions.when_op import WhenOp
-from jx_base.language import is_op
-from mo_dots import is_data
-from mo_json import STRING
+from mo_json.types import JX_TEXT
 
 
 class NotLeftOp(Expression):
     has_simple_form = True
-    data_type = STRING
+    _jx_type = JX_TEXT
 
-    def __init__(self, term):
-        Expression.__init__(self, term)
-        if is_data(term):
-            self.value, self.length = term.items()[0]
-        else:
-            self.value, self.length = term
+    def __init__(self, value, length):
+        Expression.__init__(self, value, length)
+        self.value, self.length = value, length
 
     def __data__(self):
-        if is_op(self.value, Variable) and is_literal(self.length):
+        if is_variable(self.value) and is_literal(self.length):
             return {"not_left": {self.value.var: self.length.value}}
         else:
             return {"not_left": [self.value.__data__(), self.length.__data__()]}
@@ -56,28 +40,21 @@ class NotLeftOp(Expression):
         return self.value.vars() | self.length.vars()
 
     def map(self, map_):
-        return self.lang[NotLeftOp([self.value.map(map_), self.length.map(map_)])]
+        return NotLeftOp(self.value.map(map_), self.length.map(map_))
 
-    def missing(self):
-        return self.lang[OrOp([self.value.missing(), self.length.missing()])]
+    def missing(self, lang):
+        return OrOp(self.value.missing(lang), self.length.missing(lang))
 
-    @simplified
-    def partial_eval(self):
-        value = self.lang[self.value].partial_eval()
-        length = self.length.partial_eval()
+    def partial_eval(self, lang):
+        value = (self.value).partial_eval(lang)
+        length = self.length.partial_eval(lang)
 
         if length is ZERO:
             return value
 
         max_length = LengthOp(value)
-        output = self.lang[
-            WhenOp(
-                self.missing(),
-                **{
-                    "else": BasicSubstringOp(
-                        [value, MaxOp([ZERO, MinOp([length, max_length])]), max_length]
-                    )
-                }
-            )
-        ].partial_eval()
+        output = WhenOp(
+            self.missing(lang),
+            **{"else": BasicSubstringOp(value, MaxOp(ZERO, MinOp(length, max_length)), max_length,)}
+        ).partial_eval(lang)
         return output

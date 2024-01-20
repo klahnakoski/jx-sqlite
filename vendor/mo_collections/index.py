@@ -8,11 +8,11 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
+
 
 from copy import copy
 
-from mo_dots import get_attr, is_data, is_sequence, tuplewrap, unwrap, wrap
+from mo_dots import get_attr, is_data, is_sequence, tuplewrap, from_data, to_data
 from mo_logs import Log
 
 
@@ -38,7 +38,7 @@ class Index(object):
                 raise NotImplementedError()
 
             key = value2key(self._keys, key)
-            return wrap(copy(self._data.get(key, [])))
+            return to_data(copy(self._data.get(key, [])))
         except Exception as e:
             Log.error("something went wrong", e)
 
@@ -49,7 +49,7 @@ class Index(object):
         key = value2key(self._keys, val)
         e = self._data.get(key, [])
         self._data[key] = e
-        e.append(unwrap(val))
+        e.append(from_data(val))
         self.count += 1
 
 
@@ -109,12 +109,12 @@ class Index(object):
         def iter(data, depth):
             if depth == 0:
                 for v in data:
-                    yield wrap(v)
+                    yield to_data(v)
                 return
 
             for v in data.values():
                 for v1 in iter(v, depth - 1):
-                    yield wrap(v1)
+                    yield to_data(v1)
 
         return iter(self._data, len(self._keys))
 

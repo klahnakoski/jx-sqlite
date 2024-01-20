@@ -8,75 +8,49 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-"""
-# NOTE:
 
-THE self.lang[operator] PATTERN IS CASTING NEW OPERATORS TO OWN LANGUAGE;
-KEEPING Python AS# Python, ES FILTERS AS ES FILTERS, AND Painless AS
-Painless. WE COULD COPY partial_eval(), AND OTHERS, TO THIER RESPECTIVE
-LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
-
-"""
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions._utils import simplified
 from jx_base.expressions.expression import Expression
-from jx_base.expressions.false_op import FALSE
-from jx_base.expressions.literal import Literal, is_literal
-from jx_base.expressions.null_op import NULL
-from mo_dots import is_many
-from mo_json import NUMBER
-from mo_math import MAX
+from mo_json.types import JX_NUMBER
+from jx_base.expressions.most_op import MostOp
 
 
 class MaxOp(Expression):
-    data_type = NUMBER
+    """
+    DECISIVE MAXIMUM (SEE MostOp FOR CONSERVATIVE MAXIMUM)
+    """
 
-    def __init__(self, terms):
-        Expression.__init__(self, terms)
-        if terms == None:
-            self.terms = []
-        elif is_many(terms):
-            self.terms = [t for t in terms if t != None]
+    _jx_type = JX_NUMBER
+
+    def __new__(cls, *terms, frum=None):
+        if frum is not None:
+            op = object.__new__(MaxOp)
+            op.__init__(frum=frum)
+            return op
+        elif len(terms) > 1:
+            return MostOp(*terms, nulls=True)
         else:
-            self.terms = [terms]
+            op = object.__new__(MaxOp)
+            op.__init__(frum=terms[0])
+            return op
+
+    def __init__(self, *terms, frum=None):
+        if terms:
+            frum = terms[0]
+
+        Expression.__init__(self, frum)
+        self.frum = frum
 
     def __data__(self):
-        return {"max": [t.__data__() for t in self.terms]}
+        return {"max": self.frum.__data__()}
 
     def vars(self):
-        output = set()
-        for t in self.terms:
-            output |= t.vars()
-        return output
+        return self.frum.vars()
 
     def map(self, map_):
-        return self.lang[MaxOp([t.map(map_) for t in self.terms])]
+        return MaxOp(frum=self.frum.map(map_))
 
-    def missing(self):
-        return FALSE
+    def missing(self, lang):
+        return Missing(self.frum.missing(lang))
 
-    @simplified
-    def partial_eval(self):
-        maximum = None
-        terms = []
-        for t in self.terms:
-            simple = t.partial_eval()
-            if simple is NULL:
-                pass
-            elif is_literal(simple):
-                maximum = MAX([maximum, simple.value])
-            else:
-                terms.append(simple)
-        if len(terms) == 0:
-            if maximum == None:
-                return NULL
-            else:
-                return Literal(maximum)
-        else:
-            if maximum == None:
-                output = self.lang[MaxOp(terms)]
-            else:
-                output = self.lang[MaxOp([Literal(maximum)] + terms)]
-
-        return output
+    def partial_eval(self, lang):
+        return MaxOp(frum=self.frum.partial_eval(lang))

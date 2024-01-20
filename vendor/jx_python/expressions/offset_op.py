@@ -7,18 +7,12 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions import OffsetOp as OffsetOp_
-from mo_future import text
+from jx_base.expressions import OffsetOp as _OffsetOp
+from jx_base.expressions.python_script import PythonScript
 
 
-class OffsetOp(OffsetOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        return (
-            "row["
-            + text(self.var)
-            + "] if 0<="
-            + text(self.var)
-            + "<len(row) else None"
+class OffsetOp(_OffsetOp):
+    def to_python(self, loop_depth=0):
+        return PythonScript(
+            {}, loop_depth, f"row[{self.var}] if 0<={self.var}<len(row) else None",
         )

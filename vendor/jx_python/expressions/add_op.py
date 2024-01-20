@@ -7,11 +7,11 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import AddOp as AddOp_
+
+from jx_base.expressions import AddOp as _AddOp
 from jx_python.expressions._utils import multiop_to_python
 
 
-class AddOp(AddOp_):
+class AddOp(_AddOp):
     to_python = multiop_to_python

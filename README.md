@@ -17,7 +17,7 @@ https://www.youtube.com/watch?v=0_YLzb7BegI&list=PLSE8ODhjZXja7K1hjZ01UTVDnGQdx5
 
 ## Status
 
-Significant updates to the supporting libraries has broken this ode.  It still works works for the simple cases that require it
+Significant updates to the supporting libraries has broken this code.  It still works works for the simple cases that require it
 
 **Jan 2020** - 96/283 test failing  
 
@@ -31,7 +31,7 @@ Significant updates to the supporting libraries has broken this ode.  It still w
 Open a database 
 
 ```python
-container = Container()
+container = jx_sqlite.Container(filename="my.db")
 ```
 
 Declare a table

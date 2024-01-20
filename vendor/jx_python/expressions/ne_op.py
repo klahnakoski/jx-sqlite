@@ -7,15 +7,19 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions import NeOp as NeOp_
-from jx_python.expressions._utils import Python, with_var
 
 
-class NeOp(NeOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        lhs = Python[self.lhs].to_python()
-        rhs = Python[self.rhs].to_python()
+from jx_base.expressions import NeOp as _NeOp
+from jx_python.expressions._utils import with_var, PythonSource
 
-        return with_var("r, l", "("+lhs+","+rhs+")", "l!=None and r!=None and l!=r")
+
+class NeOp(_NeOp):
+    def to_python(self, loop_depth=0):
+        lhs = self.lhs.to_python(loop_depth)
+        rhs = self.rhs.to_python(loop_depth)
+
+        return PythonScript(
+            {**lhs.locals, **rhs.locals},
+            loop_depth,
+            with_var("r, l", "(" + lhs + "," + rhs + ")", "l!=None and r!=None and l!=r"),
+        )

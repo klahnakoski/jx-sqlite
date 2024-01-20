@@ -7,16 +7,17 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import unicode_literals
 
+
+import datetime
 import types
 import unittest
-from datetime import datetime
+from unittest import SkipTest, TestCase
 
 from mo_collections.unique_index import UniqueIndex
 import mo_dots
-from mo_dots import coalesce, is_container, is_list, literal_field, unwrap, wrap, is_data
-from mo_future import is_text, zip_longest
+from mo_dots import coalesce, is_container, is_list, literal_field, from_data, to_data, is_data, is_many
+from mo_future import is_text, zip_longest, first, get_function_name
 from mo_logs import Except, Log, suppress_exception
 from mo_logs.strings import expand_template, quote
 import mo_math
@@ -57,33 +58,51 @@ class FuzzyTestCase(unittest.TestCase):
     def assertEqual(self, test_value, expected, msg=None, digits=None, places=None, delta=None):
         self.assertAlmostEqual(test_value, expected, msg=msg, digits=digits, places=places, delta=delta)
 
-    def assertRaises(self, problem, function, *args, **kwargs):
-        try:
-            function(*args, **kwargs)
-        except Exception as e:
-            f = Except.wrap(e)
-            if is_text(problem):
-                if problem in f:
-                    return
-                Log.error(
-                    "expecting an exception returning {{problem|quote}} got something else instead",
-                    problem=problem,
-                    cause=f
-                )
-            elif not isinstance(f, problem) and not isinstance(e, problem):
-                Log.error("expecting an exception of type {{type}} to be raised", type=problem)
-            else:
-                return
+    def assertRaises(self, problem=None, function=None, *args, **kwargs):
+        if function is None:
+            return RaiseContext(self, problem=problem or Exception)
 
-        Log.error("Expecting an exception to be raised")
+        with RaiseContext(self, problem=problem):
+            function(*args, **kwargs)
+
+
+class RaiseContext(object):
+
+    def __init__(self, testcase, problem=Exception):
+        self.testcase = testcase
+        self.problem = problem
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if not exc_val:
+            Log.error("Expecting an error")
+        f = Except.wrap(exc_val)
+
+        if isinstance(self.problem, (list, tuple)):
+            problems = self.problem
+        else:
+            problems = [self.problem]
+
+        causes = []
+        for problem in problems:
+            if isinstance(problem, object.__class__) and issubclass(problem, BaseException) and isinstance(exc_val, problem):
+                return True
+            try:
+                self.testcase.assertIn(problem, f)
+                return True
+            except Exception as cause:
+                causes.append(cause)
+        Log.error("problem is not raised", cause=first(causes))
 
 
 def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=None):
     show_detail = True
-    test = unwrap(test)
-    expected = unwrap(expected)
+    test = from_data(test)
+    expected = from_data(expected)
     try:
-        if test is None and (is_null(expected) or expected is None):
+        if test is None and (is_null_op(expected) or expected is None):
             return
         elif test is expected:
             return
@@ -93,18 +112,27 @@ def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=
             if test ^ expected:
                 Log.error("Sets do not match")
         elif is_data(expected) and is_data(test):
-            for k, v2 in unwrap(expected).items():
-                v1 = test.get(k)
-                assertAlmostEqual(v1, v2, msg=coalesce(msg, "")+"key "+quote(k)+": ", digits=digits, places=places, delta=delta)
+            for k, e in from_data(expected).items():
+                t = test.get(k)
+                assertAlmostEqual(t, e, msg=coalesce(msg, "")+"key "+quote(k)+": ", digits=digits, places=places, delta=delta)
         elif is_data(expected):
-            for k, v2 in expected.items():
-                if is_text(k):
-                    v1 = mo_dots.get_attr(test, literal_field(k))
-                else:
-                    v1 = test[k]
-                assertAlmostEqual(v1, v2, msg=msg, digits=digits, places=places, delta=delta)
+            if is_many(test):
+                test = list(test)
+                if len(test) != 1:
+                    Log.error("Expecting data, not a list")
+                test = test[0]
+            for k, e in expected.items():
+                try:
+                    t = test[k]
+                    assertAlmostEqual(t, e, msg=msg, digits=digits, places=places, delta=delta)
+                    continue
+                except:
+                    pass
+
+                t = mo_dots.get_attr(test, literal_field(k))
+                assertAlmostEqual(t, e, msg=msg, digits=digits, places=places, delta=delta)
         elif is_container(test) and isinstance(expected, set):
-            test = set(wrap(t) for t in test)
+            test = set(to_data(t) for t in test)
             if len(test) != len(expected):
                 Log.error(
                     "Sets do not match, element count different:\n{{test|json|indent}}\nexpecting{{expectedtest|json|indent}}",
@@ -112,16 +140,20 @@ def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=
                     expected=expected
                 )
 
-            for e in expected:
-                for t in test:
-                    try:
-                        assertAlmostEqual(t, e, msg=msg, digits=digits, places=places, delta=delta)
-                        break
-                    except Exception as _:
-                        pass
-                else:
-                    Log.error("Sets do not match. {{value|json}} not found in {{test|json}}", value=e, test=test)
-
+            try:
+                if len(test|expected) != len(test):
+                    raise Exception()
+            except:
+                for e in expected:
+                    for t in test:
+                        try:
+                            assertAlmostEqual(t, e, msg=msg, digits=digits, places=places, delta=delta)
+                            break
+                        except Exception as _:
+                            pass
+                    else:
+                        Log.error("Sets do not match. {{value|json}} not found in {{test|json}}", value=e, test=test)
+            return   # ok
         elif isinstance(expected, types.FunctionType):
             return expected(test)
         elif hasattr(test, "__iter__") and hasattr(expected, "__iter__"):
@@ -136,16 +168,16 @@ def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=
                 return
             if expected == None:
                 expected = []  # REPRESENT NOTHING
-            for a, b in zip_longest(test, expected):
-                assertAlmostEqual(a, b, msg=msg, digits=digits, places=places, delta=delta)
+            for t, e in zip_longest(test, expected):
+                assertAlmostEqual(t, e, msg=msg, digits=digits, places=places, delta=delta)
         else:
             assertAlmostEqualValue(test, expected, msg=msg, digits=digits, places=places, delta=delta)
-    except Exception as e:
+    except Exception as cause:
         Log.error(
             "{{test|json|limit(10000)}} does not match expected {{expected|json|limit(10000)}}",
             test=test if show_detail else "[can not show]",
             expected=expected if show_detail else "[can not show]",
-            cause=e
+            cause=cause
         )
 
 
@@ -153,7 +185,7 @@ def assertAlmostEqualValue(test, expected, digits=None, places=None, msg=None, d
     """
     Snagged from unittest/case.py, then modified (Aug2014)
     """
-    if is_null(expected):
+    if is_null_op(expected):
         if test == None:  # pandas dataframes reject any comparision with an exception!
             return
         else:
@@ -164,6 +196,15 @@ def assertAlmostEqualValue(test, expected, digits=None, places=None, msg=None, d
     if test == expected:
         # shortcut
         return
+    if isinstance(expected, (dates.Date, datetime.datetime, datetime.date)):
+        return assertAlmostEqualValue(
+            dates.Date(test).unix,
+            dates.Date(expected).unix,
+            msg=msg,
+            digits=digits,
+            places=places,
+            delta=delta
+        )
 
     if not is_number(expected):
         # SOME SPECIAL CASES, EXPECTING EMPTY CONTAINERS IS THE SAME AS EXPECTING NULL
@@ -180,6 +221,9 @@ def assertAlmostEqualValue(test, expected, digits=None, places=None, msg=None, d
             test = dates.parse(test).unix
         except Exception as e:
             raise AssertionError(expand_template("{{test|json}} != {{expected}}", locals()))
+
+    # WE NOW ASSUME test IS A NUMBER
+    test = float(test)
 
     num_param = 0
     if digits != None:
@@ -219,5 +263,46 @@ def assertAlmostEqualValue(test, expected, digits=None, places=None, msg=None, d
     raise AssertionError(coalesce(msg, "") + ": (" + standardMsg + ")")
 
 
-def is_null(v):
+def is_null_op(v):
     return v.__class__.__name__ == "NullOp"
+
+
+_original_assertEqual = TestCase.assertEqual
+
+
+def assertEqual(self, test, expected, *args, **kwargs):
+    return _original_assertEqual(self, expected, test, *args, **kwargs)
+
+
+TestCase.assertEqual = assertEqual
+
+
+def add_error_reporting(suite):
+    """
+    Both unittest and pytest have become sophisticated enough to hide
+    the problems cause by a test failure. Making debugging difficult.
+    This method ensures a detailed error message is logged
+    :param suite: The TestCase class (as @decorator)
+    """
+    def add_handler(function):
+        test_name = get_function_name(function)
+        def error_hanlder(*args, **kwargs):
+            try:
+                return function(*args, **kwargs)
+            except SkipTest as cause:
+                raise cause
+            except Exception as cause:
+                Log.warning(f"{test_name} failed", cause)
+                raise cause
+
+        return error_hanlder
+
+    if not hasattr(suite, "FuzzyTestCase.__modified__"):
+        setattr(suite, "FuzzyTestCase.__modified__", True)
+        # find all methods, and wrap in exceptin handler
+        for name, func in vars(suite).items():
+            if name.startswith("test"):
+                h = add_handler(func)
+                h.__name__ = get_function_name(func)
+                setattr(suite, name, h)
+    return suite

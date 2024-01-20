@@ -8,19 +8,8 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-"""
-# NOTE:
-
-THE self.lang[operator] PATTERN IS CASTING NEW OPERATORS TO OWN LANGUAGE;
-KEEPING Python AS# Python, ES FILTERS AS ES FILTERS, AND Painless AS
-Painless. WE COULD COPY partial_eval(), AND OTHERS, TO THIER RESPECTIVE
-LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
-
-"""
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.expression import Expression
-from mo_future import text
 from mo_logs import Log
 from mo_math import is_integer
 
@@ -30,7 +19,7 @@ class OffsetOp(Expression):
     OFFSET INDEX INTO A TUPLE
     """
 
-    def __init__(self, var):
+    def __init__(self, *var):
         Expression.__init__(self, None)
         if not is_integer(var):
             Log.error("Expecting an integer")
@@ -53,9 +42,6 @@ class OffsetOp(Expression):
 
     def __eq__(self, other):
         return self.var == other
-
-    def __unicode__(self):
-        return text(self.var)
 
     def __str__(self):
         return str(self.var)

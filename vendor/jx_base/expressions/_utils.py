@@ -8,59 +8,34 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-"""
-# NOTE:
-
-THE self.lang[operator] PATTERN IS CASTING NEW OPERATORS TO OWN LANGUAGE;
-KEEPING Python AS# Python, ES FILTERS AS ES FILTERS, AND Painless AS
-Painless. WE COULD COPY partial_eval(), AND OTHERS, TO THIER RESPECTIVE
-LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
-
-"""
-from __future__ import absolute_import, division, unicode_literals
 
 import operator
 
-from jx_base.language import is_expression, Language
-from mo_dots import Null, is_sequence
-from mo_future import (
-    first,
-    get_function_name,
-    is_text,
-    items as items_,
-    text,
-    utf8_json_encoder,
-)
-from mo_json import BOOLEAN, INTEGER, IS_NULL, NUMBER, OBJECT, STRING, scrub
+from mo_dots import is_sequence, is_missing, is_data
+from mo_future import get_function_name, is_text, text, utf8_json_encoder
+from mo_imports import expect
 from mo_logs import Except, Log
 from mo_math import is_number
 from mo_times import Date
 
+from jx_base.language import is_expression, Language
+from jx_base.utils import enlist
+from mo_json import BOOLEAN, INTEGER, IS_NULL, NUMBER, STRING, scrub
+from mo_json.types import union_type
+
+TYPE_CHECK = True  # A LITTLE FASTER IF False
 ALLOW_SCRIPTING = False
 EMPTY_DICT = {}
 
-Literal, TRUE, NULL, TupleOp, Variable = [None] * 5
-
-def extend(cls):
-    """
-    DECORATOR TO ADD METHODS TO CLASSES
-    :param cls: THE CLASS TO ADD THE METHOD TO
-    :return:
-    """
-
-    def extender(func):
-        setattr(cls, get_function_name(func), func)
-        return func
-
-    return extender
+Literal, TRUE, FALSE, NULL, TupleOp, Variable = expect("Literal", "TRUE", "FALSE", "NULL", "TupleOp", "Variable")
 
 
 def simplified(func):
-    def mark_as_simple(self):
-        if self.simplified:
+    def mark_as_simple(self, lang):
+        if self.simplified and lang is self.lang:
             return self
 
-        output = func(self)
+        output = func(self, lang)
         output.simplified = True
         return output
 
@@ -69,74 +44,74 @@ def simplified(func):
     return mark_as_simple
 
 
-def jx_expression(expr, schema=None):
-    if expr == None:
-        return NULL
-
-    # UPDATE THE VARIABLE WITH THIER KNOWN TYPES
-    if not schema:
-        output = _jx_expression(expr, language)
-        return output
-    output = _jx_expression(expr, language)
-    for v in output.vars():
-        leaves = schema.leaves(v.var)
-        if len(leaves) == 0:
-            v.data_type = IS_NULL
-        if len(leaves) == 1:
-            v.data_type = first(leaves).jx_type
-    return output
+JX = Language(None)
 
 
-def _jx_expression(expr, lang):
+def jx_expression(expr, lang=JX):
+    # UPDATE THE VARIABLE WITH THEIR KNOWN TYPES
+    return _jx_expression(expr, lang).partial_eval(lang)
+
+
+def _jx_expression(json, lang):
     """
     WRAP A JSON EXPRESSION WITH OBJECT REPRESENTATION
     """
-    if is_expression(expr):
+    if is_expression(json):
         # CONVERT TO lang
-        new_op = lang[expr]
+        new_op = json
         if not new_op:
             # CAN NOT BE FOUND, TRY SOME PARTIAL EVAL
-            return language[expr.get_id()].partial_eval()
-        return expr
+            return JX[json.get_id()].partial_eval(lang)
+        return json
         # return new_op(expr.args)  # THIS CAN BE DONE, BUT IT NEEDS MORE CODING, AND I WOULD EXPECT IT TO BE SLOW
 
-    if expr is None:
+    if json is True:
         return TRUE
-    elif is_text(expr):
-        return Variable(expr)
-    elif expr in (True, False, None) or expr == None or is_number(expr):
-        return Literal(expr)
-    elif expr.__class__ is Date:
-        return Literal(expr.unix)
-    elif is_sequence(expr):
-        return lang[TupleOp([_jx_expression(e, lang) for e in expr])]
+    elif json is False:
+        return FALSE
+    elif is_missing(json):
+        return NULL
+    elif is_data(json) and not json.keys():
+        return NULL
+    elif is_text(json):
+        return Variable(json)
+    elif is_number(json):
+        return Literal(json)
+    elif json.__class__ is Date:
+        return Literal(json.unix)
+    elif is_sequence(json):
+        return TupleOp(*(_jx_expression(e, lang) for e in json))
 
-    # expr = wrap(expr)
     try:
-        items = items_(expr)
+        items = list(json.items())
+        if len(items) > 1:
+            for op in precedence:
+                rhs = json.get(op)
+                if rhs:
+                    sub_json = {o: v for o, v in json.items() if o != op}
+                    full_op = operators.get(op)
+                    class_ = lang.ops[full_op.get_id()]
+                    if not class_:
+                        # THIS LANGUAGE DOES NOT SUPPORT THIS OPERATOR, GOTO BASE LANGUAGE AND GET THE MACRO
+                        class_ = JX.ops[full_op.get_id()]
+
+                    return class_.define({op: [sub_json] + enlist(rhs)})
 
         for op, term in items:
             # ONE OF THESE IS THE OPERATOR
             full_op = operators.get(op)
             if full_op:
                 class_ = lang.ops[full_op.get_id()]
-                if class_:
-                    return class_.define(expr)
+                if not class_:
+                    # THIS LANGUAGE DOES NOT SUPPORT THIS OPERATOR, GOTO BASE LANGUAGE AND GET THE MACRO
+                    class_ = JX[op.get_id()]
 
-                # THIS LANGUAGE DOES NOT SUPPORT THIS OPERATOR, GOTO BASE LANGUAGE AND GET THE MACRO
-                class_ = language[op.get_id()]
-                output = class_.define(expr).partial_eval()
-                return _jx_expression(output, lang)
+                return class_.define(json)
         else:
-            if not items:
-                return NULL
-            raise Log.error("{{instruction|json}} is not known", instruction=expr)
+            raise Log.error("{{instruction|json}} is not known", instruction=json)
 
-    except Exception as e:
-        Log.error("programmer error expr = {{value|quote}}", value=expr, cause=e)
-
-
-language = Language(None)
+    except Exception as cause:
+        Log.error("programmer error expr = {{value|quote}}", value=json, cause=cause)
 
 
 _json_encoder = utf8_json_encoder
@@ -157,10 +132,10 @@ def merge_types(jx_types):
     :param jx_types: ITERABLE OF jx TYPES
     :return: ONE TYPE TO RULE THEM ALL
     """
-    return _merge_types[max(_merge_score[t] for t in jx_types)]
+    return union_type(*(to_jx_type(t) for t in jx_types))
 
 
-_merge_score = {IS_NULL: 0, BOOLEAN: 1, INTEGER: 2, NUMBER: 3, STRING: 4, OBJECT: 5}
+_merge_score = {IS_NULL: 0, BOOLEAN: 1, INTEGER: 2, NUMBER: 3, STRING: 4}
 _merge_types = {v: k for k, v in _merge_score.items()}
 
 builtin_ops = {
@@ -173,8 +148,29 @@ builtin_ops = {
     "add": operator.add,
     "sub": operator.sub,
     "mul": operator.mul,
-    "max": lambda *v: max(v),
-    "min": lambda *v: min(v),
+    "max": lambda *v: max(*v),
+    "min": lambda *v: min(*v),
+    "most": lambda *v: max(*v),
+    "least": lambda *v: min(*v),
 }
 
 operators = {}
+
+precedence = [
+    "meta",
+    "comment",
+    "format",
+    "name",
+    "default",
+    "limit",
+    "skip",
+    "percentile",
+    "select",
+    "having",
+    "group",
+    "filter",
+    "where",
+    "edges",
+    "from",
+    "value",
+]
