@@ -12,7 +12,7 @@ from datetime import datetime
 from threading import Thread, Event
 from time import time
 
-from mo_future import text, allocate_lock
+from mo_future import allocate_lock
 
 DEBUG = False
 WAIT_FOR_EXPORT = 10  # SECONDS TO WAIT FROM MOST RECENT expect() TO LAST export()
@@ -127,12 +127,12 @@ def export(module, name, value=_nothing):
     :param value: (optional) THE VALUE TO ASSIGN
     """
 
-    if isinstance(module, text):
+    if isinstance(module, str):
         try:
             module = importlib.import_module(module)
         except Exception as cause:
             _error(f"{module} can not be found")
-    if not isinstance(name, text):
+    if not isinstance(name, str):
         # GET MODULE OF THE CALLER TO FIND NAME OF OBJECT
         value = name
         globals = sys._getframe(1).f_globals
@@ -233,6 +233,9 @@ class DelayedImport(object):
         module = _get(self, "module")
         caller_name = _get(self, "caller")
 
+        if not isinstance(module, str):
+            return module
+
         # FIND MODULE VARIABLE THAT HOLDS self
         caller = importlib.import_module(caller_name)
         names = []
@@ -244,7 +247,7 @@ class DelayedImport(object):
                 pass
 
         if not names:
-            _error("Can not find variable holding a {self.__class__.__name__}")
+            _error(f"Can not find variable holding a {self.__class__.__name__}")
 
         path = module.split(".")
         try:

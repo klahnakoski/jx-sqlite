@@ -5,9 +5,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-
-
-
 from mo_future import is_text, first
 from mo_logs import Log
 
@@ -69,10 +66,7 @@ class SQL(object):
         return self.sql
 
     def __str__(self):
-        return self.sql
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self.sql})"
+        return "".join(self)
 
 
 class TextSQL(SQL):
@@ -158,9 +152,6 @@ class ConcatSQL(SQL):
     def __iter__(self):
         for c in self.concat:
             yield from c
-
-    def __str__(self):
-        return "".join(self)
 
 
 SQL_SPACE = SQL(" ")
