@@ -21,6 +21,7 @@ TIMEOUT_SECONDS = 60
 Till = delay_import("mo_threads.till.Till")
 
 has_failed = False
+call_counts = Data()
 
 
 def _retry(func):
@@ -31,6 +32,7 @@ def _retry(func):
         cause = None
         while not timeout:
             try:
+                call_counts[func_name] += 1
                 return func(*args, **kwargs)
             except Exception as cause:
                 cause = Except.wrap(cause)
@@ -57,7 +59,15 @@ def get_ssm(ref, _):
     try:
         ssm = boto3.client("ssm")
         describe_parameters = _retry(ssm.describe_parameters)
-        result = describe_parameters(MaxResults=10)
+        get_parameter = _retry(ssm.get_parameter)
+
+        filters = [{
+            'Key': 'Name',
+            'Option': 'BeginsWith',
+            'Values': [ref.path.rstrip('/')]
+        }]
+
+        result = describe_parameters(MaxResults=10, ParameterFilters=filters)
         prefix = re.compile("^" + re.escape(ref.path.rstrip("/")) + "(?:/|$)")
         while True:
             for param in result["Parameters"]:
@@ -67,14 +77,14 @@ def get_ssm(ref, _):
                     continue
                 tail = join_field(name[found.regs[0][1] :].split("/"))
                 if not tail:
-                    return _retry(ssm.get_parameter)(Name=name, WithDecryption=True)["Parameter"]["Value"]
-                detail = _retry(ssm.get_parameter)(Name=name, WithDecryption=True)
+                    return get_parameter(Name=name, WithDecryption=True)["Parameter"]["Value"]
+                detail = get_parameter(Name=name, WithDecryption=True)
                 output[tail] = detail["Parameter"]["Value"]
 
             next_token = result.get("NextToken")
             if not next_token:
                 break
-            result = describe_parameters(NextToken=next_token, MaxResults=10)
+            result = describe_parameters(NextToken=next_token, MaxResults=10, ParameterFilters=filters)
     except Exception as cause:
         has_failed = True
         logger.warning("Could not get ssm parameters", cause=cause)
