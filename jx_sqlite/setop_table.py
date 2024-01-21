@@ -9,9 +9,8 @@
 #
 from typing import List, Dict, Tuple
 
+from jx_base import Column, is_op
 from jx_base.expressions import NULL
-from jx_base.language import is_op
-from jx_base.meta_columns import Column
 from jx_python import jx
 from jx_sqlite.expressions._utils import SQLang
 from jx_sqlite.expressions.leaves_op import LeavesOp

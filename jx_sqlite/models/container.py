@@ -8,9 +8,8 @@
 
 
 
-from jx_base import jx_expression
+from jx_base import jx_expression, Column
 from jx_base.expressions import Expression, Variable, is_literal, GetOp, SqlScript
-from jx_base.meta_columns import Column
 from jx_base.models.container import Container as _Container
 from jx_base.models.facts import Facts
 from jx_sqlite.expressions.sql_select_all_from_op import SqlSelectAllFromOp

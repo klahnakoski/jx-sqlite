@@ -7,9 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import FALSE, TRUE, jx_expression
-from jx_base.language import JX
-from jx_base.meta_columns import Column
+from jx_base import Column, JX, FALSE, TRUE, jx_expression
 from jx_base.utils import is_variable_name
 from jx_python.expressions import Python
 from mo_json import INTEGER, ARRAY

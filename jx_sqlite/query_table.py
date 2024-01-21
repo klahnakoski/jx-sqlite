@@ -7,18 +7,35 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions.select_op import normalize_one
-from jx_base.models.container import type2container
-
 import mo_json
-from jx_base import Facts
+from jx_base import Column, Facts
 from jx_base.domains import SimpleSetDomain
-from jx_base.expressions import TupleOp, Variable, jx_expression, QueryOp, SelectOp, NULL
+from jx_base.expressions import TupleOp, jx_expression, QueryOp, SelectOp, NULL
+from jx_base.expressions.select_op import normalize_one
 from jx_base.language import is_op
-from jx_base.meta_columns import Column
+from jx_base.models.container import type2container
 from jx_python import jx
 from jx_sqlite.expressions._utils import SQLang
 from jx_sqlite.groupby_table import GroupbyTable
+from jx_sqlite.utils import GUID, sql_aggs, unique_name, untyped_column
+from mo_collections.matrix import Matrix, index_to_coordinate
+from mo_dots import (
+    Data,
+    Null,
+    to_data,
+    coalesce,
+    concat_field,
+    is_list,
+    listwrap,
+    relative_field,
+    startswith_field,
+    unwraplist,
+    wrap,
+    list_to_data, from_data,
+)
+from mo_future import text, transpose, is_text
+from mo_json import STRING, STRUCT
+from mo_logs import Log
 from mo_sqlite.sqlite import (
     SQL_FROM,
     SQL_ORDERBY,
@@ -35,26 +52,6 @@ from mo_sqlite.sqlite import (
     SQL_COMMA,
 )
 from mo_sqlite.sqlite import quote_column, sql_alias
-from jx_sqlite.utils import GUID, sql_aggs, unique_name, untyped_column
-from mo_collections.matrix import Matrix, index_to_coordinate
-from mo_dots import (
-    Data,
-    Null,
-    to_data,
-    coalesce,
-    concat_field,
-    is_list,
-    listwrap,
-    relative_field,
-    startswith_field,
-    from_data,
-    unwraplist,
-    wrap,
-    list_to_data, is_null, from_data,
-)
-from mo_future import text, transpose, is_text
-from mo_json import STRING, STRUCT
-from mo_logs import Log
 from mo_threads import register_thread
 
 

@@ -5,12 +5,16 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-from jx_base.models.facts import Facts
-from jx_base.models.container import Container as _Container
-from jx_base.meta_columns import Column
+from jx_base import Column, Facts, Container as _Container
 from jx_sqlite.namespace import Namespace
 from jx_sqlite.query_table import QueryTable
 from jx_sqlite.snowflake import Snowflake
+from jx_sqlite.utils import UID, GUID, DIGITS_TABLE, ABOUT_TABLE
+from mo_dots import concat_field, set_default
+from mo_future import first, NEXT
+from mo_json import STRING
+from mo_kwargs import override
+from mo_logs import Log
 from mo_sqlite.sqlite import (
     SQL_SELECT,
     SQL_FROM,
@@ -26,12 +30,6 @@ from mo_sqlite.sqlite import (
     sql_insert,
     json_type_to_sqlite_type,
 )
-from jx_sqlite.utils import UID, GUID, DIGITS_TABLE, ABOUT_TABLE
-from mo_dots import concat_field, set_default
-from mo_future import first, NEXT
-from mo_json import STRING
-from mo_kwargs import override
-from mo_logs import Log
 from mo_threads.lock import locked
 from mo_times import Date
 

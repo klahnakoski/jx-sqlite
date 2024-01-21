@@ -6,11 +6,9 @@
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
 
-
-
 from typing import Set, Tuple
 
-from jx_base.meta_columns import Column
+from jx_base import Column
 from jx_base.models.nested_path import NestedPath
 from jx_base.queries import get_property_name
 from mo_dots import (
