@@ -8,9 +8,9 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-__all__ = ["Container", "jx_base", "Schema", "Column"]
+__all__ = ["Container", "Schema", "Column"]
 
-from jx_python import Column
+from jx_base import Column
 from jx_sqlite.container import Container
 from jx_sqlite.schema import Schema
 from mo_threads import stop_main_thread
