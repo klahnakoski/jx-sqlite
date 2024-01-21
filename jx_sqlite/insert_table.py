@@ -8,10 +8,11 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from typing import Dict, List
+from uuid import uuid4
 
 from jx_sqlite.utils import untyped_column
 
-from jx_base import Column, generateGuid, Facts
+from jx_base import Column, Facts
 from jx_base.expressions import jx_expression, TRUE
 from mo_sql.utils import json_type_to_sql_type_key
 from mo_sqlite.sqlite import (
@@ -435,7 +436,7 @@ class InsertTable(Facts):
 
         for doc in docs:
             uid = self.container.next_uid()
-            row = {GUID: generateGuid(), UID: uid}
+            row = {GUID:  str(uuid4()), UID: uid}
             facts_insertion.rows.append(row)
             _flatten(
                 doc=doc, doc_path=".", nested_path=[self.name], row=row, row_num=0, row_id=uid, parent_id=0,
