@@ -10,7 +10,7 @@
 from jx_base.expressions import ToNumberOp as NumberOp_
 from jx_base.language import is_op
 from jx_sqlite.expressions._utils import SQLang, check, SqlScript
-from mo_sqlite.sqlite import (
+from mo_sqlite import (
     ConcatSQL,
     SQL_CAST,
     SQL_OP,

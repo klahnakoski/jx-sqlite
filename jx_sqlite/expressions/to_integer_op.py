@@ -9,7 +9,7 @@
 #
 from jx_base.expressions import ToIntegerOp as IntegerOp_
 from jx_sqlite.expressions._utils import check, SqlScript
-from mo_sqlite.sqlite import sql_cast
+from mo_sqlite import sql_cast
 from mo_json import base_type, JX_TEXT, JX_INTEGER
 
 

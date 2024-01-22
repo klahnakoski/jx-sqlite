@@ -8,7 +8,7 @@
 import jx_base
 from jx_sqlite.expressions._utils import SQL_ARRAY_KEY
 from jx_sqlite.schema import Schema
-from mo_sqlite.sqlite import (
+from mo_sqlite import (
     SQL_FROM,
     SQL_SELECT,
     SQL_ZERO,
@@ -25,7 +25,7 @@ from mo_sqlite.sqlite import (
     TextSQL,
     SQL_INSERT,
 )
-from mo_sqlite.sqlite import quote_column
+from mo_sqlite import quote_column
 from jx_sqlite.table import Table
 from jx_sqlite.utils import (
     quoted_ORDER,

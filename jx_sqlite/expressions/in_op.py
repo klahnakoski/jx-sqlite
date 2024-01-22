@@ -20,8 +20,8 @@ from jx_base.expressions.variable import is_variable
 from jx_base.language import is_op
 from jx_sqlite.expressions._utils import SQLang, check, SqlScript
 from jx_sqlite.expressions.literal import Literal
-from mo_sqlite.sqlite import SQL_FALSE, SQL_IN, ConcatSQL
-from mo_sqlite.sqlite import quote_list
+from mo_sqlite import SQL_FALSE, SQL_IN, ConcatSQL
+from mo_sqlite import quote_list
 from mo_json import JX_BOOLEAN
 from mo_logs import Log
 from pyLibrary.convert import value2boolean

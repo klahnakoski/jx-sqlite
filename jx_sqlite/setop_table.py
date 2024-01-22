@@ -41,7 +41,7 @@ from mo_dots import (
 from mo_future import text
 from mo_json.types import OBJECT, jx_type_to_json_type
 from mo_logs import Log
-from mo_sqlite.sqlite import (
+from mo_sqlite import (
     SQL_AND,
     SQL_FROM,
     SQL_IS_NULL,
@@ -61,7 +61,7 @@ from mo_sqlite.sqlite import (
     SQL_ZERO,
     SQL_GT,
 )
-from mo_sqlite.sqlite import quote_column, sql_alias
+from mo_sqlite import quote_column, sql_alias
 from mo_times import Date
 
 

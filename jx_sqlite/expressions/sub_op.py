@@ -19,7 +19,7 @@ from jx_base.expressions import (
 from jx_sqlite.expressions._utils import _binaryop_to_sql, check, SQLang
 from jx_sqlite.expressions.sql_script import SqlScript
 from mo_json import JX_NUMBER
-from mo_sqlite.sqlite import ConcatSQL, sql_iso, SQL_SUB, sql_call
+from mo_sqlite import ConcatSQL, sql_iso, SQL_SUB, sql_call
 
 
 class SubOp(_SubOp):

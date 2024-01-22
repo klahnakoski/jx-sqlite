@@ -24,7 +24,7 @@ from jx_base.expressions import (
 from jx_sqlite.expressions._utils import SQLang, check
 from jx_sqlite.expressions.length_op import LengthOp
 from jx_sqlite.expressions.sql_script import SqlScript
-from mo_sqlite.sqlite import (
+from mo_sqlite import (
     SQL_CASE,
     SQL_ELSE,
     SQL_EMPTY_STRING,
@@ -35,7 +35,7 @@ from mo_sqlite.sqlite import (
     sql_concat_text,
     ConcatSQL,
 )
-from mo_sqlite.sqlite import sql_call
+from mo_sqlite import sql_call
 from mo_json import JX_TEXT
 
 

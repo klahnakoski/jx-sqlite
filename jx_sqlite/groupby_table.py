@@ -24,7 +24,7 @@ from jx_sqlite.utils import (
 )
 from mo_dots import split_field, startswith_field, relative_field, unliteral_field, tail_field, concat_field
 from mo_json import jx_type_to_json_type, JX_INTEGER
-from mo_sqlite.sqlite import (
+from mo_sqlite import (
     SQL_FROM,
     SQL_GROUPBY,
     SQL_IS_NULL,
@@ -44,7 +44,7 @@ from mo_sqlite.sqlite import (
     SQL_DESC,
     SQL_COMMA,
 )
-from mo_sqlite.sqlite import quote_column, sql_alias, sql_call
+from mo_sqlite import quote_column, sql_alias, sql_call
 
 
 class GroupbyTable(EdgesTable):

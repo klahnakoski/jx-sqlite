@@ -10,7 +10,7 @@
 from jx_base.expressions import DateOp as _DateOp
 from jx_sqlite.expressions._utils import check
 from jx_sqlite.expressions.sql_script import SqlScript
-from mo_sqlite.sqlite import quote_value
+from mo_sqlite import quote_value
 
 
 class DateOp(_DateOp):

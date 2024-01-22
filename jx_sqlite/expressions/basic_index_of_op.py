@@ -10,7 +10,7 @@
 from jx_base.expressions import BasicIndexOfOp as BasicIndexOfOp_, FALSE
 from jx_sqlite.expressions._utils import check, SqlScript
 from jx_sqlite.expressions.literal import Literal
-from mo_sqlite.sqlite import sql_call
+from mo_sqlite import sql_call
 from mo_json.types import JX_NUMBER
 from mo_sql import (
     SQL_CASE,

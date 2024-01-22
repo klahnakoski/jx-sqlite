@@ -16,7 +16,7 @@ from jx_base.expressions.variable import is_variable
 from jx_base.language import is_op
 from jx_sqlite.expressions._utils import check, SQLang
 from jx_sqlite.expressions.sql_script import SqlScript
-from mo_sqlite.sqlite import quote_list
+from mo_sqlite import quote_list
 from mo_json.types import JX_BOOLEAN
 from mo_logs import Log
 from mo_sql import ConcatSQL, SQL_IN

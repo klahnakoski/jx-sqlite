@@ -40,7 +40,7 @@ from mo_json.types import (
 from mo_logs import Log
 from mo_math import randoms
 from mo_sql.utils import SQL_KEYS, SQL_ARRAY_KEY, SQL_KEY_PREFIX, SQL_NUMBER_KEY
-from mo_sqlite.sqlite import quote_column, SQL_DESC, SQL_ASC
+from mo_sqlite import quote_column, SQL_DESC, SQL_ASC
 from mo_times import Date
 
 DIGITS_TABLE = "__digits__"

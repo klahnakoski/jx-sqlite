@@ -13,7 +13,7 @@ from jx_sqlite.expressions.add_op import AddOp
 from jx_sqlite.expressions.literal import Literal
 from jx_sqlite.expressions.sql_script import SqlScript
 from jx_sqlite.expressions.sub_op import SubOp
-from mo_sqlite.sqlite import sql_call
+from mo_sqlite import sql_call
 from mo_json import JX_TEXT
 
 

@@ -14,7 +14,7 @@ from jx_base.expressions import (
     IsTextOp,
 )
 from jx_sqlite.expressions._utils import SQLang, check, SqlScript
-from mo_sqlite.sqlite import quote_value, sql_call, SQL_NULL
+from mo_sqlite import quote_value, sql_call, SQL_NULL
 from mo_future import text
 from mo_json import JX_INTEGER
 

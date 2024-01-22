@@ -15,14 +15,14 @@ from mo_future import first, NEXT
 from mo_json import STRING
 from mo_kwargs import override
 from mo_logs import Log
-from mo_sqlite.sqlite import (
+from mo_sqlite import (
     SQL_SELECT,
     SQL_FROM,
     SQL_UPDATE,
     SQL_SET,
     ConcatSQL,
 )
-from mo_sqlite.sqlite import (
+from mo_sqlite import (
     Sqlite,
     quote_column,
     sql_eq,

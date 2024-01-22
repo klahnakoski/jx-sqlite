@@ -13,7 +13,7 @@ from jx_base.expressions.variable import is_variable
 from jx_base.language import is_op, is_expression
 from jx_sqlite.expressions._utils import check, SQLang
 from jx_sqlite.expressions.sql_script import SqlScript
-from mo_sqlite.sqlite import (
+from mo_sqlite import (
     quote_column,
     SQL_COMMA,
     SQL_AS,

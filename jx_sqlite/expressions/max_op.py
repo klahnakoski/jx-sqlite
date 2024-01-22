@@ -10,7 +10,7 @@
 from jx_base.expressions import MaxOp as _MaxOp, MissingOp
 from jx_sqlite.expressions._utils import SQLang, check
 from jx_sqlite.expressions.sql_script import SqlScript
-from mo_sqlite.sqlite import sql_call
+from mo_sqlite import sql_call
 from mo_json import JX_NUMBER
 
 

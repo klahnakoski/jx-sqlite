@@ -36,7 +36,7 @@ from mo_dots import (
 from mo_future import text, transpose, is_text
 from mo_json import STRING, STRUCT
 from mo_logs import Log
-from mo_sqlite.sqlite import (
+from mo_sqlite import (
     SQL_FROM,
     SQL_ORDERBY,
     SQL_SELECT,
@@ -51,7 +51,7 @@ from mo_sqlite.sqlite import (
     JoinSQL,
     SQL_COMMA,
 )
-from mo_sqlite.sqlite import quote_column, sql_alias
+from mo_sqlite import quote_column, sql_alias
 from mo_threads import register_thread
 
 

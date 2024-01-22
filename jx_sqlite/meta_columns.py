@@ -34,7 +34,7 @@ from mo_json import STRUCT, IS_NULL
 from mo_json.typed_encoder import unnest_path, detype
 from mo_logs import Log
 from mo_sql.utils import sql_type_key_to_json_type
-from mo_sqlite.sqlite import sql_query
+from mo_sqlite import sql_query
 from mo_threads import Queue
 from mo_times.dates import Date
 from pyLibrary.meta import _FakeLock

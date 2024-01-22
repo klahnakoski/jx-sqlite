@@ -10,7 +10,7 @@
 from jx_base.expressions import SqlEqOp as SqlEqOp_, is_literal, AndOp, FALSE
 from jx_sqlite.expressions._utils import SQLang, check, with_var, SqlScript
 from jx_sqlite.expressions.to_boolean_op import ToBooleanOp
-from mo_sqlite.sqlite import SQL_IS_NULL, SQL_OR, ConcatSQL, SQL_EQ, SQL, SQL_AND
+from mo_sqlite import SQL_IS_NULL, SQL_OR, ConcatSQL, SQL_EQ, SQL, SQL_AND
 from mo_json import JX_BOOLEAN
 from mo_logs import Log
 

@@ -15,8 +15,8 @@ from jx_base.expressions import (
 from jx_sqlite.expressions._utils import SQLang, check, SqlScript
 from jx_sqlite.expressions.sql_eq_op import SqlEqOp
 from jx_sqlite.expressions.sql_instr_op import SqlInstrOp
-from mo_sqlite.sqlite import SQL, ConcatSQL, SQL_LIKE, SQL_ESCAPE, SQL_ONE
-from mo_sqlite.sqlite import quote_value
+from mo_sqlite import SQL, ConcatSQL, SQL_LIKE, SQL_ESCAPE, SQL_ONE
+from mo_sqlite import quote_value
 from mo_json.types import JX_BOOLEAN
 
 

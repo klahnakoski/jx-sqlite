@@ -58,8 +58,8 @@ from mo_json import (
 )
 from mo_logs import Log
 from mo_sql.utils import sql_type_key_to_json_type
-from mo_sqlite.sqlite import *
-from mo_sqlite.sqlite import quote_column, quote_value, sql_alias
+from mo_sqlite import *
+from mo_sqlite import quote_column, quote_value, sql_alias
 
 EXISTS_COLUMN = quote_column("__exists__")
 

@@ -11,7 +11,7 @@ from jx_base.expressions import MinOp as _MinOp
 from jx_sqlite.expressions._utils import check
 from jx_sqlite.expressions.sql_script import SqlScript
 from mo_json import JX_NUMBER
-from mo_sqlite.sqlite import sql_call
+from mo_sqlite import sql_call
 
 
 class MinOp(_MinOp):

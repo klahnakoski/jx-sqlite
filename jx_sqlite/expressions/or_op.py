@@ -10,7 +10,7 @@
 from jx_base.expressions import OrOp as OrOp_
 from jx_base.expressions.false_op import FALSE
 from jx_sqlite.expressions._utils import SQLang, check
-from mo_sqlite.sqlite import SQL_OR, sql_iso, JoinSQL
+from mo_sqlite import SQL_OR, sql_iso, JoinSQL
 from mo_imports import export, expect
 from mo_json import JX_BOOLEAN
 

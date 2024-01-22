@@ -9,7 +9,7 @@
 #
 from jx_base.expressions import WhenOp as _WhenOp, ToBooleanOp, TRUE, NotOp, AndOp
 from jx_sqlite.expressions._utils import SQLang, check, SqlScript, OrOp
-from mo_sqlite.sqlite import SQL_CASE, SQL_ELSE, SQL_END, SQL_THEN, SQL_WHEN, ConcatSQL
+from mo_sqlite import SQL_CASE, SQL_ELSE, SQL_END, SQL_THEN, SQL_WHEN, ConcatSQL
 
 
 class WhenOp(_WhenOp):

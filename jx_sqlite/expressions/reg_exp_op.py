@@ -9,7 +9,7 @@
 #
 from jx_base.expressions import RegExpOp as RegExpOp_
 from jx_sqlite.expressions._utils import check, SQLang, SqlScript, OrOp
-from mo_sqlite.sqlite import TextSQL, ConcatSQL
+from mo_sqlite import TextSQL, ConcatSQL
 from mo_json import JX_BOOLEAN
 
 

@@ -14,7 +14,7 @@ from jx_sqlite.expressions._utils import check, SqlScript
 from jx_sqlite.utils import GUID
 from mo_dots import concat_field, tail_field, Null
 from mo_json.types import JX_INTEGER, JxType, to_jx_type
-from mo_sqlite.sqlite import quote_column
+from mo_sqlite import quote_column
 
 
 class Variable(Variable_):

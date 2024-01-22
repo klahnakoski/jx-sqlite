@@ -15,7 +15,7 @@ from jx_base.expressions import (
 )
 from jx_sqlite.expressions._utils import SQLang, check, SqlScript
 from mo_json import JX_NUMBER
-from mo_sqlite.sqlite import sql_iso, ConcatSQL, SQL_DIV
+from mo_sqlite import sql_iso, ConcatSQL, SQL_DIV
 
 
 class DivOp(_DivOp):

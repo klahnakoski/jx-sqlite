@@ -11,7 +11,7 @@ from jx_base.expressions import ToTextOp as ToTextOp_, SelectOp, CoalesceOp
 from jx_base.language import is_op
 from jx_sqlite.expressions._utils import check, SQLang
 from jx_sqlite.expressions.sql_script import SqlScript
-from mo_sqlite.sqlite import (
+from mo_sqlite import (
     SQL_CASE,
     SQL_ELSE,
     SQL_END,
@@ -20,7 +20,7 @@ from mo_sqlite.sqlite import (
     sql_iso,
     ConcatSQL, sql_cast,
 )
-from mo_sqlite.sqlite import quote_value, sql_call
+from mo_sqlite import quote_value, sql_call
 from mo_json import JX_TEXT, JX_BOOLEAN, JX_NUMBER_TYPES, split_field, base_type
 
 

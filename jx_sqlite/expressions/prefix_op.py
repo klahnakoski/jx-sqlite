@@ -9,9 +9,9 @@
 #
 from jx_base.expressions import PrefixOp as PrefixOp_
 from jx_sqlite.expressions._utils import check, SQLang
-from mo_sqlite.sqlite import sql_call
+from mo_sqlite import sql_call
 from mo_dots import wrap
-from mo_sqlite.sqlite import SQL_TRUE, ConcatSQL, SQL_EQ, SQL_ONE
+from mo_sqlite import SQL_TRUE, ConcatSQL, SQL_EQ, SQL_ONE
 
 
 class PrefixOp(PrefixOp_):

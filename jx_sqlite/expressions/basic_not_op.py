@@ -10,7 +10,7 @@
 from jx_base.expressions import BasicNotOp as BasicNotOp_, FALSE
 from jx_sqlite.expressions._utils import check, SQLang
 from jx_sqlite.expressions.sql_script import SqlScript
-from mo_sqlite.sqlite import sql_iso, SQL_NOT, ConcatSQL
+from mo_sqlite import sql_iso, SQL_NOT, ConcatSQL
 from mo_json.types import JX_BOOLEAN
 
 

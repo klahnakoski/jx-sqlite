@@ -9,7 +9,7 @@
 #
 from jx_base.expressions import Literal as _Literal
 from jx_sqlite.expressions._utils import check, SqlScript
-from mo_sqlite.sqlite import quote_value
+from mo_sqlite import quote_value
 
 
 class Literal(_Literal):

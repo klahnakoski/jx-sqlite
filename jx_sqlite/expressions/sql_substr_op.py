@@ -11,7 +11,7 @@ from jx_base.expressions import NULL, SqlSubstrOp as SqlSubstrOp_
 from jx_sqlite.expressions._utils import check, SQLang, OrOp
 from jx_sqlite.expressions.literal import Literal
 from jx_sqlite.expressions.sql_script import SqlScript
-from mo_sqlite.sqlite import sql_call
+from mo_sqlite import sql_call
 from mo_json import JX_TEXT
 
 

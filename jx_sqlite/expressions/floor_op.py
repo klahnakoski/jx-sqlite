@@ -10,7 +10,7 @@
 from jx_base.expressions import FloorOp as _FloorOp, OrOp
 from jx_sqlite.expressions._utils import SQLang, check
 from jx_sqlite.expressions.sql_script import SqlScript
-from mo_sqlite.sqlite import (
+from mo_sqlite import (
     sql_iso,
     SQL_DIV,
     SQL_STAR,

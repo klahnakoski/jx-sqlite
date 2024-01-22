@@ -18,7 +18,7 @@ from jx_base.language import is_op
 from jx_sqlite.expressions._utils import SQLang, check
 from mo_imports import export
 from mo_json import JxType
-from mo_sqlite.sqlite import *
+from mo_sqlite import *
 
 
 class SqlScript(_SQLScript, SQL):

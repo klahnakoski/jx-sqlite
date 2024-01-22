@@ -20,7 +20,7 @@ from jx_sqlite.expressions.or_op import OrOp
 from jx_sqlite.expressions.sql_instr_op import SqlInstrOp
 from jx_sqlite.expressions.sql_script import SqlScript
 from mo_sql import SQL_NULL
-from mo_sqlite.sqlite import (
+from mo_sqlite import (
     SQL_CASE,
     SQL_ELSE,
     SQL_END,
@@ -32,7 +32,7 @@ from mo_sqlite.sqlite import (
     SQL_PLUS,
     SQL_SUB,
 )
-from mo_sqlite.sqlite import sql_call, quote_column
+from mo_sqlite import sql_call, quote_column
 from mo_json import JX_INTEGER
 
 

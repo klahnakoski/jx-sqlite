@@ -15,7 +15,7 @@ from jx_sqlite.utils import untyped_column
 from jx_base import Column, Facts
 from jx_base.expressions import jx_expression, TRUE
 from mo_sql.utils import json_type_to_sql_type_key
-from mo_sqlite.sqlite import (
+from mo_sqlite import (
     SQL_AND,
     SQL_FROM,
     SQL_INNER_JOIN,
@@ -37,7 +37,7 @@ from mo_sqlite.sqlite import (
     SQL_ON,
     SQL_COMMA,
 )
-from mo_sqlite.sqlite import (
+from mo_sqlite import (
     json_type_to_sqlite_type,
     quote_column,
     quote_value,
