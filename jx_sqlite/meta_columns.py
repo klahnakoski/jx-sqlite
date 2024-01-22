@@ -10,9 +10,8 @@
 from copy import copy
 
 import jx_base
-from jx_base import Schema, Table, Container
+from jx_base import Schema, Table, Container, Column
 from jx_base.meta_columns import (
-    Column,
     META_COLUMNS_DESC,
     META_COLUMNS_NAME,
     SIMPLE_METADATA_COLUMNS,
