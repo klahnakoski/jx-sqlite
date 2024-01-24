@@ -182,10 +182,7 @@ class QueryTable(GroupbyTable):
                 data = {n: Data() for n in column_names}
                 for s in index_to_columns.values():
                     data[s.push_list_name][s.push_column_child] = from_data(s.pull(result.data[0]))
-                if is_list(normalized_query.select):
-                    select = [{"name": s.name} for s in normalized_query.select]
-                else:
-                    select = {"name": normalized_query.select.name}
+                select = [{"name": s.name} for s in normalized_query.select.terms]
 
                 return Data(data=from_data(data), select=select, meta={"format": "cube"})
 
@@ -225,16 +222,13 @@ class QueryTable(GroupbyTable):
                     ))
 
                 data = {}
-                for si, s in enumerate(listwrap(normalized_query.select)):
+                for si, s in enumerate(normalized_query.select.terms):
                     if s.aggregate == "count":
                         data[s.name] = Matrix(dims=dims, zeros=0)
                     else:
                         data[s.name] = Matrix(dims=dims)
 
-                if is_list(normalized_query.select):
-                    select = [{"name": s.name} for s in normalized_query.select]
-                else:
-                    select = {"name": normalized_query.select.name}
+                select = [{"name": s.name} for s in normalized_query.select.terms]
 
                 return Data(
                     meta={"format": "cube"},
