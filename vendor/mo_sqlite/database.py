@@ -227,6 +227,7 @@ class Sqlite(DB):
         self.queue.add(CommandItem(COMMIT, Data(), signal, None, None))
         signal.acquire()
         self.worker.stop().join()
+        self.worker = None
 
     def remove_child(self, child):
         if child is self.worker:
