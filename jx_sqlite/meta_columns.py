@@ -37,7 +37,6 @@ from mo_sql.utils import sql_type_key_to_json_type
 from mo_sqlite import sql_query
 from mo_threads import Queue
 from mo_times.dates import Date
-from pyLibrary.meta import _FakeLock
 
 DEBUG = False
 singlton = None
@@ -450,3 +449,11 @@ def mark_as_deleted(col):
     col.multi = 0
     col.partitions = None
     col.last_updated = Date.now()
+
+
+class _FakeLock():
+    def __enter__(self):
+        pass
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass

@@ -7,15 +7,12 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-
-
-
 from unittest import skip
 
 from jx_base.meta_columns import META_COLUMNS_NAME, META_TABLES_NAME
 from mo_dots import to_data, dict_to_data
+from mo_future import extend
 from mo_logs import Log
-from pyLibrary.meta import extenstion_method
 from tests.test_jx import BaseTestCase, TEST_TABLE
 
 
@@ -182,7 +179,7 @@ class TestMetadata(BaseTestCase):
 
         a = TestClass("test_value")
 
-        @extenstion_method(TestClass)
+        @extend(TestClass)
         def my_func(self, print_me):
             return print_me, self.value
 

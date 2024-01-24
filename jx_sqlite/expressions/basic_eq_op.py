@@ -12,13 +12,12 @@ from jx_base.expressions import (
     FALSE,
     is_literal
 )
-from jx_sqlite.expressions._utils import check, SQLang
+from jx_sqlite.expressions._utils import check, SQLang, value2boolean
 from jx_sqlite.expressions.not_op import NotOp
 from jx_sqlite.expressions.sql_script import SqlScript
 from mo_json.types import JX_BOOLEAN
 from mo_sql import ConcatSQL
 from mo_sqlite import sql_iso, SQL_EQ
-from pyLibrary.convert import value2boolean
 
 
 class BasicEqOp(BasicEqOp_):

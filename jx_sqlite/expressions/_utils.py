@@ -175,3 +175,20 @@ _sql_operators = {
     "least": (lambda x: ConcatSQL(SQL("MIN"), SQL_OP, x, SQL_CP), SQL_COMMA, NULL, JX_NUMBER),
     "tally": (sql_iso, SQL_PLUS, ZERO, JX_INTEGER),
 }
+
+
+_v2b = {
+    True: True,
+    "true": True,
+    "T": True,
+    1: True,
+    False: False,
+    "false": False,
+    "F": False,
+    0: False,
+    None: None
+}
+
+
+def value2boolean(value):
+    return _v2b.get(value, True)
