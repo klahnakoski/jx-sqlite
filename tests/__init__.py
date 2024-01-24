@@ -8,9 +8,6 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-
-
-
 import itertools
 import os
 import signal
@@ -32,6 +29,8 @@ from mo_logs.exceptions import get_stacktrace
 from mo_testing.fuzzytestcase import assertAlmostEqual
 from tests import test_jx
 from tests.test_jx import TEST_TABLE
+
+Log.static_template = False
 
 
 class SQLiteUtils(object):
