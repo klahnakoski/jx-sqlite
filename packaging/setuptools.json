@@ -153,5 +153,5 @@
     "package_dir": {},
     "packages": ["jx_sqlite", "jx_sqlite.models", "jx_sqlite.expressions"],
     "url": "https://github.com/klahnakoski/jx-sqlite",
-    "version": "5.498.24022"
+    "version": "5.500.24024"
 }
