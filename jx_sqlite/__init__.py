@@ -13,8 +13,3 @@ __all__ = ["Container", "Schema", "Column"]
 from jx_base import Column
 from jx_sqlite.container import Container
 from jx_sqlite.schema import Schema
-from mo_threads import stop_main_thread
-
-
-def __deploy__():
-    stop_main_thread()

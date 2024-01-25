@@ -9,6 +9,7 @@
 #
 
 import os
+import re
 
 from mo_dots import (
     is_data,
@@ -82,9 +83,38 @@ def expand(doc, doc_url="param://", params=None):
 
     url = URL(doc_url)
     url.query = set_default(url.query, params)
-    phase1 = _replace_ref(doc, url)  # BLANK URL ONLY WORKS IF url IS ABSOLUTE
+    phase0 = _replace_str(doc, url)
+    phase1 = _replace_ref(phase0, url)  # BLANK URL ONLY WORKS IF url IS ABSOLUTE
     phase2 = _replace_locals(phase1, [phase1])
     return to_data(phase2)
+
+
+is_url = re.compile(r"\{([a-zA-Z]+://[^}]*)}")
+
+
+def _replace_str(node, url):
+    if is_text(node):
+        acc = []
+        end = 0
+        for found in is_url.finditer(node):
+            acc.append(node[end: found.start()])
+            try:
+                ref = URL(found.group(1))
+                acc.append(scheme_loaders[ref.scheme](ref, url))
+            except Exception:
+                acc.append(found.group(0))
+            end = found.end()
+        if end == 0:
+            return node
+        return "".join(acc) + node[end:]
+    elif is_data(node):
+        return {
+            _replace_str(k, url): _replace_str(v, url)
+            for k, v in node.items()
+        }
+    elif is_list(node):
+        return [_replace_str(n, url) for n in node]
+    return node
 
 
 def _replace_ref(node, url):
@@ -124,9 +154,8 @@ def _replace_ref(node, url):
             try:
                 new_value = scheme_loaders[ref.scheme](ref, url)
                 ref_found = True
-            except Exception as e:
-                e = Except.wrap(e)
-                ref_error = e
+            except Exception as cause:
+                ref_error = Except.wrap(cause)
                 continue
 
             if ref.fragment:
@@ -149,8 +178,6 @@ def _replace_ref(node, url):
         return output
     elif is_list(node):
         output = [_replace_ref(n, url) for n in node]
-        # if all(p[0] is p[1] for p in zip(output, node)):
-        #     return node
         return output
 
     return node
@@ -167,7 +194,7 @@ def _replace_locals(node, doc_path):
             elif k == "$concat":
                 if not is_sequence(v):
                     logger.error("$concat expects an array of strings")
-                return coalesce(node.get("separator"), "").join(v)
+                return coalesce(node.get("separator"), "").join(_replace_locals(vv, doc_path) for vv in v)
             elif v == None:
                 continue
             else:
@@ -203,10 +230,23 @@ def _replace_locals(node, doc_path):
 
     elif is_list(node):
         candidate = [_replace_locals(n, [n] + doc_path) for n in node]
-        # if all(p[0] is p[1] for p in zip(candidate, node)):
-        #     return node
         return candidate
 
+    elif is_text(node):
+        acc = []
+        end = 0
+        for found in is_url.finditer(node):
+            acc.append(node[end: found.start()])
+            try:
+                ref = URL(found.group(1))
+                ref.scheme = None
+                acc.append(_replace_locals({"$ref": ref}, doc_path))
+            except Exception:
+                acc.append(found.group(0))
+            end = found.end()
+        if end == 0:
+            return node
+        return "".join(acc) + node[end:]
     return node
 
 
@@ -267,6 +307,10 @@ def get_http(ref, url):
     return new_value
 
 
+def _get_ref(ref, url):
+    return f"{{{ref}}}"
+
+
 def _get_env(ref, url):
     # GET ENVIRONMENT VARIABLES
     ref = ref.host
@@ -324,6 +368,7 @@ scheme_loaders = {
     "param": _get_param,
     "keyring": _get_keyring,
     "ssm": _get_ssm,
+    "ref": _get_ref,
 }
 
 

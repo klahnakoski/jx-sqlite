@@ -122,7 +122,7 @@ class URL(object):
                 url += str(self.path)
             else:
                 url += "/" + str(self.path)
-        if self.query:
+        if len(self.query):
             url = url + "?" + value2url_param(self.query)
         if self.fragment:
             url = url + "#" + value2url_param(self.fragment)

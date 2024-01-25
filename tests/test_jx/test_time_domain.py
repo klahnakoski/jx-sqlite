@@ -109,10 +109,6 @@ expected3 = list_to_data([
 @add_error_reporting
 class TestTime(BaseTestCase):
 
-    @classmethod
-    def tearDownClass(cls):
-        stop_main_thread()
-
     def test_time_variables(self):
         test = {
             "metadata": {},
