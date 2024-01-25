@@ -36,15 +36,15 @@ Log.static_template = False
 class SQLiteUtils(object):
     @override
     def __init__(self, kwargs=None):
+        self.container = None
         self._index = None
 
     def setUp(self):
-        container = Container(db=test_jx.global_settings.db)
-        self._index = QueryTable(name="testing", container=container)
+        self.container = Container(db=test_jx.global_settings.db)
+        self._index = QueryTable(name="testing", container=self.container)
 
     def tearDown(self):
-
-        pass
+        self.container.db.stop()
 
     def setUpClass(self):
         pass
