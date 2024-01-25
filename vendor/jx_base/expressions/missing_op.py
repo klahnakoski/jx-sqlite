@@ -7,29 +7,19 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
+from mo_dots import is_missing
 
-"""
-# NOTE:
-
-THE self.lang[operator] PATTERN IS CASTING NEW OPERATORS TO OWN LANGUAGE;
-KEEPING Python AS# Python, ES FILTERS AS ES FILTERS, AND Painless AS
-Painless. WE COULD COPY partial_eval(), AND OTHERS, TO THIER RESPECTIVE
-LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
-
-"""
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions import expression
-from jx_base.expressions._utils import simplified
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
+from jx_base.expressions.not_op import NotOp
 from jx_base.expressions.true_op import TRUE
 from jx_base.language import is_op
-from mo_json import BOOLEAN
+from mo_imports import export
+from mo_json.types import JX_BOOLEAN
 
 
 class MissingOp(Expression):
-    data_type = BOOLEAN
+    _jx_type = JX_BOOLEAN
 
     def __init__(self, term):
         Expression.__init__(self, term)
@@ -44,25 +34,36 @@ class MissingOp(Expression):
         else:
             return self.expr == other.expr
 
+    def __call__(self, row, rownum=None, rows=None):
+        return is_missing(self.expr(row, rownum, rows))
+
     def vars(self):
         return self.expr.vars()
 
     def map(self, map_):
-        return self.lang[MissingOp(self.expr.map(map_))]
+        return MissingOp(self.expr.map(map_))
 
-    def missing(self):
+    def missing(self, lang):
         return FALSE
+
+    def invert(self, lang):
+        output = self.expr.missing(lang)
+        if is_op(output, MissingOp):
+            # break call cycle
+            return lang.NotOp(output)
+        else:
+            return output.invert(lang)
 
     def exists(self):
         return TRUE
 
-    @simplified
-    def partial_eval(self):
-        output = self.lang[self.expr].partial_eval().missing()
+    def partial_eval(self, lang):
+        output = self.expr.partial_eval(lang).missing(lang)
         if is_op(output, MissingOp):
             return output
         else:
-            return output.partial_eval()
+            return output.partial_eval(lang)
 
 
-expression.MissingOp = MissingOp
+export("jx_base.expressions.expression", MissingOp)
+export("jx_base.expressions.basic_in_op", MissingOp)

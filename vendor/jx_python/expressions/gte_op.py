@@ -7,11 +7,11 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import GteOp as GteOp_
+
+from jx_base.expressions import GteOp as _GteOp
 from jx_python.expressions._utils import _inequality_to_python
 
 
-class GteOp(GteOp_):
+class GteOp(_GteOp):
     to_python = _inequality_to_python

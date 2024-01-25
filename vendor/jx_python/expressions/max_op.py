@@ -7,12 +7,21 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions import MaxOp as MaxOp_
-from jx_python.expressions._utils import Python
 
 
-class MaxOp(MaxOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        return "max([" + (",".join(Python[t].to_python() for t in self.terms)) + "])"
+from jx_base.expressions import MaxOp as _MaxOp
+from jx_base.expressions.python_script import PythonScript
+from jx_python.expressions import Python
+
+
+class MaxOp(_MaxOp):
+    def to_python(self, loop_depth=0):
+        frum = self.frum.partial_eval(Python).to_python(loop_depth+1)
+        source, locals = frum.source, frum.locals
+        return PythonScript(
+            locals,
+            loop_depth,
+            frum.jx_type,
+            f"max({source})",
+            self
+        )

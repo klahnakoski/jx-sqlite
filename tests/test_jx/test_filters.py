@@ -5,22 +5,24 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
-from unittest import skip
+
+from unittest import skipIf
 
 from jx_base.expressions import NULL
-from mo_dots import wrap
-from tests.test_jx import BaseTestCase, TEST_TABLE
+from mo_dots import list_to_data
+from mo_sql.utils import SQL_STRING_KEY
+from mo_testing.fuzzytestcase import add_error_reporting
+from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
-lots_of_data = wrap([{"a": i} for i in range(30)])
+lots_of_data = list_to_data([{"a": i} for i in range(30)])
 
 
+@add_error_reporting
 class TestFilters(BaseTestCase):
-    @skip("broken")
     def test_where_expression(self):
         test = {
             "data": [  # PROPERTIES STARTING WITH _ ARE NESTED AUTOMATICALLY
@@ -61,7 +63,6 @@ class TestFilters(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
     def test_add_expression(self):
         test = {
             "data": [  # PROPERTIES STARTING WITH _ ARE NESTED AUTOMATICALLY
@@ -102,7 +103,6 @@ class TestFilters(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
     def test_regexp_expression(self):
         test = {
             "data": [{"_a": [
@@ -123,20 +123,18 @@ class TestFilters(BaseTestCase):
                 "where": {"regex": {"a": ".*b.*"}},
             },
             "expecting_list": {
-                "meta": {"format": "list"}, "data": [
-                {"a": "abba"},
-                {"a": "aaba"},
-                {"a": "aba"},
-                {"a": "ab"},
-                {"a": "ba"},
-                {"a": "b"}
-            ]}
+                "meta": {"format": "list"},
+                "data": [
+                    {"a": "abba"},
+                    {"a": "aaba"},
+                    {"a": "aba"},
+                    {"a": "ab"},
+                    {"a": "ba"},
+                    {"a": "b"}
+                ]
+            }
         }
         self.utils.execute_tests(test)
-        # No regexp() user function is defined by default and so use of the
-        #REGEXP operator will normally result in an error message.
-        #If an application-defined SQL function named "regexp" is added at run-time,
-        #then the "X REGEXP Y" operator will be implemented
 
     def test_empty_or(self):
         test = {
@@ -151,7 +149,6 @@ class TestFilters(BaseTestCase):
             }
         }
         self.utils.execute_tests(test)
-
 
     def test_empty_and(self):
         test = {
@@ -262,12 +259,15 @@ class TestFilters(BaseTestCase):
                 "where": {"prefix": {"v": ""}}
             },
             "expecting_list": {
-                "meta": {"format": "list"}, "data": [{"v": "test", "count": 1}]
+                "meta": {"format": "list"},
+                "data": [
+                    {"v": "test", "count": 1},
+                    {"v": NULL, "count": 0}
+                ]
             }
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
     def test_edges_and_null_prefix(self):
         test = {
             "data": [{"v": "test"}],
@@ -277,7 +277,11 @@ class TestFilters(BaseTestCase):
                 "where": {"prefix": {"v": None}}
             },
             "expecting_list": {
-                "meta": {"format": "list"}, "data": [{"v": "test", "count": 1}]
+                "meta": {"format": "list"},
+                "data": [
+                    {"v": "test", "count": 1},
+                    {"v": NULL, "count": 0}
+                ]
             }
         }
         self.utils.execute_tests(test)
@@ -333,7 +337,6 @@ class TestFilters(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
     def test_empty_suffix(self):
         test = {
             "data": [
@@ -442,15 +445,15 @@ class TestFilters(BaseTestCase):
             "query": {
                 "from": TEST_TABLE,
                 "select": "a",
-                "where": {"in": ["a", [{"literal": "4"}, {"literal": "2"}]]}
+                "where": {"in": ["a", [{"literal": "4"}, {"literal": "2"}]]},
+                "sort": "a"
             },
             "expecting_list": {
-                "meta": {"format": "list"}, "data": ["4", "2"]
+                "meta": {"format": "list"}, "data": ["2", "4"]
             }
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
     def test_eq_using_tuple_of_literals(self):
         test = {
             "data": [
@@ -462,16 +465,17 @@ class TestFilters(BaseTestCase):
             "query": {
                 "from": TEST_TABLE,
                 "select": "a",
-                "where": {"eq": ["a", [{"literal": "4"}, {"literal": "2"}]]}
+                "where": {"eq": ["a", [{"literal": "4"}, {"literal": "2"}]]},
+                "sort": "a"
             },
             "expecting_list": {
-                "meta": {"format": "list"}, "data": ["4", "2"]
+                "meta": {"format": "list"}, "data": ["2", "4"]
             }
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
-    def test_find_uses_regex(self):
+    @skipIf(not global_settings.elasticsearch.version, "only for ES")
+    def test_find_uses_regex_es(self):
         test = {
             "data": [
                 {"v": "this-is-a-test"},
@@ -489,10 +493,32 @@ class TestFilters(BaseTestCase):
                     "format": "list",
                     "es_query": {
                         "from": 0,
-                        "query": {"regexp": {"v.~s~": ".*test.*"}},
+                        "query": {"regexp": {"v."+SQL_STRING_KEY: ".*test.*"}},
                         "size": 10
                     },
                 },
+                "data": [
+                    {"v": "this-is-a-test"},
+                    {"v": "test"},
+                ]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_find(self):
+        test = {
+            "data": [
+                {"v": "this-is-a-test"},
+                {"v": "this-is-a-vest"},
+                {"v": "test"},
+                {"v": ""},
+                {"v": None}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "where": {"find": {"v": "test"}}
+            },
+            "expecting_list": {
                 "data": [
                     {"v": "this-is-a-test"},
                     {"v": "test"},

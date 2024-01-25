@@ -7,38 +7,27 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+from jx_base.expressions import (
+    DivOp as _DivOp,
+    MissingOp,
+    OrOp,
+    ToNumberOp,
+)
+from jx_sqlite.expressions._utils import SQLang, check, SqlScript
+from mo_json import JX_NUMBER
+from mo_sqlite import sql_iso, ConcatSQL, SQL_DIV
 
-from jx_base.expressions import DivOp as DivOp_
-from jx_sqlite.expressions._utils import SQLang, check
-from mo_dots import Null, wrap
-from mo_sql import sql_coalesce, sql_iso
 
-
-class DivOp(DivOp_):
+class DivOp(_DivOp):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        lhs = SQLang[self.lhs].to_sql(schema)[0].sql.n
-        rhs = SQLang[self.rhs].to_sql(schema)[0].sql.n
-        d = SQLang[self.default].to_sql(schema)[0].sql.n
+    def to_sql(self, schema):
+        lhs = ToNumberOp(self.lhs).partial_eval(SQLang).to_sql(schema)
+        rhs = ToNumberOp(self.rhs).partial_eval(SQLang).to_sql(schema)
 
-        if lhs and rhs:
-            if d == None:
-                return wrap(
-                    [{"name": ".", "sql": {"n": sql_iso(lhs) + " / " + sql_iso(rhs)}}]
-                )
-            else:
-                return wrap(
-                    [
-                        {
-                            "name": ".",
-                            "sql": {
-                                "n": sql_coalesce(
-                                    [sql_iso(lhs) + " / " + sql_iso(rhs), d]
-                                )
-                            },
-                        }
-                    ]
-                )
-        else:
-            return Null
+        return SqlScript(
+            jx_type=JX_NUMBER,
+            expr=ConcatSQL(sql_iso(lhs), SQL_DIV, sql_iso(rhs)),
+            frum=self,
+            miss=OrOp(MissingOp(self.lhs), MissingOp(self.rhs)),
+            schema=schema,
+        )

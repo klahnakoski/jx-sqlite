@@ -8,26 +8,16 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-"""
-# NOTE:
 
-THE self.lang[operator] PATTERN IS CASTING NEW OPERATORS TO OWN LANGUAGE;
-KEEPING Python AS# Python, ES FILTERS AS ES FILTERS, AND Painless AS
-Painless. WE COULD COPY partial_eval(), AND OTHERS, TO THIER RESPECTIVE
-LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
-
-"""
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions import literal, expression
 from jx_base.expressions.literal import Literal
-from mo_json import BOOLEAN
+from mo_imports import export, expect
+from mo_json.types import JX_BOOLEAN
 
-TRUE = None
+TRUE = expect("TRUE")
 
 
 class FalseOp(Literal):
-    data_type = BOOLEAN
+    _jx_type = JX_BOOLEAN
 
     def __new__(cls, *args, **kwargs):
         return object.__new__(cls, *args, **kwargs)
@@ -54,29 +44,31 @@ class FalseOp(Literal):
     def map(self, map_):
         return self
 
-    def missing(self):
+    def missing(self, lang):
         return FALSE
 
-    def is_true(self):
-        return FALSE
-
-    def is_false(self):
+    def invert(self, lang):
         return TRUE
+
+    @property
+    def jx_type(self):
+        return JX_BOOLEAN
 
     def __call__(self, row=None, rownum=None, rows=None):
         return False
 
-    def __unicode__(self):
+    def __str__(self):
         return "false"
 
-    def __str__(self):
-        return b"false"
-
     def __bool__(self):
+        return False
+
+    def __nonzero__(self):
         return False
 
 
 FALSE = FalseOp()
 
-expression.FALSE = FALSE
-literal.FALSE = FALSE
+export("jx_base.expressions._utils", FALSE)
+export("jx_base.expressions.expression", FALSE)
+export("jx_base.expressions.literal", FALSE)

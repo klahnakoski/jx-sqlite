@@ -8,19 +8,22 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-"""
-# NOTE:
-
-THE self.lang[operator] PATTERN IS CASTING NEW OPERATORS TO OWN LANGUAGE;
-KEEPING Python AS# Python, ES FILTERS AS ES FILTERS, AND Painless AS
-Painless. WE COULD COPY partial_eval(), AND OTHERS, TO THIER RESPECTIVE
-LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
-
-"""
-from __future__ import absolute_import, division, unicode_literals
-
 from jx_base.expressions.base_multi_op import BaseMultiOp
+from mo_dots import is_missing
 
 
 class AddOp(BaseMultiOp):
-    op = "add"
+    """
+    CONSERVATIVE ADDITION (SEE SumOp FOR DECISIVE ADDITION)
+    """
+    def __call__(self, row=None, rownum=None, rows=None):
+        output = 0
+        for t in self.terms:
+            v = t(row, rownum, rows)
+            if is_missing(v):
+                if self.decisive:
+                    continue
+                return None
+            else:
+                output += v
+        return output

@@ -7,22 +7,24 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions import AbsOp as AbsOp_
+from jx_base.expressions import AbsOp as _AbsOp, TRUE, IsNumberOp
 from jx_sqlite.expressions._utils import SQLang, check
-from jx_sqlite.expressions.sql_script import SQLScript
-from mo_json import NUMBER
+from mo_imports import expect
+from mo_json import JX_IS_NULL, JX_NUMBER
+from mo_sqlite import SQL_NULL, sql_call
+
+SqlScript = expect("SqlScript")
 
 
-class AbsOp(AbsOp_):
+class AbsOp(_AbsOp):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        expr = SQLang[self.term].partial_eval().to_sql(schema)[0].sql.n
-        return SQLScript(
-            expr="ABS(" + expr + ")",
-            data_type=NUMBER,
-            frum=self,
-            miss=self.missing(),
-            schema=schema,
+    def to_sql(self, schema):
+        expr = IsNumberOp(self.term).partial_eval(SQLang).to_sql(schema)
+        if not expr:
+            return SqlScript(
+                expr=SQL_NULL, jx_type=JX_IS_NULL, frum=self, miss=TRUE, schema=schema,
+            )
+
+        return SqlScript(
+            expr=sql_call("ABS", expr), jx_type=JX_NUMBER, frum=self, schema=schema,
         )

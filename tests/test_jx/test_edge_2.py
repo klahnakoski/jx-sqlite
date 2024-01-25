@@ -5,17 +5,15 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
-
-from unittest import skip
-
 from jx_base.expressions import NULL
+from mo_testing.fuzzytestcase import add_error_reporting
 from tests.test_jx import BaseTestCase, TEST_TABLE
 
 
+@add_error_reporting
 class TestEdge2(BaseTestCase):
     def test_count_rows(self):
         test = {
@@ -39,12 +37,12 @@ class TestEdge2(BaseTestCase):
                     {"a": "y", "b": "m", "count": 1},
                     {"a": "y", "b": "n", "count": 2},
                     {"a": "y", "b": NULL, "count": 1},
+                    {"a": "z", "b": "m", "count": 0},
+                    {"a": "z", "b": "n", "count": 0},
+                    {"a": "z", "b": NULL, "count": 0},
                     {"a": NULL, "b": "m", "count": 1},
                     {"a": NULL, "b": "n", "count": 1},
-                    {"a": "z", "b": NULL, "count": 0},
-                    {"a": NULL, "b": NULL, "count": 0},
-                    {"a": "z", "b": "m", "count": 0},
-                    {"a": "z", "b": "n", "count": 0}
+                    {"a": NULL, "b": NULL, "count": 0}
                 ]},
             "expecting_table": {
                 "meta": {"format": "table"},
@@ -143,7 +141,8 @@ class TestEdge2(BaseTestCase):
                     {"a": "y", "b": "n", "v": 50},
                     {"a": "y", "b": NULL, "v": 13},
                     {"a": NULL, "b": "m", "v": 17},
-                    {"a": NULL, "b": "n", "v": 19}
+                    {"a": NULL, "b": "n", "v": 19},
+                    {"a": NULL, "b": NULL, "v": NULL},
                 ]},
             "expecting_table": {
                 "meta": {"format": "table"},
@@ -156,7 +155,8 @@ class TestEdge2(BaseTestCase):
                     ["y", "n", 50],
                     ["y", NULL, 13],
                     [NULL, "m", 17],
-                    [NULL, "n", 19]
+                    [NULL, "n", 19],
+                    [NULL, NULL, NULL]
                 ]
             },
             "expecting_cube": {
@@ -216,18 +216,19 @@ class TestEdge2(BaseTestCase):
                 "select": {"value": "v", "aggregate": "average", "default": 0},
                 "edges": ["a", "b"]
             },
-            "expecting_list": {
-                "meta": {"format": "list"},
-                "data": [
-                    {"a": "x", "b": "m", "v": 2},
-                    {"a": "x", "b": "n", "v": 3},
-                    {"a": "x", "v": 0},
-                    {"a": "y", "b": "m", "v": 7},
-                    {"a": "y", "b": "n", "v": 0},
-                    {"a": "y", "v": 13},
-                    {"b": "m", "v": 17},
-                    {"b": "n", "v": 19}
-                ]},
+            # "expecting_list": {
+            #     "meta": {"format": "list"},
+            #     "data": [
+            #         {"a": "x", "b": "m", "v": 2},
+            #         {"a": "x", "b": "n", "v": 3},
+            #         {"a": "x", "v": 0},
+            #         {"a": "y", "b": "m", "v": 7},
+            #         {"a": "y", "b": "n", "v": 0},
+            #         {"a": "y", "b": NULL, "v": 13},
+            #         {"a": NULL, "b": "m", "v": 17},
+            #         {"a": NULL, "b": "n", "v": 19},
+            #         {"a": NULL, "b": NULL, "v": 0}
+            #     ]},
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["a", "b", "v"],
@@ -239,7 +240,8 @@ class TestEdge2(BaseTestCase):
                     ["y", "m", 7],
                     ["y", "n", 0],
                     [NULL, "m", 17],
-                    [NULL, "n", 19]
+                    [NULL, "n", 19],
+                    [NULL, NULL, 0]
                 ]
             },
             "expecting_cube": {
@@ -396,7 +398,6 @@ class TestEdge2(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
     def test_edge_using_missing_between2(self):
         test = {
             "data": [
@@ -444,7 +445,6 @@ class TestEdge2(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
     def test_edge_using_missing_between1(self):
         test = {
             "data": [

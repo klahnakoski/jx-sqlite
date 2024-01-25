@@ -7,10 +7,8 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions import LastOp as LastOp_
+from jx_base.expressions import LastOp as _LastOp
 
 
-class LastOp(LastOp_):
+class LastOp(_LastOp):
     pass

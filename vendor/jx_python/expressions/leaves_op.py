@@ -7,12 +7,12 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions import LeavesOp as LeavesOp_
-from jx_python.expressions._utils import Python
 
 
-class LeavesOp(LeavesOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        return "Data(" + Python[self.term].to_python() + ").leaves()"
+from jx_base.expressions import LeavesOp as _LeavesOp
+from jx_base.expressions.python_script import PythonScript
+
+
+class LeavesOp(_LeavesOp):
+    def to_python(self, loop_depth=0):
+        return PythonScript({}, loop_depth, "Data(" + self.term.to_python(loop_depth) + ").leaves()")

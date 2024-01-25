@@ -11,26 +11,28 @@
 # THIS SIGNAL IS IMPORTANT FOR PROPER SIGNALLING WHICH ALLOWS
 # FOR FAST AND PREDICTABLE SHUTDOWN AND CLEANUP OF THREADS
 
-from __future__ import absolute_import, division, unicode_literals
 
 from collections import namedtuple
 from time import sleep, time
 from weakref import ref
 
-from mo_future import allocate_lock as _allocate_lock, text
-from mo_logs import Log
+from mo_future import allocate_lock as _allocate_lock
+from mo_logs import logger
 
 from mo_threads.signals import DONE, Signal
 
+TIMERS_NAME = "timers daemon"
 DEBUG = False
 INTERVAL = 0.1
-enabled = Signal()
+enabled: Signal
+warning_not_sent = []
 
 
 class Till(Signal):
     """
     TIMEOUT AS A SIGNAL
     """
+
     __slots__ = []
 
     locker = _allocate_lock()
@@ -39,7 +41,9 @@ class Till(Signal):
 
     def __new__(cls, till=None, seconds=None):
         if not enabled:
-            Log.note("Till daemon not enabled")
+            if warning_not_sent:
+                logger.info("Till daemon not enabled", stack_depth=1)
+                warning_not_sent.append(1)
             return DONE
         elif till != None:
             return object.__new__(cls)
@@ -52,23 +56,26 @@ class Till(Signal):
 
     def __init__(self, till=None, seconds=None):
         """
-        ONE OF THESE PARAMETERS IS REQUIRED
+        Signal after some elapsed time:  Till(seconds=1).wait()
+
         :param till: UNIX TIMESTAMP OF WHEN TO SIGNAL
         :param seconds: PREFERRED OVER timeout
         """
         now = time()
         if till != None:
             if not isinstance(till, (float, int)):
-                from mo_logs import Log
-                Log.error("Date objects for Till are no longer allowed")
+                from mo_logs import logger
+
+                logger.error("Date objects for Till are no longer allowed")
             timeout = till
         elif seconds != None:
             timeout = now + seconds
         else:
-            from mo_logs import Log
-            raise Log.error("Should not happen")
+            from mo_logs import logger
 
-        Signal.__init__(self, name=text(timeout))
+            raise logger.error("Should not happen")
+
+        Signal.__init__(self, name=str(timeout))
 
         with Till.locker:
             if timeout != None:
@@ -91,12 +98,9 @@ def daemon(please_stop):
             if later > 0:
                 try:
                     sleep(min(later, INTERVAL))
-                except Exception as e:
-                    Log.warning(
-                        "Call to sleep failed with ({{later}}, {{interval}})",
-                        later=later,
-                        interval=INTERVAL,
-                        cause=e
+                except Exception as cause:
+                    logger.warning(
+                        "Call to sleep failed with ({later}, {interval})", later=later, interval=INTERVAL, cause=cause,
                     )
                 continue
 
@@ -106,9 +110,9 @@ def daemon(please_stop):
 
             if DEBUG and new_timers:
                 if len(new_timers) > 5:
-                    Log.note("{{num}} new timers", num=len(new_timers))
+                    logger.info("{num} new timers", num=len(new_timers))
                 else:
-                    Log.note("new timers: {{timers}}", timers=[t for t, _ in new_timers])
+                    logger.info("new timers: {timers}", timers=[t for t, _ in new_timers])
 
             sorted_timers.extend(new_timers)
 
@@ -124,21 +128,21 @@ def daemon(please_stop):
                     work, sorted_timers = sorted_timers, []
 
                 if work:
-                    DEBUG and Log.note(
-                        "done: {{timers}}.  Remaining {{pending}}",
+                    DEBUG and logger.info(
+                        "done: {timers}.  Remaining {pending}",
                         timers=[t for t, s in work] if len(work) <= 5 else len(work),
-                        pending=[t for t, s in sorted_timers] if len(sorted_timers) <= 5 else len(sorted_timers)
+                        pending=[t for t, s in sorted_timers] if len(sorted_timers) <= 5 else len(sorted_timers),
                     )
 
                     for t, r in work:
                         s = r()
                         if s is not None:
                             s.go()
+                    work = []  # THIS MAY LINGER IF NO NEW TIMERS ARE ADDED
 
-    except Exception as e:
-        Log.warning("unexpected timer shutdown", cause=e)
+    except Exception as cause:
+        logger.warning("unexpected timer shutdown", cause=cause)
     finally:
-        DEBUG and Log.alert("TIMER SHUTDOWN")
         enabled = Signal()
         # TRIGGER ALL REMAINING TIMERS RIGHT NOW
         with Till.locker:
@@ -147,6 +151,7 @@ def daemon(please_stop):
             s = r()
             if s is not None:
                 s.go()
+        DEBUG and logger.alert("TIMER SHUTDOWN")
 
 
 def actual_time(todo):

@@ -8,28 +8,39 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
-
 import os
+import re
 
-from mo_dots import is_data, is_list, set_default, unwrap, wrap, is_sequence, coalesce, get_attr
+from mo_dots import (
+    is_data,
+    is_list,
+    set_default,
+    from_data,
+    to_data,
+    is_sequence,
+    coalesce,
+    get_attr,
+    listwrap,
+    unwraplist,
+    dict_to_data,
+)
 from mo_files import File
 from mo_files.url import URL
 from mo_future import is_text
 from mo_future import text
 from mo_json import json2value
+from mo_logs import Except, logger
+
+from mo_json_config.configuration import Configuration
 from mo_json_config.convert import ini2value
-from mo_logs import Except, Log
+from mo_json_config.ssm import get_ssm as _get_ssm
 
 DEBUG = False
 
 
 def get_file(file):
     file = File(file)
-    if os.sep == "\\":
-        return get("file:///" + file.abspath)
-    else:
-        return get("file://" + file.abspath)
+    return get("file://" + file.abs_path)
 
 
 def get(url):
@@ -37,24 +48,22 @@ def get(url):
     USE json.net CONVENTIONS TO LINK TO INLINE OTHER JSON
     """
     url = text(url)
-    if url.find("://") == -1:
-        Log.error("{{url}} must have a prototcol (eg http://) declared", url=url)
+    if "://" not in url:
+        logger.error("{{url}} must have a prototcol (eg http://) declared", url=url)
 
     base = URL("")
     if url.startswith("file://") and url[7] != "/":
-        if os.sep=="\\":
+        if os.sep == "\\":
             base = URL("file:///" + os.getcwd().replace(os.sep, "/").rstrip("/") + "/.")
         else:
             base = URL("file://" + os.getcwd().rstrip("/") + "/.")
-    elif url[url.find("://") + 3] != "/":
-        Log.error("{{url}} must be absolute", url=url)
 
-    phase1 = _replace_ref(wrap({"$ref": url}), base)  # BLANK URL ONLY WORKS IF url IS ABSOLUTE
+    phase1 = _replace_ref(dict_to_data({"$ref": url}), base)  # BLANK URL ONLY WORKS IF url IS ABSOLUTE
     try:
         phase2 = _replace_locals(phase1, [phase1])
-        return wrap(phase2)
-    except Exception as e:
-        Log.error("problem replacing locals in\n{{phase1}}", phase1=phase1, cause=e)
+        return to_data(phase2)
+    except Exception as cause:
+        logger.error("problem replacing locals in\n{{phase1}}", phase1=phase1, cause=cause)
 
 
 def expand(doc, doc_url="param://", params=None):
@@ -69,14 +78,43 @@ def expand(doc, doc_url="param://", params=None):
     :param params: EXTRA PARAMETERS NOT FOUND IN THE doc_url PARAMETERS (WILL SUPERSEDE PARAMETERS FROM doc_url)
     :return: EXPANDED JSON-SERIALIZABLE STRUCTURE
     """
-    if doc_url.find("://") == -1:
-        Log.error("{{url}} must have a prototcol (eg http://) declared", url=doc_url)
+    if "://" not in doc_url:
+        logger.error("{{url}} must have a prototcol (eg http://) declared", url=doc_url)
 
     url = URL(doc_url)
     url.query = set_default(url.query, params)
-    phase1 = _replace_ref(doc, url)  # BLANK URL ONLY WORKS IF url IS ABSOLUTE
+    phase0 = _replace_str(doc, url)
+    phase1 = _replace_ref(phase0, url)  # BLANK URL ONLY WORKS IF url IS ABSOLUTE
     phase2 = _replace_locals(phase1, [phase1])
-    return wrap(phase2)
+    return to_data(phase2)
+
+
+is_url = re.compile(r"\{([a-zA-Z]+://[^}]*)}")
+
+
+def _replace_str(node, url):
+    if is_text(node):
+        acc = []
+        end = 0
+        for found in is_url.finditer(node):
+            acc.append(node[end: found.start()])
+            try:
+                ref = URL(found.group(1))
+                acc.append(scheme_loaders[ref.scheme](ref, url))
+            except Exception:
+                acc.append(found.group(0))
+            end = found.end()
+        if end == 0:
+            return node
+        return "".join(acc) + node[end:]
+    elif is_data(node):
+        return {
+            _replace_str(k, url): _replace_str(v, url)
+            for k, v in node.items()
+        }
+    elif is_list(node):
+        return [_replace_str(n, url) for n in node]
+    return node
 
 
 def _replace_ref(node, url):
@@ -84,54 +122,62 @@ def _replace_ref(node, url):
         url.path = url.path[:-1]
 
     if is_data(node):
-        ref = None
+        refs = None
         output = {}
         for k, v in node.items():
             if k == "$ref":
-                ref = URL(v)
+                refs = URL(v)
             else:
                 output[k] = _replace_ref(v, url)
 
-        if not ref:
+        if not refs:
             return output
 
-        node = output
+        ref_found = False
+        ref_error = None
+        ref_remain = []
+        for ref in listwrap(refs):
+            if not ref.scheme and not ref.path:
+                # DO NOT TOUCH LOCAL REF YET
+                ref_remain.append(ref)
+                ref_found = True
+                continue
 
-        if not ref.scheme and not ref.path:
-            # DO NOT TOUCH LOCAL REF YET
-            output["$ref"] = ref
-            return output
+            if not ref.scheme:
+                # SCHEME RELATIVE IMPLIES SAME PROTOCOL AS LAST TIME, WHICH
+                # REQUIRES THE CURRENT DOCUMENT'S SCHEME
+                ref.scheme = url.scheme
 
-        if not ref.scheme:
-            # SCHEME RELATIVE IMPLIES SAME PROTOCOL AS LAST TIME, WHICH
-            # REQUIRES THE CURRENT DOCUMENT'S SCHEME
-            ref.scheme = url.scheme
+            # FIND THE SCHEME AND LOAD IT
+            if ref.scheme not in scheme_loaders:
+                raise logger.error("unknown protocol {{scheme}}", scheme=ref.scheme)
+            try:
+                new_value = scheme_loaders[ref.scheme](ref, url)
+                ref_found = True
+            except Exception as cause:
+                ref_error = Except.wrap(cause)
+                continue
 
-        # FIND THE SCHEME AND LOAD IT
-        if ref.scheme in scheme_loaders:
-            new_value = scheme_loaders[ref.scheme](ref, url)
-        else:
-            raise Log.error("unknown protocol {{scheme}}", scheme=ref.scheme)
+            if ref.fragment:
+                new_value = get_attr(new_value, ref.fragment)
 
-        if ref.fragment:
-            new_value = get_attr(new_value, ref.fragment)
+            DEBUG and logger.note("Replace {{ref}} with {{new_value}}", ref=ref, new_value=new_value)
 
-        DEBUG and Log.note("Replace {{ref}} with {{new_value}}", ref=ref, new_value=new_value)
+            if not output:
+                output = new_value
+            elif is_text(output):
+                pass  # WE HAVE A VALUE
+            else:
+                set_default(output, new_value)
 
-        if not output:
-            output = new_value
-        elif is_text(output):
-            Log.error("Can not handle set_default({{output}},{{new_value}})", output=output, new_value=new_value)
-        else:
-            output = unwrap(set_default(output, new_value))
-
-        DEBUG and Log.note("Return {{output}}", output=output)
-
+        if not ref_found:
+            raise ref_error
+        if ref_remain:
+            output["$ref"] = unwraplist(ref_remain)
+        DEBUG and logger.note("Return {{output}}", output=output)
         return output
     elif is_list(node):
         output = [_replace_ref(n, url) for n in node]
-        # if all(p[0] is p[1] for p in zip(output, node)):
-        #     return node
         return output
 
     return node
@@ -147,8 +193,8 @@ def _replace_locals(node, doc_path):
                 ref = v
             elif k == "$concat":
                 if not is_sequence(v):
-                    Log.error("$concat expects an array of strings")
-                return coalesce(node.get("separator"), "").join(v)
+                    logger.error("$concat expects an array of strings")
+                return coalesce(node.get("separator"), "").join(_replace_locals(vv, doc_path) for vv in v)
             elif v == None:
                 continue
             else:
@@ -163,9 +209,11 @@ def _replace_locals(node, doc_path):
             # RELATIVE
             for i, p in enumerate(frag):
                 if p != ".":
-                    if i>len(doc_path):
-                        Log.error("{{frag|quote}} reaches up past the root document",  frag=frag)
-                    new_value = get_attr(doc_path[i-1], frag[i::])
+                    if i > len(doc_path):
+                        logger.error(
+                            "{{frag|quote}} reaches up past the root document", frag=frag,
+                        )
+                    new_value = get_attr(doc_path[i - 1], frag[i::])
                     break
             else:
                 new_value = doc_path[len(frag) - 1]
@@ -178,20 +226,34 @@ def _replace_locals(node, doc_path):
         if not output:
             return new_value  # OPTIMIZATION FOR CASE WHEN node IS {}
         else:
-            return unwrap(set_default(output, new_value))
+            return from_data(set_default(output, new_value))
 
     elif is_list(node):
         candidate = [_replace_locals(n, [n] + doc_path) for n in node]
-        # if all(p[0] is p[1] for p in zip(candidate, node)):
-        #     return node
         return candidate
 
+    elif is_text(node):
+        acc = []
+        end = 0
+        for found in is_url.finditer(node):
+            acc.append(node[end: found.start()])
+            try:
+                ref = URL(found.group(1))
+                ref.scheme = None
+                acc.append(_replace_locals({"$ref": ref}, doc_path))
+            except Exception:
+                acc.append(found.group(0))
+            end = found.end()
+        if end == 0:
+            return node
+        return "".join(acc) + node[end:]
     return node
 
 
 ###############################################################################
 ## SCHEME LOADERS ARE BELOW THIS LINE
 ###############################################################################
+
 
 def _get_file(ref, url):
 
@@ -219,11 +281,11 @@ def _get_file(ref, url):
     path = ref.path if os.sep != "\\" else ref.path[1::].replace("/", "\\")
 
     try:
-        DEBUG and Log.note("reading file {{path}}", path=path)
+        DEBUG and logger.note("reading file {{path}}", path=path)
         content = File(path).read()
     except Exception as e:
         content = None
-        Log.error("Could not read file {{filename}}", filename=path, cause=e)
+        logger.error("Could not read file {{filename}}", filename=path, cause=e)
 
     try:
         new_value = json2value(content, params=ref.query, flexible=True, leaves=True)
@@ -232,7 +294,7 @@ def _get_file(ref, url):
         try:
             new_value = ini2value(content)
         except Exception:
-            raise Log.error("Can not read {{file}}", file=path, cause=e)
+            raise logger.error("Can not read {{file}}", file=path, cause=e)
     new_value = _replace_ref(new_value, ref)
     return new_value
 
@@ -241,8 +303,12 @@ def get_http(ref, url):
     import requests
 
     params = url.query
-    new_value = json2value(requests.get(ref), params=params, flexible=True, leaves=True)
+    new_value = json2value(requests.get(str(ref)).text, params=params, flexible=True, leaves=True)
     return new_value
+
+
+def _get_ref(ref, url):
+    return f"{{{ref}}}"
 
 
 def _get_env(ref, url):
@@ -250,7 +316,35 @@ def _get_env(ref, url):
     ref = ref.host
     raw_value = os.environ.get(ref)
     if not raw_value:
-        Log.error("expecting environment variable with name {{env_var}}", env_var=ref)
+        logger.error("expecting environment variable with name {{env_var}}", env_var=ref)
+
+    try:
+        new_value = json2value(raw_value)
+    except Exception as e:
+        new_value = raw_value
+    return new_value
+
+
+def _get_keyring(ref, url):
+    try:
+        import keyring
+    except Exception:
+        logger.error("Missing keyring: `pip install keyring` to use this feature")
+
+    # GET PASSWORD FROM KEYRING
+    service_name = ref.host
+    if "@" in service_name:
+        username, service_name = service_name.split("@")
+    else:
+        username = ref.query.username
+
+    raw_value = keyring.get_password(service_name, username)
+    if not raw_value:
+        logger.error(
+            "expecting password in the keyring for service_name={{service_name}} and username={{username}}",
+            service_name=service_name,
+            username=username,
+        )
 
     try:
         new_value = json2value(raw_value)
@@ -268,8 +362,14 @@ def _get_param(ref, url):
 
 scheme_loaders = {
     "http": get_http,
+    "https": get_http,
     "file": _get_file,
     "env": _get_env,
-    "param": _get_param
+    "param": _get_param,
+    "keyring": _get_keyring,
+    "ssm": _get_ssm,
+    "ref": _get_ref,
 }
 
+
+configuration = Configuration({})

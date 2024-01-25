@@ -5,19 +5,21 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
+
 
 from unittest import skip, skipIf
 
 from jx_base.expressions import NULL
-from mo_dots import set_default, wrap
+from mo_dots import set_default, to_data
 from mo_future import text
+from mo_testing.fuzzytestcase import add_error_reporting
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 
+@add_error_reporting
 class TestgroupBy1(BaseTestCase):
 
     def test_no_select(self):
@@ -336,7 +338,7 @@ class TestgroupBy1(BaseTestCase):
                     "a": {"b": {"c": d.v}},
                     "b": d.a
                 }
-                for d in wrap(simple_test_data)
+                for d in to_data(simple_test_data)
             ],
             "query": {
                 "from": TEST_TABLE,
@@ -424,8 +426,7 @@ class TestgroupBy1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
-    @skipIf(global_settings.elasticsearch.version and int(global_settings.elasticsearch.version.split(".")[0]) <= 4, "version 4 and below do not implement")
+    @skip("requires subqueries")
     def test_count_values(self):
         # THIS IS NOT PART OF THE JX SPEC, IT IS AN INTERMEDIATE FORM FOR DEBUGGING
         test = {
@@ -450,7 +451,6 @@ class TestgroupBy1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    # @skipIf(int(global_settings.elasticsearch.version.split(".")[0]) <= 5, "version 5 and below do not implement")
     @skip("for coverage")
     def test_groupby_multivalue_nested(self):
         test = {
@@ -534,8 +534,7 @@ class TestgroupBy1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
-    def test_groupby_object_star(self):
+    def test_groupby_star(self):
         test = {
             "data": [
                 {"g": {"a": "c", "v": 1}},
@@ -548,7 +547,7 @@ class TestgroupBy1(BaseTestCase):
             ],
             "query": {
                 "from": TEST_TABLE,
-                "groupby": ["g.*"]
+                "groupby": ["*"]
             },
             "expecting_list": {
                 "meta": {"format": "list"},
@@ -573,7 +572,45 @@ class TestgroupBy1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
+    def test_groupby_object_star(self):
+        test = {
+            "data": [
+                {"g": {"a": "c", "v": 1}},
+                {"g": {"a": "b", "v": 1}},
+                {"g": {"a": "b", "v": 1}},
+                {"g": {          "v": 2}},
+                {"g": {"a": "b"        }},
+                {"g": {"a": "c", "v": 2}},
+                {"g": {"a": "c", "v": 2}}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "groupby": ["g.*"]
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"a": "b", "v": 1, "count": 2},
+                    {"a": "b"        , "count": 1},
+                    {"a": "c", "v": 2, "count": 2},
+                    {"a": "c", "v": 1, "count": 1},
+                    {          "v": 2, "count": 1}
+                ]
+            },
+            "expecting_table": {
+                "header": ["a", "v", "count"],
+                "data": [
+                    ["b", 1, 2],
+                    ["b", NULL, 1],
+                    ["c", 2, 2],
+                    ["c", 1, 1],
+                    [NULL, 2, 1]
+                ]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    @skip("requires groupby sets")
     def test_groupby_multivalue_naive(self):
         test = {
             "data": [
@@ -607,6 +644,217 @@ class TestgroupBy1(BaseTestCase):
             }
         }
         self.utils.execute_tests(test)
+
+    def test_script_on_missing_column1(self):
+        test = {
+            "data": [
+                {"a": "skip"},
+                {"a": "ok"},
+                {"a": "error"},
+                {"a": "ok"},
+                {},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": {
+                    "name": "skips",
+                    "value": {"when": {"eq": {"b": "skip"}}, "then": 1, "else": 0},
+                    "aggregate": "sum"
+                }
+            },
+            "expecting_list": {
+                "meta": {"format": "value"},
+                "data": 0
+            },
+            "expecting_table": {
+                "header": ["skips"],
+                "data": [[0]]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_script_missing_column2(self):
+        test = {
+            "data": [
+                {"a": "skip"},
+                {"a": "ok"},
+                {"a": "error"},
+                {"a": "ok"},
+                {},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": {
+                    "name": "skips",
+                    "value": {"eq": {"b": "skip"}},
+                    "aggregate": "sum"
+                }
+            },
+            "expecting_list": {
+                "meta": {"format": "value"},
+                "data": 0
+            },
+            "expecting_table": {
+                "header": ["skips"],
+                "data": [[0]]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_boolean_count(self):
+        test = {
+            "data": [
+                {"a": "skip"},
+                {"a": "ok"},
+                {"a": "error"},
+                {"a": "ok"},
+                {},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": {
+                    "name": "skips",
+                    "value": {"eq": {"a": "skip"}},
+                    "aggregate": "sum"
+                }
+            },
+            "expecting_list": {
+                "meta": {"format": "value"},
+                "data": 1
+            },
+            "expecting_table": {
+                "header": ["skips"],
+                "data": [[1]]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_boolean_min_max(self):
+        test = {
+            "data": [
+                {"a": True},
+                {"a": False},
+                {"a": False},
+                {"a": None},
+                {},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": [
+                    {
+                        "name": "max",
+                        "value": "a",
+                        "aggregate": "max"
+                    },
+                    {
+                        "name": "min",
+                        "value": "a",
+                        "aggregate": "min"
+                    },
+                    {
+                        "name": "or",
+                        "value": "a",
+                        "aggregate": "or"
+                    },
+                    {
+                        "name": "and",
+                        "value": "a",
+                        "aggregate": "and"
+                    }
+                ],
+            },
+            "expecting_list": {
+                "meta": {"format": "value"},
+                "data": {"and": False, "or": True, "min": 0, "max": 1}
+            },
+            "expecting_table": {
+                "header": ["max", "min", "or", "and"],
+                "data": [[1, 0, True, False]]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_boolean_and_or_on_expression(self):
+        test = {
+            "data": [
+                {"a": 1},
+                {"a": 2},
+                {"a": 3},
+                {"a": None},
+                {},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": [
+                    {
+                        "name": "max",
+                        "value": {"eq": {"a": 1}},
+                        "aggregate": "max"
+                    },
+                    {
+                        "name": "min",
+                        "value": {"eq": {"a": 1}},
+                        "aggregate": "min"
+                    },
+                    {
+                        "name": "or",
+                        "value": {"eq": {"a": 1}},
+                        "aggregate": "or"
+                    },
+                    {
+                        "name": "and",
+                        "value": {"eq": {"a": 1}},
+                        "aggregate": "and"
+                    }
+                ],
+            },
+            "expecting_list": {
+                "meta": {"format": "value"},
+                "data": {"and": False, "or": True, "min": 0, "max": 1}
+            },
+            "expecting_table": {
+                "header": ["max", "min", "or", "and"],
+                "data": [[1, 0, True, False]]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_eq_1(self):
+        test = {
+            "data": [
+                {"a": 1},
+                {"a": 2},
+                {"a": 3},
+                {"a": None},
+                {},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "groupby": {"name": "eq1", "value": {"eq": {"a": 1}}},
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"eq1": True, "count": 1},
+                    {"eq1": False, "count": 4}
+                ]
+            },
+            "expecting_table": {
+                "header": ["eq1", "count"],
+                "data": [
+                    [True, 1],
+                    [False, 4]
+                ]
+            }
+        }
+        self.utils.execute_tests(test)
+
+
+
+
+
+
+
 
 
 # TODO: GROUPBY NUMBER SHOULD NOT RESULT IN A STRING

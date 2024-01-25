@@ -5,16 +5,12 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-
-from __future__ import absolute_import, division, unicode_literals
-
 import jx_base
 from jx_sqlite.schema import Schema
 from mo_logs import Log
 
 
 class Table(jx_base.Table):
-
     def __init__(self, nested_path, snowflake):
         if not isinstance(nested_path, list):
             Log.error("Expecting list of paths")
@@ -31,4 +27,3 @@ class Table(jx_base.Table):
 
     def map(self, mapping):
         return self
-

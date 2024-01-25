@@ -7,11 +7,9 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions import AddOp as AddOp_
+from jx_base.expressions import AddOp as _AddOp
 from jx_sqlite.expressions._utils import multiop_to_sql
 
 
-class AddOp(AddOp_):
+class AddOp(_AddOp):
     to_sql = multiop_to_sql

@@ -7,24 +7,15 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions import ExistsOp as ExistsOp_
-from jx_sqlite.expressions._utils import check
-from mo_dots import wrap
-from mo_sql import SQL_FALSE, SQL_IS_NOT_NULL, SQL_OR, sql_iso
+from jx_base.expressions import ExistsOp as ExistsOp_, FALSE
+from jx_sqlite.expressions._utils import check, SQLang, SqlScript
+from mo_json import JX_BOOLEAN
 
 
 class ExistsOp(ExistsOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        field = self.field.to_sql(schema)[0].sql
-        acc = []
-        for t, v in field.items():
-            if t in "bns":
-                acc.append(sql_iso(v + SQL_IS_NOT_NULL))
-
-        if not acc:
-            return wrap([{"name": ".", "sql": {"b": SQL_FALSE}}])
-        else:
-            return wrap([{"name": ".", "sql": {"b": SQL_OR.join(acc)}}])
+    def to_sql(self, schema):
+        sql = self.expr.partial_eval(SQLang).to_sql(schema)
+        return SqlScript(
+            jx_type=JX_BOOLEAN, expr=sql, frum=self, miss=FALSE, schema=schema
+        )

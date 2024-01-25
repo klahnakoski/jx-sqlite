@@ -7,11 +7,9 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions import ExpOp as ExpOp_
+from jx_base.expressions import ExpOp as _ExpOp
 from jx_sqlite.expressions._utils import _binaryop_to_sql
 
 
-class ExpOp(ExpOp_):
+class ExpOp(_ExpOp):
     to_sql = _binaryop_to_sql

@@ -7,18 +7,16 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions import SplitOp as SplitOp_
-from jx_python.expressions._utils import Python
 
 
-class SplitOp(SplitOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        return (
-            "("
-            + Python[self.value].to_python()
-            + ").split("
-            + Python[self.find].to_python()
-            + ")"
+from jx_base.expressions import SplitOp as _SplitOp
+from jx_base.expressions.python_script import PythonScript
+
+
+class SplitOp(_SplitOp):
+    def to_python(self, loop_depth=0):
+        return PythonScript(
+            {},
+            loop_depth,
+            ("(" + (self.value).to_python(loop_depth) + ").split(" + (self.find).to_python(loop_depth) + ")"),
         )

@@ -7,21 +7,13 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-
-
-from __future__ import absolute_import, division, unicode_literals
-
-
-from mo_future import is_text, is_binary
 class StructuredLogger(object):
     """
     ABSTRACT BASE CLASS FOR JSON LOGGING
     """
+
     def write(self, template, params):
         pass
 
     def stop(self):
         pass
-
-
-

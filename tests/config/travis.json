@@ -1,0 +1,15 @@
+{
+	"use": "sqlite",
+	"db":{
+		"name": "testing",
+//		"filename":"test.sqlite",
+		"upgrade": false,
+		"load_functions": true
+	},
+	"constants": {
+		"mo_sqlite.sqlite.DEBUG": false
+	},
+	"debug": {
+		"trace": false
+	}
+}

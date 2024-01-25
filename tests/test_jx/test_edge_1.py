@@ -5,17 +5,20 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
+
 
 from unittest import skip, skipIf
 
 from jx_base.expressions import NULL
+from mo_json import null
+from mo_testing.fuzzytestcase import add_error_reporting
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 
+@add_error_reporting
 class TestEdge1(BaseTestCase):
 
     def test_no_select(self):
@@ -411,7 +414,7 @@ class TestEdge1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
+    @skip("deal with nested table as value")
     def test_union_values(self):
         data = [
             {"a": "x"},
@@ -468,7 +471,7 @@ class TestEdge1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
+    @skip("deal with nested table as value")
     def test_union_nested_objects(self):
         data = [
             {"a": "x"},
@@ -525,7 +528,7 @@ class TestEdge1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
+    @skip("deal with nested table as value")
     def test_multiple_union(self):
         data = [
             {"a": "x"},
@@ -571,8 +574,7 @@ class TestEdge1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
-    @skipIf(global_settings.elasticsearch.version.startswith("1."), "ES14 does not support union on multivalues")
+    @skip("deal with nested table as value")
     def test_multiple_union2(self):
         data = [
             {"a": ["x", "z"]},
@@ -680,14 +682,16 @@ class TestEdge1(BaseTestCase):
                 "meta": {"format": "list"},
                 "data": [
                     {"a": "b"},
-                    {"a": "c", "v": 13}
+                    {"a": "c", "v": 13},
+                    {"a": NULL, "v": NULL}
                 ]},
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["a", "v"],
                 "data": [
                     ["b", NULL],
-                    ["c", 13]
+                    ["c", 13],
+                    [NULL, NULL]
                 ]
             },
             "expecting_cube": {
@@ -941,8 +945,9 @@ class TestEdge1(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
-                    {"a": "b"},
-                    {"a": "c"}
+                    {"a": "b", "v":NULL},
+                    {"a": "c", "v":NULL},
+                    {"a": NULL, "v":NULL}
                 ]
             },
             "expecting_table": {
@@ -950,7 +955,8 @@ class TestEdge1(BaseTestCase):
                 "header": ["a", "v"],
                 "data": [
                     ["b", NULL],
-                    ["c", NULL]
+                    ["c", NULL],
+                    [NULL, NULL]
                 ]
             },
             "expecting_cube": {
@@ -1024,7 +1030,6 @@ class TestEdge1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
     def test_default_limit(self):
         """
         TEST THAT THE DEFAULT LIMIT IS APPLIED
@@ -1125,7 +1130,8 @@ class TestEdge1(BaseTestCase):
                     {"k": "j", "v": 10},
                     {"k": "k", "v": 11},
                     {"k": "l", "v": 12},
-                    {"k": "m", "v": 13}
+                    {"k": "m", "v": 13},
+                    {"k": NULL, "v": NULL}
                 ]
             },
             "expecting_table": {
@@ -1144,7 +1150,8 @@ class TestEdge1(BaseTestCase):
                     ["j", 10],
                     ["k", 11],
                     ["l", 12],
-                    ["m", 13]
+                    ["m", 13],
+                    [NULL, NULL]
                 ]
             },
             "expecting_cube": {
@@ -1175,13 +1182,12 @@ class TestEdge1(BaseTestCase):
                     }
                 ],
                 "data": {
-                    "v": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+                    "v": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, NULL]
                 }
             }
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
     def test_edge_limit_small(self):
         test = {
             "name": "sum column",
@@ -1195,16 +1201,16 @@ class TestEdge1(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
+                    {"k": "a", "v": 1},
                     {"v": 13},
-                    {"k": "a", "v": 1}
                 ]
             },
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["k", "v"],
                 "data": [
+                    ["a", 1],
                     [NULL, 13],
-                    ["a", 1]
                 ]
             },
             "expecting_cube": {
@@ -1229,7 +1235,6 @@ class TestEdge1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
     def test_general_limit(self):
         test = {
             "name": "sum column",
@@ -1320,7 +1325,8 @@ class TestEdge1(BaseTestCase):
                     {"start": 2, "count": 2},
                     {"start": 3, "count": 3},
                     {"start": 4, "count": 0},
-                    {"start": 5, "count": 1}
+                    {"start": 5, "count": 1},
+                    {"start": NULL, "count": 0}
                 ]
             },
             "expecting_table": {
@@ -1332,7 +1338,8 @@ class TestEdge1(BaseTestCase):
                     [2, 2],
                     [3, 3],
                     [4, 0],
-                    [5, 1]
+                    [5, 1],
+                    [NULL, 0]
                 ]
             },
             "expecting_cube": {
@@ -1510,11 +1517,10 @@ class TestEdge1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
     def test_edge_using_between(self):
         test = {
             "data": [
-                {"url": NULL},
+                {"url": null},
                 {"url": "/"},
                 {"url": "https://hg.mozilla.org/"},
                 {"url": "https://hg.mozilla.org/a/"},
@@ -1607,7 +1613,6 @@ class TestEdge1(BaseTestCase):
                 "edges": [
                     {
                         "name": "v",
-                        "allowNulls": False,
                         "domain": {
                             "type": "set",
                             "partitions": [
@@ -1657,7 +1662,8 @@ class TestEdge1(BaseTestCase):
                 "meta": {"format": "list"},
                 "data": [
                     {"k": "a", "v": 9.5},
-                    {"k": "b", "v": 16.2}
+                    {"k": "b", "v": 16.2},
+                    {"k": NULL, "v": NULL}
                 ]
             },
             "expecting_table": {
@@ -1665,7 +1671,8 @@ class TestEdge1(BaseTestCase):
                 "header": ["k", "v"],
                 "data": [
                     ["a", 9.5],
-                    ["b", 16.2]
+                    ["b", 16.2],
+                    [NULL, NULL]
                 ]
             },
             "expecting_cube": {
@@ -1675,7 +1682,7 @@ class TestEdge1(BaseTestCase):
                     {"name": "k", "domain": {"type": "set", "partitions": [{"value": "a"}, {"value": "b"}]}}
                 ],
                 "data": {
-                    "v": [9.5, 16.2]
+                    "v": [9.5, 16.2, NULL]
                 }
             }
         }
@@ -1756,7 +1763,6 @@ class TestEdge1(BaseTestCase):
 
         self.assertRaises("expression is empty", self.utils.execute_tests, test)
 
-    @skip("broken")
     def test_range(self):
         test = {
             "data": [
@@ -1792,7 +1798,8 @@ class TestEdge1(BaseTestCase):
                     {"a": 6, "count": 3},
                     {"a": 7, "count": 3},
                     {"a": 8, "count": 3},
-                    {"a": 9, "count": 2}
+                    {"a": 9, "count": 2},
+                    {"a": NULL, "count": 0}
                 ]
             },
             "expecting_table": {
@@ -1808,7 +1815,8 @@ class TestEdge1(BaseTestCase):
                     [6, 3],
                     [7, 3],
                     [8, 3],
-                    [9, 2]
+                    [9, 2],
+                    [NULL, 0]
                 ]
             },
             "expecting_cube": {
@@ -1828,12 +1836,11 @@ class TestEdge1(BaseTestCase):
                          {"min": 9, "max": 10}
                      ]}}
                 ],
-                "data": {"count": [1, 1, 2, 3, 3, 3, 3, 3, 3, 2]}  # NOT SURE HOW WE ARE COUNTING NULLS
+                "data": {"count": [1, 1, 2, 3, 3, 3, 3, 3, 3, 2, 0]}
             }
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
     def test_range2(self):
         test = {
             "data": [
@@ -1849,23 +1856,19 @@ class TestEdge1(BaseTestCase):
             ],
             "query": {
                 "from": TEST_TABLE,
-                "edges": [
-                    {
-                        "domain": {
-                            "type": "range",
-                            "key": "name",
-                            "partitions": [
-                                {
-                                    "max": 4,
-                                    "min": 0,
-                                    "dataIndex": 0,
-                                    "name": "first_four"
-                                }
-                            ]
-                        },
-                        "value": "s"
-                    }
-                ]
+                "edges": [{
+                    "domain": {
+                        "type": "range",
+                        "key": "name",
+                        "partitions": [{
+                            "min": 0,
+                            "max": 4,
+                            "dataIndex": 0,
+                            "name": "first_four"
+                        }]
+                    },
+                    "value": "s"
+                }]
             },
             "expecting_list": {
                 "meta": {"format": "list"},
@@ -1877,7 +1880,6 @@ class TestEdge1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
     def test_edge_w_partition_filters(self):
         test = {
             "data": structured_test_data,
@@ -1934,7 +1936,6 @@ class TestEdge1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
     def test_edge_w_expr_and_domain(self):
         test = {
             "data": structured_test_data,
@@ -1976,9 +1977,9 @@ class TestEdge1(BaseTestCase):
                 "edges": [{
                     "name": "diff",
                     "domain": {"partitions": [
-                        {"name": 0},
-                        {"name": 3},
-                        {"name": 6}
+                        {"value": 0},
+                        {"value": 3},
+                        {"value": 6}
                     ]}
                 }],
                 "data": {
@@ -2027,7 +2028,7 @@ class TestEdge1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("requires schema merging of a.b.~n~ and a.~N~.b.~n~")
+    @skip("not sure what first() of nested column would be.  requires schema merging of a.b.~n~ and a.~N~.b.~n~")
     def test_shallow_with_deep_edge(self):
         test = {
             "data": [
@@ -2087,8 +2088,9 @@ class TestEdge1(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
+                    {"result": {"ok": False}, "count": 5},
                     {"result": {"ok": True}, "count": 4},
-                    {"result": {"ok": False}, "count": 5}
+                    {"count": 0}
                 ]
             }
         }
@@ -2117,7 +2119,8 @@ class TestEdge1(BaseTestCase):
                 "data": [
                     {"k": "a", "avg": 22 / 4},
                     {"k": "b", "avg": 17 / 2},
-                    {"k": "c", "avg": 0}
+                    {"k": "c", "avg": 0},
+                    {"k": NULL, "avg": 0}
                 ]
             }
         }
@@ -2203,7 +2206,7 @@ structured_test_data = [
     {"b": {"r": "d", "d": 1}, "v": 10},
     {"b": {"r": "d", "d": 2}, "v": 11},
     {"b": {"r": "d", "d": 3}, "v": 12},
-    {"b": {"r": NULL, "d": 3}, "v": 13}
+    {"b": {"r": null, "d": 3}, "v": 13}
 ]
 
 

@@ -8,92 +8,74 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-"""
-# NOTE:
 
-THE self.lang[operator] PATTERN IS CASTING NEW OPERATORS TO OWN LANGUAGE;
-KEEPING Python AS# Python, ES FILTERS AS ES FILTERS, AND Painless AS
-Painless. WE COULD COPY partial_eval(), AND OTHERS, TO THIER RESPECTIVE
-LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
-
-"""
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions._utils import simplified
-from jx_base.expressions.boolean_op import BooleanOp
-from jx_base.expressions.expression import Expression
+from jx_base.expressions.base_multi_op import BaseMultiOp
 from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.true_op import TRUE
 from jx_base.language import is_op
-from mo_dots import is_many
-from mo_future import zip_longest
-from mo_json import BOOLEAN
+from mo_imports import expect, export
+from mo_json.types import JX_BOOLEAN
 
-NotOp = None
-OrOp = None
+NotOp, OrOp, ToBooleanOp = expect("NotOp", "OrOp", "ToBooleanOp")
 
-class AndOp(Expression):
-    data_type = BOOLEAN
 
-    def __init__(self, terms):
-        Expression.__init__(self, terms)
-        if terms == None:
-            self.terms = []
-        elif is_many(terms):
-            self.terms = terms
-        else:
-            self.terms = [terms]
+class AndOp(BaseMultiOp):
+    _jx_type = JX_BOOLEAN
+
+    def __init__(self, *terms, nulls=True):
+        BaseMultiOp.__init__(self, *terms, nulls=nulls)
 
     def __data__(self):
         return {"and": [t.__data__() for t in self.terms]}
 
-    def __eq__(self, other):
-        if is_op(other, AndOp):
-            return all(a == b for a, b in zip_longest(self.terms, other.terms))
-        return False
+    def __call__(self, row, rownum=None, rows=None):
+        for a in self.terms:
+            if not a(row, rownum, rows):
+                return False
+        return True
 
-    def vars(self):
-        output = set()
-        for t in self.terms:
-            output |= t.vars()
-        return output
+    def missing(self, lang):
+        if self.decisive:
+            return FALSE
+        return OrOp(*(t.missing(lang) for t in self.terms))
 
-    def map(self, map_):
-        return self.lang[AndOp([t.map(map_) for t in self.terms])]
+    def invert(self, lang):
+        return OrOp(*(t.invert(lang) for t in self.terms)).partial_eval(lang)
 
-    def missing(self):
-        return FALSE
-
-    @simplified
-    def partial_eval(self):
+    def partial_eval(self, lang):
+        # MERGE IDENTICAL NESTED QUERIES
+        # NEST DEEP NESTED QUERIES
         or_terms = [[]]  # LIST OF TUPLES FOR or-ing and and-ing
         for i, t in enumerate(self.terms):
-            simple = self.lang[BooleanOp(t)].partial_eval()
-            if simple.type != BOOLEAN:
-                simple = simple.exists()
-
-            if simple is self.lang[TRUE]:
+            simple = ToBooleanOp(t).partial_eval(lang)
+            if simple is TRUE:
                 continue
             elif simple is FALSE:
                 return FALSE
             elif is_op(simple, AndOp):
                 for and_terms in or_terms:
-                    and_terms.extend([tt for tt in simple.terms if tt not in and_terms])
+                    for tt in simple.terms:
+                        if tt in and_terms:
+                            continue
+                        if (NotOp(tt)).partial_eval(lang) in and_terms:
+                            or_terms.remove(and_terms)
+                            break
+                        and_terms.append(tt)
                 continue
             elif is_op(simple, OrOp):
                 or_terms = [
                     and_terms + ([o] if o not in and_terms else [])
                     for o in simple.terms
                     for and_terms in or_terms
-                    if self.lang[NotOp(o)].partial_eval() not in and_terms
+                    if NotOp(o).partial_eval(lang) not in and_terms
                 ]
                 continue
             for and_terms in list(or_terms):
-                if self.lang[NotOp(simple)].partial_eval() in and_terms:
+                inv = lang.NotOp(simple).partial_eval(lang)
+                if inv in and_terms:
                     or_terms.remove(and_terms)
                 elif simple not in and_terms:
                     and_terms.append(simple)
-
         if len(or_terms) == 0:
             return FALSE
         elif len(or_terms) == 1:
@@ -103,13 +85,12 @@ class AndOp(Expression):
             elif len(and_terms) == 1:
                 return and_terms[0]
             else:
-                return self.lang[AndOp(and_terms)]
+                return lang.AndOp(*and_terms, nulls=self.decisive)
 
-        return self.lang[
-            OrOp(
-                [
-                    AndOp(and_terms) if len(and_terms) > 1 else and_terms[0]
-                    for and_terms in or_terms
-                ]
-            )
-        ].partial_eval()
+        return OrOp(
+            *(lang.AndOp(*and_terms) if len(and_terms) > 1 else and_terms[0] for and_terms in or_terms)
+        ).partial_eval(lang)
+
+
+export("jx_base.expressions.expression", AndOp)
+export("jx_base.expressions.base_multi_op", AndOp)

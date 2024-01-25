@@ -7,14 +7,14 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import Literal as Literal_
-from mo_dots import unwrap
-from mo_future import text
-from mo_json import json2value
+from jx_base.expressions import Literal as _Literal
+from jx_base.expressions.python_script import PythonScript
 
 
-class Literal(Literal_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        return text(repr(unwrap(json2value(self.json))))
+class Literal(_Literal):
+    def to_python(self, loop_depth=0):
+        source = self.json
+        if source.endswith(".0"):
+            source = source[:-2]
+        return PythonScript({}, loop_depth, self.jx_type, source, self)

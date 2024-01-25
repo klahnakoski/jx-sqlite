@@ -7,18 +7,22 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions import BasicEqOp as BasicEqOp_
-from jx_python.expressions._utils import Python
 
 
-class BasicEqOp(BasicEqOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        return (
-            "("
-            + Python[self.rhs].to_python()
-            + ") == ("
-            + Python[self.lhs].to_python()
-            + ")"
+from jx_base.expressions import BasicEqOp as _BasicEqOp, FALSE
+from jx_base.expressions.python_script import PythonScript
+from jx_python.utils import merge_locals
+from mo_json import JX_BOOLEAN
+
+
+class BasicEqOp(_BasicEqOp):
+    def to_python(self, loop_depth=0):
+        lhs = self.lhs.to_python(loop_depth)
+        rhs = self.rhs.to_python(loop_depth)
+        return PythonScript(
+            merge_locals(lhs.locals, rhs.locals),
+            loop_depth,
+            JX_BOOLEAN,
+            "(" + lhs.source + ") == (" + rhs.source + ")",
+            FALSE,
         )

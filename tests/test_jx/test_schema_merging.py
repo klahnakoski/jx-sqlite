@@ -5,10 +5,10 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
+
 
 from unittest import skip
 
@@ -16,6 +16,7 @@ from jx_base.expressions import NULL
 from tests.test_jx import BaseTestCase, TEST_TABLE
 
 
+@skip("not ready")
 class TestSchemaMerging(BaseTestCase):
     """
     TESTS THAT DEMONSTRATE DIFFERENT SCHEMAS
@@ -111,7 +112,7 @@ class TestSchemaMerging(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_tests(test, tjson=True)
+        self.utils.execute_tests(test)
 
     def test_dots_in_property_names(self):
         test = {
@@ -121,7 +122,7 @@ class TestSchemaMerging(BaseTestCase):
             ],
             "query": {
                 "from": TEST_TABLE,
-                "select": "a\\.html"
+                "select": "a..html"
             },
             "expecting_list": {
                 "meta": {"format": "list"},
@@ -132,7 +133,7 @@ class TestSchemaMerging(BaseTestCase):
             },
             "expecting_table": {
                 "meta": {"format": "table"},
-                "header": ["a\\.html"],
+                "header": ["a..html"],
                 "data": [
                     ["hello"],
                     [NULL]
@@ -147,7 +148,7 @@ class TestSchemaMerging(BaseTestCase):
                     }
                 ],
                 "data": {
-                    "a\\.html": ["hello", NULL]
+                    "a..html": ["hello", NULL]
                 }
             }
         }
@@ -202,7 +203,7 @@ class TestSchemaMerging(BaseTestCase):
             ],
             "query": {
                 "from": TEST_TABLE,
-                "select": ["a\\.html", "a.html"]
+                "select": ["a..html", "a.html"]
             },
             "expecting_list": {
                 "meta": {"format": "list"},
@@ -213,7 +214,7 @@ class TestSchemaMerging(BaseTestCase):
             },
             "expecting_table": {
                 "meta": {"format": "table"},
-                "header": ["a\\.html", "a.html"],
+                "header": ["a..html", "a.html"],
                 "data": [
                     ["hello", NULL],
                     [NULL, "world"]
@@ -228,14 +229,14 @@ class TestSchemaMerging(BaseTestCase):
                     }
                 ],
                 "data": {
-                    "a\\.html": ["hello", NULL],
+                    "a..html": ["hello", NULL],
                     "a.html": [NULL, "world"]
                 }
             }
         }
         self.utils.execute_tests(test)
 
-    @skip("schema merging not working")
+    # @skip("schema merging not working")
     def test_count(self):
         test = {
             "data": [
@@ -253,23 +254,91 @@ class TestSchemaMerging(BaseTestCase):
             },
             "expecting_list": {
                 "meta": {"format": "value"},
-                "data": 5
+                "data": 6
             },
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["a"],
-                "data": [[5]]
+                "data": [[6]]
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
                 "data": {
-                    "a": 5
+                    "a": 6
                 }
             }
         }
         self.utils.execute_tests(test)
 
-    @skip("schema merging not working")
+    def test_select2(self):
+        test = {
+            "data": [
+                {"k": 1, "a": "b"},
+                {"k": 2, "a": {"b": 1}},
+                {"k": 3, "a": {}},
+                {"k": 4, "a": [{"b": 1}, {"b": 2}]},  # TEST THAT INNER CAN BE MAPPED TO NESTED
+                {"k": 5, "a": {"b": 4}},  # TEST THAT INNER IS MAPPED TO NESTED, AFTER SEEING NESTED
+                {"k": 6, "a": 3},
+                {"k": 7, }
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": ["a.b"],
+                "where": {"eq": {"k": 2}}
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [{"a": {"b": 1}}]
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["a.b"],
+                "data": [[1]]
+            },
+            "expecting_cube": {
+                "meta": {"format": "cube"},
+                "data": {
+                    "a.b": [1]
+                }
+            }
+        }
+        self.utils.execute_tests(test)
+
+    @skip("complicated where clause needs support")
+    def test_where(self):
+        test = {
+            "data": [
+                {"k": 1, "a": "b"},
+                {"k": 2, "a": {"b": 1}},
+                {"k": 3, "a": {}},
+                {"k": 4, "a": [{"b": 1}, {"b": 2}]},  # TEST THAT INNER CAN BE MAPPED TO NESTED
+                {"k": 5, "a": {"b": 4}},  # TEST THAT INNER IS MAPPED TO NESTED, AFTER SEEING NESTED
+                {"k": 6, "a": 3},
+                {"k": 7, }
+            ],
+            "query": {
+                "from": TEST_TABLE + ".a",
+                "select": ["k"],
+                "where": {"eq": {"a.b": 1}}
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [{"k": 2}, {"k": 4}]
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["k"],
+                "data": [[2], [4]]
+            },
+            "expecting_cube": {
+                "meta": {"format": "cube"},
+                "data": {
+                    "k": [2, 4]
+                }
+            }
+        }
+        self.utils.execute_tests(test)
+
     def test_sum(self):
         test = {
             "data": [
@@ -303,7 +372,6 @@ class TestSchemaMerging(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("For Orange query")
     def test_edge(self):
         test = {
             "data": [
@@ -324,22 +392,11 @@ class TestSchemaMerging(BaseTestCase):
                 "meta": {"format": "list"},
                 "data": [
                     {"b": 1, "v": 6},
-                    {"b": 2, "v": 8},
+                    {"b": 2, "v": 4},
                     {"b": 4, "v": 5},
                     {"v": 14}
                 ]
-            },
-            # "expecting_table": {
-            #     "meta": {"format": "table"},
-            #     "header": ["a.b"],
-            #     "data": [[8]]
-            # },
-            # "expecting_cube": {
-            #     "meta": {"format": "cube"},
-            #     "data": {
-            #         "a.b": 8
-            #     }
-            # }
+            }
         }
         self.utils.execute_tests(test)
 

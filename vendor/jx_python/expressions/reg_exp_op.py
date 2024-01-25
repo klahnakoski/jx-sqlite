@@ -7,20 +7,23 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+import re
 
-from jx_base.expressions import RegExpOp as RegExpOp_
-from jx_python.expressions._utils import Python
-from mo_json import json2value
-from mo_logs.strings import quote
+from jx_base.expressions import RegExpOp as _RegExpOp
+from jx_base.expressions.python_script import PythonScript
+from jx_python.expressions import Python
+from jx_python.utils import merge_locals
+from mo_json import JX_BOOLEAN
 
 
-class RegExpOp(RegExpOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        return (
-            "re.match("
-            + quote(json2value(self.pattern.json) + "$")
-            + ", "
-            + Python[self.var].to_python()
-            + ")"
+class RegExpOp(_RegExpOp):
+    def to_python(self, loop_depth=0):
+        pattern = self.pattern.partial_eval(Python).to_python(loop_depth)
+        expr = self.expr.partial_eval(Python).to_python(loop_depth)
+        return PythonScript(
+            merge_locals(pattern.locals, expr.locals, re=re),
+            loop_depth,
+            JX_BOOLEAN,
+            f"re.match({pattern.source}, {expr.source})",
+            self,
         )

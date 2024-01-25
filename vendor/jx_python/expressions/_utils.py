@@ -7,23 +7,23 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+from dataclasses import dataclass
+from typing import Any, Dict
 
-from jx_python.expression_compiler import compile_expression
+from mo_dots import is_data, is_list, Null, coalesce
+from mo_future import is_text, extend
+from mo_imports import expect, export
+from mo_logs import strings
 
-from jx_base.expressions import (
-    FALSE,
-    NULL,
-    NullOp,
-    extend,
-    jx_expression,
-)
+from jx_python.utils import merge_locals
+from mo_json.types import JX_BOOLEAN, JX_IS_NULL, JX_NUMBER
+
+from jx_base.expressions import FALSE, NULL, NullOp, jx_expression, PythonScript, TRUE
 from jx_base.language import Language, is_expression, is_op
-from mo_dots import is_data, is_list, Null
-from mo_future import is_text
-from mo_json import BOOLEAN
 
-NumberOp, OrOp, PythonScript, ScriptOp, WhenOp = [None]*5
+ToNumberOp, OrOp, ScriptOp, WhenOp, compile_expression = expect(
+    "ToNumberOp", "OrOp", "ScriptOp", "WhenOp", "compile_expression"
+)
 
 
 def jx_expression_to_function(expr):
@@ -34,74 +34,86 @@ def jx_expression_to_function(expr):
         return Null
 
     if is_expression(expr):
+        # ALREADY AN EXPRESSION OBJECT
         if is_op(expr, ScriptOp) and not is_text(expr.script):
             return expr.script
         else:
-            return compile_expression(Python[expr].to_python())
-    if (
-        expr != None
-        and not is_data(expr)
-        and not is_list(expr)
-        and hasattr(expr, "__call__")
-    ):
+            func = compile_expression(expr.to_python())
+            return JXExpression(func, expr.__data__())
+    if not is_data(expr) and not is_list(expr) and hasattr(expr, "__call__"):
+        # THIS APPEARS TO BE A FUNCTION ALREADY
         return expr
-    return compile_expression(Python[jx_expression(expr)].to_python())
+
+    expr = jx_expression(expr)
+    func = compile_expression((expr).to_python())
+    return JXExpression(func, expr)
+
+
+class JXExpression(object):
+    def __init__(self, func, expr):
+        self.func = func
+        self.expr = expr
+
+    def __call__(self, *args, **kwargs):
+        return self.func(*args)
+
+    def __str__(self):
+        return str(self.expr.__data__())
+
+    def __repr__(self):
+        return repr(self.expr.__data__())
+
+    def __data__(self):
+        return self.expr.__data__()
 
 
 @extend(NullOp)
-def to_python(self, not_null=False, boolean=False, many=False):
-    return "None"
+def to_python(self, loop_depth=0):
+    return PythonScript({}, loop_depth, JX_IS_NULL, "None", NullOp, TRUE)
 
 
-def _inequality_to_python(self, not_null=False, boolean=False, many=True):
+def _inequality_to_python(self, loop_depth=0):
     op, identity = _python_operators[self.op]
-    lhs = NumberOp(self.lhs).partial_eval().to_python(not_null=True)
-    rhs = NumberOp(self.rhs).partial_eval().to_python(not_null=True)
-    script = "(" + lhs + ") " + op + " (" + rhs + ")"
+    lhs = ToNumberOp(self.lhs).partial_eval(Python).to_python(loop_depth)
+    rhs = ToNumberOp(self.rhs).partial_eval(Python).to_python(loop_depth)
+    script = f"({lhs.source}) {op} ({rhs.source})"
 
-    output = (
+    return (
         WhenOp(
-            OrOp([self.lhs.missing(), self.rhs.missing()]),
+            OrOp(self.lhs.missing(Python), self.rhs.missing(Python)),
             **{
                 "then": FALSE,
-                "else": PythonScript(type=BOOLEAN, expr=script, frum=self),
-            }
+                "else": PythonScript({**lhs.locals, **rhs.locals}, loop_depth, JX_BOOLEAN, script, self),
+            },
         )
-        .partial_eval()
-        .to_python()
+        .partial_eval(Python)
+        .to_python(loop_depth)
     )
-    return output
 
 
-def _binaryop_to_python(self, not_null=False, boolean=False, many=True):
+def _binaryop_to_python(self, loop_depth, not_null=False, boolean=False):
     op, identity = _python_operators[self.op]
 
-    lhs = NumberOp(self.lhs).partial_eval().to_python(not_null=True)
-    rhs = NumberOp(self.rhs).partial_eval().to_python(not_null=True)
-    script = "(" + lhs + ") " + op + " (" + rhs + ")"
-    missing = OrOp([self.lhs.missing(), self.rhs.missing()]).partial_eval()
-    if missing is FALSE:
-        return script
-    else:
-        return "(None) if (" + missing.to_python() + ") else (" + script + ")"
+    lhs = ToNumberOp(self.lhs).partial_eval(Python).to_python(loop_depth)
+    rhs = ToNumberOp(self.rhs).partial_eval(Python).to_python(loop_depth)
+    script = f"({lhs.source}){op}({rhs.source})"
+    missing = OrOp(lhs.missing(Python), rhs.missing(Python)).partial_eval(Python)
+    return PythonScript(merge_locals(lhs.locals, rhs.locals), loop_depth, JX_NUMBER, script, self, missing)
 
 
-def multiop_to_python(self, not_null=False, boolean=False, many=False):
+def multiop_to_python(self, loop_depth):
     sign, zero = _python_operators[self.op]
     if len(self.terms) == 0:
-        return Python[self.default].to_python()
-    elif self.default is NULL:
-        return sign.join(
-            "coalesce(" + Python[t].to_python() + ", " + zero + ")" for t in self.terms
-        )
-    else:
-        return (
-            "coalesce("
-            + sign.join("(" + Python[t].to_python() + ")" for t in self.terms)
-            + ", "
-            + Python[self.default].to_python()
-            + ")"
-        )
+        NULL.to_python(loop_depth)
+
+    terms = [t.to_python(loop_depth) for t in self.terms]
+    return PythonScript(
+        merge_locals(*(t.locals for t in terms), coalesce=coalesce),
+        loop_depth,
+        JX_NUMBER,
+        sign.join(f"coalesce({t.source}, {zero})" for t in self.terms),
+        self
+    )
 
 
 def with_var(var, expression, eval):
@@ -117,6 +129,18 @@ def with_var(var, expression, eval):
 Python = Language("Python")
 
 
+@dataclass
+class PythonSource:
+    locals: Dict[str, Any]
+    source: str
+
+    def __str__(self):
+        return self.source
+
+    def __data__(self):
+        return strings.quote(self.source)
+
+
 _python_operators = {
     "add": (" + ", "0"),  # (operator, zero-array default value) PAIR
     "sum": (" + ", "0"),
@@ -130,3 +154,6 @@ _python_operators = {
     "lte": (" <= ", None),
     "lt": (" < ", None),
 }
+
+
+export("jx_base.data_class", Python)

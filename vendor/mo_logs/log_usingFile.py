@@ -7,15 +7,11 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-
-
-from __future__ import absolute_import, division, unicode_literals
-
-from mo_future import is_text, is_binary
 import time
 
 from mo_future import allocate_lock
-from mo_logs import Log
+
+from mo_logs import logger
 from mo_logs.log_usingNothing import StructuredLogger
 from mo_logs.strings import expand_template
 
@@ -37,6 +33,7 @@ class StructuredLogger_usingFile(StructuredLogger):
             with self.file_lock:
                 self.file.append(expand_template(template, params))
         except Exception as e:
-            Log.warning("Problem writing to file {{file}}, waiting...", file=self.file.name, cause=e)
+            logger.warning(
+                "Problem writing to file {{file}}, waiting...", file=self.file.name, cause=e,
+            )
             time.sleep(5)
-

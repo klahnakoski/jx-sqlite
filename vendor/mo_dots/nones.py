@@ -7,14 +7,16 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_binary, text, none_type
 
-from mo_dots.utils import CLASS, OBJ
+from mo_future import text
+from mo_imports import expect, export
 
-wrap = None
-is_sequence = None
+from mo_dots.lists import is_sequence
+from mo_dots.utils import CLASS, KEY, SLOT
+
+to_data, null_types, get_attr = expect("to_data", "null_types", "get_attr")
+
 _get = object.__getattribute__
 _set = object.__setattr__
 _zero_list = []
@@ -31,20 +33,20 @@ class NullType(object):
     ASSIGNMENT CAN BE DONE
     """
 
+    __slots__ = [SLOT, KEY]
+
     def __init__(self, obj=None, key=None):
         """
         obj - VALUE BEING DEREFERENCED
         key - THE dict ITEM REFERENCE (DOT(.) IS NOT ESCAPED)
         """
-        d = _get(self, "__dict__")
-        d[OBJ] = obj
-        d["__key__"] = key
+        _set(self, SLOT, obj)
+        _set(self, KEY, key)
 
     def __bool__(self):
         return False
 
-    def __nonzero__(self):
-        return False
+    __nonzero__ = __bool__
 
     def __add__(self, other):
         if is_sequence(other):
@@ -52,22 +54,20 @@ class NullType(object):
         return Null
 
     def __radd__(self, other):
+        if is_sequence(other):
+            return other
         return Null
 
     def __call__(self, *args, **kwargs):
         return Null
 
     def __iadd__(self, other):
-        try:
-            d = _get(self, "__dict__")
-            o = d[OBJ]
-            if o is None:
-                return self
-            key = d["__key__"]
+        o = _get(self, SLOT)
+        if o is None:
+            return self
+        key = _get(self, KEY)
 
-            _assign_to_null(o, [key], other)
-        except Exception as e:
-            raise e
+        _assign_to_null(o, [key], other)
         return other
 
     def __sub__(self, other):
@@ -85,13 +85,28 @@ class NullType(object):
     def __rmul__(self, other):
         return Null
 
+    def __int__(self):
+        return None
+
+    def __float__(self):
+        return float('nan')
+
     def __div__(self, other):
+        return Null
+
+    def __itruediv__(self, other):
         return Null
 
     def __rdiv__(self, other):
         return Null
 
     def __truediv__(self, other):
+        return Null
+
+    def __floordiv__(self, other):
+        return Null
+
+    def __rfloordiv__(self, other):
         return Null
 
     def __rtruediv__(self, other):
@@ -111,7 +126,7 @@ class NullType(object):
 
     def __eq__(self, other):
         class_ = _get(other, CLASS)
-        if class_ in (none_type, NullType):
+        if class_ in null_types:
             return True
         elif class_ is list and not other:
             return True
@@ -122,9 +137,7 @@ class NullType(object):
         return other is not None and _get(other, CLASS) is not NullType and other != None
 
     def __or__(self, other):
-        if other is True:
-            return True
-        return Null
+        return other
 
     def __ror__(self, other):
         return other
@@ -134,7 +147,15 @@ class NullType(object):
             return False
         return Null
 
+    def __rand__(self, other):
+        if other is False:
+            return False
+        return Null
+
     def __xor__(self, other):
+        return Null
+
+    def __rxor__(self, other):
         return Null
 
     def __len__(self):
@@ -149,20 +170,9 @@ class NullType(object):
     def __deepcopy__(self, memo):
         return Null
 
-    def last(self):
-        """
-        IN CASE self IS INTERPRETED AS A list
-        """
-        return Null
-
-    def right(self, num=None):
-        return Null
-
     def __getitem__(self, key):
         if isinstance(key, slice):
             return Null
-        elif is_binary(key):
-            key = key.decode("utf8")
         elif isinstance(key, int):
             return NullType(self, key)
 
@@ -175,38 +185,32 @@ class NullType(object):
     def __getattr__(self, key):
         key = text(key)
 
-        d = _get(self, "__dict__")
-        o = wrap(d[OBJ])
-        k = d["__key__"]
-        if o is None:
-            return Null
-        elif _get(o, CLASS) is NullType:
+        o = to_data(_get(self, SLOT))
+        k = _get(self, KEY)
+        if o == None:
             return NullType(self, key)
         v = o.get(k)
         if v == None:
             return NullType(self, key)
         try:
-            return wrap(v.get(key))
+            return v.get(key)
         except Exception as e:
             from mo_logs import Log
+
             Log.error("not expected", cause=e)
 
     def __setattr__(self, key, value):
         key = text(key)
-
-        d = _get(self, "__dict__")
-        o = wrap(d[OBJ])
-        k = d["__key__"]
-
+        o = _get(self, SLOT)
+        k = _get(self, KEY)
         seq = [k] + [key]
         _assign_to_null(o, seq, value)
 
     def __setitem__(self, key, value):
-        d = _get(self, "__dict__")
-        o = d[OBJ]
+        o = _get(self, SLOT)
         if o is None:
             return
-        k = d["__key__"]
+        k = _get(self, KEY)
 
         if o is None:
             return
@@ -236,7 +240,8 @@ class NullType(object):
         return _null_hash
 
 
-Null = NullType()   # INSTEAD OF None!!!
+Null = NullType()  # INSTEAD OF None!!!
+_set(Null, SLOT, Null)
 
 
 def _assign_to_null(obj, path, value, force=True):
@@ -249,10 +254,9 @@ def _assign_to_null(obj, path, value, force=True):
         if obj is Null:
             return
         if _get(obj, CLASS) is NullType:
-            d = _get(obj, "__dict__")
-            o = d[OBJ]
-            p = d["__key__"]
-            s = [p]+path
+            o = _get(obj, SLOT)
+            p = _get(obj, KEY)
+            s = [p] + path
             return _assign_to_null(o, s, value)
 
         path0 = path[0]
@@ -264,7 +268,7 @@ def _assign_to_null(obj, path, value, force=True):
                 _setdefault(obj, path0, value)
             return
 
-        old_value = obj.get(path0)
+        old_value = get_attr(obj, path0)
         if old_value == None:
             if value == None:
                 return
@@ -283,7 +287,7 @@ def _split_field(field):
     if field == ".":
         return []
     else:
-        return [k.replace("\a", ".") for k in field.replace("\\.", "\a").split(".")]
+        return [k.replace("\b", ".") for k in field.replace("..", "\b").split(".")]
 
 
 def _setdefault(obj, key, value):
@@ -297,3 +301,5 @@ def _setdefault(obj, key, value):
     return v
 
 
+export("mo_dots.lists", Null)
+export("mo_dots.lists", "EMPTY", Null)

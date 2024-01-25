@@ -7,44 +7,35 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions import LeavesOp as LeavesOp_
-from jx_base.language import is_op
-from jx_sqlite.expressions._utils import check
+from jx_base.expressions import LeavesOp as LeavesOp_, CoalesceOp
+from jx_base.expressions.select_op import SelectOp, SelectOne
+from jx_base.expressions.variable import is_variable
+from jx_sqlite.expressions._utils import check, SQLang
 from jx_sqlite.expressions.variable import Variable
-from mo_dots import join_field, split_field, startswith_field, wrap
-from mo_json import EXISTS, NESTED, OBJECT
+from mo_dots import Null, concat_field, literal_field
 from mo_logs import Log
 
 
 class LeavesOp(LeavesOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        if not is_op(self.term, Variable):
+    def to_sql(self, schema):
+        if not is_variable(self.term):
             Log.error("Can only handle Variable")
-        term = self.term.var
-        prefix_length = len(split_field(term))
-        output = wrap(
-            [
-                {
-                    "name": join_field(
-                        split_field(schema.get_column_name(c))[prefix_length:]
-                    ),
-                    "sql": Variable(schema.get_column_name(c)).to_sql(schema)[0].sql,
-                }
-                for c in schema.columns
-                if startswith_field(c.name, term)
-                and (
-                    (
-                        c.jx_type not in (EXISTS, OBJECT, NESTED)
-                        and startswith_field(schema.nested_path[0], c.nested_path[0])
-                    )
-                    or (
-                        c.jx_type not in (EXISTS, OBJECT)
-                        and schema.nested_path[0] == c.nested_path[0]
-                    )
+        var_name = self.term.var
+        leaves = list(schema.leaves(var_name))
+        unique = set(r for r, _ in leaves)
+
+        flat = SelectOp(
+            Null,
+            *(
+                SelectOne(
+                    literal_field(r),
+                    CoalesceOp(*(Variable(c.es_column) for rr, c in leaves if rr == r)).partial_eval(SQLang),
                 )
-            ]
+                for r in unique
+            )
         )
-        return output
+        if len(flat.terms) == 1:
+            return flat.terms[0].value.to_sql(schema)
+
+        return flat.partial_eval(SQLang).to_sql(schema)

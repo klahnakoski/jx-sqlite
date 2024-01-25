@@ -7,12 +7,17 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+from mo_dots import exists
 
-from jx_base.expressions import ExistsOp as ExistsOp_
-from jx_python.expressions._utils import Python
+from jx_base.expressions import ExistsOp as _ExistsOp
+from jx_base.expressions.python_script import PythonScript
+from jx_python.utils import merge_locals
+from mo_json import JX_BOOLEAN
 
 
-class ExistsOp(ExistsOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        return Python[self.field].to_python() + " != None"
+class ExistsOp(_ExistsOp):
+    def to_python(self, loop_depth=0):
+        expr = self.expr.to_python(loop_depth)
+        return PythonScript(
+            merge_locals(expr.locals, exists=exists), loop_depth, JX_BOOLEAN, f"exists({expr.source})", self
+        )

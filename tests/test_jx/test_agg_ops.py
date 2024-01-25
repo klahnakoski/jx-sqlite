@@ -5,17 +5,101 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
+
 
 from unittest import skipIf, skip
 
+from mo_testing.fuzzytestcase import add_error_reporting
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 
+@add_error_reporting
 class TestAggOps(BaseTestCase):
+
+    def test_boolean_in_expression(self):
+        test = {
+            "data": [
+                {"result": {"ok": True}},
+                {"result": {"ok": True}},
+                {"result": {"ok": True}},
+                {"result": {"ok": True}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": {
+                    "name": "failures",
+                    "aggregate": "sum",
+                    "value": {"when": {"eq": {"result.ok": "F"}}, "then": 1, "else": 0},
+                },
+            },
+            "expecting_list": {"meta": {"format": "value"}, "data": 4},
+        }
+
+        self.utils.execute_tests(test)
+
+    def test_boolean_in_expression2(self):
+        test = {
+            "data": [
+                {"result": {"ok": True}},
+                {"result": {"ok": True}},
+                {"result": {"ok": True}},
+                {"result": {"ok": True}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": {
+                    "name": "failures",
+                    "aggregate": "sum",
+                    "value": {
+                        "when": {"eq": {"result.ok": False}},
+                        "then": 1,
+                        "else": 0,
+                    },
+                },
+            },
+            "expecting_list": {"meta": {"format": "value"}, "data": 4},
+        }
+
+        self.utils.execute_tests(test)
+
+    @skipIf(global_settings.use == "sqlite", "broken")
+    def test_select_agg_mult_w_when(self):
+        test = {
+            "data": [
+                {"a": 0, "b": False},  # 0*1
+                {"a": 1, "b": False},  # 1*1 = 1
+                {"a": 2, "b": True},  # 2*0
+                {"a": 3, "b": False},  # 3*1 = 3
+                {"a": 4, "b": True},  # 4*0
+                {"a": 5, "b": False},  # 5*1 = 5
+                {"a": 6, "b": True},  # 6*0
+                {"a": 7, "b": True},  # 7*0
+                {"a": 8},  # COUNTED, "b" IS NOT true  # 8*1 = 8
+                {"b": True},  # NOT COUNTED              null * 0 = null
+                {"b": False},  # COUNTED                 null * 1 = null
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": {
+                    "name": "ab",
+                    "value": {"mult": ["a", {"when": "b", "then": 0, "else": 1}]},
+                    "aggregate": "sum",
+                },
+            },
+            "expecting_list": {"meta": {"format": "value"}, "data": 17},
+        }
+        self.utils.execute_tests(test)
 
     def test_simplest(self):
         test = {
@@ -218,7 +302,7 @@ class TestAggOps(BaseTestCase):
             }
         }
 
-        self.assertRaises("Expecting percentile to be a float", self.utils.execute_tests, test)
+        self.assertRaises("Expecting `percentile` to be a float", self.utils.execute_tests, test)
 
     def test_many_aggs_on_one_column(self):
         # ES WILL NOT ACCEPT TWO (NAIVE) AGGREGATES ON SAME FIELD, COMBINE THEM USING stats AGGREGATION
@@ -269,7 +353,7 @@ class TestAggOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_tests(test, tjson=True)
+        self.utils.execute_tests(test)
 
     def test_max_on_value(self):
         test = {
@@ -295,7 +379,7 @@ class TestAggOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_tests(test, tjson=True)
+        self.utils.execute_tests(test)
 
     def test_max_object_on_value(self):
         test = {
@@ -320,7 +404,7 @@ class TestAggOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_tests(test, tjson=True)
+        self.utils.execute_tests(test)
 
     @skipIf(global_settings.use == "sqlite", "sqlite does not have a median function")
     def test_median_on_value(self):
@@ -346,7 +430,7 @@ class TestAggOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_tests(test, tjson=True, places=2)
+        self.utils.execute_tests(test, places=2)
 
     def test_many_aggs_on_value(self):
         # ES WILL NOT ACCEPT TWO (NAIVE) AGGREGATES ON SAME FIELD, COMBINE THEM USING stats AGGREGATION
@@ -372,7 +456,7 @@ class TestAggOps(BaseTestCase):
                 ]
             }
         }
-        self.utils.execute_tests(test, tjson=True)
+        self.utils.execute_tests(test)
 
     def test_cardinality(self):
         test = {
@@ -401,6 +485,7 @@ class TestAggOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_max_on_tuple(self):
         test = {
             "data": [
@@ -426,7 +511,7 @@ class TestAggOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.elasticsearch.version.startswith("1."), "ES14 does not support max on tuples")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_max_on_tuple2(self):
         test = {
             "data": [

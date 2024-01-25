@@ -1,7 +1,7 @@
 ## The Future
 
 * **Hetrogenous Shards** - Being able to send the same query to multiple backends allows us to pick a backend that best meets requirements; very big, or very fast
-* **Dimensions** - The next step in isolating queries from schema migrations involves declaring "dimensions": [Dimensions](https://en.wikipedia.org/wiki/Dimension_(data_warehouse)) are a level of indirection responsible for translating the complex reality of the data to a cleaner and easy-to-query property. This can involve renaming, simple parsing, and adding business meaning to vectors in the multidimensional fact table.  
+* **Dimensions** - The next step in isolating queries from schema migrations involves declaring "dimensions": [Dimensions](https://en.wikipedia.org/wiki/_Dimension(data_warehouse)) are a level of indirection responsible for translating the complex reality of the data to a cleaner and easy-to-query property. This can involve renaming, simple parsing, and adding business meaning to vectors in the multidimensional fact table.  
 * **Machine Managed indexes** - Databases indexes act much like a columnar data store. If we account for the common queries received, we may be able to choose the right indexes to improve query response. We might just beat Elasticsearch!
 * **Subqueries** - Allowing heterogeneous data stores also allows us to split queries across platforms so each backend can handle the part it is best at; By dispatching data aggregation and filtering to a cluster we get fast response over big data, while a local database can use previous query results to perform sophisticated cross referencing and window functions.
 * **Add indexes and materialized views**

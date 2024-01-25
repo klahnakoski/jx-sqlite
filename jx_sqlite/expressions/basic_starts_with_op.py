@@ -7,34 +7,40 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions import BasicStartsWithOp as BasicStartsWithOp_, is_literal
-from jx_sqlite.expressions._utils import SQLang, check
+from jx_base.expressions import (
+    BasicStartsWithOp as _BasicStartsWithOp,
+    is_literal,
+    FALSE,
+)
+from jx_sqlite.expressions._utils import SQLang, check, SqlScript
 from jx_sqlite.expressions.sql_eq_op import SqlEqOp
 from jx_sqlite.expressions.sql_instr_op import SqlInstrOp
-from jx_sqlite.sqlite import quote_value
-from mo_dots import wrap
-from mo_sql import SQL, ConcatSQL, SQL_LIKE, SQL_ESCAPE, SQL_ONE
+from mo_sqlite import SQL, ConcatSQL, SQL_LIKE, SQL_ESCAPE, SQL_ONE
+from mo_sqlite import quote_value
+from mo_json.types import JX_BOOLEAN
 
 
-class BasicStartsWithOp(BasicStartsWithOp_):
+class BasicStartsWithOp(_BasicStartsWithOp):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        prefix = SQLang[self.prefix].partial_eval()
+    def to_sql(self, schema):
+        prefix = self.prefix.partial_eval(SQLang)
         if is_literal(prefix):
-            value = SQLang[self.value].partial_eval().to_sql(schema)[0].sql.s
+            value = self.value.partial_eval(SQLang).to_sql(schema)
             prefix = prefix.value
             if "%" in prefix or "_" in prefix:
                 for r in "\\_%":
                     prefix = prefix.replaceAll(r, "\\" + r)
-                sql = ConcatSQL(value, SQL_LIKE, quote_value(prefix+"%"), SQL_ESCAPE, SQL("\\"))
+                sql = ConcatSQL(
+                    value, SQL_LIKE, quote_value(prefix + "%"), SQL_ESCAPE, SQL("\\")
+                )
             else:
-                sql = ConcatSQL(value, SQL_LIKE, quote_value(prefix+"%"))
-            return wrap([{"name": ".", "sql": {"b": sql}}])
+                sql = ConcatSQL(value, SQL_LIKE, quote_value(prefix + "%"))
+            return SqlScript(
+                jx_type=JX_BOOLEAN, expr=sql, frum=self, miss=FALSE, schema=schema
+            )
         else:
             return (
-                SqlEqOp([SqlInstrOp([self.value, prefix]), SQL_ONE])
-                .partial_eval()
+                SqlEqOp(SqlInstrOp(self.value, prefix), SQL_ONE)
+                .partial_eval(SQLang)
                 .to_sql()
             )

@@ -7,20 +7,10 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions import RangeOp as RangeOp_
-from jx_python.expressions._utils import Python
 
 
-class RangeOp(RangeOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        return (
-            "("
-            + Python[self.then].to_python(not_null=not_null)
-            + ") if ("
-            + Python[self.when].to_python(boolean=True)
-            + ") else ("
-            + Python[self.els_].to_python(not_null=not_null)
-            + ")"
-        )
+from jx_base.expressions import RangeOp as _RangeOp
+
+
+class RangeOp(_RangeOp):
+    pass

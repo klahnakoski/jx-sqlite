@@ -7,23 +7,15 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions import CaseOp as CaseOp_
-from jx_python.expressions._utils import Python
 
 
-class CaseOp(CaseOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        acc = Python[self.whens[-1]].to_python()
+from jx_base.expressions import CaseOp as _CaseOp
+from jx_base.expressions.python_script import PythonScript
+
+
+class CaseOp(_CaseOp):
+    def to_python(self, loop_depth=0):
+        acc = (self.whens[-1]).to_python(loop_depth)
         for w in reversed(self.whens[0:-1]):
-            acc = (
-                "("
-                + Python[w.then].to_python()
-                + ") if ("
-                + Python[w.when].to_python(boolean=True)
-                + ") else ("
-                + acc
-                + ")"
-            )
-        return acc
+            acc = "(" + w.then.to_python(loop_depth) + ") if (" + w.when.to_python(loop_depth) + ") else (" + acc + ")"
+        return PythonScript({}, loop_depth, acc)

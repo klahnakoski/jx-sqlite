@@ -5,10 +5,12 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
+
+
+from unittest import skip
 
 from mo_times.dates import Date
 from mo_times.durations import DAY
@@ -46,7 +48,7 @@ simple_test_data =[
 ]
 
 
-class TestEdge1(BaseTestCase):
+class TestEdgeTime(BaseTestCase):
 
     def test_count_over_time(self):
         test = {

@@ -7,22 +7,23 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+
 
 import itertools
 
+from mo_collections.matrix import Matrix
+from mo_logs import Log
+
 from jx_base.domains import DefaultDomain, SimpleSetDomain
+from jx_base.utils import enlist
 from jx_python import windows
 from jx_python.expressions import jx_expression_to_function
-from mo_collections.matrix import Matrix
-from mo_dots import listwrap
-from mo_logs import Log
 
 
 def cube_aggs(frum, query):
-    select = listwrap(query.select)
+    select = enlist(query.select)
 
-    #MATCH EDGES IN QUERY TO ONES IN frum
+    # MATCH EDGES IN QUERY TO ONES IN frum
     for e in query.edges:
         for fs in frum.select:
             if fs.name == e.value:
@@ -40,11 +41,9 @@ def cube_aggs(frum, query):
                     e.value = e.value + "." + fe.domain.key
                     break
 
-
     result = {
         s.name: Matrix(
-            dims=[len(e.domain.partitions) + (1 if e.allowNulls else 0) for e in query.edges],
-            zeros=s.default
+            dims=[len(e.domain.partitions) + (1 if e.allowNulls else 0) for e in query.edges], zeros=s.default,
         )
         for s in select
     }
@@ -76,9 +75,9 @@ def cube_aggs(frum, query):
                 for c in itertools.product(*coord):
                     acc = mat[c]
                     if acc == None:
-                        acc = windows.name2accumulator.get(agg)
+                        acc = windows.name_to_aggregate.get(agg)
                         if acc == None:
-                            Log.error("select aggregate {{agg}} is not recognized",  agg= agg)
+                            Log.error("select aggregate {{agg}} is not recognized", agg=agg)
                         acc = acc(**s)
                         mat[c] = acc
                     acc.add(val)

@@ -7,20 +7,39 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions import NotRightOp as NotRightOp_
-from jx_sqlite.expressions._utils import check
-from jx_sqlite.sqlite import sql_call
-from mo_dots import wrap
-from mo_sql import SQL_ONE, SQL_ZERO, SQL
+from jx_base.expressions import (
+    NotRightOp as NotRightOp_,
+    LengthOp,
+    MaxOp,
+    SubOp,
+    Literal,
+    ZERO,
+)
+from jx_sqlite.expressions._utils import check, OrOp, SQLang
+from jx_sqlite.expressions.sql_script import SqlScript
+from mo_sqlite import SQL_ONE
+from mo_sqlite import sql_call
+from mo_json import JX_TEXT
 
 
 class NotRightOp(NotRightOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        v = self.value.to_sql(schema, not_null=True)[0].sql.s
-        r = self.length.to_sql(schema, not_null=True)[0].sql.n
-        l = sql_call("MAX", SQL_ZERO, sql_call("length", v) + SQL(" - ") + sql_call("MAX", SQL_ZERO, r))
-        sql = sql_call("SUBSTR", v, SQL_ONE, l)
-        return wrap([{"name": ".", "sql": {"s": sql}}])
+    def to_sql(self, schema):
+        v = self.value.to_sql(schema)
+        if self.length == ZERO:
+            return v
+
+        r = self.length.to_sql(schema)
+        end = (
+            MaxOp(ZERO, SubOp(LengthOp(self.value), MaxOp(ZERO, self.length)))
+            .partial_eval(SQLang)
+            .to_sql(schema)
+        )
+        sql = sql_call("SUBSTR", v.expr, SQL_ONE, end)
+        return SqlScript(
+            jx_type=JX_TEXT,
+            expr=sql,
+            frum=self,
+            miss=OrOp(r.miss, v.miss),
+            schema=schema,
+        )

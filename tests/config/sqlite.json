@@ -4,12 +4,12 @@
 		"name": "testing",
 //		"filename":"test.sqlite",
 		"upgrade": false,
-		"load_functions": false
+		"load_functions": true
 	},
 	"constants": {
-		"jx_sqlitel.sqlite.DEBUG": true
+		"mo_sqlite.sqlite.DEBUG": true
 	},
 	"debug": {
-		"trace":false
+		"trace":true
 	}
 }

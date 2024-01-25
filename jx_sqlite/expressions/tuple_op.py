@@ -7,16 +7,15 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions import TupleOp as TupleOp_
+from jx_base.expressions import TupleOp as _TupleOp, SelectOp
+from jx_base.expressions.select_op import SelectOne
 from jx_sqlite.expressions._utils import SQLang, check
-from mo_dots import wrap
+from mo_dots import Null
 
 
-class TupleOp(TupleOp_):
+class TupleOp(_TupleOp):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        return wrap(
-            [{"name": ".", "sql": SQLang[t].to_sql(schema)[0].sql} for t in self.terms]
-        )
+    def to_sql(self, schema):
+        output = SelectOp(Null, *(SelectOne(str(i), term) for i, term in enumerate(self.terms))).partial_eval(SQLang).to_sql(schema)
+        output.frum = self
+        return output

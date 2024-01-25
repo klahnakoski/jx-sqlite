@@ -7,16 +7,17 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions import MaxOp as MaxOp_
+from jx_base.expressions import MaxOp as _MaxOp, MissingOp
 from jx_sqlite.expressions._utils import SQLang, check
-from mo_dots import wrap
-from mo_sql import sql_iso, sql_list
+from jx_sqlite.expressions.sql_script import SqlScript
+from mo_sqlite import sql_call
+from mo_json import JX_NUMBER
 
 
-class MaxOp(MaxOp_):
+class MaxOp(_MaxOp):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        terms = [SQLang[t].partial_eval().to_sql(schema)[0].sql.n for t in self.terms]
-        return wrap([{"name": ".", "sql": {"n": "max" + sql_iso((sql_list(terms)))}}])
+    def to_sql(self, schema):
+        expr = sql_call("MAX", self.frum.to_sql(schema))
+        return SqlScript(
+            jx_type=JX_NUMBER, expr=expr, frum=self, schema=schema
+        )

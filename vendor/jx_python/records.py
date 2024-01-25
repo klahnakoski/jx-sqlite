@@ -7,19 +7,16 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
-from mo_dots import listwrap
+from jx_base.utils import enlist
 
 
 class Record(object):
-
     def __init__(self, coord, cube):
         self.coord = coord
         self.cube = cube
 
     def __getitem__(self, item):
-        for s in listwrap(self.cube.select):
+        for s in enlist(self.cube.select):
             if s.name == item:
                 return self.cube.data[item]
         for i, e in enumerate(self.cube.edges):

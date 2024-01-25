@@ -7,13 +7,16 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions import LengthOp as LengthOp_
-from jx_python.expressions._utils import Python
 
 
-class LengthOp(LengthOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        value = Python[self.term].to_python()
-        return "len(" + value + ") if (" + value + ") != None else None"
+from jx_base.expressions import LengthOp as _LengthOp
+from jx_base.expressions.python_script import PythonScript
+from mo_json import JX_INTEGER
+
+
+class LengthOp(_LengthOp):
+    def to_python(self, loop_depth=0):
+        value = self.term.to_python(loop_depth)
+        return PythonScript(
+            value.locals, loop_depth, JX_INTEGER, f"len({value.source}) if ({value.source}) != None else None", self
+        )

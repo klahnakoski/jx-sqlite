@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+
 
 import base64
 from math import (
@@ -21,7 +21,11 @@ from math import (
 )
 
 from mo_dots import Null, coalesce, is_container
-from mo_future import round as _round, text, __builtin__, binary_type
+from mo_future import round as math_round, text, __builtin__, binary_type
+from mo_imports import delay_import
+
+logger = delay_import("mo_logs.Log")
+
 
 """
 MATH FUNCTIONS THAT ASSUME None IMPLY *NOT APPLICABLE* RATHER THAN *MISSING*
@@ -35,20 +39,21 @@ func(None, *kwargs)) == None
 math_abs = __builtin__.abs
 
 
+INFINITY = float("+inf")
+
+
 def bayesian_add(*args):
     a = args[0]
     if a >= 1 or a <= 0:
-        from mo_logs import Log
 
-        Log.error("Only allowed values *between* zero and one")
+        logger.error("Only allowed values *between* zero and one")
 
     for b in args[1:]:
         if b == None:
             continue
         if b >= 1 or b <= 0:
-            from mo_logs import Log
 
-            Log.error("Only allowed values *between* zero and one")
+            logger.error("Only allowed values *between* zero and one")
         a = a * b / (a * b + (1 - a) * (1 - b))
 
     return a
@@ -81,14 +86,13 @@ def log(v, base=None):
         if v == None:
             return Null
         if v == 0.0:
-            return -float("inf")
+            return Null
         if base == None:
             return math_log(v)
         return math_log(v, base)
     except Exception as e:
-        from mo_logs import Log
 
-        Log.error("error in log", cause=e)
+        logger.error("error in log", cause=e)
 
 
 def log10(v):
@@ -120,7 +124,7 @@ def is_nan(s):
 def is_finite(s):
     try:
         f = float(s)
-        if math_abs(f) == float("+inf"):
+        if math_isnan(f) or math_abs(f) == INFINITY:
             return False
         return True
     except Exception:
@@ -140,11 +144,37 @@ def is_integer(s):
         return False
 
     try:
-        if float(s) == round(float(s), 0):
+        if float(s) == math_round(float(s), 0):
             return True
         return False
     except Exception:
         return False
+
+
+def to_integer(s):
+    if s is True:
+        return 1
+    if s is False:
+        return 0
+
+    try:
+        if float(s) == round(float(s), 0):
+            return int(s)
+        return Null
+    except Exception:
+        return Null
+
+
+def to_float(s):
+    if s is True:
+        return 1.0
+    if s is False:
+        return 0.0
+
+    try:
+        return float(s)
+    except Exception:
+        return Null
 
 
 def round(value, decimal=0, digits=None):
@@ -165,15 +195,14 @@ def round(value, decimal=0, digits=None):
             if digits <= 0:
                 return sign(value) * pow(10, round(math_log10(abs(value)), 0))
             m = pow(10, math_ceil(math_log10(abs(value))))
-            return _round(value / m, 0) * m
+            return math_round(value / m, digits) * m
         except Exception as e:
-            from mo_logs import Log
 
-            Log.error("not expected", e)
+            logger.error("not expected", e)
     elif decimal <= 0:
-        return int(_round(value, decimal))
+        return int(math_round(value, decimal))
     else:
-        return _round(value, decimal)
+        return math_round(value, decimal)
 
 
 def floor(value, mod=1):
@@ -198,14 +227,9 @@ def mod(value, mod=1):
     RETURN NON-NEGATIVE MODULO
     RETURN None WHEN GIVEN INVALID ARGUMENTS
     """
-    if value == None:
+    if value == None or mod <= 0:
         return None
-    elif mod <= 0:
-        return None
-    elif value < 0:
-        return (value % mod + mod) % mod
-    else:
-        return value % mod
+    return value % mod
 
 
 # RETURN A VALUE CLOSE TO value, BUT WITH SHORTER len(text(value))<len(text(value)):
@@ -266,9 +290,7 @@ def COUNT(values):
 
 def MIN(values, *others):
     if others:
-        from mo_logs import Log
-
-        Log.warning("Calling wrong")
+        logger.warning("Calling wrong")
         return MIN([values] + list(others))
 
     output = None
@@ -291,9 +313,8 @@ def MAX(values, *others):
     """
 
     if others:
-        from mo_logs import Log
 
-        Log.warning("Calling wrong")
+        logger.warning("Calling wrong")
         return MAX([values] + list(others))
 
     output = Null
@@ -323,9 +344,8 @@ def SUM(values):
 
 def PRODUCT(values, *others):
     if len(others) > 0:
-        from mo_logs import Log
 
-        Log.error("no longer accepting args, use a single list")
+        logger.error("no longer accepting args, use a single list")
 
     output = Null
     for v in values:
@@ -342,9 +362,8 @@ def PRODUCT(values, *others):
 
 def AND(values, *others):
     if len(others) > 0:
-        from mo_logs import Log
 
-        Log.error("no longer accepting args, use a single list")
+        logger.error("no longer accepting args, use a single list")
 
     for v in values:
         if v == None:
@@ -356,9 +375,8 @@ def AND(values, *others):
 
 def OR(values, *others):
     if len(others) > 0:
-        from mo_logs import Log
 
-        Log.error("no longer accepting args, use a single list")
+        logger.error("no longer accepting args, use a single list")
 
     for v in values:
         if v == None:
@@ -370,13 +388,12 @@ def OR(values, *others):
 
 def UNION(values, *others):
     if len(others) > 0:
-        from mo_logs import Log
 
-        Log.error("no longer accepting args, use a single list")
+        logger.error("no longer accepting args, use a single list")
 
     output = set()
     for v in values:
-        if values == None:
+        if v == None:
             continue
         if is_container(v):
             output.update(v)
@@ -399,9 +416,8 @@ def is_number(s):
 
 def INTERSECT(values, *others):
     if len(others) > 0:
-        from mo_logs import Log
 
-        Log.error("no longer accepting args, use a single list")
+        logger.error("no longer accepting args, use a single list")
 
     output = set(values[0])
     for v in values[1:]:
@@ -427,9 +443,8 @@ def almost_equal(first, second, digits=None, places=None, delta=None):
 
         return False
     except Exception as e:
-        from mo_logs import Log
 
-        Log.error("problem comparing", cause=e)
+        logger.error("problem comparing", cause=e)
 
 
 def bytes2base64(value):
@@ -460,8 +475,3 @@ def int2base64(value):
 
 def base642int(value):
     return int.from_bytes(base642bytes(value), byteorder="big")
-
-
-from mo_math import stats
-
-_ = stats

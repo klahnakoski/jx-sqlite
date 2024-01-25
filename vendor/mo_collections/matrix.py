@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+
 
 from mo_dots import Data, Null, coalesce, get_module, is_sequence
 from mo_future import text, transpose, xrange
@@ -100,7 +100,10 @@ class Matrix(object):
             m = self.cube
             for k in key[0:last:]:
                 m = m[k]
-            m[key[last]] = value
+            try:
+                m[key[last]] = value
+            except Exception as cause:
+                raise Log.error("problem", cause=cause)
         except Exception as e:
             Log.error("can not set item", e)
 
@@ -211,7 +214,6 @@ class Matrix(object):
             Log.error("Aggregate of type {{type}} is not supported yet",  type= type)
 
         return func(self.num, self.cube)
-
 
     def forall(self, method):
         """
