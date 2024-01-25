@@ -70,13 +70,13 @@ from mo_times import Date
 
 class InsertTable(Facts):
     def add(self, doc):
-        self.insert([doc])
+        return self.insert([doc])
 
     def insert(self, docs):
         if not is_many(docs):
             Log.error("Expecting a list of documents")
         doc_collection = self.flatten_many(docs)
-        self._insert(doc_collection)
+        return self._insert(doc_collection)
 
     def update(self, command):
         """
@@ -470,7 +470,7 @@ class InsertTable(Facts):
 
             with self.container.db.transaction() as t:
                 t.execute(command)
-
+        return self
 
 class Insertion:
     def __init__(self):
