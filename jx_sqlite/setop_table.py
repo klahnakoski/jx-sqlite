@@ -117,7 +117,7 @@ class SetOpTable(InsertTable):
                     if child_id is None:
                         continue
 
-                    rownum, next_iter_row, _, nested_value = _accumulate_nested(
+                    rownum, next_iter_row, row, nested_value = _accumulate_nested(
                         rows_iter, rows, rownum, next_iter_row, rows[rownum], num_rows, child_details, row[id_coord], id_coord
                     )
                     if not nested_value:
@@ -135,17 +135,17 @@ class SetOpTable(InsertTable):
                     try:
                         next_iter_row = next(rows_iter)
                     except StopIteration:
-                        return next_rownum, None, None, output
+                        return rownum + 1, None, None, output
                 next_rownum = rownum + 1
                 if next_rownum >= num_rows:
-                    return next_rownum, next_iter_row, None, output
+                    return next_rownum, None, None, output
                 next_row = rows[next_rownum]
                 assertAlmostEqual(next_row, next_iter_row, "row mismatch")
 
                 if parent_id and parent_id != next_row[parent_id_coord]:
                     return rownum, next_iter_row, row, output
                 rownum = next_rownum
-                row = next_iter_row
+                row, next_iter_row = next_iter_row, None
 
         cols = tuple(i for i in index_to_column.values() if i.push_list_name != None)
 
