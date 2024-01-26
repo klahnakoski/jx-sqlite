@@ -77,7 +77,6 @@ class SetOpTable(InsertTable):
         def _accumulate_nested(
             rows_iter,
             rows,
-            rownum,
             next_iter_row,
             row,
             num_rows,
@@ -116,10 +115,9 @@ class SetOpTable(InsertTable):
                     if child_id is None:
                         continue
 
-                    rownum, next_iter_row, row, nested_value = _accumulate_nested(
+                    next_iter_row, row, nested_value = _accumulate_nested(
                         rows_iter,
                         rows,
-                        rownum,
                         next_iter_row,
                         row,
                         num_rows,
@@ -140,9 +138,9 @@ class SetOpTable(InsertTable):
                     try:
                         next_iter_row = next(rows_iter)
                     except StopIteration:
-                        return rownum + 1, None, None, output
+                        return None, None, output
                 if parent_id and parent_id != next_iter_row[parent_id_coord]:
-                    return rownum, next_iter_row, row, output
+                    return next_iter_row, row, output
                 row, next_iter_row = next_iter_row, None
 
         cols = tuple(i for i in index_to_column.values() if i.push_list_name != None)
@@ -150,8 +148,8 @@ class SetOpTable(InsertTable):
         if result.data:
             rows = iter(result.data)
             first_row = next(rows)
-            _, _, _, data = _accumulate_nested(
-                rows, result.data, 0, None, first_row, len(result.data), primary_doc_details, 0, 0
+            _, _, data = _accumulate_nested(
+                rows, result.data, None, first_row, len(result.data), primary_doc_details, 0, 0
             )
         else:
             data = result.data
