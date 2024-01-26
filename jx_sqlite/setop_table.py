@@ -75,9 +75,9 @@ class SetOpTable(InsertTable):
         result = self.container.db.query(command)
 
         def _accumulate_nested(
-            rows_iter,
-            next_iter_row,
+            rows,
             row,
+            next_row,
             nested_doc_details: DocumentDetails,
             parent_id: int,
             parent_id_coord: int,
@@ -113,10 +113,10 @@ class SetOpTable(InsertTable):
                     if child_id is None:
                         continue
 
-                    next_iter_row, row, nested_value = _accumulate_nested(
-                        rows_iter,
-                        next_iter_row,
+                    next_row, row, nested_value = _accumulate_nested(
+                        rows,
                         row,
+                        next_row,
                         child_details,
                         row[id_coord],
                         id_coord,
@@ -130,14 +130,14 @@ class SetOpTable(InsertTable):
                 if doc or not parent_id:
                     output.append(doc)
 
-                if not next_iter_row:
+                if not next_row:
                     try:
-                        next_iter_row = next(rows_iter)
+                        next_row = next(rows)
                     except StopIteration:
                         return None, None, output
-                if parent_id and parent_id != next_iter_row[parent_id_coord]:
-                    return next_iter_row, row, output
-                row, next_iter_row = next_iter_row, None
+                if parent_id and parent_id != next_row[parent_id_coord]:
+                    return next_row, row, output
+                row, next_row = next_row, None
 
         cols = tuple(i for i in index_to_column.values() if i.push_list_name != None)
 
@@ -145,7 +145,7 @@ class SetOpTable(InsertTable):
             rows = iter(result.data)
             first_row = next(rows)
             _, _, data = _accumulate_nested(
-                rows, None, first_row, primary_doc_details, 0, 0
+                rows, first_row, None, primary_doc_details, 0, 0
             )
         else:
             data = result.data
