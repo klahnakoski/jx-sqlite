@@ -94,14 +94,14 @@ class SetOpTable(InsertTable):
             curr_nested_path, _ = untype_field(nested_doc_details.nested_path[0])
 
             index_to_column = tuple(
-                (i, c, c.push_list_name)
-                for i, c in nested_doc_details.index_to_column.items()
+                (c.push_list_name, c.pull)
+                for _, c in nested_doc_details.index_to_column.items()
             )
             row = rows[rownum]
             while True:
                 doc = Null
-                for i, c, rel_field in index_to_column:
-                    value = c.pull(row)
+                for rel_field, pull in index_to_column:
+                    value = pull(row)
                     if is_missing(value):
                         continue
                     doc = doc or Data()
