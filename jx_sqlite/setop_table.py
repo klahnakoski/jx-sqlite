@@ -76,6 +76,7 @@ class SetOpTable(InsertTable):
             rows_iter,
             rows,
             rownum,
+            next_iter_row,
             row,
             num_rows,
             nested_doc_details: DocumentDetails,
@@ -116,8 +117,8 @@ class SetOpTable(InsertTable):
                     if child_id is None:
                         continue
 
-                    rownum, _, nested_value = _accumulate_nested(
-                        rows_iter, rows, rownum, rows[rownum], num_rows, child_details, row[id_coord], id_coord
+                    rownum, next_iter_row, _, nested_value = _accumulate_nested(
+                        rows_iter, rows, rownum, next_iter_row, rows[rownum], num_rows, child_details, row[id_coord], id_coord
                     )
                     if not nested_value:
                         continue
@@ -132,21 +133,23 @@ class SetOpTable(InsertTable):
 
                 next_rownum = rownum + 1
                 if next_rownum >= num_rows:
-                    return next_rownum, None, output
+                    return next_rownum, next_iter_row, None, output
                 next_row = rows[next_rownum]
-                next_iter_row = next(rows_iter)
+                if not next_iter_row:
+                    next_iter_row = next(rows_iter)
+                assertAlmostEqual(next_row, next_iter_row, "row mismatch")
+
                 if parent_id and parent_id != next_row[parent_id_coord]:
-                    return rownum, row, output
-                if next_row != next_iter_row:
-                    assertAlmostEqual(next_row, next_iter_row, "row mismatch")
+                    return rownum, next_iter_row, row, output
                 rownum = next_rownum
-                row = next_row
+                row = next_iter_row
 
         cols = tuple(i for i in index_to_column.values() if i.push_list_name != None)
 
         if result.data:
-            rows = result.data
-            _, _, data = _accumulate_nested(iter(rows), rows, 0, rows[0], len(rows), primary_doc_details, 0, 0)
+            rows = iter(result.data)
+            first_row = next(rows)
+            _, _, _, data = _accumulate_nested(rows, result.data, 0, None, first_row, len(result.data), primary_doc_details, 0, 0)
         else:
             data = result.data
 
