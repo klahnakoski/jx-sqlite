@@ -69,7 +69,7 @@ class ColumnList(Table, Container):
         self.es_index = None
         self.last_load = Null
         self.todo = Queue("update columns to es")  # HOLD (action, column) PAIR, WHERE action in ['insert', 'update']
-        self._snowflakes = {}
+        self._snowflakes = {}  # MAP FROM fact_name TO LIST OF NESTED PATHS
         self._load_from_database()
 
     def _query(self, query):
@@ -94,38 +94,35 @@ class ColumnList(Table, Container):
         for table in tables:
             if table.name.startswith("__"):
                 continue
-            base_table, nested_path = tail_field(table.name)
+            base_table, rel_nested_path = tail_field(table.name)
 
             # FIND COMMON ARRAY PATH SUFFIX
-            if nested_path == ".":
-                last_nested_path = []
+            for i, p in enumerate(last_nested_path):
+                if startswith_field(table.name, p):
+                    last_nested_path = last_nested_path[i:]
+                    break
             else:
-                for i, p in enumerate(last_nested_path):
-                    if startswith_field(nested_path, p):
-                        last_nested_path = last_nested_path[i:]
-                        break
-                else:
-                    last_nested_path = []
+                last_nested_path = []
 
-            full_nested_path = [nested_path] + last_nested_path
+            full_nested_path = [table.name] + last_nested_path
             self._snowflakes.setdefault(base_table, []).append(full_nested_path)
 
             # LOAD THE COLUMNS
             details = self.db.about(table.name)
 
-            for cid, name, dtype, notnull, dfft_value, pk in details:
+            for cid, name, sql_type, notnull, dfft_value, pk in details:
                 if name.startswith("__"):
                     continue
-                cname, ctype = untyped_column(name)
+                cname, sql_type_key = untyped_column(name)
                 self.add(Column(
                     name=cname,
                     json_type=coalesce(
-                        sql_type_key_to_json_type.get(ctype),
-                        sql_type_key_to_json_type.get(dtype),
+                        sql_type_key_to_json_type.get(sql_type_key),
+                        sql_type_key_to_json_type.get(sql_type),
                         IS_NULL,
                     ),
                     nested_path=full_nested_path,
-                    es_type=dtype,
+                    es_type=sql_type,
                     es_column=name,
                     es_index=table.name,
                     multi=1,

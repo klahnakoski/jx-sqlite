@@ -2,7 +2,7 @@ from mo_logs import logger
 
 from jx_sqlite import Container
 
-result = table = (
+result = (
     Container()
     .get_or_create_facts("my_table")
     .add({"os": "linux", "value": 42})

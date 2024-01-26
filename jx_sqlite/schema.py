@@ -95,7 +95,7 @@ class Schema(object):
 
         search_path = [
             *self.nested_path,
-            *(p for p in self.snowflake.query_paths if p.startswith(self.nested_path[0] + "."))
+            *(np for np in self.snowflake.query_paths if np.startswith(self.nested_path[0] + "."))
         ]
 
         for np in search_path:

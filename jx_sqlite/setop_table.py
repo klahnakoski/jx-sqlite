@@ -81,7 +81,7 @@ class SetOpTable(InsertTable):
             nested_doc_details: DocumentDetails,
             parent_id: int,
             parent_id_coord: int,
-        ) -> Tuple[Data(), Data(), List[Data]]:
+        ) -> Tuple[Data, Data, List[Data]]:
             """
             :param rownum: index into rows for row
             :param nested_doc_details: {

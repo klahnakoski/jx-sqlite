@@ -277,10 +277,9 @@ class Snowflake(jx_base.Snowflake):
         """
         RETURN TABLE FOR query_path (WITH SOME PATTERN MATCHING)
         """
-        path, type = untype_field(query_path)
-        abs_path = concat_field(self.fact_name, path)
+        abs_path, _ = untype_field(query_path)
 
-        best = first(p for p in self.query_paths if untype_field(p)[0] == abs_path)
+        best = first(np for np in self.query_paths if untype_field(np)[0] == abs_path)
         if not best:
             Log.error("Can not find table with path {{path|quote}}", path=query_path)
         nested_path = list(reversed(sorted(

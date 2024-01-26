@@ -154,9 +154,9 @@ class QueryTable(GroupbyTable):
         else:
             return self._set_op(normalized_query)
 
-        return self.format_flat(command, normalized_query, index_to_columns)
+        return self.format_flat(normalized_query, command, index_to_columns)
 
-    def format_flat(self, command, normalized_query, index_to_columns):
+    def format_flat(self, normalized_query, command, index_to_columns):
         if normalized_query.format == "container":
             new_table = "temp_" + unique_name()
             create_table = SQL_CREATE + quote_column(new_table) + SQL_AS

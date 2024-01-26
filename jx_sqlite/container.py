@@ -40,10 +40,10 @@ class Container(_Container):
     @override
     def __init__(
         self,
-        db=None,  # EXISTING Sqlite3 DATBASE, OR CONFIGURATION FOR Sqlite DB
-        filename=None,  # FILE FOR THE DATABASE (None FOR MEMORY DATABASE)
-        kwargs=None,  # See Sqlite parameters
-    ):
+            db: object = None,  # EXISTING Sqlite3 DATBASE, OR CONFIGURATION FOR Sqlite DB
+            filename: object = None,  # FILE FOR THE DATABASE (None FOR MEMORY DATABASE)
+            kwargs: object = None,  # See Sqlite parameters
+    ) -> object:
         global _config
         if isinstance(db, Sqlite):
             self.db = db
