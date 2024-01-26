@@ -9,6 +9,8 @@
 #
 from typing import List, Dict, Tuple
 
+from mo_testing.fuzzytestcase import assertAlmostEqual
+
 from jx_base import Column, is_op
 from jx_base.expressions import NULL
 from jx_python import jx
@@ -71,6 +73,7 @@ class SetOpTable(InsertTable):
         result = self.container.db.query(command)
 
         def _accumulate_nested(
+            rows_iter,
             rows,
             rownum,
             row,
@@ -113,8 +116,8 @@ class SetOpTable(InsertTable):
                     if child_id is None:
                         continue
 
-                    rownum, nested_value = _accumulate_nested(
-                        rows, rownum, rows[rownum], num_rows, child_details, row[id_coord], id_coord
+                    rownum, _, nested_value = _accumulate_nested(
+                        rows_iter, rows, rownum, rows[rownum], num_rows, child_details, row[id_coord], id_coord
                     )
                     if not nested_value:
                         continue
@@ -129,17 +132,21 @@ class SetOpTable(InsertTable):
 
                 next_rownum = rownum + 1
                 if next_rownum >= num_rows:
-                    return next_rownum, output
+                    return next_rownum, None, output
                 next_row = rows[next_rownum]
+                next_iter_row = next(rows_iter)
                 if parent_id and parent_id != next_row[parent_id_coord]:
-                    return rownum, output
+                    return rownum, row, output
+                if next_row != next_iter_row:
+                    assertAlmostEqual(next_row, next_iter_row, "row mismatch")
                 rownum = next_rownum
+                row = next_row
 
         cols = tuple(i for i in index_to_column.values() if i.push_list_name != None)
 
         if result.data:
             rows = result.data
-            _, data = _accumulate_nested(rows, 0, rows[0], len(rows), primary_doc_details, 0, 0)
+            _, _, data = _accumulate_nested(iter(rows), rows, 0, rows[0], len(rows), primary_doc_details, 0, 0)
         else:
             data = result.data
 
