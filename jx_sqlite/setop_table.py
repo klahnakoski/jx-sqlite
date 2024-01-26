@@ -67,8 +67,8 @@ from mo_times import Date
 
 class SetOpTable(InsertTable):
     def _set_op(self, query):
-        index_to_column, ordered_sql, primary_doc_details = self.to_sql(query)
-        result = self.container.db.query(ordered_sql)
+        index_to_column, command, primary_doc_details = self.to_sql(query)
+        result = self.container.db.query(command)
         rows = result.data
         num_rows = len(rows)
 
@@ -150,9 +150,9 @@ class SetOpTable(InsertTable):
         if rel_path != '.':
             data = list_to_data(data).get(rel_path)
 
-        return self.format_set(data, cols, query)
+        return self.format_deep(data, cols, query)
 
-    def format_set(self, data, cols, query):
+    def format_deep(self, data, cols, query):
         if query.format == "cube":
             num_rows = len(data)
             header = tuple(jx.sort(set(c.push_column_name for c in cols)))

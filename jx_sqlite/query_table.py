@@ -155,21 +155,18 @@ class QueryTable(GroupbyTable):
         else:
             return self._set_op(normalized_query)
 
-        return self.format(command, normalized_query, index_to_columns)
+        return self.format_flat(command, normalized_query, index_to_columns)
 
-    def format(self, command, normalized_query, index_to_columns):
+    def format_flat(self, command, normalized_query, index_to_columns):
         if normalized_query.format == "container":
             new_table = "temp_" + unique_name()
             create_table = SQL_CREATE + quote_column(new_table) + SQL_AS
-        else:
-            new_table = None
-            create_table = ""
+            self.container.db.query(create_table + command)
+            return QueryTable(new_table, container=self.container)
 
-        result = self.container.db.query(create_table+command)
+        result = self.container.db.query(command)
 
-        if normalized_query.format == "container":
-            output = QueryTable(new_table, container=self.container)
-        elif normalized_query.format == "cube" or (
+        if normalized_query.format == "cube" or (
             not normalized_query.format and normalized_query.edges
         ):
             column_names = [None] * (
