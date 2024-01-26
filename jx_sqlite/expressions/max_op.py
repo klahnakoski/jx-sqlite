@@ -18,6 +18,4 @@ class MaxOp(_MaxOp):
     @check
     def to_sql(self, schema):
         expr = sql_call("MAX", self.frum.to_sql(schema))
-        return SqlScript(
-            jx_type=JX_NUMBER, expr=expr, frum=self, schema=schema
-        )
+        return SqlScript(jx_type=JX_NUMBER, expr=expr, frum=self, schema=schema)

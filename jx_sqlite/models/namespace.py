@@ -7,7 +7,6 @@
 #
 
 
-
 from copy import copy
 
 import jx_base
@@ -55,11 +54,7 @@ class Namespace(jx_base.Namespace):
 
     def _load_relations(self):
         db = self.container.db
-        return [
-            r
-            for t in db.get_tables()
-            for r in db.get_relations(t.name)
-        ]
+        return [r for t in db.get_tables() for r in db.get_relations(t.name)]
 
     def add_column_to_schema(self, column):
         self.columns.add(column)

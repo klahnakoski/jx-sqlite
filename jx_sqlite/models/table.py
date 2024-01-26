@@ -7,7 +7,6 @@
 #
 
 
-
 import jx_base
 from jx_sqlite.models.schema import Schema
 from mo_logs import Log

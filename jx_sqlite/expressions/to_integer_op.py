@@ -20,10 +20,6 @@ class ToIntegerOp(IntegerOp_):
 
         if base_type(value) == JX_TEXT:
             return SqlScript(
-                jx_type=JX_INTEGER,
-                expr=sql_cast(value, "INTEGER"),
-                frum=self,
-                miss=value.miss,
-                schea=schema,
+                jx_type=JX_INTEGER, expr=sql_cast(value, "INTEGER"), frum=self, miss=value.miss, schea=schema,
             )
         return value

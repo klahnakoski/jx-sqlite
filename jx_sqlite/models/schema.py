@@ -73,11 +73,7 @@ class Schema(object):
 
         if path.startswith(".."):
             # ASSUME RELATIVE TO PATH IN THIS SNOWFLAKE
-            abs_field = concat_field(
-                self.snowflake.fact_name,
-                self.nested_path[0],
-                typed_column(path, SQL_ARRAY_KEY),
-            )
+            abs_field = concat_field(self.snowflake.fact_name, self.nested_path[0], typed_column(path, SQL_ARRAY_KEY),)
             if abs_field.startswith(".."):
                 Log.error("Can not accept {{path}} past facts", path=path)
             names = [abs_field]
@@ -94,17 +90,14 @@ class Schema(object):
             (relative_field(n, r.many_table), r)
             for n in names
             for r in relations
-            if startswith_field(n, r.many_table)
-               and r.ones_table == self.get_table_name()
+            if startswith_field(n, r.many_table) and r.ones_table == self.get_table_name()
         ]
         if not matches:
             return None, None
         elif len(matches) == 1:
             return matches[0]
         else:
-            raise NotImplementedError(
-                "not sure how to handle two paths to same ones table"
-            )
+            raise NotImplementedError("not sure how to handle two paths to same ones table")
 
     def get_one_relations(self, relative_path):
         many_name = self.get_table_name()
@@ -128,11 +121,13 @@ class Schema(object):
         return self.snowflake.namespace.columns.find(self.snowflake.fact_name)
 
     def get_type(self) -> JxType:
-        return JxType(**{
-            c.es_column: to_jx_type(c.json_type)
-            for c in self.snowflake.namespace.get_columns(self.nested_path[0])
-            if c.json_type not in [OBJECT, EXISTS]
-        })
+        return JxType(
+            **{
+                c.es_column: to_jx_type(c.json_type)
+                for c in self.snowflake.namespace.get_columns(self.nested_path[0])
+                if c.json_type not in [OBJECT, EXISTS]
+            }
+        )
 
     def get_columns(self, prefix):
         full_name, _ = untyped_column(concat_field(
@@ -185,9 +180,7 @@ class Schema(object):
                     if origin != c.nested_path[0]:
                         fact_dict.setdefault(c.name, []).append(c)
                 elif origin == var:
-                    origin_dict.setdefault(
-                        concat_field(var, c.names[origin]), []
-                    ).append(c)
+                    origin_dict.setdefault(concat_field(var, c.names[origin]), []).append(c)
 
                     if origin != c.nested_path[0]:
                         fact_dict.setdefault(concat_field(var, c.name), []).append(c)

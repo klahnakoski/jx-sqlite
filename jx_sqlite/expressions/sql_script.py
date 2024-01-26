@@ -88,9 +88,7 @@ class SqlScript(_SQLScript, SQL):
             self.miss = TRUE
             return SQL_NULL
 
-        return ConcatSQL(
-            SQL_CASE, SQL_WHEN, SQL_NOT, sql_iso(missing), SQL_THEN, self.expr, SQL_END,
-        )
+        return ConcatSQL(SQL_CASE, SQL_WHEN, SQL_NOT, sql_iso(missing), SQL_THEN, self.expr, SQL_END,)
 
     def __str__(self):
         return str(self._sql())

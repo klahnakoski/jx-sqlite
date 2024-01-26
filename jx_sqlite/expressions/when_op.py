@@ -21,27 +21,17 @@ class WhenOp(_WhenOp):
 
         if then.miss is TRUE:
             return SqlScript(
-                jx_type=els_.jx_type,
-                frum=self,
-                expr=els_.expr,
-                miss=OrOp(when, els_.miss),
-                schema=schema,
+                jx_type=els_.jx_type, frum=self, expr=els_.expr, miss=OrOp(when, els_.miss), schema=schema,
             )
         elif els_.miss is TRUE:
             return SqlScript(
-                jx_type=then.jx_type,
-                frum=self,
-                expr=then.expr,
-                miss=OrOp(NotOp(when), then.miss),
-                schema=schema,
+                jx_type=then.jx_type, frum=self, expr=then.expr, miss=OrOp(NotOp(when), then.miss), schema=schema,
             )
 
         return SqlScript(
             jx_type=then.jx_type | els_.jx_type,
             frum=self,
-            expr=ConcatSQL(
-                SQL_CASE, SQL_WHEN, when.expr, SQL_THEN, then.expr, SQL_ELSE, els_.expr, SQL_END
-            ),
+            expr=ConcatSQL(SQL_CASE, SQL_WHEN, when.expr, SQL_THEN, then.expr, SQL_ELSE, els_.expr, SQL_END),
             miss=OrOp(AndOp(when.frum, then.miss), AndOp(OrOp(when.miss, NotOp(when.frum)), els_.miss)),
             schema=schema,
         )

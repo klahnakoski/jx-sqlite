@@ -5,9 +5,30 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
+from typing import List
+
 import jx_base
 from jx_sqlite.expressions._utils import SQL_ARRAY_KEY
 from jx_sqlite.schema import Schema
+from jx_sqlite.table import Table
+from jx_sqlite.utils import (
+    quoted_ORDER,
+    quoted_PARENT,
+    quoted_UID,
+    GUID,
+    untype_field,
+)
+from mo_dots import (
+    concat_field,
+    to_data,
+    startswith_field,
+    split_field,
+    join_field,
+    relative_field,
+)
+from mo_future import first
+from mo_json import ARRAY, OBJECT, EXISTS
+from mo_logs import Log, Except
 from mo_sqlite import (
     SQL_FROM,
     SQL_SELECT,
@@ -26,26 +47,6 @@ from mo_sqlite import (
     SQL_INSERT,
 )
 from mo_sqlite import quote_column
-from jx_sqlite.table import Table
-from jx_sqlite.utils import (
-    quoted_ORDER,
-    quoted_PARENT,
-    quoted_UID,
-    GUID,
-    untype_field,
-    quoted_GUID,
-)
-from mo_dots import (
-    concat_field,
-    to_data,
-    startswith_field,
-    split_field,
-    join_field,
-    relative_field,
-)
-from mo_future import first
-from mo_json import ARRAY, OBJECT, EXISTS
-from mo_logs import Log, Except
 
 
 class Snowflake(jx_base.Snowflake):
@@ -110,14 +111,10 @@ class Snowflake(jx_base.Snowflake):
                         break
                 else:
                     Log.error(
-                        "Did not add column {{column}}",
-                        column=column.es_column,
-                        cause=e,
+                        "Did not add column {{column}}", column=column.es_column, cause=e,
                     )
             else:
-                Log.error(
-                    "Did not add column {{column}}", column=column.es_column, cause=e
-                )
+                Log.error("Did not add column {{column}}", column=column.es_column, cause=e)
 
     def _drop_column(self, column):
         # DROP COLUMN BY RENAMING IT, WITH __ PREFIX TO HIDE IT
@@ -160,10 +157,7 @@ class Snowflake(jx_base.Snowflake):
         # TODO: IF THERE ARE CHILD TABLES, WE MUST UPDATE THEIR RELATIONS TOO?
 
         # LOAD THE COLUMNS
-        parent_columns = [
-            name
-            for _, name, _, _, _, _ in self.namespace.container.db.about(existing_table)
-        ]
+        parent_columns = [name for _, name, _, _, _, _ in self.namespace.container.db.about(existing_table)]
         data = self.namespace.container.db.about(destination_table)
         if not data:
             # DEFINE A NEW TABLE
@@ -193,9 +187,7 @@ class Snowflake(jx_base.Snowflake):
             return
 
         def new_es_column(c):
-            return concat_field(
-                destination_table, relative_field(c.es_column, old_column_prefix)
-            )
+            return concat_field(destination_table, relative_field(c.es_column, old_column_prefix))
 
         def new_nested_path(c):
             return [destination_table, *c.nested_path]
@@ -220,10 +212,7 @@ class Snowflake(jx_base.Snowflake):
                     + [quote_column(new_es_column(c)) for c in moving_columns]
                 )),
                 SQL_SELECT,
-                sql_list(
-                    [quoted_UID, quoted_UID, SQL_ZERO]
-                    + [quote_column(c.es_column) for c in moving_columns]
-                ),
+                sql_list([quoted_UID, quoted_UID, SQL_ZERO] + [quote_column(c.es_column) for c in moving_columns]),
                 SQL_FROM,
                 quote_column(existing_table),
             ))
@@ -233,19 +222,14 @@ class Snowflake(jx_base.Snowflake):
             tmp_table = "tmp_" + existing_table
 
             t.execute(ConcatSQL(
-                SQL_ALTER_TABLE,
-                quote_column(existing_table),
-                SQL_RENAME_TO,
-                quote_column(tmp_table),
+                SQL_ALTER_TABLE, quote_column(existing_table), SQL_RENAME_TO, quote_column(tmp_table),
             ))
             t.execute(ConcatSQL(
                 SQL_CREATE,
                 quote_column(existing_table),
                 SQL_AS,
                 SQL_SELECT,
-                sql_list([
-                    quote_column(c) for c in parent_columns if c not in old_columns
-                ]),
+                sql_list([quote_column(c) for c in parent_columns if c not in old_columns]),
                 SQL_FROM,
                 quote_column(tmp_table),
             ))
@@ -282,9 +266,7 @@ class Snowflake(jx_base.Snowflake):
         best = first(np for np in self.query_paths if untype_field(np)[0] == abs_path)
         if not best:
             Log.error("Can not find table with path {{path|quote}}", path=query_path)
-        nested_path = list(reversed(sorted(
-            p for p in self.query_paths if startswith_field(best, p)
-        )))
+        nested_path = list(reversed(sorted(p for p in self.query_paths if startswith_field(best, p))))
 
         return Table(nested_path, self)
 
@@ -300,7 +282,7 @@ class Snowflake(jx_base.Snowflake):
         return self.namespace.columns.find(self.fact_name)
 
     @property
-    def query_paths(self):
+    def query_paths(self) -> List[str]:
         return self.namespace.columns.get_query_paths(self.fact_name)
 
     def values(self, name):

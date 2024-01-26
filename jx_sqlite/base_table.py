@@ -35,4 +35,3 @@ class BaseTable(jx_base.Table):
     @property
     def schema(self):
         return self.container.ns.get_schema(self.name)
-

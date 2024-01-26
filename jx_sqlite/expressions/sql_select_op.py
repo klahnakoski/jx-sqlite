@@ -9,7 +9,6 @@
 #
 
 
-
 from dataclasses import dataclass
 from typing import Dict, Tuple, Optional
 
@@ -33,17 +32,12 @@ class SelectOp(_SelectOp):
             data_type=self.type,
             expr=ConcatSQL(
                 SQL_SELECT,
-                sql_list(
-                    [
-                        sql_alias(v.to_sql(schema), n)
-                        for n, v in self.selects
-                    ]
-                ),
+                sql_list([sql_alias(v.to_sql(schema), n) for n, v in self.selects]),
                 sql_iso(SQL_FROM),
                 self.frum.to_sql(schema),
             ),
             frum=self,
-            schema=NO_SCHEMA
+            schema=NO_SCHEMA,
         )
 
 

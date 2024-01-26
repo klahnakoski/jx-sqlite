@@ -1,4 +1,3 @@
-
 from jx_base.expressions import DefaultOp as _DefaultOp, AndOp
 from jx_sqlite.expressions.sql_script import SqlScript
 from mo_sql import sql_coalesce

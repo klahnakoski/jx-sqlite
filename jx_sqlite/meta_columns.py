@@ -87,9 +87,7 @@ class ColumnList(Table, Container):
             "where": {"eq": {"type": "table"}},
             "orderby": "name",
         }))
-        tables = list_to_data([
-            {k: d for k, d in zip(result.header, row)} for row in result.data
-        ])
+        tables = list_to_data([{k: d for k, d in zip(result.header, row)} for row in result.data])
         last_nested_path = []
         for table in tables:
             if table.name.startswith("__"):
@@ -117,9 +115,7 @@ class ColumnList(Table, Container):
                 self.add(Column(
                     name=cname,
                     json_type=coalesce(
-                        sql_type_key_to_json_type.get(sql_type_key),
-                        sql_type_key_to_json_type.get(sql_type),
-                        IS_NULL,
+                        sql_type_key_to_json_type.get(sql_type_key), sql_type_key_to_json_type.get(sql_type), IS_NULL,
                     ),
                     nested_path=full_nested_path,
                     es_type=sql_type,
@@ -246,12 +242,7 @@ class ColumnList(Table, Container):
         self.dirty = False
 
     def _all_columns(self):
-        return [
-            column
-            for t, cs in self.data.items()
-            for _, css in cs.items()
-            for column in css
-        ]
+        return [column for t, cs in self.data.items() for _, css in cs.items() for column in css]
 
     def __iter__(self):
         with self.locker:
@@ -266,9 +257,7 @@ class ColumnList(Table, Container):
         try:
             command = list_to_data(command)
             DEBUG and Log.note(
-                "Update {{timestamp}}: {{command|json}}",
-                command=command,
-                timestamp=Date(command["set"].last_updated),
+                "Update {{timestamp}}: {{command|json}}", command=command, timestamp=Date(command["set"].last_updated),
             )
             eq = command.where.eq
             if eq.es_index:
@@ -293,12 +282,7 @@ class ColumnList(Table, Container):
                     # FASTER
                     all_columns = self.data.get(eq.es_index, {}).values()
                     with self.locker:
-                        columns = [
-                            c
-                            for cs in all_columns
-                            for c in cs
-                            if c.es_column == eq.es_column
-                        ]
+                        columns = [c for cs in all_columns for c in cs if c.es_column == eq.es_column]
 
                 else:
                     # SLOWER
@@ -308,9 +292,7 @@ class ColumnList(Table, Container):
                             c
                             for cs in all_columns
                             for c in cs
-                            if all(
-                                c[k] == v for k, v in eq.items()
-                            )  # THIS LINE IS VERY SLOW
+                            if all(c[k] == v for k, v in eq.items())  # THIS LINE IS VERY SLOW
                         ]
             else:
                 columns = list(self)
@@ -319,9 +301,7 @@ class ColumnList(Table, Container):
             with self.locker:
                 for col in columns:
                     DEBUG and Log.note(
-                        "update column {{table}}.{{column}}",
-                        table=col.es_index,
-                        column=col.es_column,
+                        "update column {{table}}.{{column}}", table=col.es_index, column=col.es_column,
                     )
                     for k in command["clear"]:
                         if k == ".":
@@ -352,9 +332,7 @@ class ColumnList(Table, Container):
         with self.locker:
             self._update_meta()
             if not self._schema:
-                self._schema = Schema(
-                    ".", [c for cs in self.data[META_COLUMNS_NAME].values() for c in cs]
-                )
+                self._schema = Schema(".", [c for cs in self.data[META_COLUMNS_NAME].values() for c in cs])
             snapshot = self._all_columns()
 
         from jx_python.containers.list import ListContainer
@@ -375,9 +353,7 @@ class ColumnList(Table, Container):
         if not self._schema:
             with self.locker:
                 self._update_meta()
-                self._schema = Schema(
-                    ".", [c for cs in self.data[META_COLUMNS_NAME].values() for c in cs]
-                )
+                self._schema = Schema(".", [c for cs in self.data[META_COLUMNS_NAME].values() for c in cs])
         return self._schema
 
     @property
@@ -430,9 +406,7 @@ class ColumnList(Table, Container):
         from jx_python.containers.list import ListContainer
 
         return ListContainer(
-            self.name,
-            data=output,
-            schema=jx_base.Schema(META_COLUMNS_NAME, SIMPLE_METADATA_COLUMNS),
+            self.name, data=output, schema=jx_base.Schema(META_COLUMNS_NAME, SIMPLE_METADATA_COLUMNS),
         )
 
 
@@ -448,7 +422,7 @@ def mark_as_deleted(col):
     col.last_updated = Date.now()
 
 
-class _FakeLock():
+class _FakeLock:
     def __enter__(self):
         pass
 

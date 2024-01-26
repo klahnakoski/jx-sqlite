@@ -16,13 +16,7 @@ class NestedOp(_NestedOp):
     def to_sql(self, schema):
         frum = schema.get_table(self.nested_path[0])
         # LEVERAGE QUERY OP ?
-        query = QueryOp(
-            select=self.select,
-            frum=frum,
-            where=self.where,
-            sort=self.sort,
-            limit=self.limit,
-        )
+        query = QueryOp(select=self.select, frum=frum, where=self.where, sort=self.sort, limit=self.limit,)
 
         engine = QueryTable(name="testing", container=schema.container)
         index_to_column, ordered_sql, primary_doc_details = engine.to_sql(query)

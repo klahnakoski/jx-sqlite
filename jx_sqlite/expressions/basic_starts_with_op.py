@@ -30,17 +30,9 @@ class BasicStartsWithOp(_BasicStartsWithOp):
             if "%" in prefix or "_" in prefix:
                 for r in "\\_%":
                     prefix = prefix.replaceAll(r, "\\" + r)
-                sql = ConcatSQL(
-                    value, SQL_LIKE, quote_value(prefix + "%"), SQL_ESCAPE, SQL("\\")
-                )
+                sql = ConcatSQL(value, SQL_LIKE, quote_value(prefix + "%"), SQL_ESCAPE, SQL("\\"))
             else:
                 sql = ConcatSQL(value, SQL_LIKE, quote_value(prefix + "%"))
-            return SqlScript(
-                jx_type=JX_BOOLEAN, expr=sql, frum=self, miss=FALSE, schema=schema
-            )
+            return SqlScript(jx_type=JX_BOOLEAN, expr=sql, frum=self, miss=FALSE, schema=schema)
         else:
-            return (
-                SqlEqOp(SqlInstrOp(self.value, prefix), SQL_ONE)
-                .partial_eval(SQLang)
-                .to_sql()
-            )
+            return SqlEqOp(SqlInstrOp(self.value, prefix), SQL_ONE).partial_eval(SQLang).to_sql()

@@ -15,4 +15,3 @@ from jx_base.expressions import FormatOp as FormatOp_
 class FormatOp(FormatOp_):
     def partial_eval(self, lang):
         return FormatOp(self.frum.partial_eval(lang), self.format.partial_eval(lang))
-

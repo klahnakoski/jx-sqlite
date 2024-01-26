@@ -30,7 +30,8 @@ from mo_dots import (
     startswith_field,
     unwraplist,
     wrap,
-    list_to_data, from_data,
+    list_to_data,
+    from_data,
 )
 from mo_future import text, transpose, is_text
 from mo_json import STRING, STRUCT
@@ -74,13 +75,7 @@ class QueryTable(GroupbyTable):
     def delete(self, where):
         filter = jx_expression(where).partial_eval(SQLang).to_sql(self.schema)
         with self.container.db.transaction() as t:
-            t.execute(ConcatSQL(
-                SQL_DELETE,
-                SQL_FROM,
-                quote_column(self.snowflake.fact_name),
-                SQL_WHERE,
-                filter,
-            ))
+            t.execute(ConcatSQL(SQL_DELETE, SQL_FROM, quote_column(self.snowflake.fact_name), SQL_WHERE, filter,))
 
     def vars(self):
         return set(self.schema.columns.keys())
@@ -114,9 +109,7 @@ class QueryTable(GroupbyTable):
             where_sql,
         ))
 
-        return list_to_data([
-            {c: v for c, v in zip(column_names, r)} for r in result.data
-        ])
+        return list_to_data([{c: v for c, v in zip(column_names, r)} for r in result.data])
 
     def query(self, query=None):
         """
@@ -145,12 +138,8 @@ class QueryTable(GroupbyTable):
                 normalized_query.groupby,
                 normalized_query.edges,
             )
-        elif normalized_query.edges or any(
-            t.aggregate is not NULL for t in listwrap(normalized_query.select.terms)
-        ):
-            command, index_to_columns = self._edges_op(
-                normalized_query, normalized_query.frum.schema
-            )
+        elif normalized_query.edges or any(t.aggregate is not NULL for t in listwrap(normalized_query.select.terms)):
+            command, index_to_columns = self._edges_op(normalized_query, normalized_query.frum.schema)
         else:
             return self._set_op(normalized_query)
 
@@ -165,12 +154,8 @@ class QueryTable(GroupbyTable):
 
         result = self.container.db.query(command)
 
-        if normalized_query.format == "cube" or (
-            not normalized_query.format and normalized_query.edges
-        ):
-            column_names = [None] * (
-                max(c.push_column_index for c in index_to_columns.values()) + 1
-            )
+        if normalized_query.format == "cube" or (not normalized_query.format and normalized_query.edges):
+            column_names = [None] * (max(c.push_column_index for c in index_to_columns.values()) + 1)
             for c in index_to_columns.values():
                 column_names[c.push_column_index] = c.push_column_name
 
@@ -185,9 +170,7 @@ class QueryTable(GroupbyTable):
             if not result.data:
                 edges = []
                 dims = []
-                for i, e in enumerate(
-                    normalized_query.edges + normalized_query.groupby
-                ):
+                for i, e in enumerate(normalized_query.edges + normalized_query.groupby):
                     allowNulls = coalesce(e.allowNulls, True)
 
                     if e.domain.type == "set" and e.domain.partitions:
@@ -198,11 +181,7 @@ class QueryTable(GroupbyTable):
                         pulls = (
                             jx
                             .sort(
-                                [
-                                    c
-                                    for c in index_to_columns.values()
-                                    if c.push_list_name == e.name
-                                ],
+                                [c for c in index_to_columns.values() if c.push_list_name == e.name],
                                 "push_column_child",
                             )
                             .pull
@@ -213,9 +192,7 @@ class QueryTable(GroupbyTable):
                         domain = SimpleSetDomain(partitions=[])
 
                     dims.append(1 if allowNulls else 0)
-                    edges.append(Data(
-                        name=e.name, allowNulls=allowNulls, domain=domain
-                    ))
+                    edges.append(Data(name=e.name, allowNulls=allowNulls, domain=domain))
 
                 data = {}
                 for si, s in enumerate(normalized_query.select.terms):
@@ -227,10 +204,7 @@ class QueryTable(GroupbyTable):
                 select = [{"name": s.name} for s in normalized_query.select.terms]
 
                 return Data(
-                    meta={"format": "cube"},
-                    edges=edges,
-                    select=select,
-                    data={k: v.cube for k, v in data.items()},
+                    meta={"format": "cube"}, edges=edges, select=select, data={k: v.cube for k, v in data.items()},
                 )
 
             columns = None
@@ -255,12 +229,7 @@ class QueryTable(GroupbyTable):
                     pulls = (
                         jx
                         .sort(
-                            [
-                                c
-                                for c in index_to_columns.values()
-                                if c.push_list_name == e.name
-                            ],
-                            "push_column_child",
+                            [c for c in index_to_columns.values() if c.push_list_name == e.name], "push_column_child",
                         )
                         .pull
                     )
@@ -275,19 +244,14 @@ class QueryTable(GroupbyTable):
                     parts -= {None}
 
                     if normalized_query.sort[i].sort == -1:
-                        domain = SimpleSetDomain(partitions=wrap(sorted(
-                            parts, reverse=True
-                        )))
+                        domain = SimpleSetDomain(partitions=wrap(sorted(parts, reverse=True)))
                     else:
                         domain = SimpleSetDomain(partitions=jx.sort(parts))
 
                 dims.append(len(domain.partitions) + (1 if allowNulls else 0))
                 edges.append(Data(name=e.name, allowNulls=allowNulls, domain=domain))
 
-            data_cubes = {
-                s.name: Matrix(dims=dims)
-                for s in normalized_query.select.terms
-            }
+            data_cubes = {s.name: Matrix(dims=dims) for s in normalized_query.select.terms}
 
             r2c = index_to_coordinate(dims)  # WORKS BECAUSE THE DATABASE SORTED THE EDGES TO CONFORM
             for record, row in enumerate(result.data):
@@ -304,17 +268,10 @@ class QueryTable(GroupbyTable):
             select = [{"name": s.name} for s in normalized_query.select.terms]
 
             return Data(
-                meta={"format": "cube"},
-                edges=edges,
-                select=select,
-                data={k: v.cube for k, v in data_cubes.items()},
+                meta={"format": "cube"}, edges=edges, select=select, data={k: v.cube for k, v in data_cubes.items()},
             )
-        elif normalized_query.format == "table" or (
-            not normalized_query.format and normalized_query.groupby
-        ):
-            column_names = [None] * (
-                max(c.push_column_index for c in index_to_columns.values()) + 1
-            )
+        elif normalized_query.format == "table" or (not normalized_query.format and normalized_query.groupby):
+            column_names = [None] * (max(c.push_column_index for c in index_to_columns.values()) + 1)
             for c in index_to_columns.values():
                 column_names[c.push_column_index] = c.push_column_name
             data = []
@@ -326,9 +283,7 @@ class QueryTable(GroupbyTable):
                     elif s.num_push_columns:
                         tuple_value = row[s.push_column_index]
                         if tuple_value == None:
-                            tuple_value = row[s.push_column_index] = (
-                                [None] * s.num_push_columns
-                            )
+                            tuple_value = row[s.push_column_index] = [None] * s.num_push_columns
                         tuple_value[s.push_column_child] = s.pull(d)
                     elif row[s.push_column_index] == None:
                         row[s.push_column_index] = Data()
@@ -338,13 +293,11 @@ class QueryTable(GroupbyTable):
                 data.append(tuple(from_data(r) for r in row))
 
             output = Data(meta={"format": "table"}, header=column_names, data=data)
-        elif normalized_query.format == "list" or (
-            not normalized_query.edges and not normalized_query.groupby
-        ):
+        elif normalized_query.format == "list" or (not normalized_query.edges and not normalized_query.groupby):
             if (
                 not normalized_query.edges
                 and not normalized_query.groupby
-                    and any(s.aggregate is not NULL for s in normalized_query.select.terms)
+                and any(s.aggregate is not NULL for s in normalized_query.select.terms)
             ):
                 data = Data()
                 for s in index_to_columns.values():
@@ -392,20 +345,14 @@ class QueryTable(GroupbyTable):
         elif where.op == "eq" and where.lhs.var == "name":
             column_name = mo_json.json2value(where.rhs.json)
         else:
-            raise Log.error(
-                'Only simple filters are expected like: "eq" on table and column name'
-            )
+            raise Log.error('Only simple filters are expected like: "eq" on table and column name')
 
         tables = [concat_field(self.snowflake.fact_name, i) for i in self.tables.keys()]
 
         metadata = []
         if columns[-1].es_column != GUID:
             columns.append(Column(
-                name=GUID,
-                json_type=STRING,
-                es_column=GUID,
-                es_index=self.snowflake.fact_name,
-                nested_path=["."],
+                name=GUID, json_type=STRING, es_column=GUID, es_index=self.snowflake.fact_name, nested_path=["."],
             ))
 
         for tname, table in zip(t, tables):
@@ -417,12 +364,7 @@ class QueryTable(GroupbyTable):
                 if column_name != None and column_name != cname:
                     continue
 
-                metadata.append((
-                    table,
-                    relative_field(col.name, tname),
-                    col.jx_type,
-                    unwraplist(col.nested_path),
-                ))
+                metadata.append((table, relative_field(col.name, tname), col.jx_type, unwraplist(col.nested_path),))
 
         return self.format_metadata(metadata, query)
 
@@ -434,24 +376,14 @@ class QueryTable(GroupbyTable):
             return Data(
                 meta={"format": "cube"},
                 data=temp_data,
-                edges=[{
-                    "name": "rownum",
-                    "domain": {
-                        "type": "rownum",
-                        "min": 0,
-                        "max": num_rows,
-                        "interval": 1,
-                    },
-                }],
+                edges=[{"name": "rownum", "domain": {"type": "rownum", "min": 0, "max": num_rows, "interval": 1,},}],
             )
         elif query.format == "table":
             header = ["table", "name", "type", "nested_path"]
             return Data(meta={"format": "table"}, header=header, data=metadata)
         else:
             header = ["table", "name", "type", "nested_path"]
-            return Data(
-                meta={"format": "list"}, data=[dict(zip(header, r)) for r in metadata]
-            )
+            return Data(meta={"format": "list"}, data=[dict(zip(header, r)) for r in metadata])
 
     def _window_op(self, query, window):
         # http://www2.sqlite.org/cvstrac/wiki?p=UnsupportedSqlAnalyticalFunctions

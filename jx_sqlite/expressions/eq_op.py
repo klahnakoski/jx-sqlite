@@ -7,12 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import (
-    EqOp as _EqOp,
-    FALSE,
-    TRUE,
-    is_literal
-)
+from jx_base.expressions import EqOp as _EqOp, FALSE, TRUE, is_literal
 from jx_base.expressions._utils import builtin_ops, simplified
 from jx_sqlite.expressions._utils import SQLang, check
 from jx_sqlite.expressions.basic_eq_op import BasicEqOp
@@ -28,9 +23,7 @@ class EqOp(_EqOp):
         m_rhs = self.rhs.missing(SQLang)
         output = (
             CaseOp(
-                WhenOp(self.lhs.missing(SQLang), then=m_rhs),
-                WhenOp(m_rhs, then=FALSE),
-                BasicEqOp(self.lhs, self.rhs),
+                WhenOp(self.lhs.missing(SQLang), then=m_rhs), WhenOp(m_rhs, then=FALSE), BasicEqOp(self.lhs, self.rhs),
             )
             .partial_eval(SQLang)
             .to_sql(schema)
@@ -50,9 +43,13 @@ class EqOp(_EqOp):
             return lang.InOp(lhs, rhs).partial_eval(lang)
 
         rhs_missing = rhs.missing(SQLang)
-        output = lang.CaseOp(
-            lang.WhenOp(lhs.missing(SQLang), then=rhs_missing),
-            lang.WhenOp(rhs_missing, then=FALSE),
-            lang.BasicEqOp(lhs, rhs),
-        ).partial_eval(SQLang)
+        output = (
+            lang
+            .CaseOp(
+                lang.WhenOp(lhs.missing(SQLang), then=rhs_missing),
+                lang.WhenOp(rhs_missing, then=FALSE),
+                lang.BasicEqOp(lhs, rhs),
+            )
+            .partial_eval(SQLang)
+        )
         return output

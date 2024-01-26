@@ -25,13 +25,7 @@ class SqlSubstrOp(SqlSubstrOp_):
         else:
             length = self.length.partial_eval(SQLang).to_sql(schema)
             sql = sql_call("SUBSTR", value, start, length)
-        return SqlScript(
-            jx_type=JX_TEXT,
-            expr=sql,
-            frum=self,
-            miss=OrOp(value.miss, start.miss),
-            schema=schema,
-        )
+        return SqlScript(jx_type=JX_TEXT, expr=sql, frum=self, miss=OrOp(value.miss, start.miss), schema=schema,)
 
     def partial_eval(self, lang):
         value = self.value.partial_eval(SQLang)

@@ -40,9 +40,9 @@ class Container(_Container):
     @override
     def __init__(
         self,
-            db: object = None,  # EXISTING Sqlite3 DATBASE, OR CONFIGURATION FOR Sqlite DB
-            filename: object = None,  # FILE FOR THE DATABASE (None FOR MEMORY DATABASE)
-            kwargs: object = None,  # See Sqlite parameters
+        db: object = None,  # EXISTING Sqlite3 DATBASE, OR CONFIGURATION FOR Sqlite DB
+        filename: object = None,  # FILE FOR THE DATABASE (None FOR MEMORY DATABASE)
+        kwargs: object = None,  # See Sqlite parameters
     ) -> object:
         global _config
         if isinstance(db, Sqlite):
@@ -71,21 +71,11 @@ class Container(_Container):
                 with self.db.transaction() as t:
                     top_id = first(first(
                         t
-                        .query(ConcatSQL(
-                            SQL_SELECT,
-                            quote_column("next_id"),
-                            SQL_FROM,
-                            quote_column(ABOUT_TABLE),
-                        ))
+                        .query(ConcatSQL(SQL_SELECT, quote_column("next_id"), SQL_FROM, quote_column(ABOUT_TABLE),))
                         .data
                     ))
                     max_id = top_id + 1000
-                    t.execute(ConcatSQL(
-                        SQL_UPDATE,
-                        quote_column(ABOUT_TABLE),
-                        SQL_SET,
-                        sql_eq(next_id=max_id),
-                    ))
+                    t.execute(ConcatSQL(SQL_UPDATE, quote_column(ABOUT_TABLE), SQL_SET, sql_eq(next_id=max_id),))
                 while top_id < max_id:
                     yield top_id
                     top_id += 1
@@ -95,9 +85,7 @@ class Container(_Container):
     def setup(self):
         if not self.db.about(ABOUT_TABLE):
             with self.db.transaction() as t:
-                t.execute(sql_create(
-                    ABOUT_TABLE, {"version": "TEXT", "next_id": "INTEGER"}
-                ))
+                t.execute(sql_create(ABOUT_TABLE, {"version": "TEXT", "next_id": "INTEGER"}))
                 t.execute(sql_insert(ABOUT_TABLE, {"version": "1.0", "next_id": 1000}))
                 t.execute(sql_create(DIGITS_TABLE, {"value": "INTEGER"}))
                 t.execute(sql_insert(DIGITS_TABLE, [{"value": i} for i in range(10)]))
@@ -115,9 +103,7 @@ class Container(_Container):
         if uid != UID:
             Log.error("do not know how to handle yet")
 
-        command = sql_create(
-            fact_name, {UID: "INTEGER PRIMARY KEY", GUID: "TEXT"}, unique=UID
-        )
+        command = sql_create(fact_name, {UID: "INTEGER PRIMARY KEY", GUID: "TEXT"}, unique=UID)
 
         with self.db.transaction() as t:
             t.execute(command)
@@ -157,9 +143,7 @@ class Container(_Container):
                 multi=1,
                 last_updated=Date.now(),
             ))
-            command = sql_create(
-                fact_name, {UID: "INTEGER PRIMARY KEY", GUID: "TEXT"}, unique=UID
-            )
+            command = sql_create(fact_name, {UID: "INTEGER PRIMARY KEY", GUID: "TEXT"}, unique=UID)
 
             with self.db.transaction() as t:
                 t.execute(command)

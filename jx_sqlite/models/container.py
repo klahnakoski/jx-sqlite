@@ -7,7 +7,6 @@
 #
 
 
-
 from jx_base import jx_expression, Column
 from jx_base.expressions import Expression, Variable, is_literal, GetOp, SqlScript
 from jx_base.models.container import Container as _Container
@@ -81,21 +80,11 @@ class Container(_Container):
                 with self.db.transaction() as t:
                     top_id = first(first(
                         t
-                        .query(ConcatSQL(
-                            SQL_SELECT,
-                            quote_column("next_id"),
-                            SQL_FROM,
-                            quote_column(ABOUT_TABLE),
-                        ))
+                        .query(ConcatSQL(SQL_SELECT, quote_column("next_id"), SQL_FROM, quote_column(ABOUT_TABLE),))
                         .data
                     ))
                     max_id = top_id + 1000
-                    t.execute(ConcatSQL(
-                        SQL_UPDATE,
-                        quote_column(ABOUT_TABLE),
-                        SQL_SET,
-                        sql_eq(next_id=max_id),
-                    ))
+                    t.execute(ConcatSQL(SQL_UPDATE, quote_column(ABOUT_TABLE), SQL_SET, sql_eq(next_id=max_id),))
                 while top_id < max_id:
                     yield top_id
                     top_id += 1
@@ -105,9 +94,7 @@ class Container(_Container):
     def setup(self):
         if not self.db.about(ABOUT_TABLE):
             with self.db.transaction() as t:
-                t.execute(sql_create(
-                    ABOUT_TABLE, {"version": "TEXT", "next_id": "INTEGER"}
-                ))
+                t.execute(sql_create(ABOUT_TABLE, {"version": "TEXT", "next_id": "INTEGER"}))
                 t.execute(sql_insert(ABOUT_TABLE, {"version": "1.0", "next_id": 1000}))
                 t.execute(sql_create(DIGITS_TABLE, {"value": "INTEGER"}))
                 t.execute(sql_insert(DIGITS_TABLE, [{"value": i} for i in range(10)]))
@@ -117,7 +104,13 @@ class Container(_Container):
             return self.db.query(query.sql)
 
         if isinstance(query, Expression):
-            if is_op(query, GetOp) and isinstance(query.frum, Variable) and query.frum.var=="row" and len(query.offsets)==1 and is_literal(query.offsets[0]):
+            if (
+                is_op(query, GetOp)
+                and isinstance(query.frum, Variable)
+                and query.frum.var == "row"
+                and len(query.offsets) == 1
+                and is_literal(query.offsets[0])
+            ):
                 return SqlSelectAllFromOp(self.get_table(query.offsets[0].value))
             if isinstance(query, Variable):
                 # SELECT IS A LAMBDA
@@ -125,7 +118,6 @@ class Container(_Container):
                 # CAN THE "JOINED TABLES" BE INCOMPLETE BY MENTIONING THE RELATION?  TO AVOID THE CYCLES
 
                 # AN "SEGMENT" IS A TABLE, PLUS ALL THE (UNREALIZED) RELATIONS
-
 
                 # BUILD FULL SELECT CLAUSE
                 # SELECT_ALL_FROM OPERATOR
@@ -157,9 +149,7 @@ class Container(_Container):
         if uid != UID:
             Log.error("do not know how to handle yet")
 
-        command = sql_create(
-            fact_name, {UID: "INTEGER PRIMARY KEY", GUID: "TEXT"}, unique=UID
-        )
+        command = sql_create(fact_name, {UID: "INTEGER PRIMARY KEY", GUID: "TEXT"}, unique=UID)
 
         with self.db.transaction() as t:
             t.execute(command)
@@ -199,13 +189,11 @@ class Container(_Container):
                 multi=1,
                 last_updated=Date.now(),
             ))
-            command = sql_create(
-                fact_name, {UID: "INTEGER PRIMARY KEY", GUID: "TEXT"}, unique=UID
-            )
+            command = sql_create(fact_name, {UID: "INTEGER PRIMARY KEY", GUID: "TEXT"}, unique=UID)
 
             with self.db.transaction() as t:
                 t.execute(command)
-            self.namespace.columns.primary_keys[fact_name]=UID,
+            self.namespace.columns.primary_keys[fact_name] = (UID,)
 
         return QueryTable(fact_name, self)
 

@@ -17,6 +17,4 @@ from mo_sqlite import sql_call
 class MinOp(_MinOp):
     @check
     def to_sql(self, schema):
-        return SqlScript(
-            jx_type=JX_NUMBER, expr=sql_call("MIN", self.frum.to_sql(schema)), frum=self, schema=schema
-        )
+        return SqlScript(jx_type=JX_NUMBER, expr=sql_call("MIN", self.frum.to_sql(schema)), frum=self, schema=schema)

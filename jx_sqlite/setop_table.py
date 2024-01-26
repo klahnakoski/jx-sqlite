@@ -75,12 +75,7 @@ class SetOpTable(InsertTable):
         result = self.container.db.query(command)
 
         def _accumulate_nested(
-            rows,
-            row,
-            next_row,
-            nested_doc_details: DocumentDetails,
-            parent_id: int,
-            parent_id_coord: int,
+            rows, row, next_row, nested_doc_details: DocumentDetails, parent_id: int, parent_id_coord: int,
         ) -> Tuple[Data, Data, List[Data]]:
             """
             :param rownum: index into rows for row
@@ -114,12 +109,7 @@ class SetOpTable(InsertTable):
                         continue
 
                     next_row, row, nested_value = _accumulate_nested(
-                        rows,
-                        row,
-                        next_row,
-                        child_details,
-                        row[id_coord],
-                        id_coord,
+                        rows, row, next_row, child_details, row[id_coord], id_coord,
                     )
                     if not nested_value:
                         continue
@@ -144,9 +134,7 @@ class SetOpTable(InsertTable):
         if result.data:
             all_rows = iter(result.data)
             first_row = next(all_rows)
-            _, _, data = _accumulate_nested(
-                all_rows, first_row, None, primary_doc_details, 0, 0
-            )
+            _, _, data = _accumulate_nested(all_rows, first_row, None, primary_doc_details, 0, 0)
         else:
             data = result.data
 

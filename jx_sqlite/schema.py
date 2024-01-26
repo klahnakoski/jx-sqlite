@@ -87,15 +87,11 @@ class Schema(object):
         if prefix == GUID and len(self.nested_path) == 1:
             return {(".", first(c for c in self.columns if c.name == GUID))}
 
-        candidates = [
-            c
-            for c in self.columns
-            if c.json_type not in [OBJECT, EXISTS] and c.name != GUID
-        ]
+        candidates = [c for c in self.columns if c.json_type not in [OBJECT, EXISTS] and c.name != GUID]
 
         search_path = [
             *self.nested_path,
-            *(np for np in self.snowflake.query_paths if np.startswith(self.nested_path[0] + "."))
+            *(np for np in self.snowflake.query_paths if np.startswith(self.nested_path[0] + ".")),
         ]
 
         for np in search_path:
