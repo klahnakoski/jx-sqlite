@@ -25,7 +25,6 @@ from mo_dots import (
     to_data,
     coalesce,
     concat_field,
-    is_list,
     listwrap,
     relative_field,
     startswith_field,
@@ -363,9 +362,7 @@ class QueryTable(GroupbyTable):
                             # APPEARS TO BE USED FOR PULLING TUPLES (GROUPBY?)
                             tuple_value = row[c.push_list_name]
                             if not tuple_value:
-                                tuple_value = row[c.push_list_name] = (
-                                    [None] * c.num_push_columns
-                                )
+                                tuple_value = row[c.push_list_name] = [None] * c.num_push_columns
                             tuple_value[c.push_column_child] = c.pull(record)
                         else:
                             row[c.push_list_name][c.push_column_child] = c.pull(record)
@@ -516,6 +513,7 @@ class Transaction:
 
     def __getattr__(self, item):
         return getattr(self.table, item)
+
 
 # TODO: use dependency injection
 type2container["sqlite"] = QueryTable
