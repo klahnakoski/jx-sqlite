@@ -131,12 +131,15 @@ class SetOpTable(InsertTable):
                 if doc or not parent_id:
                     output.append(doc)
 
+                if not next_iter_row:
+                    try:
+                        next_iter_row = next(rows_iter)
+                    except StopIteration:
+                        return next_rownum, None, None, output
                 next_rownum = rownum + 1
                 if next_rownum >= num_rows:
                     return next_rownum, next_iter_row, None, output
                 next_row = rows[next_rownum]
-                if not next_iter_row:
-                    next_iter_row = next(rows_iter)
                 assertAlmostEqual(next_row, next_iter_row, "row mismatch")
 
                 if parent_id and parent_id != next_row[parent_id_coord]:
