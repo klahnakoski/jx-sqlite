@@ -81,7 +81,7 @@ class SetOpTable(InsertTable):
             nested_doc_details: DocumentDetails,
             parent_id: int,
             parent_id_coord: int,
-        ) -> Tuple[int, List[Data]]:
+        ) -> Tuple[dict, dict, List[Data]]:
             """
             :param rownum: index into rows for row
             :param nested_doc_details: {
@@ -142,10 +142,10 @@ class SetOpTable(InsertTable):
         cols = tuple(i for i in index_to_column.values() if i.push_list_name != None)
 
         if result.data:
-            rows = iter(result.data)
-            first_row = next(rows)
+            all_rows = iter(result.data)
+            first_row = next(all_rows)
             _, _, data = _accumulate_nested(
-                rows, first_row, None, primary_doc_details, 0, 0
+                all_rows, first_row, None, primary_doc_details, 0, 0
             )
         else:
             data = result.data
