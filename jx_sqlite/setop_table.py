@@ -150,6 +150,9 @@ class SetOpTable(InsertTable):
         if rel_path != '.':
             data = list_to_data(data).get(rel_path)
 
+        return self.format_set(data, cols, query)
+
+    def format_set(self, data, cols, query):
         if query.format == "cube":
             num_rows = len(data)
             header = tuple(jx.sort(set(c.push_column_name for c in cols)))
@@ -182,7 +185,7 @@ class SetOpTable(InsertTable):
                 locs = tuple(literal_field(h) for h in header)
                 temp_data = [tuple(d[l] for l in locs) for d in data]
 
-            return Data(meta={"format": "table"}, header=header, data=temp_data,)
+            return Data(meta={"format": "table"}, header=header, data=temp_data, )
         else:
             return Data(meta={"format": "list"}, data=data)
 

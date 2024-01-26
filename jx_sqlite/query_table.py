@@ -134,22 +134,14 @@ class QueryTable(GroupbyTable):
             Log.error("Expecting table, or some nested table")
         normalized_query = QueryOp.wrap(query, self, SQLang)
 
-        if normalized_query.format == "container":
-            new_table = "temp_" + unique_name()
-            create_table = SQL_CREATE + quote_column(new_table) + SQL_AS
-        else:
-            create_table = ""
-
         if normalized_query.groupby and normalized_query.format != "cube":
-            op, index_to_columns = self._groupby_op(normalized_query, self.schema)
-            command = create_table + op
+            command, index_to_columns = self._groupby_op(normalized_query, self.schema)
         elif normalized_query.groupby:
             normalized_query.edges, normalized_query.groupby = (
                 normalized_query.groupby,
                 normalized_query.edges,
             )
-            op, index_to_columns = self._edges_op(normalized_query, self.schema)
-            command = create_table + op
+            command, index_to_columns = self._edges_op(normalized_query, self.schema)
             normalized_query.edges, normalized_query.groupby = (
                 normalized_query.groupby,
                 normalized_query.edges,
@@ -157,15 +149,23 @@ class QueryTable(GroupbyTable):
         elif normalized_query.edges or any(
             t.aggregate is not NULL for t in listwrap(normalized_query.select.terms)
         ):
-            op, index_to_columns = self._edges_op(
+            command, index_to_columns = self._edges_op(
                 normalized_query, normalized_query.frum.schema
             )
-            command = create_table + op
         else:
-            op = self._set_op(normalized_query)
-            return op
+            return self._set_op(normalized_query)
 
-        result = self.container.db.query(command)
+        return self.format(command, normalized_query, index_to_columns)
+
+    def format(self, command, normalized_query, index_to_columns):
+        if normalized_query.format == "container":
+            new_table = "temp_" + unique_name()
+            create_table = SQL_CREATE + quote_column(new_table) + SQL_AS
+        else:
+            new_table = None
+            create_table = ""
+
+        result = self.container.db.query(create_table+command)
 
         if normalized_query.format == "container":
             output = QueryTable(new_table, container=self.container)
@@ -430,6 +430,9 @@ class QueryTable(GroupbyTable):
                     unwraplist(col.nested_path),
                 ))
 
+        return self.format_metadata(metadata, query)
+
+    def format_metadata(self, metadata, query):
         if query.format == "cube":
             num_rows = len(metadata)
             header = ["table", "name", "type", "nested_path"]
