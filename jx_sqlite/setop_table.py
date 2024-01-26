@@ -69,11 +69,12 @@ class SetOpTable(InsertTable):
     def _set_op(self, query):
         index_to_column, command, primary_doc_details = self.to_sql(query)
         result = self.container.db.query(command)
-        rows = result.data
-        num_rows = len(rows)
 
         def _accumulate_nested(
+            rows,
             rownum,
+            row,
+            num_rows,
             nested_doc_details: DocumentDetails,
             parent_id: int,
             parent_id_coord: int,
@@ -97,7 +98,6 @@ class SetOpTable(InsertTable):
                 (c.push_list_name, c.pull)
                 for _, c in nested_doc_details.index_to_column.items()
             )
-            row = rows[rownum]
             while True:
                 doc = Null
                 for rel_field, pull in index_to_column:
@@ -105,10 +105,7 @@ class SetOpTable(InsertTable):
                     if is_missing(value):
                         continue
                     doc = doc or Data()
-                    try:
-                        doc[rel_field] = value
-                    except Exception as cause:
-                        print(cause)
+                    doc[rel_field] = value
 
                 for child_details in nested_doc_details.children:
                     # EACH NESTED TABLE MUST BE ASSEMBLED INTO A LIST OF OBJECTS
@@ -117,7 +114,7 @@ class SetOpTable(InsertTable):
                         continue
 
                     rownum, nested_value = _accumulate_nested(
-                        rownum, child_details, row[id_coord], id_coord
+                        rows, rownum, rows[rownum], num_rows, child_details, row[id_coord], id_coord
                     )
                     if not nested_value:
                         continue
@@ -130,18 +127,19 @@ class SetOpTable(InsertTable):
                 if doc or not parent_id:
                     output.append(doc)
 
-                rownum += 1
-                if rownum >= num_rows:
+                next_rownum = rownum + 1
+                if next_rownum >= num_rows:
+                    return next_rownum, output
+                next_row = rows[next_rownum]
+                if parent_id and parent_id != next_row[parent_id_coord]:
                     return rownum, output
-                row = rows[rownum]
-                if parent_id and parent_id != row[parent_id_coord]:
-                    rownum -= 1  # NEXT DOCUMENT, BACKUP A BIT
-                    return rownum, output
+                rownum = next_rownum
 
         cols = tuple(i for i in index_to_column.values() if i.push_list_name != None)
 
-        if rows:
-            _, data = _accumulate_nested(0, primary_doc_details, 0, 0)
+        if result.data:
+            rows = result.data
+            _, data = _accumulate_nested(rows, 0, rows[0], len(rows), primary_doc_details, 0, 0)
         else:
             data = result.data
 
