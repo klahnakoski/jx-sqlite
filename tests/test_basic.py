@@ -10,7 +10,10 @@
 
 from unittest import TestCase
 
+from mo_files import File
+
 from jx_sqlite import Container
+from mo_math import randoms
 from mo_sqlite import Sqlite
 from mo_testing.fuzzytestcase import add_error_reporting
 
@@ -18,13 +21,16 @@ from mo_testing.fuzzytestcase import add_error_reporting
 @add_error_reporting
 class TestBasic(TestCase):
     def test_save_and_load(self):
-        db = Sqlite("sql/test.sqlite")
+        file = File(f"sql/test{randoms.hex(4)}.sqlite")
+        file.delete()
+
+        db = Sqlite(file)
         table = Container(db).get_or_create_facts("my_table")
         table.add({"os": "linux", "value": 42})
         table.add({"os": "win", "value": 41})
 
         db.stop()
 
-        db = Sqlite("sql/test.sqlite")
+        db = Sqlite(file)
         result = Container(db).get_or_create_facts("my_table").query({"select": "os", "where": {"gt": {"value": 0}}})
-        self.assertEqual(result, {"data": []})
+        self.assertEqual(result, {"meta": {"format": "list"}, "data": [{"os": "linux"}, {"os": "win"}]})

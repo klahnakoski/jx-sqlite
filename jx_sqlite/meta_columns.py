@@ -28,7 +28,7 @@ from mo_dots import (
     tail_field,
     unwraplist,
     wrap,
-    list_to_data,
+    list_to_data, concat_field,
 )
 from mo_json import STRUCT, IS_NULL
 from mo_json.typed_encoder import unnest_path, detype
@@ -69,7 +69,7 @@ class ColumnList(Table, Container):
         self.es_index = None
         self.last_load = Null
         self.todo = Queue("update columns to es")  # HOLD (action, column) PAIR, WHERE action in ['insert', 'update']
-        self._snowflakes = {}  # MAP FROM fact_name TO LIST OF NESTED PATHS
+        self._snowflakes = {}  # MAP FROM fact_name TO LIST OF PATHS, STARTING WITH FACT AND BREADTH FIRST TO LEAVES
         self._load_from_database()
 
     def _query(self, query):
@@ -88,22 +88,13 @@ class ColumnList(Table, Container):
             "orderby": "name",
         }))
         tables = list_to_data([{k: d for k, d in zip(result.header, row)} for row in result.data])
-        last_nested_path = []
         for table in tables:
             if table.name.startswith("__"):
                 continue
             base_table, rel_nested_path = tail_field(table.name)
 
-            # FIND COMMON ARRAY PATH SUFFIX
-            for i, p in enumerate(last_nested_path):
-                if startswith_field(table.name, p):
-                    last_nested_path = last_nested_path[i:]
-                    break
-            else:
-                last_nested_path = []
-
-            full_nested_path = [table.name] + last_nested_path
-            self._snowflakes.setdefault(base_table, []).append(full_nested_path)
+            # TODO: LOOK AT RELATIONS TO FIND NESTED PATHS
+            self._snowflakes[base_table]=[table.name]
 
             # LOAD THE COLUMNS
             details = self.db.about(table.name)
@@ -117,14 +108,13 @@ class ColumnList(Table, Container):
                     json_type=coalesce(
                         sql_type_key_to_json_type.get(sql_type_key), sql_type_key_to_json_type.get(sql_type), IS_NULL,
                     ),
-                    nested_path=full_nested_path,
+                    nested_path=[table.name],
                     es_type=sql_type,
                     es_column=name,
                     es_index=table.name,
                     multi=1,
                     last_updated=Date.now(),
                 ))
-            last_nested_path = full_nested_path
 
     def find(self, fact_table, abs_column_name=None):
         try:
