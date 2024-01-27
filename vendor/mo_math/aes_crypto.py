@@ -9,7 +9,7 @@
 
 
 from mo_dots import Data, get_module
-from mo_future import PY2, binary_type
+from mo_future import binary_type
 from mo_future import is_text, is_binary
 from mo_imports import delay_import
 
@@ -31,10 +31,7 @@ def encrypt(text, _key, salt=None):
         data = bytearray(text.encode("utf8"))
     elif is_binary(text):
         encoding = None
-        if PY2:
-            data = bytearray(text)
-        else:
-            data = text
+        data = text
 
     if _key is None:
 

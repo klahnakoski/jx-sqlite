@@ -204,7 +204,7 @@ def unix_to_date(unix):
 
 
 def _error(description):
-    raise Exception(description)
+    raise Exception(description) from None
 
 
 def delay_import(module):

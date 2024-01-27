@@ -139,6 +139,32 @@ class Sqlite(DB):
 
         con.create_aggregate("percentile", 2, Percentile)
 
+    def read_sql(self, filename):
+        """
+        EXECUTE THE SQL FOUND IN FILE
+
+        YOU CAN CREATE THE FILE WITH
+        sqlite> .output chinook.sql
+        sqlite> .dump
+        """
+        with self.transaction() as t:
+
+            def commands():
+                with open(File(filename).os_path, "r+b") as file:
+                    acc = []
+                    for line in file.readlines():
+                        line = line.decode("utf8")
+                        acc.append(line)
+                        if line.strip().endswith(";"):
+                            yield "\n".join(acc)
+                            acc = []
+                    yield "\n".join(acc)
+
+            for command in commands():
+                if "BEGIN TRANS" in command or "COMMIT" in command:
+                    continue
+                t.execute(command)
+
     def transaction(self):
         thread = Thread.current()
         parent = None
