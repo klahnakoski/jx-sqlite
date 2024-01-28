@@ -24,8 +24,6 @@ ORDER = "__order__"
 PARENT = "__parent__"
 COLUMN = "__column"
 
-ALL_TYPES = "bns"
-
 
 def unique_name():
     return randoms.string(20)

@@ -16,8 +16,8 @@ from jx_base.expressions import NULL
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.select_op import SelectOp as _SelectOp
 from jx_sqlite.expressions.sql_script import SqlScript
-from jx_sqlite.models.schema import NO_SCHEMA
 from mo_json import JxType, JX_INTEGER
+from mo_sqlite import sql_alias, ConcatSQL, SQL_SELECT, sql_list, SQL_FROM, sql_iso
 
 
 class SelectOp(_SelectOp):
@@ -37,7 +37,7 @@ class SelectOp(_SelectOp):
                 self.frum.to_sql(schema),
             ),
             frum=self,
-            schema=NO_SCHEMA,
+            schema=schema,
         )
 
 

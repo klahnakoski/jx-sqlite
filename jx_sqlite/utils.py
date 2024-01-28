@@ -10,9 +10,7 @@
 from copy import copy
 from math import isnan
 
-from jx_base import DataClass
-from jx_base import Snowflake
-from jx_base.expressions import NULL
+from jx_base import DataClass, Snowflake, NULL
 from mo_dots import (
     Data,
     concat_field,
@@ -24,36 +22,13 @@ from mo_dots import (
     is_missing,
 )
 from mo_future import is_text, text
-from mo_json import BOOLEAN, ARRAY, NUMBER, OBJECT, STRING, json2value, JX_BOOLEAN, INTEGER
+from mo_json import BOOLEAN, ARRAY, NUMBER, OBJECT, STRING, json2value, JX_BOOLEAN
 from mo_json.typed_encoder import untype_path
-from mo_json.types import (
-    JX_ARRAY,
-    JX_TEXT,
-    JX_NUMBER,
-    JX_INTEGER,
-    ARRAY_KEY,
-    NUMBER_KEY,
-    STRING_KEY,
-    BOOLEAN_KEY,
-    INTEGER_KEY,
-)
 from mo_logs import Log
 from mo_math import randoms
-from mo_sql.utils import SQL_KEYS, SQL_ARRAY_KEY, SQL_KEY_PREFIX, SQL_NUMBER_KEY
-from mo_sqlite import quote_column, SQL_DESC, SQL_ASC
+from mo_sql.utils import SQL_KEYS, SQL_ARRAY_KEY, SQL_KEY_PREFIX, SQL_NUMBER_KEY, UID, GUID, ORDER, PARENT, COLUMN, DIGITS_TABLE, ABOUT_TABLE
+from mo_sqlite import quote_column
 from mo_times import Date
-
-DIGITS_TABLE = "__digits__"
-ABOUT_TABLE = "meta.about"
-
-
-GUID = "_id"  # user accessible, unique value across many machines
-UID = "__id__"  # internal numeric id for single-database use
-ORDER = "__order__"
-PARENT = "__parent__"
-COLUMN = "__column"
-
-ALL_TYPES = "bns"
 
 
 def unique_name():

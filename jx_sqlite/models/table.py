@@ -5,10 +5,10 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-from mo_imports import expect
-
 import jx_base
+from jx_sqlite.models.snowflake import Snowflake
 from jx_sqlite.models.schema import Schema
+from mo_imports import expect, export
 from mo_logs import Log
 
 QueryTable = expect("QueryTable")
@@ -36,4 +36,7 @@ class Table(jx_base.Table):
 
     @property
     def schema(self):
-        return Schema(self.nested_path[0], self.container)
+        return Schema(self.nested_path, Snowflake(self.nested_path[-1], self.container.namespace))
+
+
+export("jx_sqlite.models.snowflake", Table)

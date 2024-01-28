@@ -7,7 +7,6 @@
 #
 import jx_base
 from jx_sqlite.models.schema import Schema
-from jx_sqlite.models.table import Table
 from jx_sqlite.utils import (
     quoted_ORDER,
     quoted_PARENT,
@@ -25,6 +24,7 @@ from mo_dots import (
     join_field,
     relative_field,
 )
+from mo_imports import expect
 from mo_json import ARRAY, OBJECT, EXISTS, INTEGER
 from mo_logs import Log, Except
 from mo_sqlite import (
@@ -42,6 +42,8 @@ from mo_sqlite import (
     SQL_ARRAY_KEY
 )
 from mo_times import Date
+
+Table = expect("Table")
 
 
 class Snowflake(jx_base.Snowflake):

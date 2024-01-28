@@ -463,3 +463,4 @@ type2container["sqlite"] = QueryTable
 
 export("jx_sqlite.models.container", QueryTable)
 export("jx_sqlite.models.table", QueryTable)
+export("jx_sqlite.expressions.nested_op", QueryTable)

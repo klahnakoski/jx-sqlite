@@ -40,6 +40,7 @@ from mo_dots import (
     list_to_data,
 )
 from mo_future import text
+from mo_imports import export
 from mo_json.types import OBJECT, jx_type_to_json_type
 from mo_logs import Log
 from mo_sql import SQL_DESC, SQL_ASC
@@ -182,7 +183,7 @@ class SetOpTable(InsertTable):
         )
         schema = query.frum.schema
         known_vars = schema.keys()
-        active_paths = {schema.path: set()}
+        active_paths = {schema.nested_path[0]: set()}
         for v in select_vars:
             for _, c in schema.leaves(v):
                 active_paths.setdefault(c.nested_path[0], set()).add(c)
@@ -212,11 +213,9 @@ class SetOpTable(InsertTable):
         # EVERY SELECT STATEMENT THAT WILL BE REQUIRED, NO MATTER THE DEPTH
         # WE WILL CREATE THEM ACCORDING TO THE DEPTH REQUIRED
         for sub_table in self.snowflake.tables:
-            fact, step = tail_field(sub_table)
+            step = relative_field(sub_table, self.snowflake.fact_name)
             nested_doc_details = DocumentDetails(sub_table)
-            sub_schema = self.snowflake.get_schema(list(reversed([
-                t for t in self.snowflake.tables if startswith_field(sub_table, t)
-            ])))
+            sub_schema = self.container.get_table(sub_table).schema
 
             if step == ".":
                 # ROOT OF TREE
@@ -481,3 +480,6 @@ class DocumentDetails(object):
         self.nested_path: List[str] = [sub_table]
         self.index_to_column: Dict[int, ColumnMapping] = {}
         self.children: List[DocumentDetails] = []
+
+
+export("jx_sqlite.models.container", SetOpTable)

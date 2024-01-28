@@ -39,25 +39,13 @@ from jx_sqlite.utils import (
     sql_aggs,
     sql_text_array_to_set,
     untyped_column,
-    PARENT,
-    UID,
     DIGITS_TABLE,
     table_alias,
 )
 from mo_dots import (
-    coalesce,
     startswith_field,
     is_missing,
-    Null,
 )
-from mo_future import text
-from mo_json import (
-    NUMBER,
-    JX_BOOLEAN,
-    jx_type_to_json_type,
-)
-from mo_logs import Log
-from mo_sql.utils import sql_type_key_to_json_type
 from mo_sqlite import *
 from mo_sqlite import quote_column, quote_value, sql_alias
 

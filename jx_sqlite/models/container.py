@@ -32,7 +32,7 @@ from mo_sqlite import (
     sql_insert,
     json_type_to_sqlite_type,
 )
-from jx_sqlite.utils import UID, GUID, DIGITS_TABLE, ABOUT_TABLE
+from mo_sql.utils import UID, GUID, DIGITS_TABLE, ABOUT_TABLE
 from mo_dots import concat_field, set_default
 from mo_future import first, NEXT
 from mo_imports import expect

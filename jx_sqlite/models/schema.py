@@ -6,7 +6,9 @@
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
 
-from typing import Set, Tuple
+from typing import Set, Tuple, List
+
+from jx_base.models.snowflake import Snowflake
 
 from jx_base import Column
 from jx_base.queries import get_property_name
@@ -30,7 +32,7 @@ class Schema(object):
     A Schema MAPS ALL COLUMNS IN SNOWFLAKE FROM THE PERSPECTIVE OF A SINGLE TABLE (a nested_path)
     """
 
-    def __init__(self, nested_path, snowflake):
+    def __init__(self, nested_path: List[str], snowflake: Snowflake):
         if not isinstance(nested_path, (list, tuple)):
             logger.error("expecting list")
         if nested_path[-1] == ".":
@@ -38,12 +40,13 @@ class Schema(object):
                 "Expecting absolute nested path so we can track the tables, and deal with"
                 " abiguity in the event the names are not typed"
             )
-        self.path = nested_path[0]
+        if not isinstance(snowflake, Snowflake):
+            logger.error("Expecting Snowflake")
         self.nested_path = nested_path
         self.snowflake = snowflake
 
     def __getitem__(self, item):
-        output = self.snowflake.namespace.columns.find(self.path, item)
+        output = self.snowflake.namespace.columns.find(self.nested_path[0], item)
         return output
 
     def get_table(self, table_name):
@@ -210,6 +213,3 @@ class Schema(object):
                         fact_dict.setdefault(concat_field(var, c.name), []).append(c)
 
         return set_default(origin_dict, fact_dict)
-
-
-NO_SCHEMA = Schema([None], None)

@@ -11,7 +11,7 @@
 /vendor/pyLibrary/vendor/sqlite/sqlite3_64.def
 /*.sqlite-journal
 /.idea
-/.venv
+.venv*
 /sql
 /setup.py
 /build
