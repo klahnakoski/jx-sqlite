@@ -5,8 +5,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-
-
 import jx_base
 from jx_sqlite.models.schema import Schema
 from jx_sqlite.models.table import Table
@@ -29,9 +27,8 @@ from mo_dots import (
 )
 from mo_json import ARRAY, OBJECT, EXISTS, INTEGER
 from mo_logs import Log, Except
-from mo_sql.utils import SQL_ARRAY_KEY, untype_field
-from mo_sqlite import quote_column
 from mo_sqlite import (
+    quote_column,
     sql_iso,
     sql_list,
     SQL_CREATE,
@@ -39,8 +36,10 @@ from mo_sqlite import (
     SQL_ALTER_TABLE,
     SQL_ADD_COLUMN,
     SQL_RENAME_COLUMN,
+    SQL_INSERT, SQL_SELECT, SQL_FROM, SQL_ZERO, SQL_RENAME_TO, SQL_AS,
     SQL_TO,
     TextSQL,
+    SQL_ARRAY_KEY
 )
 from mo_times import Date
 

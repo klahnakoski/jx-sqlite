@@ -462,3 +462,4 @@ class Transaction:
 type2container["sqlite"] = QueryTable
 
 export("jx_sqlite.models.container", QueryTable)
+export("jx_sqlite.models.table", QueryTable)
