@@ -10,6 +10,8 @@
 from typing import Dict, List
 from uuid import uuid4
 
+from jx_sqlite.models.schema import Schema
+
 from jx_sqlite.utils import untyped_column
 
 from jx_base import Column, Facts
@@ -307,7 +309,7 @@ class InsertTable(Facts):
                 if json_type is None:
                     continue
 
-                columns = snowflake.get_schema(nested_path).columns + insertion.active_columns
+                columns = Schema(nested_path, snowflake).columns + insertion.active_columns
                 if json_type == ARRAY:
                     curr_column = first(
                         cc for cc in columns if cc.json_type in STRUCT and untyped_column(cc.name)[0] == abs_name

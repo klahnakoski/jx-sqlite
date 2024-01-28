@@ -9,6 +9,12 @@
 
 from copy import copy
 
+from mo_sql.utils import SQL_ARRAY_KEY, untype_field
+
+from mo_dots import startswith_field
+
+from mo_future import first
+
 import jx_base
 from jx_base import Facts
 from jx_sqlite.meta_columns import ColumnList
@@ -36,9 +42,28 @@ class Namespace(jx_base.Namespace):
         snowflake = Snowflake(fact_name, self)
         return Facts(self, snowflake)
 
-    def get_schema(self, fact_name):
+    def get_schema(self, table_name):
+
+        if SQL_ARRAY_KEY in table_name:
+            cleaner = lambda x: x
+        else:
+            cleaner = lambda x: untype_field(x)[0]
+
+
         # TODO: HOW TO REDUCE RELATIONS TO JUST THIS TREE? (AVOID CYCLES)
-        return Schema([fact_name], Snowflake(fact_name, self))
+        pair = first(
+            (k, qps)
+            for k, qps in self.columns._snowflakes.items()
+            for qp in qps if cleaner(qp)==table_name
+        )
+        if pair is None:
+            return None
+        fact_name, query_paths = pair
+        nested_path = []
+        for query_path in query_paths:
+            if startswith_field(table_name, query_path):
+                nested_path.append(query_path)
+        return Schema(list(reversed(nested_path)), Snowflake(nested_path[-1], self))
 
     def get_snowflake(self, fact_name):
         return Snowflake(fact_name, self)
@@ -50,7 +75,7 @@ class Namespace(jx_base.Namespace):
         return self.columns.find_columns(table_name)
 
     def get_tables(self):
-        return self.columns.tables
+        return list(sorted(self.columns.data.keys()))
 
     def _load_relations(self):
         db = self.container.db

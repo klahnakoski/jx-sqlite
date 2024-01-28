@@ -315,34 +315,6 @@ ColumnMapping = DataClass(
     ]},
 )
 
-sqlite_type_to_simple_type = {
-    "TEXT": STRING,
-    "REAL": NUMBER,
-    "INT": INTEGER,
-    "INTEGER": INTEGER,
-    "TINYINT": BOOLEAN,
-}
-
-sqlite_type_to_type_key = {
-    "ARRAY": ARRAY_KEY,
-    "TEXT": STRING_KEY,
-    "REAL": NUMBER_KEY,
-    "INTEGER": INTEGER_KEY,
-    "TINYINT": BOOLEAN_KEY,
-    "TRUE": BOOLEAN_KEY,
-    "FALSE": BOOLEAN_KEY,
-}
-
-type_key_json_type = {
-    ARRAY_KEY: JX_ARRAY,
-    STRING_KEY: JX_TEXT,
-    NUMBER_KEY: JX_NUMBER,
-    INTEGER_KEY: JX_INTEGER,
-    BOOLEAN_KEY: JX_BOOLEAN,
-}
-
-sort_to_sqlite_order = {-1: SQL_DESC, 0: SQL_ASC, 1: SQL_ASC}
-
 
 class BasicSnowflake(Snowflake):
     def __init__(self, query_paths, columns):

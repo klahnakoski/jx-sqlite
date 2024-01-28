@@ -7,6 +7,8 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
+from mo_imports import export
+
 import mo_json
 from jx_base import Column, Facts
 from jx_base.domains import SimpleSetDomain
@@ -58,6 +60,10 @@ from mo_threads import register_thread
 class QueryTable(GroupbyTable):
     def __init__(self, name, container):
         Facts.__init__(self, name, container)
+
+    @property
+    def nested_path(self):
+        return self.container.get_table(self.name).nested_path
 
     def get_column_name(self, column):
         return relative_field(column.name, self.snowflake.fact_name)
@@ -328,6 +334,11 @@ class QueryTable(GroupbyTable):
 
         return output
 
+    def get_table(self, table_name):
+        if startswith_field(table_name, self.name):
+            return QueryTable(table_name, self.container)
+        Log.error("programmer error")
+
     def query_metadata(self, query):
         frum, query["from"] = query["from"], self
         schema = self.snowflake.tables["."].schema
@@ -449,3 +460,5 @@ class Transaction:
 
 # TODO: use dependency injection
 type2container["sqlite"] = QueryTable
+
+export("jx_sqlite.models.container", QueryTable)

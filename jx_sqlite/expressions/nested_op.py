@@ -7,9 +7,12 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
+from mo_imports import expect
+
 from jx_base.expressions import QueryOp
 from jx_base.expressions.nested_op import NestedOp as _NestedOp
-from jx_sqlite.query_table import QueryTable
+
+QueryTable = expect("QueryTable")
 
 
 class NestedOp(_NestedOp):

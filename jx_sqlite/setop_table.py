@@ -9,8 +9,6 @@
 #
 from typing import List, Dict, Tuple
 
-from mo_testing.fuzzytestcase import assertAlmostEqual
-
 from jx_base import Column, is_op
 from jx_base.expressions import NULL
 from jx_python import jx
@@ -28,7 +26,6 @@ from jx_sqlite.utils import (
     PARENT,
     table_alias,
     untype_field,
-    sort_to_sqlite_order,
 )
 from mo_dots import (
     Data,
@@ -45,6 +42,7 @@ from mo_dots import (
 from mo_future import text
 from mo_json.types import OBJECT, jx_type_to_json_type
 from mo_logs import Log
+from mo_sql import SQL_DESC, SQL_ASC
 from mo_sqlite import (
     SQL_AND,
     SQL_FROM,
@@ -454,6 +452,9 @@ class SetOpTable(InsertTable):
         )
 
         return sql
+
+
+sort_to_sqlite_order = {-1: SQL_DESC, 0: SQL_ASC, 1: SQL_ASC}
 
 
 def test_dots(cols):

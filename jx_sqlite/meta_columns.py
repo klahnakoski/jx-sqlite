@@ -25,16 +25,13 @@ from mo_dots import (
     is_data,
     is_list,
     startswith_field,
-    tail_field,
     unwraplist,
     wrap,
-    list_to_data, concat_field,
-)
+    list_to_data )
 from mo_json import STRUCT, IS_NULL
 from mo_json.typed_encoder import unnest_path, detype
 from mo_logs import Log
 from mo_sql.utils import sql_type_key_to_json_type
-from mo_sqlite import sql_query
 from mo_threads import Queue
 from mo_times.dates import Date
 
@@ -70,6 +67,7 @@ class ColumnList(Table, Container):
         self.last_load = Null
         self.todo = Queue("update columns to es")  # HOLD (action, column) PAIR, WHERE action in ['insert', 'update']
         self._snowflakes = {}  # MAP FROM fact_name TO LIST OF PATHS, STARTING WITH FACT AND BREADTH FIRST TO LEAVES
+        self.primary_keys = {}  # MAP FROM table TO LIST OF PRIMARY KEY COLUMNS
         self._load_from_database()
 
     def _query(self, query):
@@ -82,19 +80,22 @@ class ColumnList(Table, Container):
 
     def _load_from_database(self):
         # FIND ALL TABLES
-        result = self.db.query(sql_query({
-            "from": "sqlite_master",
-            "where": {"eq": {"type": "table"}},
-            "orderby": "name",
-        }))
-        tables = list_to_data([{k: d for k, d in zip(result.header, row)} for row in result.data])
+        tables = self.db.get_tables()
+        last_nested_path = []
         for table in tables:
             if table.name.startswith("__"):
                 continue
-            base_table, rel_nested_path = tail_field(table.name)
 
-            # TODO: LOOK AT RELATIONS TO FIND NESTED PATHS
-            self._snowflakes[base_table]=[table.name]
+            # FIND COMMON ARRAY PATH SUFFIX
+            for i, p in enumerate(last_nested_path):
+                if startswith_field(table.name, p):
+                    last_nested_path = last_nested_path[i:]
+                    break
+            else:
+                last_nested_path = []
+
+            full_nested_path = [table.name] + last_nested_path
+            self._snowflakes.setdefault(full_nested_path[-1], []).append(table.name)
 
             # LOAD THE COLUMNS
             details = self.db.about(table.name)
@@ -359,6 +360,20 @@ class ColumnList(Table, Container):
         if table_name != META_COLUMNS_NAME:
             Log.error("this container has only the " + META_COLUMNS_NAME)
         return self._all_columns()
+
+    def get_nested_path(self, table_name):
+        for k, v in self._snowflakes.items():
+            if startswith_field(table_name, k):
+                query_paths = v
+                break
+        else:
+            Log.error("not found", table_name=table_name)
+
+        nested_path = []
+        for query_path in query_paths:
+            if startswith_field(table_name, query_path):
+                nested_path.append(query_path)
+        return list(reversed(nested_path))
 
     def get_query_paths(self, fact_name):
         """

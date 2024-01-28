@@ -18,7 +18,7 @@ from jx_base.expressions.aggregate_op import AggregateOp
 from jx_base.expressions.select_op import SelectOne
 from jx_base.expressions.sql_left_joins_op import Source, Join
 from jx_base.language import is_op
-from jx_sqlite.expressions import SqlLeftJoinsOp
+from jx_sqlite.expressions.sql_left_joins_op import SqlLeftJoinsOp
 from jx_sqlite.expressions.sql_group_by_op import SqlGroupByOp
 from jx_sqlite.expressions.sql_origins_op import SqlOriginsOp
 from jx_sqlite.expressions.sql_script import SqlScript

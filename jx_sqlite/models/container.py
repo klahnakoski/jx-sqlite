@@ -15,6 +15,7 @@ from jx_sqlite.expressions.sql_select_all_from_op import SqlSelectAllFromOp
 from jx_sqlite.expressions._utils import SQLang
 from jx_sqlite.models.namespace import Namespace
 from jx_sqlite.models.snowflake import Snowflake
+from jx_sqlite.models.table import Table
 from mo_sqlite import (
     SQL_SELECT,
     SQL_FROM,
@@ -71,7 +72,6 @@ class Container(_Container):
 
         self.setup()
         self.namespace = Namespace(container=self)
-        self.about = QueryTable("meta.about", self)
         self.next_uid = self._gen_ids()  # A DELIGHTFUL SOURCE OF UNIQUE INTEGERS
 
     def _gen_ids(self):
@@ -144,7 +144,7 @@ class Container(_Container):
         :return: Facts
         """
         self.remove_facts(fact_name)
-        self.namespace.columns._snowflakes[fact_name] = ["."]
+        self.namespace.columns._snowflakes[fact_name] = [fact_name]
 
         if uid != UID:
             Log.error("do not know how to handle yet")
@@ -178,9 +178,9 @@ class Container(_Container):
             if uid != UID:
                 Log.error("do not know how to handle yet")
 
-            self.namespace.columns._snowflakes[fact_name] = ["."]
+            self.namespace.columns._snowflakes[fact_name] = [fact_name]
             self.namespace.columns.add(Column(
-                name=concat_field(fact_name, "_id"),
+                name="_id",
                 es_column="_id",
                 es_index=fact_name,
                 es_type=json_type_to_sqlite_type[STRING],
@@ -198,11 +198,15 @@ class Container(_Container):
         return QueryTable(fact_name, self)
 
     def get_table(self, table_name):
-        snowflake = Snowflake(table_name, self.namespace)
-        return snowflake.get_table([table_name])
+        nested_path = self.namespace.columns.get_nested_path(table_name)
+        return Table(nested_path, self)
 
     def get_snowflake(self, table_name):
-        return Snowflake(table_name, self.namespace)
+        fact_name = first(fact for fact, nps in self.namespace.columns._snowflakes.items() for np in nps if np[0] == table_name)
+        return Snowflake(fact_name, self.namespace)
+
+    def close(self):
+        self.db.stop()
 
     @property
     def language(self):

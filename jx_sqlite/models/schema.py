@@ -9,8 +9,8 @@
 from typing import Set, Tuple
 
 from jx_base import Column
-from jx_base.models.nested_path import NestedPath
 from jx_base.queries import get_property_name
+from jx_sqlite.utils import GUID, untyped_column, untype_field
 from mo_dots import (
     concat_field,
     relative_field,
@@ -18,8 +18,10 @@ from mo_dots import (
     startswith_field,
     endswith_field,
 )
+from mo_future import first
 from mo_json import EXISTS, OBJECT, STRUCT, to_jx_type, JxType
 from mo_logs import Log
+from mo_logs import logger
 from mo_sql.utils import typed_column, SQL_ARRAY_KEY, untyped_column, untype_field, GUID
 
 
@@ -28,17 +30,20 @@ class Schema(object):
     A Schema MAPS ALL COLUMNS IN SNOWFLAKE FROM THE PERSPECTIVE OF A SINGLE TABLE (a nested_path)
     """
 
-    def __init__(self, nested_path: NestedPath, snowflake):
-        if not isinstance(nested_path, list) or nested_path[-1] == ".":
-            Log.error(
-                "Expecting full nested path so we can track the tables, and deal with"
+    def __init__(self, nested_path, snowflake):
+        if not isinstance(nested_path, (list, tuple)):
+            logger.error("expecting list")
+        if nested_path[-1] == ".":
+            logger.error(
+                "Expecting absolute nested path so we can track the tables, and deal with"
                 " abiguity in the event the names are not typed"
             )
+        self.path = nested_path[0]
         self.nested_path = nested_path
         self.snowflake = snowflake
 
     def __getitem__(self, item):
-        output = self.snowflake.namespace.columns.find(self.nested_path[0], item)
+        output = self.snowflake.namespace.columns.find(self.path, item)
         return output
 
     def get_table(self, table_name):
@@ -129,32 +134,51 @@ class Schema(object):
             }
         )
 
-    def get_columns(self, prefix):
-        full_name, _ = untyped_column(concat_field(
-            relative_field(self.nested_path[0], self.snowflake.fact_name), prefix
-        ))
+    def column(self, prefix):
+        full_name = untyped_column(concat_field(self.nested_path, prefix))
         return set(
             c
-            for c in self.snowflake.namespace.get_columns(self.nested_path[0])
+            for c in self.snowflake.namespace.columns.find(self.snowflake.fact_name)
             for k, t in [untyped_column(c.name)]
-            if startswith_field(k, prefix)
+            if k == full_name and k != GUID
             if c.json_type not in [OBJECT, EXISTS]
         )
 
     def leaves(self, prefix) -> Set[Tuple[str, Column]]:
         """
-        RETURN ALL MATCHING LEAVES IN (relative_name, column) PAIRS
+        :param prefix:
+        :return: set of (relative_name, column) pairs
         """
-        for np in self.nested_path:
+        if prefix == GUID and len(self.nested_path) == 1:
+            return {(".", first(c for c in self.columns if c.name == GUID))}
+
+        candidates = [c for c in self.columns if c.json_type not in [OBJECT, EXISTS] and c.name != GUID]
+
+        search_path = [
+            *self.nested_path,
+            *(p for p in self.snowflake.query_paths if p.startswith(self.nested_path[0] + ".")),
+        ]
+
+        for np in search_path:
+            rel_path, _ = untype_field(relative_field(np, self.snowflake.fact_name))
+            if startswith_field(prefix, rel_path):
+                prefix = relative_field(prefix, rel_path)
+
             full_name = concat_field(np, prefix)
-            candidates = self.columns
             output = set(
-                (untype_field(relative_field(k, full_name))[0], c)
+                pair
                 for c in candidates
-                if c.json_type not in [OBJECT, EXISTS]
-                # if startswith_field(np, c.nested_path[0])
-                for k in (c.name, c.es_column, concat_field(c.nested_path[0], c.es_column))
-                if startswith_field(k, full_name) and k != GUID
+                if startswith_field(c.nested_path[0], np)
+                for pair in [first(
+                    (untype_field(relative_field(k, full_name))[0], c)
+                    for k in [
+                        concat_field(c.nested_path[0], relative_field(c.name, rel_path)),
+                        concat_field(c.es_index, c.es_column),
+                        # concat_field(c.nested_path[0], c.name),  # if the column name includes nested path
+                    ]
+                    if startswith_field(k, full_name)
+                )]
+                if pair is not None
             )
             if output:
                 return output

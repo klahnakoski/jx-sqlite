@@ -7,30 +7,9 @@
 #
 
 
-from typing import List
-
 import jx_base
-from jx_base.models.nested_path import NestedPath
 from jx_sqlite.models.schema import Schema
 from jx_sqlite.models.table import Table
-from mo_sqlite import (
-    SQL_FROM,
-    SQL_SELECT,
-    SQL_ZERO,
-    sql_iso,
-    sql_list,
-    SQL_CREATE,
-    SQL_AS,
-    ConcatSQL,
-    SQL_ALTER_TABLE,
-    SQL_ADD_COLUMN,
-    SQL_RENAME_COLUMN,
-    SQL_RENAME_TO,
-    SQL_TO,
-    TextSQL,
-    SQL_INSERT,
-)
-from mo_sqlite import quote_column
 from jx_sqlite.utils import (
     quoted_ORDER,
     quoted_PARENT,
@@ -48,10 +27,21 @@ from mo_dots import (
     join_field,
     relative_field,
 )
-from mo_future import first
 from mo_json import ARRAY, OBJECT, EXISTS, INTEGER
 from mo_logs import Log, Except
 from mo_sql.utils import SQL_ARRAY_KEY, untype_field
+from mo_sqlite import quote_column
+from mo_sqlite import (
+    sql_iso,
+    sql_list,
+    SQL_CREATE,
+    ConcatSQL,
+    SQL_ALTER_TABLE,
+    SQL_ADD_COLUMN,
+    SQL_RENAME_COLUMN,
+    SQL_TO,
+    TextSQL,
+)
 from mo_times import Date
 
 
@@ -65,7 +55,10 @@ class Snowflake(jx_base.Snowflake):
             Log.error("{{name}} does not exist", name=fact_name)
         self.fact_name = fact_name  # THE CENTRAL FACT TABLE
         self.namespace = namespace
-        self.query_paths: List[NestedPath] = [[fact_name]]  # REVERSE DEPTH FIRST SEARCH
+
+    @property
+    def query_paths(self):
+        return self.namespace.columns.get_query_paths(self.fact_name)
 
     def __copy__(self):
         Log.error("con not copy")
@@ -123,7 +116,9 @@ class Snowflake(jx_base.Snowflake):
                         break
                 else:
                     Log.error(
-                        "Did not add column {{column}]", column=column.es_column, cause=e,
+                        "Did not add column {{column}}",
+                        column=column.es_column,
+                        cause=e,
                     )
             else:
                 Log.error("Did not add column {{column}]", column=column.es_column, cause=e)
@@ -194,7 +189,9 @@ class Snowflake(jx_base.Snowflake):
             )
             with self.namespace.container.db.transaction() as t:
                 t.execute(command)
-                self.add_table([destination_table] + column.nested_path)
+                self.add_table([destination_table, *column.nested_path])
+
+
             self.namespace.columns.add(jx_base.Column(
                 name=UID,
                 es_column=UID,
@@ -233,10 +230,10 @@ class Snowflake(jx_base.Snowflake):
             return
 
         def new_es_column(c):
-            return concat_field(new_nest, relative_field(c.es_column, old_column_prefix))
+            return concat_field(destination_table, relative_field(c.es_column, old_column_prefix))
 
         def new_nested_path(c):
-            return [new_nest] + c.nested_path
+            return [destination_table, *c.nested_path]
 
         with self.namespace.container.db.transaction() as t:
             # MAKE NEW COLUMNS
@@ -298,28 +295,7 @@ class Snowflake(jx_base.Snowflake):
 
     @property
     def tables(self):
-        """
-        :return:  LIST OF (nested_path, full_name) PAIRS
-        """
-        return [(path, concat_field(self.fact_name, path)) for path in self.query_paths]
-
-    def get_table(self, nested_path):
-        """
-        RETURN TABLE FOR ABSOLUTE nested_path (WITH SOME PATTERN MATCHING)
-        """
-        abs_path, _ = untype_field(nested_path[0])
-
-        best = first(p for p in self.query_paths if untype_field(p[0])[0] == abs_path)
-        if not best:
-            matching_table = first(t for t in self.namespace.get_tables() if untype_field(t)[0] == abs_path)
-            if matching_table:
-                # EXPAND THIS SNOWFLAKE TO INCLUDE THE REQUESTED PATH
-                best = [matching_table]
-                self.query_paths.insert(0, matching_table)
-            else:
-                Log.error("Can not find table with name {{table|quote}}", table=best)
-
-        return Table(best, self)
+        return self.namespace.columns.get_query_paths(self.fact_name)
 
     def get_schema(self, nested_path):
         if nested_path not in self.query_paths:
