@@ -6,6 +6,7 @@
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
 import jx_base
+from jx_base import Column
 from jx_sqlite.models.schema import Schema
 from jx_sqlite.utils import (
     quoted_ORDER,
@@ -61,8 +62,32 @@ class Snowflake(jx_base.Snowflake):
     def query_paths(self):
         return self.namespace.columns.get_query_paths(self.fact_name)
 
+    @property
+    def tables(self):
+        Log.error("use Snowflake.query_paths")
+
     def __copy__(self):
         Log.error("con not copy")
+
+    def map_tables(self, map):
+        return jx_base.Snowflake(
+            None,
+            query_paths=[map[p] for p in self.query_paths],
+            columns=[
+                Column(
+                    name=c.name,
+                    json_type=c.json_type,
+                    es_type=c.es_type,
+                    es_column=c.es_column,
+                    es_index=map[c.es_index],
+                    cardinality=c.cardinality,
+                    multi=c.multi,
+                    nested_path=[map[p] for p in c.nested_path],
+                    last_updated=Date.now(),
+                )
+                for c in self.columns
+            ]
+        )
 
     @property
     def container(self):
@@ -293,10 +318,6 @@ class Snowflake(jx_base.Snowflake):
             Log.error("table exists")
         query_paths.append(nested_path[0])
         return Table(nested_path, self)
-
-    @property
-    def tables(self):
-        return self.namespace.columns.get_query_paths(self.fact_name)
 
     def get_schema(self, nested_path):
         if nested_path not in self.query_paths:

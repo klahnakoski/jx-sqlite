@@ -10,7 +10,7 @@ from typing import Set, Tuple, List
 
 from jx_base.models.snowflake import Snowflake
 
-from jx_base import Column
+from jx_base import Column, Schema as _Schema
 from jx_base.queries import get_property_name
 from jx_sqlite.utils import GUID, untyped_column, untype_field
 from mo_dots import (
@@ -27,7 +27,7 @@ from mo_logs import logger
 from mo_sql.utils import typed_column, SQL_ARRAY_KEY, untyped_column, untype_field, GUID
 
 
-class Schema(object):
+class Schema(_Schema):
     """
     A Schema MAPS ALL COLUMNS IN SNOWFLAKE FROM THE PERSPECTIVE OF A SINGLE TABLE (a nested_path)
     """

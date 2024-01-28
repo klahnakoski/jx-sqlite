@@ -341,7 +341,7 @@ class QueryTable(GroupbyTable):
 
     def query_metadata(self, query):
         frum, query["from"] = query["from"], self
-        schema = self.snowflake.tables["."].schema
+        # schema = self.snowflake.get_table(".").schema
         query = QueryOp.wrap(query, schema)
         columns = self.snowflake.columns
         where = query.where

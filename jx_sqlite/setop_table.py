@@ -207,14 +207,17 @@ class SetOpTable(InsertTable):
         index_to_uid = {}  # FROM ARRAY PATH TO THE INDEX OF UID
         sql_selects = []  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE)
         nest_to_alias = {nested_path: table_alias(i) for i, nested_path in enumerate(self.snowflake.query_paths)}
+        alias_snowflake = self.snowflake.map_tables(nest_to_alias)
+
         # ADD SQL SELECT COLUMNS
         selects = query.select.partial_eval(SQLang)
         primary_doc_details = DocumentDetails("")
         # EVERY SELECT STATEMENT THAT WILL BE REQUIRED, NO MATTER THE DEPTH
         # WE WILL CREATE THEM ACCORDING TO THE DEPTH REQUIRED
-        for sub_table in self.snowflake.tables:
+        for sub_alias, sub_table in zip(alias_snowflake.query_paths, self.snowflake.query_paths):
             step = relative_field(sub_table, self.snowflake.fact_name)
             nested_doc_details = DocumentDetails(sub_table)
+            # TODO: alias this schema
             sub_schema = self.container.get_table(sub_table).schema
 
             if step == ".":
@@ -264,8 +267,8 @@ class SetOpTable(InsertTable):
             # WE DO NOT NEED DATA FROM TABLES WE REQUEST NOTHING FROM
             if sub_table not in active_paths:
                 continue
-
-            sub_selects = selects.partial_eval(SQLang).to_sql(sub_schema).frum
+            alias_schema = alias_snowflake.get_schema(sub_table)
+            sub_selects = selects.partial_eval(SQLang).to_sql(alias_schema).frum
             for i, term in enumerate(sub_selects.terms):
                 name, value = term.name, term.value
                 column_number = len(sql_selects)
@@ -299,7 +302,7 @@ class SetOpTable(InsertTable):
                 sql_selects.append(sql_alias(sql, column_alias))
                 sorts.append(quote_column(column_alias) + SQL_IS_NULL)
                 sorts.append(quote_column(column_alias) + sort_to_sqlite_order[sort.sort])
-        for t in self.snowflake.tables:
+        for t in self.snowflake.query_paths:
             sorts.append(quote_column(COLUMN + text(index_to_uid[t])))
         unsorted_sql = self._make_sql_for_one_nest_in_set_op(
             self.snowflake.fact_name,
@@ -354,7 +357,7 @@ class SetOpTable(InsertTable):
         done = []
 
         # STATEMENT FOR EACH NESTED PATH
-        tables = self.snowflake.tables
+        tables = self.snowflake.query_paths
         for i, sub_table_name in enumerate(tables):
             if any(startswith_field(sub_table_name, d) for d in done):
                 continue

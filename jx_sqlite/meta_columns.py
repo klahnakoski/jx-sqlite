@@ -10,7 +10,7 @@
 from copy import copy
 
 import jx_base
-from jx_base import Schema, Table, Container, Column
+from jx_base import Schema, Table, Container, Column, Snowflake
 from jx_base.meta_columns import (
     META_COLUMNS_DESC,
     META_COLUMNS_NAME,
@@ -323,7 +323,7 @@ class ColumnList(Table, Container):
         with self.locker:
             self._update_meta()
             if not self._schema:
-                self._schema = Schema(".", [c for cs in self.data[META_COLUMNS_NAME].values() for c in cs])
+                self._schema = Schema([self.name], Snowflake(None, [self.name], [c for cs in self.data[META_COLUMNS_NAME].values() for c in cs]))
             snapshot = self._all_columns()
 
         from jx_python.containers.list import ListContainer

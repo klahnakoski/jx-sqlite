@@ -21,15 +21,22 @@ class Schema(object):
     A Schema MAPS COLUMN NAMES OF A SINGLE TABLE TO COLUMN INSTANCES THAT MATCH
     """
 
-    def __init__(self, table_name, columns):
+    def __init__(self, nested_path, snowflake):
         """
         :param table_name: A FULL NAME FOR THIS TABLE (NOT USED)
         :param columns: ALL COLUMNS IN SNOWFLAKE
         """
-        self._columns = copy(columns)
-        self.table = table_name
-        self.query_path = "."
-        self.lookup, self.lookup_leaves, self.lookup_variables = _indexer(columns, self.query_path)
+        self.nested_path = nested_path
+        self.snowflake = snowflake
+        self.lookup, self.lookup_leaves, self.lookup_variables = _indexer(snowflake.columns, self.nested_path[0])
+
+    @property
+    def table(self):
+        return self.nested_path[0]
+
+    @property
+    def columns(self):
+        return copy(self.snowflake.columns)
 
     def __getitem__(self, column_name):
         cs = self.lookup.get(column_name)
@@ -43,10 +50,6 @@ class Schema(object):
 
     def get_column(self, name, table=None):
         return self.lookup[name]
-
-    @property
-    def columns(self):
-        return self._columns
 
     def get_column_name(self, column):
         """
@@ -73,7 +76,6 @@ class Schema(object):
         pull the head of any tree by name
         :param name:
         """
-
         return self.lookup_leaves.get(unnest_path(name), Null)
 
     def map_to_es(self):
@@ -98,18 +100,14 @@ class Schema(object):
             },
         )
 
-    @property
-    def columns(self):
-        return copy(self._columns)
 
-
-def _indexer(columns, query_path):
+def _indexer(columns, query_paths, rel_query_path):
     all_names = set(unnest_path(c.name) for c in columns) | {"."}
 
     lookup_leaves = {}  # ALL LEAF VARIABLES
     for full_name in all_names:
         for c in columns:
-            cname = relative_field(c.name, query_path)
+            cname = relative_field(c.name, rel_query_path)
             nfp = unnest_path(cname)
             if (
                 startswith_field(nfp, full_name)
@@ -124,7 +122,7 @@ def _indexer(columns, query_path):
     lookup_variables = {}  # ALL NOT-NESTED VARIABLES
     for full_name in all_names:
         for c in columns:
-            cname = relative_field(c.name, query_path)
+            cname = relative_field(c.name, rel_query_path)
             nfp = unnest_path(cname)
             if (
                 startswith_field(nfp, full_name)
@@ -140,7 +138,7 @@ def _indexer(columns, query_path):
     relative_lookup = {}
     for c in columns:
         try:
-            cname = relative_field(c.name, query_path)
+            cname = relative_field(c.name, rel_query_path)
             cs = relative_lookup.setdefault(cname, set())
             cs.add(c)
 
@@ -150,7 +148,7 @@ def _indexer(columns, query_path):
         except Exception as e:
             Log.error("Should not happen", cause=e)
 
-    if query_path != ".":
+    if rel_query_path != ".":
         # ADD ABSOLUTE NAMES TO THE NAMESAPCE
         absolute_lookup, more_leaves, more_variables = _indexer(columns, "..")
         for k, cs in absolute_lookup.items():
@@ -164,6 +162,3 @@ def _indexer(columns, query_path):
                 lookup_variables[k] = cs
 
     return relative_lookup, lookup_leaves, lookup_variables
-
-
-# export("jx_base", Schema)

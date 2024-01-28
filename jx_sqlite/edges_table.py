@@ -58,7 +58,7 @@ class EdgesTable(SetOpTable):
         index_to_column = {}  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
         outer_selects = []  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE)
         base_table, path = schema.snowflake.fact_name, schema.nested_path
-        nest_to_alias = {sub_table: table_alias(i) for i, sub_table in enumerate(self.snowflake.tables)}
+        nest_to_alias = {sub_table: table_alias(i) for i, sub_table in enumerate(self.snowflake.query_paths)}
 
         tables = []
         for n, a in nest_to_alias.items():
