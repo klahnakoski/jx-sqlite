@@ -36,10 +36,8 @@ from jx_sqlite.utils import (
     STATS,
     _make_column_name,
     get_column,
-    sql_aggs,
     sql_text_array_to_set,
     untyped_column,
-    DIGITS_TABLE,
     table_alias,
 )
 from mo_dots import (

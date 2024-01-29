@@ -5,17 +5,22 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-
-
 from jx_base import jx_expression, Column
 from jx_base.expressions import Expression, Variable, is_literal, GetOp, SqlScript
+from jx_base.language import is_op
 from jx_base.models.container import Container as _Container
 from jx_base.models.facts import Facts
-from jx_sqlite.expressions.sql_select_all_from_op import SqlSelectAllFromOp
 from jx_sqlite.expressions._utils import SQLang
+from jx_sqlite.expressions.sql_select_all_from_op import SqlSelectAllFromOp
 from jx_sqlite.models.namespace import Namespace
-from jx_sqlite.models.snowflake import Snowflake
-from jx_sqlite.models.table import Table
+from jx_sqlite.utils import UID, GUID, DIGITS_TABLE, ABOUT_TABLE, untype_field
+from mo_dots import concat_field, set_default, startswith_field
+from mo_future import first, NEXT
+from mo_imports import expect
+from mo_json import STRING
+from mo_kwargs import override
+from mo_logs import Log
+from mo_sql.utils import SQL_ARRAY_KEY
 from mo_sqlite import (
     SQL_SELECT,
     SQL_FROM,
@@ -23,7 +28,6 @@ from mo_sqlite import (
     SQL_SET,
     ConcatSQL,
 )
-from jx_base.language import is_op
 from mo_sqlite import (
     Sqlite,
     quote_column,
@@ -32,17 +36,10 @@ from mo_sqlite import (
     sql_insert,
     json_type_to_sqlite_type,
 )
-from mo_sql.utils import UID, GUID, DIGITS_TABLE, ABOUT_TABLE
-from mo_dots import concat_field, set_default
-from mo_future import first, NEXT
-from mo_imports import expect
-from mo_json import STRING
-from mo_kwargs import override
-from mo_logs import Log
 from mo_threads.lock import locked
 from mo_times import Date
 
-SetOpTable, QueryTable = expect("SetOpTable", "QueryTable")
+SetOpTable, QueryTable, Table, Snowflake = expect("SetOpTable", "QueryTable", "Table", "Snowflake")
 _config = None
 
 
@@ -72,6 +69,7 @@ class Container(_Container):
 
         self.setup()
         self.namespace = Namespace(container=self)
+        self.about = QueryTable("meta.about", self)
         self.next_uid = self._gen_ids()  # A DELIGHTFUL SOURCE OF UNIQUE INTEGERS
 
     def _gen_ids(self):
@@ -193,7 +191,6 @@ class Container(_Container):
 
             with self.db.transaction() as t:
                 t.execute(command)
-            self.namespace.columns.primary_keys[fact_name] = (UID,)
 
         return QueryTable(fact_name, self)
 

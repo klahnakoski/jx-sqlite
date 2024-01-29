@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import Variable, SelectOp, LeavesOp, CountOp, DefaultOp
+from jx_base.expressions import SelectOp, CountOp, DefaultOp
 from jx_base.expressions.variable import is_variable
 from jx_base.language import is_op
 from jx_python import jx
@@ -17,13 +17,13 @@ from jx_sqlite.utils import (
     ColumnMapping,
     _make_column_name,
     get_column,
-    sql_aggs,
     PARENT,
     UID,
     table_alias,
 )
-from mo_dots import split_field, startswith_field, relative_field, unliteral_field, tail_field, concat_field
+from mo_dots import split_field, startswith_field, relative_field, unliteral_field, tail_field
 from mo_json import jx_type_to_json_type, JX_INTEGER
+from mo_sql.utils import sql_aggs
 from mo_sqlite import (
     SQL_FROM,
     SQL_GROUPBY,

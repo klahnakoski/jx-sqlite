@@ -7,6 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
+from mo_sql.utils import sql_aggs
 from mo_imports import export
 
 import mo_json
@@ -19,7 +20,7 @@ from jx_base.models.container import type2container
 from jx_python import jx
 from jx_sqlite.expressions._utils import SQLang
 from jx_sqlite.groupby_table import GroupbyTable
-from jx_sqlite.utils import GUID, sql_aggs, unique_name, untyped_column
+from jx_sqlite.utils import GUID, unique_name, untyped_column
 from mo_collections.matrix import Matrix, index_to_coordinate
 from mo_dots import (
     Data,

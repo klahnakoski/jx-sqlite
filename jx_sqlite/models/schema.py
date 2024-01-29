@@ -6,13 +6,14 @@
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
 
-from typing import Set, Tuple, List
+from typing import Set, Tuple
+
+from jx_base.models.nested_path import NestedPath
 
 from jx_base.models.snowflake import Snowflake
 
 from jx_base import Column, Schema as _Schema
 from jx_base.queries import get_property_name
-from jx_sqlite.utils import GUID, untyped_column, untype_field
 from mo_dots import (
     concat_field,
     relative_field,
@@ -23,7 +24,6 @@ from mo_dots import (
 from mo_future import first
 from mo_json import EXISTS, OBJECT, STRUCT, to_jx_type, JxType
 from mo_logs import Log
-from mo_logs import logger
 from mo_sql.utils import typed_column, SQL_ARRAY_KEY, untyped_column, untype_field, GUID
 
 
@@ -32,18 +32,18 @@ class Schema(_Schema):
     A Schema MAPS ALL COLUMNS IN SNOWFLAKE FROM THE PERSPECTIVE OF A SINGLE TABLE (a nested_path)
     """
 
-    def __init__(self, nested_path: List[str], snowflake: Snowflake):
-        if not isinstance(nested_path, (list, tuple)):
-            logger.error("expecting list")
-        if nested_path[-1] == ".":
-            logger.error(
-                "Expecting absolute nested path so we can track the tables, and deal with"
+    def __init__(self, nested_path: NestedPath, snowflake):
+        if not isinstance(nested_path, list) or nested_path[-1] == ".":
+            Log.error(
+                "Expecting full nested path so we can track the tables, and deal with"
                 " abiguity in the event the names are not typed"
             )
-        if not isinstance(snowflake, Snowflake):
-            logger.error("Expecting Snowflake")
         self.nested_path = nested_path
         self.snowflake = snowflake
+
+    @property
+    def path(self):
+        return self.nested_path[0]
 
     def __getitem__(self, item):
         output = self.snowflake.namespace.columns.find(self.nested_path[0], item)
@@ -137,13 +137,15 @@ class Schema(_Schema):
             }
         )
 
-    def column(self, prefix):
-        full_name = untyped_column(concat_field(self.nested_path, prefix))
+    def get_columns(self, prefix):
+        full_name, _ = untyped_column(concat_field(
+            relative_field(self.nested_path[0], self.snowflake.fact_name), prefix
+        ))
         return set(
             c
-            for c in self.snowflake.namespace.columns.find(self.snowflake.fact_name)
+            for c in self.snowflake.namespace.get_columns(self.nested_path[0])
             for k, t in [untyped_column(c.name)]
-            if k == full_name and k != GUID
+            if startswith_field(k, prefix)
             if c.json_type not in [OBJECT, EXISTS]
         )
 
@@ -213,3 +215,6 @@ class Schema(_Schema):
                         fact_dict.setdefault(concat_field(var, c.name), []).append(c)
 
         return set_default(origin_dict, fact_dict)
+
+
+NO_SCHEMA = Schema([None], None)

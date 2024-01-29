@@ -6,8 +6,8 @@
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
 import jx_base
-from jx_sqlite.models.snowflake import Snowflake
 from jx_sqlite.models.schema import Schema
+from jx_sqlite.models.snowflake import Snowflake
 from mo_imports import expect, export
 from mo_logs import Log
 
@@ -40,3 +40,5 @@ class Table(jx_base.Table):
 
 
 export("jx_sqlite.models.snowflake", Table)
+export("jx_sqlite.models.container", Table)
+

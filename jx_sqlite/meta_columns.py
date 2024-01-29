@@ -17,7 +17,7 @@ from jx_base.meta_columns import (
     SIMPLE_METADATA_COLUMNS,
 )
 from jx_python import jx
-from jx_sqlite.utils import untyped_column
+from jx_sqlite.utils import untyped_column, untype_field
 from mo_dots import (
     Data,
     Null,
@@ -28,10 +28,11 @@ from mo_dots import (
     unwraplist,
     wrap,
     list_to_data )
+from mo_future import first
 from mo_json import STRUCT, IS_NULL
 from mo_json.typed_encoder import unnest_path, detype
 from mo_logs import Log
-from mo_sql.utils import sql_type_key_to_json_type
+from mo_sql.utils import sql_type_key_to_json_type, SQL_ARRAY_KEY
 from mo_threads import Queue
 from mo_times.dates import Date
 
@@ -116,6 +117,7 @@ class ColumnList(Table, Container):
                     multi=1,
                     last_updated=Date.now(),
                 ))
+            last_nested_path = full_nested_path
 
     def find(self, fact_table, abs_column_name=None):
         try:
@@ -362,16 +364,24 @@ class ColumnList(Table, Container):
         return self._all_columns()
 
     def get_nested_path(self, table_name):
-        for k, v in self._snowflakes.items():
-            if startswith_field(table_name, k):
-                query_paths = v
-                break
-        else:
-            Log.error("not found", table_name=table_name)
+        fixer = (
+            (lambda x:x)
+            if SQL_ARRAY_KEY in table_name
+            else (lambda x: untype_field(x)[0])
+        )
+        clean_name = fixer(table_name)
 
+        query_paths = first(
+            qps
+            for k, qps in self._snowflakes.items()
+            for qp in qps
+            if fixer(qp) == clean_name
+        )
+        if not query_paths:
+            Log.error("not found", table_name=table_name)
         nested_path = []
         for query_path in query_paths:
-            if startswith_field(table_name, query_path):
+            if startswith_field(clean_name, query_path):
                 nested_path.append(query_path)
         return list(reversed(nested_path))
 

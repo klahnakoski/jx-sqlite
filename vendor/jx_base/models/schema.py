@@ -28,7 +28,9 @@ class Schema(object):
         """
         self.nested_path = nested_path
         self.snowflake = snowflake
-        self.lookup, self.lookup_leaves, self.lookup_variables = _indexer(snowflake.columns, self.nested_path[0])
+        self.lookup, self.lookup_leaves, self.lookup_variables = _indexer(
+            snowflake.columns, relative_field(self.nested_path[0], self.snowflake.query_paths[0])
+        )
 
     @property
     def table(self):
@@ -57,7 +59,7 @@ class Schema(object):
         :param column:
         :return: NAME OF column
         """
-        return relative_field(column.name, query_path)
+        return relative_field(column.name, nested_path[0])
 
     def values(self, name):
         """
@@ -101,7 +103,7 @@ class Schema(object):
         )
 
 
-def _indexer(columns, query_paths, rel_query_path):
+def _indexer(columns, rel_query_path):
     all_names = set(unnest_path(c.name) for c in columns) | {"."}
 
     lookup_leaves = {}  # ALL LEAF VARIABLES
@@ -128,7 +130,7 @@ def _indexer(columns, query_paths, rel_query_path):
                 startswith_field(nfp, full_name)
                 and c.es_type not in [EXISTS, OBJECT]
                 and (c.es_column != "_id" or full_name == "_id")
-                and startswith_field(c.nested_path[0], query_path)
+                and startswith_field(c.nested_path[0], rel_query_path)
             ):
                 cs = lookup_variables.setdefault(full_name, set())
                 cs.add(c)

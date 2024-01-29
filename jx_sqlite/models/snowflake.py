@@ -5,9 +5,31 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
+
+
+from typing import List
+
 import jx_base
-from jx_base import Column
+from jx_base.models.nested_path import NestedPath
 from jx_sqlite.models.schema import Schema
+from mo_sqlite import (
+    SQL_FROM,
+    SQL_SELECT,
+    SQL_ZERO,
+    sql_iso,
+    sql_list,
+    SQL_CREATE,
+    SQL_AS,
+    ConcatSQL,
+    SQL_ALTER_TABLE,
+    SQL_ADD_COLUMN,
+    SQL_RENAME_COLUMN,
+    SQL_RENAME_TO,
+    SQL_TO,
+    TextSQL,
+    SQL_INSERT,
+)
+from mo_sqlite import quote_column
 from jx_sqlite.utils import (
     quoted_ORDER,
     quoted_PARENT,
@@ -26,22 +48,10 @@ from mo_dots import (
     relative_field,
 )
 from mo_imports import expect
+from mo_future import first
 from mo_json import ARRAY, OBJECT, EXISTS, INTEGER
 from mo_logs import Log, Except
-from mo_sqlite import (
-    quote_column,
-    sql_iso,
-    sql_list,
-    SQL_CREATE,
-    ConcatSQL,
-    SQL_ALTER_TABLE,
-    SQL_ADD_COLUMN,
-    SQL_RENAME_COLUMN,
-    SQL_INSERT, SQL_SELECT, SQL_FROM, SQL_ZERO, SQL_RENAME_TO, SQL_AS,
-    SQL_TO,
-    TextSQL,
-    SQL_ARRAY_KEY
-)
+from mo_sql.utils import SQL_ARRAY_KEY, untype_field
 from mo_times import Date
 
 Table = expect("Table")
@@ -68,26 +78,6 @@ class Snowflake(jx_base.Snowflake):
 
     def __copy__(self):
         Log.error("con not copy")
-
-    def map_tables(self, map):
-        return jx_base.Snowflake(
-            None,
-            query_paths=[map[p] for p in self.query_paths],
-            columns=[
-                Column(
-                    name=c.name,
-                    json_type=c.json_type,
-                    es_type=c.es_type,
-                    es_column=c.es_column,
-                    es_index=map[c.es_index],
-                    cardinality=c.cardinality,
-                    multi=c.multi,
-                    nested_path=[map[p] for p in c.nested_path],
-                    last_updated=Date.now(),
-                )
-                for c in self.columns
-            ]
-        )
 
     @property
     def container(self):
@@ -318,6 +308,31 @@ class Snowflake(jx_base.Snowflake):
             Log.error("table exists")
         query_paths.append(nested_path[0])
         return Table(nested_path, self)
+
+    @property
+    def tables(self):
+        """
+        :return:  LIST OF (nested_path, full_name) PAIRS
+        """
+        return [(path, concat_field(self.fact_name, path)) for path in self.query_paths]
+
+    def get_table(self, nested_path):
+        """
+        RETURN TABLE FOR ABSOLUTE nested_path (WITH SOME PATTERN MATCHING)
+        """
+        abs_path, _ = untype_field(nested_path[0])
+
+        best = first(p for p in self.query_paths if untype_field(p[0])[0] == abs_path)
+        if not best:
+            matching_table = first(t for t in self.namespace.get_tables() if untype_field(t)[0] == abs_path)
+            if matching_table:
+                # EXPAND THIS SNOWFLAKE TO INCLUDE THE REQUESTED PATH
+                best = [matching_table]
+                self.query_paths.insert(0, matching_table)
+            else:
+                Log.error("Can not find table with name {{table|quote}}", table=best)
+
+        return Table(best, self)
 
     def get_schema(self, nested_path):
         if nested_path not in self.query_paths:

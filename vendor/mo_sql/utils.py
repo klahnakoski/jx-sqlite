@@ -85,7 +85,10 @@ sql_aggs = {
     "minimum": "MIN",
     "sum": "SUM",
     "add": "SUM",
+    "any": "MAX",
+    "all": "MIN",
 }
+
 
 STATS = {
     "count": "COUNT({{value}})",

@@ -10,7 +10,9 @@
 from copy import copy
 from math import isnan
 
-from jx_base import DataClass, Snowflake, NULL
+from jx_base import DataClass
+from jx_base import Snowflake
+from jx_base.expressions import NULL
 from mo_dots import (
     Data,
     concat_field,

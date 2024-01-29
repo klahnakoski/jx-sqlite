@@ -9,6 +9,10 @@
 #
 from typing import List, Dict, Tuple
 
+from mo_imports import export
+from mo_sql import SQL_DESC, SQL_ASC
+from mo_testing.fuzzytestcase import assertAlmostEqual
+
 from jx_base import Column, is_op
 from jx_base.expressions import NULL
 from jx_python import jx
@@ -40,10 +44,8 @@ from mo_dots import (
     list_to_data,
 )
 from mo_future import text
-from mo_imports import export
 from mo_json.types import OBJECT, jx_type_to_json_type
 from mo_logs import Log
-from mo_sql import SQL_DESC, SQL_ASC
 from mo_sqlite import (
     SQL_AND,
     SQL_FROM,
@@ -206,19 +208,18 @@ class SetOpTable(InsertTable):
         index_to_column = {}  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
         index_to_uid = {}  # FROM ARRAY PATH TO THE INDEX OF UID
         sql_selects = []  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE)
-        nest_to_alias = {nested_path: table_alias(i) for i, nested_path in enumerate(self.snowflake.query_paths)}
-        alias_snowflake = self.snowflake.map_tables(nest_to_alias)
-
+        nest_to_alias = {query_path: table_alias(i) for i, query_path in enumerate(self.snowflake.query_paths)}
         # ADD SQL SELECT COLUMNS
         selects = query.select.partial_eval(SQLang)
         primary_doc_details = DocumentDetails("")
         # EVERY SELECT STATEMENT THAT WILL BE REQUIRED, NO MATTER THE DEPTH
         # WE WILL CREATE THEM ACCORDING TO THE DEPTH REQUIRED
-        for sub_alias, sub_table in zip(alias_snowflake.query_paths, self.snowflake.query_paths):
-            step = relative_field(sub_table, self.snowflake.fact_name)
+        for sub_table in self.snowflake.query_paths:
+            fact, step = tail_field(sub_table)
             nested_doc_details = DocumentDetails(sub_table)
-            # TODO: alias this schema
-            sub_schema = self.container.get_table(sub_table).schema
+            sub_schema = self.snowflake.get_schema(list(reversed([
+                t for t in self.snowflake.query_paths if startswith_field(sub_table, t)
+            ])))
 
             if step == ".":
                 # ROOT OF TREE
@@ -267,8 +268,8 @@ class SetOpTable(InsertTable):
             # WE DO NOT NEED DATA FROM TABLES WE REQUEST NOTHING FROM
             if sub_table not in active_paths:
                 continue
-            alias_schema = alias_snowflake.get_schema(sub_table)
-            sub_selects = selects.partial_eval(SQLang).to_sql(alias_schema).frum
+
+            sub_selects = selects.partial_eval(SQLang).to_sql(sub_schema).frum
             for i, term in enumerate(sub_selects.terms):
                 name, value = term.name, term.value
                 column_number = len(sql_selects)
