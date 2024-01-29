@@ -294,6 +294,7 @@ class InsertTable(Facts):
             """
             table_name = nested_path[0]
             insertion = doc_collection.setdefault(table_name, Insertion())
+            known_columns = snowflake.get_schema(nested_path).columns
 
             if is_data(doc):
                 items = [(k, v) for k, v in to_data(doc).leaves()]
@@ -307,7 +308,7 @@ class InsertTable(Facts):
                 if json_type is None:
                     continue
 
-                columns = snowflake.get_schema(nested_path).columns + insertion.active_columns
+                columns = known_columns + insertion.active_columns
                 if json_type == ARRAY:
                     curr_column = first(
                         cc for cc in columns if cc.json_type in STRUCT and untyped_column(cc.name)[0] == abs_name
@@ -435,6 +436,9 @@ class InsertTable(Facts):
                         parent_id=parent_id,
                     )
                 elif curr_column.json_type:
+                    if curr_column not in insertion.active_columns:
+                        known_columns.remove(curr_column)
+                        insertion.active_columns.append(curr_column)
                     row[curr_column.es_column] = v
 
         for doc in docs:
