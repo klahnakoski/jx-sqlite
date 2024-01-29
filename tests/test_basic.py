@@ -20,8 +20,20 @@ from mo_testing.fuzzytestcase import add_error_reporting
 
 @add_error_reporting
 class TestBasic(TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        for file in File("sql").children:
+            try:
+                file.delete()
+            except Exception:
+                pass
+
+    def _new_file(self):
+        return File(f"sql/test{randoms.hex(4)}.sqlite")
+
     def test_save_and_load(self):
-        file = File(f"sql/test{randoms.hex(4)}.sqlite")
+        file = self._new_file()
         file.delete()
 
         db = Sqlite(file)
@@ -34,3 +46,16 @@ class TestBasic(TestCase):
         db = Sqlite(file)
         result = Container(db).get_or_create_facts("my_table").query({"select": "os", "where": {"gt": {"value": 0}}})
         self.assertEqual(result, {"meta": {"format": "list"}, "data": [{"os": "linux"}, {"os": "win"}]})
+
+    def test_open_db(self):
+        file = self._new_file()
+        file.delete()
+
+        db = Sqlite(file)
+        db.stop()
+
+        container = Container(filename=file)
+        container.get_or_create_facts("my_table")
+        container.close()
+
+
