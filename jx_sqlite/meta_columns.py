@@ -10,14 +10,14 @@
 from copy import copy
 
 import jx_base
-from jx_base import Schema, Table, Container, Column
+from jx_base import Schema, Table, Container, Column, Snowflake
 from jx_base.meta_columns import (
     META_COLUMNS_DESC,
     META_COLUMNS_NAME,
     SIMPLE_METADATA_COLUMNS,
 )
 from jx_python import jx
-from jx_sqlite.utils import untyped_column
+from jx_sqlite.utils import untyped_column, untype_field
 from mo_dots import (
     Data,
     Null,
@@ -25,16 +25,14 @@ from mo_dots import (
     is_data,
     is_list,
     startswith_field,
-    tail_field,
     unwraplist,
     wrap,
-    list_to_data,
-)
+    list_to_data )
+from mo_future import first
 from mo_json import STRUCT, IS_NULL
 from mo_json.typed_encoder import unnest_path, detype
 from mo_logs import Log
-from mo_sql.utils import sql_type_key_to_json_type
-from mo_sqlite import sql_query
+from mo_sql.utils import sql_type_key_to_json_type, SQL_ARRAY_KEY
 from mo_threads import Queue
 from mo_times.dates import Date
 
@@ -69,7 +67,8 @@ class ColumnList(Table, Container):
         self.es_index = None
         self.last_load = Null
         self.todo = Queue("update columns to es")  # HOLD (action, column) PAIR, WHERE action in ['insert', 'update']
-        self._snowflakes = {}
+        self._snowflakes = {}  # MAP FROM fact_name TO LIST OF PATHS, STARTING WITH FACT AND BREADTH FIRST TO LEAVES
+        self.primary_keys = {}  # MAP FROM table TO LIST OF PRIMARY KEY COLUMNS
         self._load_from_database()
 
     def _query(self, query):
@@ -82,50 +81,37 @@ class ColumnList(Table, Container):
 
     def _load_from_database(self):
         # FIND ALL TABLES
-        result = self.db.query(sql_query({
-            "from": "sqlite_master",
-            "where": {"eq": {"type": "table"}},
-            "orderby": "name",
-        }))
-        tables = list_to_data([
-            {k: d for k, d in zip(result.header, row)} for row in result.data
-        ])
+        tables = self.db.get_tables()
         last_nested_path = []
         for table in tables:
             if table.name.startswith("__"):
                 continue
-            base_table, nested_path = tail_field(table.name)
 
             # FIND COMMON ARRAY PATH SUFFIX
-            if nested_path == ".":
-                last_nested_path = []
+            for i, p in enumerate(last_nested_path):
+                if startswith_field(table.name, p):
+                    last_nested_path = last_nested_path[i:]
+                    break
             else:
-                for i, p in enumerate(last_nested_path):
-                    if startswith_field(nested_path, p):
-                        last_nested_path = last_nested_path[i:]
-                        break
-                else:
-                    last_nested_path = []
+                last_nested_path = []
 
-            full_nested_path = [nested_path] + last_nested_path
-            self._snowflakes.setdefault(base_table, []).append(full_nested_path)
+            full_nested_path = [table.name] + last_nested_path
+            self._snowflakes.setdefault(full_nested_path[-1], []).append(table.name)
 
             # LOAD THE COLUMNS
             details = self.db.about(table.name)
 
-            for cid, name, dtype, notnull, dfft_value, pk in details:
+            for cid, name, sql_type, notnull, dfft_value, pk in details:
                 if name.startswith("__"):
                     continue
-                cname, ctype = untyped_column(name)
+                cname, sql_type_key = untyped_column(name)
                 self.add(Column(
                     name=cname,
                     json_type=coalesce(
-                        sql_type_key_to_json_type.get(ctype),
-                        sql_type_key_to_json_type.get(dtype),
-                        IS_NULL,
+                        sql_type_key_to_json_type.get(sql_type_key), sql_type_key_to_json_type.get(sql_type), IS_NULL,
                     ),
-                    nested_path=full_nested_path,
-                    es_type=dtype,
+                    nested_path=[table.name],
+                    es_type=sql_type,
                     es_column=name,
                     es_index=table.name,
                     multi=1,
@@ -249,12 +235,7 @@ class ColumnList(Table, Container):
         self.dirty = False
 
     def _all_columns(self):
-        return [
-            column
-            for t, cs in self.data.items()
-            for _, css in cs.items()
-            for column in css
-        ]
+        return [column for t, cs in self.data.items() for _, css in cs.items() for column in css]
 
     def __iter__(self):
         with self.locker:
@@ -269,9 +250,7 @@ class ColumnList(Table, Container):
         try:
             command = list_to_data(command)
             DEBUG and Log.note(
-                "Update {{timestamp}}: {{command|json}}",
-                command=command,
-                timestamp=Date(command["set"].last_updated),
+                "Update {{timestamp}}: {{command|json}}", command=command, timestamp=Date(command["set"].last_updated),
             )
             eq = command.where.eq
             if eq.es_index:
@@ -296,12 +275,7 @@ class ColumnList(Table, Container):
                     # FASTER
                     all_columns = self.data.get(eq.es_index, {}).values()
                     with self.locker:
-                        columns = [
-                            c
-                            for cs in all_columns
-                            for c in cs
-                            if c.es_column == eq.es_column
-                        ]
+                        columns = [c for cs in all_columns for c in cs if c.es_column == eq.es_column]
 
                 else:
                     # SLOWER
@@ -311,9 +285,7 @@ class ColumnList(Table, Container):
                             c
                             for cs in all_columns
                             for c in cs
-                            if all(
-                                c[k] == v for k, v in eq.items()
-                            )  # THIS LINE IS VERY SLOW
+                            if all(c[k] == v for k, v in eq.items())  # THIS LINE IS VERY SLOW
                         ]
             else:
                 columns = list(self)
@@ -322,9 +294,7 @@ class ColumnList(Table, Container):
             with self.locker:
                 for col in columns:
                     DEBUG and Log.note(
-                        "update column {{table}}.{{column}}",
-                        table=col.es_index,
-                        column=col.es_column,
+                        "update column {{table}}.{{column}}", table=col.es_index, column=col.es_column,
                     )
                     for k in command["clear"]:
                         if k == ".":
@@ -355,9 +325,7 @@ class ColumnList(Table, Container):
         with self.locker:
             self._update_meta()
             if not self._schema:
-                self._schema = Schema(
-                    ".", [c for cs in self.data[META_COLUMNS_NAME].values() for c in cs]
-                )
+                self._schema = Schema([self.name], Snowflake(None, [self.name], [c for cs in self.data[META_COLUMNS_NAME].values() for c in cs]))
             snapshot = self._all_columns()
 
         from jx_python.containers.list import ListContainer
@@ -378,9 +346,7 @@ class ColumnList(Table, Container):
         if not self._schema:
             with self.locker:
                 self._update_meta()
-                self._schema = Schema(
-                    ".", [c for cs in self.data[META_COLUMNS_NAME].values() for c in cs]
-                )
+                self._schema = Schema(".", [c for cs in self.data[META_COLUMNS_NAME].values() for c in cs])
         return self._schema
 
     @property
@@ -396,6 +362,28 @@ class ColumnList(Table, Container):
         if table_name != META_COLUMNS_NAME:
             Log.error("this container has only the " + META_COLUMNS_NAME)
         return self._all_columns()
+
+    def get_nested_path(self, table_name):
+        fixer = (
+            (lambda x:x)
+            if SQL_ARRAY_KEY in table_name
+            else (lambda x: untype_field(x)[0])
+        )
+        clean_name = fixer(table_name)
+
+        query_paths = first(
+            qps
+            for k, qps in self._snowflakes.items()
+            for qp in qps
+            if fixer(qp) == clean_name
+        )
+        if not query_paths:
+            Log.error("not found", table_name=table_name)
+        nested_path = []
+        for query_path in query_paths:
+            if startswith_field(clean_name, query_path):
+                nested_path.append(query_path)
+        return list(reversed(nested_path))
 
     def get_query_paths(self, fact_name):
         """
@@ -433,9 +421,7 @@ class ColumnList(Table, Container):
         from jx_python.containers.list import ListContainer
 
         return ListContainer(
-            self.name,
-            data=output,
-            schema=jx_base.Schema(META_COLUMNS_NAME, SIMPLE_METADATA_COLUMNS),
+            self.name, data=output, schema=jx_base.Schema(META_COLUMNS_NAME, SIMPLE_METADATA_COLUMNS),
         )
 
 
@@ -451,7 +437,7 @@ def mark_as_deleted(col):
     col.last_updated = Date.now()
 
 
-class _FakeLock():
+class _FakeLock:
     def __enter__(self):
         pass
 

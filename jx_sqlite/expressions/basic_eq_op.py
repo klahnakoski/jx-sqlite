@@ -7,11 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import (
-    BasicEqOp as BasicEqOp_,
-    FALSE,
-    is_literal
-)
+from jx_base.expressions import BasicEqOp as BasicEqOp_, FALSE, is_literal
 from jx_sqlite.expressions._utils import check, SQLang, value2boolean
 from jx_sqlite.expressions.not_op import NotOp
 from jx_sqlite.expressions.sql_script import SqlScript
@@ -48,9 +44,8 @@ class BasicEqOp(BasicEqOp_):
                     return NotOp(lhs.frum).partial_eval(SQLang).to_sql(schema)
         return SqlScript(
             jx_type=JX_BOOLEAN,
-            expr=ConcatSQL(
-                sql_iso(lhs.to_sql(schema)), SQL_EQ, sql_iso(rhs.to_sql(schema)),
-            ),
+            expr=ConcatSQL(sql_iso(lhs.to_sql(schema)), SQL_EQ, sql_iso(rhs.to_sql(schema)),),
             frum=self,
-            miss=FALSE, schema=schema
+            miss=FALSE,
+            schema=schema,
         )

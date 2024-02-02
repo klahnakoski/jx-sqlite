@@ -19,7 +19,8 @@ from mo_sqlite import (
     SQL_CAST,
     SQL_SUB,
     SQL_LT,
-    SQL_ZERO, sql_cast,
+    SQL_ZERO,
+    sql_cast,
 )
 from mo_future import text
 from mo_json import JX_NUMBER
@@ -33,10 +34,7 @@ class FloorOp(_FloorOp):
         modifier = sql_iso(lhs.expr, SQL_LT, SQL_ZERO)
 
         if text(rhs).strip() != "1":
-            floor = sql_cast(
-                ConcatSQL(sql_iso(lhs.expr), SQL_DIV, sql_iso(rhs.expr)),
-                "INTEGER"
-            )
+            floor = sql_cast(ConcatSQL(sql_iso(lhs.expr), SQL_DIV, sql_iso(rhs.expr)), "INTEGER")
             sql = ConcatSQL(sql_iso(floor, SQL_SUB, modifier), SQL_STAR, rhs)
         else:
             floor = sql_cast(lhs.expr, "INTEGER")

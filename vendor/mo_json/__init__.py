@@ -10,11 +10,8 @@
 import math
 from datetime import timedelta, timezone
 
-from hjson import loads as hjson2value
-
 from mo_dots import (
     Data,
-    FlatList,
     Null,
     SLOT,
     to_data,
@@ -28,12 +25,15 @@ from mo_future import (
     is_text,
 )
 from mo_imports import delay_import
-from mo_json.types import *
 from mo_logs import Except, strings
-from mo_logs.strings import expand_template, toString, FORMATTERS
+from mo_logs.strings import toString, FORMATTERS
 from mo_times import Duration
 
+from mo_json.types import *
+
 logger = delay_import("mo_logs.logger")
+hjson2value = delay_import("hjson.loads")
+
 
 FIND_LOOPS = True  # FIND LOOPS IN DATA STRUCTURES
 SNAP_TO_BASE_10 = False  # Identify floats near a round base10 value (has 000 or 999) and shorten
@@ -350,7 +350,7 @@ def json2value(json_string, params=Null, flexible=False, leaves=False):
     """
     :param json_string: THE JSON
     :param params: STANDARD JSON PARAMS
-    :param flexible: REMOVE COMMENTS
+    :param flexible: REMOVE COMMENTS (uses hjson)
     :param leaves: ASSUME JSON KEYS ARE DOT-DELIMITED
     :return: Python value
     """
@@ -482,7 +482,7 @@ def _simple_expand(template, seq):
                     val = toString(val)
                     return val
             except Exception as f:
-                Log.warning(
+                logger.warning(
                     "Can not expand " + "|".join(ops) + " in template: {{template_|json}}",
                     template_=template,
                     cause=cause,

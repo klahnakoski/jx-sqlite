@@ -16,8 +16,4 @@ from jx_sqlite.expressions.not_op import NotOp
 class NeOp(_NeOp):
     @check
     def to_sql(self, schema):
-        return (
-            NotOp("not", EqOp(self.lhs, self.rhs).partial_eval(SQLang))
-            .partial_eval(SQLang)
-            .to_sql(schema)
-        )
+        return NotOp("not", EqOp(self.lhs, self.rhs).partial_eval(SQLang)).partial_eval(SQLang).to_sql(schema)

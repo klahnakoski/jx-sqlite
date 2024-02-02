@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import Variable, SelectOp, LeavesOp, CountOp, DefaultOp
+from jx_base.expressions import SelectOp, CountOp, DefaultOp
 from jx_base.expressions.variable import is_variable
 from jx_base.language import is_op
 from jx_python import jx
@@ -17,13 +17,13 @@ from jx_sqlite.utils import (
     ColumnMapping,
     _make_column_name,
     get_column,
-    sql_aggs,
     PARENT,
     UID,
     table_alias,
 )
-from mo_dots import split_field, startswith_field, relative_field, unliteral_field, tail_field, concat_field
+from mo_dots import split_field, startswith_field, relative_field, unliteral_field, tail_field
 from mo_json import jx_type_to_json_type, JX_INTEGER
+from mo_sql.utils import sql_aggs
 from mo_sqlite import (
     SQL_FROM,
     SQL_GROUPBY,
@@ -52,8 +52,7 @@ class GroupbyTable(EdgesTable):
         path = schema.nested_path[0]
         index_to_column = {}
         nest_to_alias = {
-            nested_path: table_alias(i)
-            for i, nested_path in enumerate(self.schema.snowflake.query_paths)
+            nested_path: table_alias(i) for i, nested_path in enumerate(self.schema.snowflake.query_paths)
         }
         tables = []
         for n, a in nest_to_alias.items():
@@ -61,9 +60,7 @@ class GroupbyTable(EdgesTable):
                 tables.append({"nest": n, "alias": a})
         tables = jx.sort(tables, {"value": {"length": "nest"}})
 
-        from_sql = [sql_alias(
-            quote_column(*split_field(tables[0].nest)), tables[0].alias
-        )]
+        from_sql = [sql_alias(quote_column(*split_field(tables[0].nest)), tables[0].alias)]
         previous = tables[0]
         for t in tables[1::]:
             from_sql.append(ConcatSQL(
@@ -80,14 +77,14 @@ class GroupbyTable(EdgesTable):
         groupby = []
         column_index = 0
         for edge in query.groupby:
-            top = edge['name'] != "."
+            top = edge["name"] != "."
             edge_sql = edge.value.partial_eval(SQLang).to_sql(schema)
             if is_op(edge_sql.frum, SelectOp):
                 for t in edge_sql.frum.terms:
                     name, value = t.name, t.value
                     if top:
                         top_name = edge["name"]
-                        end_name = relative_field(name, edge['name'])
+                        end_name = relative_field(name, edge["name"])
                     else:
                         top_name, end_name = tail_field(name)
                     column_number = len(selects)
@@ -138,11 +135,7 @@ class GroupbyTable(EdgesTable):
 
             # AGGREGATE
             base_agg = select.aggregate
-            if (
-                is_variable(select.value)
-                and select.value.var == "."
-                and is_op(base_agg, CountOp)
-            ):
+            if is_variable(select.value) and select.value.var == "." and is_op(base_agg, CountOp):
                 sql = sql_count(SQL_ONE)
                 json_type = JX_INTEGER
             else:
@@ -151,10 +144,7 @@ class GroupbyTable(EdgesTable):
                 sql = sql_call(sql_aggs[base_agg.op], sql)
 
             if is_op(select.aggregate, DefaultOp):
-                sql = sql_coalesce([
-                    sql,
-                    select.default.partial_eval(SQLang).to_sql(schema),
-                ])
+                sql = sql_coalesce([sql, select.default.partial_eval(SQLang).to_sql(schema),])
 
             selects.append(sql_alias(sql, select.name))
 
@@ -191,11 +181,7 @@ class GroupbyTable(EdgesTable):
                 SQL_ORDERBY,
                 sql_list(
                     ConcatSQL(
-                        sql_iso(sql),
-                        SQL_IS_NULL,
-                        SQL_COMMA,
-                        sql_iso(sql),
-                        SQL_DESC if s.sort == -1 else SQL_ASC,
+                        sql_iso(sql), SQL_IS_NULL, SQL_COMMA, sql_iso(sql), SQL_DESC if s.sort == -1 else SQL_ASC,
                     )
                     for s in query.sort
                     for sql in [s.value.partial_eval(SQLang).to_sql(schema)]

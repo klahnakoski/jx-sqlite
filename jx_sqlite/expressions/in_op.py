@@ -36,9 +36,7 @@ class InOp(_InOp):
                 values = [value2boolean(v) for v in values]
             # TODO: DUE TO LIMITED BOOLEANS, TURN THIS INTO EqOp
             sql = ConcatSQL(value, SQL_IN, quote_list(values))
-            return SqlScript(
-                jx_type=JX_BOOLEAN, expr=sql, frum=self, miss=FALSE, schema=schema
-            )
+            return SqlScript(jx_type=JX_BOOLEAN, expr=sql, frum=self, miss=FALSE, schema=schema)
 
         if not is_variable(superset):
             Log.error("Do not know how to hanldle")

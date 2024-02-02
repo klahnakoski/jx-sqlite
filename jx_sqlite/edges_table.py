@@ -36,28 +36,14 @@ from jx_sqlite.utils import (
     STATS,
     _make_column_name,
     get_column,
-    sql_aggs,
     sql_text_array_to_set,
     untyped_column,
-    PARENT,
-    UID,
-    DIGITS_TABLE,
     table_alias,
 )
 from mo_dots import (
-    coalesce,
     startswith_field,
     is_missing,
-    Null,
 )
-from mo_future import text
-from mo_json import (
-    NUMBER,
-    JX_BOOLEAN,
-    jx_type_to_json_type,
-)
-from mo_logs import Log
-from mo_sql.utils import sql_type_key_to_json_type
 from mo_sqlite import *
 from mo_sqlite import quote_column, quote_value, sql_alias
 
@@ -70,7 +56,7 @@ class EdgesTable(SetOpTable):
         index_to_column = {}  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
         outer_selects = []  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE)
         base_table, path = schema.snowflake.fact_name, schema.nested_path
-        nest_to_alias = {sub_table: table_alias(i) for i, sub_table in enumerate(self.snowflake.tables)}
+        nest_to_alias = {sub_table: table_alias(i) for i, sub_table in enumerate(self.snowflake.query_paths)}
 
         tables = []
         for n, a in nest_to_alias.items():

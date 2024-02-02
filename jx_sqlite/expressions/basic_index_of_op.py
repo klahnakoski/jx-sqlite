@@ -39,19 +39,7 @@ class BasicIndexOfOp(BasicIndexOfOp_):
             return SqlScript(expr=expr, miss=FALSE, frum=self)
         else:
             start_index = start.to_sql(schema)
-            found = sql_call(
-                "INSTR", sql_call("SUBSTR", value, start_index), SQL_ONE, find
-            )
+            found = sql_call("INSTR", sql_call("SUBSTR", value, start_index), SQL_ONE, find)
             return SqlScript(ConcatSQL(
-                SQL_CASE,
-                SQL_WHEN,
-                found,
-                SQL_THEN,
-                found,
-                "+",
-                start_index,
-                "-1",
-                SQL_ELSE,
-                "-1",
-                SQL_END,
+                SQL_CASE, SQL_WHEN, found, SQL_THEN, found, "+", start_index, "-1", SQL_ELSE, "-1", SQL_END,
             ))

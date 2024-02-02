@@ -34,6 +34,7 @@ def expect(*names):
     :param names: MODULE VARIABLES THAT WILL BE FILLED BY ANOTHER MODULE
     :return: PLACEHOLDERS THAT CAN BE USED UNTIL FILL HAPPENS len(output)==len(names)
     """
+    global _monitor, _expiry, _event
 
     if not names:
         _error("expecting at least one name")
@@ -49,6 +50,15 @@ def expect(*names):
         desc = Expecting(caller, name)
         setattr(caller, name, desc)
         output.append(desc)
+
+        with _locker:
+            _expiry = time() + WAIT_FOR_EXPORT
+            _expectations.append(desc)
+            if not _monitor:
+                _event = Event()
+                _monitor = Thread(target=worker, args=[_event])
+                _monitor.daemon = True
+                _monitor.start()
 
     if DEBUG:
         for name in names:
@@ -77,14 +87,6 @@ class Expecting(object):
 
         _set(self, "module", module)
         _set(self, "name", name)
-        with _locker:
-            _expiry = time() + WAIT_FOR_EXPORT
-            _expectations.append(self)
-            if not _monitor:
-                _event = Event()
-                _monitor = Thread(target=worker, args=[_event])
-                _monitor.daemon = True
-                _monitor.start()
 
     def __call__(self, *args, **kwargs):
         _error(f'missing expected call export("{self.module.__name__}", {self.name})')
@@ -126,6 +128,7 @@ def export(module, name, value=_nothing):
     :param name: THE VARIABLE TO SET IN MODULE (OR VALUE, IF THERE IS NO NAME CHANGE)
     :param value: (optional) THE VALUE TO ASSIGN
     """
+    global _monitor, _expiry, _event
 
     if isinstance(module, str):
         try:
@@ -162,6 +165,8 @@ def export(module, name, value=_nothing):
                     del _expectations[i]
                     if not _expectations:
                         _event.set()
+                        _monitor.join()
+                        _monitor = None
                     break
             else:
                 _error(f"{module.__name__} is not expecting an export to {name}")
@@ -174,7 +179,7 @@ def export(module, name, value=_nothing):
 
 
 def worker(please_stop):
-    global _expectations, _monitor
+    global _expectations
 
     if DEBUG:
         print(">>> expectation thread started")
@@ -182,13 +187,9 @@ def worker(please_stop):
         if DEBUG:
             print(f">>> wait for {_expiry - time()} seconds (until {unix_to_date(_expiry)})")
         please_stop.wait(_expiry - time())
+        if please_stop.is_set():
+            break
         with _locker:
-            if not _expectations:
-                _monitor = None
-                break
-            if _expiry >= time():
-                continue
-
             done, _expectations = _expectations, []
 
         for d in done:
@@ -204,7 +205,7 @@ def unix_to_date(unix):
 
 
 def _error(description):
-    raise Exception(description)
+    raise Exception(description) from None
 
 
 def delay_import(module):

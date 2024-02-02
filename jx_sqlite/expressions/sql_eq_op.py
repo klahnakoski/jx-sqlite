@@ -35,15 +35,10 @@ class SqlEqOp(SqlEqOp_):
         else:
             Log.error("Not supported yet")
 
-        null_match = AndOp(
-            lhs.missing(SQLang),
-            rhs.missing(SQLang),
-        ).partial_eval(SQLang)
+        null_match = AndOp(lhs.missing(SQLang), rhs.missing(SQLang),).partial_eval(SQLang)
         if null_match is FALSE:
             sql = ConcatSQL(lhs_sql, SQL_EQ, rhs_sql)
         else:
             sql = ConcatSQL(lhs_sql, SQL_EQ, rhs_sql, SQL_OR, null_match.to_sql(schema))
 
-        return SqlScript(
-            jx_type=JX_BOOLEAN, expr=sql, frum=self, miss=FALSE, schema=schema
-        )
+        return SqlScript(jx_type=JX_BOOLEAN, expr=sql, frum=self, miss=FALSE, schema=schema)

@@ -36,9 +36,5 @@ class LengthOp(LengthOp_):
             value = term.to_sql(schema)
             sql = sql_call("LENGTH", value.expr)
         return SqlScript(
-            jx_type=JX_INTEGER,
-            expr=sql,
-            frum=self,
-            miss=IsTextOp(self.term).missing(SQLang),
-            schema=schema,
+            jx_type=JX_INTEGER, expr=sql, frum=self, miss=IsTextOp(self.term).missing(SQLang), schema=schema,
         )

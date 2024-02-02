@@ -36,9 +36,5 @@ class SubOp(_SubOp):
         sql = ConcatSQL(sql_iso(lhs.expr), SQL_SUB, sql_iso(rhs.expr))
 
         return SqlScript(
-            jx_type=JX_NUMBER,
-            expr=sql,
-            frum=self,
-            miss=OrOp(MissingOp(self.lhs), MissingOp(self.rhs)),
-            schema=schema
+            jx_type=JX_NUMBER, expr=sql, frum=self, miss=OrOp(MissingOp(self.lhs), MissingOp(self.rhs)), schema=schema
         )

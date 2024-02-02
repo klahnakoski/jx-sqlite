@@ -14,5 +14,3 @@ from jx_base.expressions import FilterOp as FilterOp_
 
 class FilterOp(FilterOp_):
     pass
-
-

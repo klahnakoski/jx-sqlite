@@ -5,17 +5,22 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-
-
-
 from jx_base import jx_expression, Column
 from jx_base.expressions import Expression, Variable, is_literal, GetOp, SqlScript
+from jx_base.language import is_op
 from jx_base.models.container import Container as _Container
 from jx_base.models.facts import Facts
-from jx_sqlite.expressions.sql_select_all_from_op import SqlSelectAllFromOp
 from jx_sqlite.expressions._utils import SQLang
+from jx_sqlite.expressions.sql_select_all_from_op import SqlSelectAllFromOp
 from jx_sqlite.models.namespace import Namespace
-from jx_sqlite.models.snowflake import Snowflake
+from jx_sqlite.utils import UID, GUID, DIGITS_TABLE, ABOUT_TABLE, untype_field
+from mo_dots import concat_field, set_default, startswith_field
+from mo_future import first, NEXT
+from mo_imports import expect
+from mo_json import STRING
+from mo_kwargs import override
+from mo_logs import Log
+from mo_sql.utils import SQL_ARRAY_KEY
 from mo_sqlite import (
     SQL_SELECT,
     SQL_FROM,
@@ -23,7 +28,6 @@ from mo_sqlite import (
     SQL_SET,
     ConcatSQL,
 )
-from jx_base.language import is_op
 from mo_sqlite import (
     Sqlite,
     quote_column,
@@ -32,17 +36,10 @@ from mo_sqlite import (
     sql_insert,
     json_type_to_sqlite_type,
 )
-from jx_sqlite.utils import UID, GUID, DIGITS_TABLE, ABOUT_TABLE
-from mo_dots import concat_field, set_default
-from mo_future import first, NEXT
-from mo_imports import expect
-from mo_json import STRING
-from mo_kwargs import override
-from mo_logs import Log
 from mo_threads.lock import locked
 from mo_times import Date
 
-SetOpTable, QueryTable = expect("SetOpTable", "QueryTable")
+SetOpTable, QueryTable, Table, Snowflake = expect("SetOpTable", "QueryTable", "Table", "Snowflake")
 _config = None
 
 
@@ -81,21 +78,11 @@ class Container(_Container):
                 with self.db.transaction() as t:
                     top_id = first(first(
                         t
-                        .query(ConcatSQL(
-                            SQL_SELECT,
-                            quote_column("next_id"),
-                            SQL_FROM,
-                            quote_column(ABOUT_TABLE),
-                        ))
+                        .query(ConcatSQL(SQL_SELECT, quote_column("next_id"), SQL_FROM, quote_column(ABOUT_TABLE),))
                         .data
                     ))
                     max_id = top_id + 1000
-                    t.execute(ConcatSQL(
-                        SQL_UPDATE,
-                        quote_column(ABOUT_TABLE),
-                        SQL_SET,
-                        sql_eq(next_id=max_id),
-                    ))
+                    t.execute(ConcatSQL(SQL_UPDATE, quote_column(ABOUT_TABLE), SQL_SET, sql_eq(next_id=max_id),))
                 while top_id < max_id:
                     yield top_id
                     top_id += 1
@@ -105,9 +92,7 @@ class Container(_Container):
     def setup(self):
         if not self.db.about(ABOUT_TABLE):
             with self.db.transaction() as t:
-                t.execute(sql_create(
-                    ABOUT_TABLE, {"version": "TEXT", "next_id": "INTEGER"}
-                ))
+                t.execute(sql_create(ABOUT_TABLE, {"version": "TEXT", "next_id": "INTEGER"}))
                 t.execute(sql_insert(ABOUT_TABLE, {"version": "1.0", "next_id": 1000}))
                 t.execute(sql_create(DIGITS_TABLE, {"value": "INTEGER"}))
                 t.execute(sql_insert(DIGITS_TABLE, [{"value": i} for i in range(10)]))
@@ -117,7 +102,13 @@ class Container(_Container):
             return self.db.query(query.sql)
 
         if isinstance(query, Expression):
-            if is_op(query, GetOp) and isinstance(query.frum, Variable) and query.frum.var=="row" and len(query.offsets)==1 and is_literal(query.offsets[0]):
+            if (
+                is_op(query, GetOp)
+                and isinstance(query.frum, Variable)
+                and query.frum.var == "row"
+                and len(query.offsets) == 1
+                and is_literal(query.offsets[0])
+            ):
                 return SqlSelectAllFromOp(self.get_table(query.offsets[0].value))
             if isinstance(query, Variable):
                 # SELECT IS A LAMBDA
@@ -125,7 +116,6 @@ class Container(_Container):
                 # CAN THE "JOINED TABLES" BE INCOMPLETE BY MENTIONING THE RELATION?  TO AVOID THE CYCLES
 
                 # AN "SEGMENT" IS A TABLE, PLUS ALL THE (UNREALIZED) RELATIONS
-
 
                 # BUILD FULL SELECT CLAUSE
                 # SELECT_ALL_FROM OPERATOR
@@ -152,14 +142,12 @@ class Container(_Container):
         :return: Facts
         """
         self.remove_facts(fact_name)
-        self.namespace.columns._snowflakes[fact_name] = ["."]
+        self.namespace.columns._snowflakes[fact_name] = [fact_name]
 
         if uid != UID:
             Log.error("do not know how to handle yet")
 
-        command = sql_create(
-            fact_name, {UID: "INTEGER PRIMARY KEY", GUID: "TEXT"}, unique=UID
-        )
+        command = sql_create(fact_name, {UID: "INTEGER PRIMARY KEY", GUID: "TEXT"}, unique=UID)
 
         with self.db.transaction() as t:
             t.execute(command)
@@ -188,9 +176,9 @@ class Container(_Container):
             if uid != UID:
                 Log.error("do not know how to handle yet")
 
-            self.namespace.columns._snowflakes[fact_name] = ["."]
+            self.namespace.columns._snowflakes[fact_name] = [fact_name]
             self.namespace.columns.add(Column(
-                name=concat_field(fact_name, "_id"),
+                name="_id",
                 es_column="_id",
                 es_index=fact_name,
                 es_type=json_type_to_sqlite_type[STRING],
@@ -199,22 +187,23 @@ class Container(_Container):
                 multi=1,
                 last_updated=Date.now(),
             ))
-            command = sql_create(
-                fact_name, {UID: "INTEGER PRIMARY KEY", GUID: "TEXT"}, unique=UID
-            )
+            command = sql_create(fact_name, {UID: "INTEGER PRIMARY KEY", GUID: "TEXT"}, unique=UID)
 
             with self.db.transaction() as t:
                 t.execute(command)
-            self.namespace.columns.primary_keys[fact_name]=UID,
 
         return QueryTable(fact_name, self)
 
     def get_table(self, table_name):
-        snowflake = Snowflake(table_name, self.namespace)
-        return snowflake.get_table([table_name])
+        nested_path = self.namespace.columns.get_nested_path(table_name)
+        return Table(nested_path, self)
 
     def get_snowflake(self, table_name):
-        return Snowflake(table_name, self.namespace)
+        fact_name = first(fact for fact, nps in self.namespace.columns._snowflakes.items() for np in nps if np[0] == table_name)
+        return Snowflake(fact_name, self.namespace)
+
+    def close(self):
+        self.db.stop()
 
     @property
     def language(self):

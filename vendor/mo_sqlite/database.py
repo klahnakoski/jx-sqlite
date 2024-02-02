@@ -27,7 +27,7 @@ from mo_sqlite.utils import quote_column, sql_query, CommandItem, COMMIT, quote_
 
 jx_expression = delay_import("jx_base.jx_expression")
 table2csv = delay_import("jx_python.convert.table2csv")
-Relation = delay_import("mo_sqlite.models.relation.Relation")
+Relation = delay_import("jx_sqlite.models.relation.Relation")
 
 
 DEBUG = False
@@ -138,6 +138,32 @@ class Sqlite(DB):
                 return percentile(self.acc, self.percentile)
 
         con.create_aggregate("percentile", 2, Percentile)
+
+    def read_sql(self, filename):
+        """
+        EXECUTE THE SQL FOUND IN FILE
+
+        YOU CAN CREATE THE FILE WITH
+        sqlite> .output chinook.sql
+        sqlite> .dump
+        """
+        with self.transaction() as t:
+
+            def commands():
+                with open(File(filename).os_path, "r+b") as file:
+                    acc = []
+                    for line in file.readlines():
+                        line = line.decode("utf8")
+                        acc.append(line)
+                        if line.strip().endswith(";"):
+                            yield "\n".join(acc)
+                            acc = []
+                    yield "\n".join(acc)
+
+            for command in commands():
+                if "BEGIN TRANS" in command or "COMMIT" in command:
+                    continue
+                t.execute(command)
 
     def transaction(self):
         thread = Thread.current()
@@ -428,7 +454,7 @@ class Sqlite(DB):
                 # EXECUTE QUERY
                 self.last_command_item = command_item
                 self.debug and Log.note(FORMAT_COMMAND, command=query, **command_item.trace[0])
-                curr = self.db.execute(text(query))
+                curr = self.db.execute(query)
                 result.meta.format = "table"
                 result.header = [d[0] for d in curr.description] if curr.description else None
                 result.data = curr.fetchall()

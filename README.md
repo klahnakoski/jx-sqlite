@@ -16,7 +16,7 @@ This library will manage your database schema to store JSON documents. You get a
 
 Significant updates to the supporting libraries has broken this code.  It still works for the simple cases that require it
 
-**Jan 2020** - 96/283 test failing  
+**Jan 2024** - 91/320 tests ignored
 
 
 ## Installation
@@ -25,32 +25,23 @@ Significant updates to the supporting libraries has broken this code.  It still 
 
 ## Code Example
 
+The smoke test, found in the `tests` is a simple example of how to use this library.
+
 Open a database 
 
 ```python
 import jx_sqlite
-container = jx_sqlite.Container(filename="my.db")
-```
 
-Declare a table
-
-```python
-table = container.get_or_create_facts("my_table")
-```
-
-Pour JSON documents into it
-
-```python
-table.add({"os":"linux", "value":42})
-```
-
-Query the table
-
-```python
-table.query({
-    "select": "os", 
-    "where": {"gt": {"value": 0}}
-})
+table = (
+    jx_sqlite
+    .Container(filename="my.db")
+    .get_or_create_facts("my_table")
+    .add({"os":"linux", "value":42})
+    .query({
+        "select": "os", 
+        "where": {"gt": {"value": 0}}
+    })
+)
 ```
 
 ## More

@@ -18,8 +18,5 @@ class CountOp(_CountOp):
     @check
     def to_sql(self, schema):
         return SqlScript(
-            jx_type=JX_INTEGER,
-            expr=sql_call("MAX", self.frum.to_sql(schema).expr),
-            frum=self,
-            schema=schema,
+            jx_type=JX_INTEGER, expr=sql_call("MAX", self.frum.to_sql(schema).expr), frum=self, schema=schema,
         )

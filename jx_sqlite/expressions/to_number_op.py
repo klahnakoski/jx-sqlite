@@ -32,14 +32,7 @@ class ToNumberOp(NumberOp_):
 
         return SqlScript(
             jx_type=JX_NUMBER,
-            expr=ConcatSQL(
-                SQL_CAST,
-                SQL_OP,
-                value,
-                SQL_AS,
-                TextSQL(json_type_to_sqlite_type[JX_NUMBER]),
-                SQL_CP,
-            ),
+            expr=ConcatSQL(SQL_CAST, SQL_OP, value, SQL_AS, TextSQL(json_type_to_sqlite_type[JX_NUMBER]), SQL_CP,),
             frum=self,
             miss=self.term.missing(SQLang),
             schema=schema,

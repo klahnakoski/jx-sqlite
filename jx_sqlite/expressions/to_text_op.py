@@ -18,7 +18,8 @@ from mo_sqlite import (
     SQL_THEN,
     SQL_WHEN,
     sql_iso,
-    ConcatSQL, sql_cast,
+    ConcatSQL,
+    sql_cast,
 )
 from mo_sqlite import quote_value, sql_call
 from mo_json import JX_TEXT, JX_BOOLEAN, JX_NUMBER_TYPES, split_field, base_type
@@ -51,27 +52,16 @@ class ToTextOp(ToTextOp_):
             return SqlScript(
                 jx_type=JX_TEXT,
                 expr=sql_call(
-                    "RTRIM",
-                    sql_call(
-                        "RTRIM",
-                        sql_cast(expr.expr, "TEXT"),
-                        quote_value("0"),
-                    ),
-                    quote_value("."),
+                    "RTRIM", sql_call("RTRIM", sql_cast(expr.expr, "TEXT"), quote_value("0"),), quote_value("."),
                 ),
                 frum=self,
                 schema=schema,
             )
         elif is_op(expr.frum, SelectOp) and len(expr.frum.terms) > 1:
-            return CoalesceOp(*(
-                ToTextOp(t.value)
-                for t in expr.frum.terms
-                if len(split_field(t.name)) == 1
-            )).partial_eval(SQLang).to_sql(schema)
-        else:
-            return SqlScript(
-                jx_type=JX_TEXT,
-                expr=sql_cast(expr.expr, "TEXT"),
-                frum=self,
-                schema=schema,
+            return (
+                CoalesceOp(*(ToTextOp(t.value) for t in expr.frum.terms if len(split_field(t.name)) == 1))
+                .partial_eval(SQLang)
+                .to_sql(schema)
             )
+        else:
+            return SqlScript(jx_type=JX_TEXT, expr=sql_cast(expr.expr, "TEXT"), frum=self, schema=schema,)

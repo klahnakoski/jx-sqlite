@@ -22,12 +22,9 @@ class AndOp(_AndOp):
         elif all(self.terms):
             return SqlScript(
                 jx_type=JX_BOOLEAN,
-                expr=SQL_AND.join([
-                    sql_iso(ToBooleanOp(t).partial_eval(SQLang).to_sql(schema))
-                    for t in self.terms
-                ]),
+                expr=SQL_AND.join([sql_iso(ToBooleanOp(t).partial_eval(SQLang).to_sql(schema)) for t in self.terms]),
                 frum=self,
-                schema=schema
+                schema=schema,
             )
         else:
             return SqlScript(jx_type=JX_BOOLEAN, expr=SQL_FALSE, frum=self, schema=schema)

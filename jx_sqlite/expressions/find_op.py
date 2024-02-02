@@ -10,7 +10,8 @@
 from jx_base.expressions import (
     FindOp as _FindOp,
     BasicEqOp,
-    ZERO, BasicBooleanOp,
+    ZERO,
+    BasicBooleanOp,
 )
 from jx_base.expressions._utils import simplified
 from jx_sqlite.expressions._utils import SQLang, check, with_var
@@ -39,11 +40,7 @@ from mo_json import JX_INTEGER
 class FindOp(_FindOp):
     @simplified
     def partial_eval(self, lang):
-        return FindOp(
-            self.value.partial_eval(SQLang),
-            self.find.partial_eval(SQLang),
-            self.start.partial_eval(SQLang)
-        )
+        return FindOp(self.value.partial_eval(SQLang), self.find.partial_eval(SQLang), self.start.partial_eval(SQLang))
 
     @check
     def to_sql(self, schema):
@@ -60,27 +57,13 @@ class FindOp(_FindOp):
             i,
             index,
             ConcatSQL(
-                SQL_CASE,
-                SQL_WHEN,
-                i,
-                SQL_THEN,
-                i,
-                SQL_SUB,
-                SQL_ONE,
-                SQL_PLUS,
-                start,
-                SQL_ELSE,
-                SQL_NULL,
-                SQL_END,
+                SQL_CASE, SQL_WHEN, i, SQL_THEN, i, SQL_SUB, SQL_ONE, SQL_PLUS, start, SQL_ELSE, SQL_NULL, SQL_END,
             ),
         )
         return SqlScript(jx_type=JX_INTEGER, expr=sql, frum=self, schema=schema)
 
     def missing(self, lang):
-        not_found = BasicEqOp(
-            SqlInstrOp(NotLeftOp(self.value, self.start), self.find),
-            ZERO,
-        )
+        not_found = BasicEqOp(SqlInstrOp(NotLeftOp(self.value, self.start), self.find), ZERO,)
 
         output = OrOp(self.value.missing(lang), self.find.missing(lang), not_found).partial_eval(self.lang)
         return output

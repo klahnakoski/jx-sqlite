@@ -24,36 +24,13 @@ from mo_dots import (
     is_missing,
 )
 from mo_future import is_text, text
-from mo_json import BOOLEAN, ARRAY, NUMBER, OBJECT, STRING, json2value, JX_BOOLEAN, INTEGER
+from mo_json import BOOLEAN, ARRAY, NUMBER, OBJECT, STRING, json2value, JX_BOOLEAN
 from mo_json.typed_encoder import untype_path
-from mo_json.types import (
-    JX_ARRAY,
-    JX_TEXT,
-    JX_NUMBER,
-    JX_INTEGER,
-    ARRAY_KEY,
-    NUMBER_KEY,
-    STRING_KEY,
-    BOOLEAN_KEY,
-    INTEGER_KEY,
-)
 from mo_logs import Log
 from mo_math import randoms
-from mo_sql.utils import SQL_KEYS, SQL_ARRAY_KEY, SQL_KEY_PREFIX, SQL_NUMBER_KEY
-from mo_sqlite import quote_column, SQL_DESC, SQL_ASC
+from mo_sql.utils import SQL_KEYS, SQL_ARRAY_KEY, SQL_KEY_PREFIX, SQL_NUMBER_KEY, UID, GUID, ORDER, PARENT, COLUMN, DIGITS_TABLE, ABOUT_TABLE
+from mo_sqlite import quote_column
 from mo_times import Date
-
-DIGITS_TABLE = "__digits__"
-ABOUT_TABLE = "meta.about"
-
-
-GUID = "_id"  # user accessible, unique value across many machines
-UID = "__id__"  # internal numeric id for single-database use
-ORDER = "__order__"
-PARENT = "__parent__"
-COLUMN = "__column"
-
-ALL_TYPES = "bns"
 
 
 def unique_name():
@@ -314,34 +291,6 @@ ColumnMapping = DataClass(
         {"gte": [{"length": "nested_path"}, 1]},
     ]},
 )
-
-sqlite_type_to_simple_type = {
-    "TEXT": STRING,
-    "REAL": NUMBER,
-    "INT": INTEGER,
-    "INTEGER": INTEGER,
-    "TINYINT": BOOLEAN,
-}
-
-sqlite_type_to_type_key = {
-    "ARRAY": ARRAY_KEY,
-    "TEXT": STRING_KEY,
-    "REAL": NUMBER_KEY,
-    "INTEGER": INTEGER_KEY,
-    "TINYINT": BOOLEAN_KEY,
-    "TRUE": BOOLEAN_KEY,
-    "FALSE": BOOLEAN_KEY,
-}
-
-type_key_json_type = {
-    ARRAY_KEY: JX_ARRAY,
-    STRING_KEY: JX_TEXT,
-    NUMBER_KEY: JX_NUMBER,
-    INTEGER_KEY: JX_INTEGER,
-    BOOLEAN_KEY: JX_BOOLEAN,
-}
-
-sort_to_sqlite_order = {-1: SQL_DESC, 0: SQL_ASC, 1: SQL_ASC}
 
 
 class BasicSnowflake(Snowflake):

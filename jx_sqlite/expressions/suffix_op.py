@@ -23,8 +23,4 @@ class SuffixOp(SuffixOp_):
         elif isinstance(self.suffix, Literal) and not self.suffix.value:
             return TRUE.to_sql(schema)
         else:
-            return (
-                EqOp(RightOp(self.expr, LengthOp(self.suffix)), self.suffix)
-                .partial_eval(SQLang)
-                .to_sql(schema)
-            )
+            return EqOp(RightOp(self.expr, LengthOp(self.suffix)), self.suffix).partial_eval(SQLang).to_sql(schema)

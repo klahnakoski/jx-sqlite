@@ -9,7 +9,6 @@
 #
 
 
-
 from typing import Dict, Tuple
 
 from jx_base.expressions import SqlLeftJoinsOp as _SqlLeftJoinsOp
@@ -26,7 +25,7 @@ from mo_sqlite import (
 
 
 class SqlLeftJoinsOp(_SqlLeftJoinsOp):
-    def __init__(self, frum : Source, selects: Tuple[Dict[str, Expression]]):
+    def __init__(self, frum: Source, selects: Tuple[Dict[str, Expression]]):
         _SqlLeftJoinsOp.__init__(self, frum, selects)
 
     def query(self, query):
@@ -37,12 +36,7 @@ class SqlLeftJoinsOp(_SqlLeftJoinsOp):
             data_type=self.type,
             expr=ConcatSQL(
                 SQL_SELECT,
-                sql_list(
-                    *(
-                        sql_alias(s['value'].to_sql(schema), s['name'])
-                        for s in self.selects
-                    )
-                ),
+                sql_list(*(sql_alias(s["value"].to_sql(schema), s["name"]) for s in self.selects)),
                 SQL_FROM,
                 self.frum.to_sql(schema),
             ),

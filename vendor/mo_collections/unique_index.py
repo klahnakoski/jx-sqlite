@@ -8,10 +8,8 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-
-
 from mo_dots import is_data, is_sequence, tuplewrap, from_data, to_data, list_to_data
-from mo_future import PY2, iteritems, Set, Mapping, Iterable, first
+from mo_future import iteritems, Set, Mapping, Iterable, first
 from mo_logs import Log
 from mo_logs.exceptions import suppress_exception
 

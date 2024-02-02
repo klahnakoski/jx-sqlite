@@ -25,9 +25,7 @@ class NotLeftOp(NotLeftOp_):
     @check
     def to_sql(self, schema):
         v = self.value.to_sql(schema)
-        start = (
-            AddOp(MaxOp(ZERO, self.length), ONE, nulls=False).partial_eval(SQLang).to_sql(schema)
-        )
+        start = AddOp(MaxOp(ZERO, self.length), ONE, nulls=False).partial_eval(SQLang).to_sql(schema)
 
         expr = sql_call("SUBSTR", v, start)
         return SqlScript(
@@ -35,9 +33,7 @@ class NotLeftOp(NotLeftOp_):
             expr=expr,
             frum=self,
             miss=OrOp(
-                self.value.missing(SQLang),
-                self.length.missing(SQLang),
-                GteOp(self.length, LengthOp(self.value)),
+                self.value.missing(SQLang), self.length.missing(SQLang), GteOp(self.length, LengthOp(self.value)),
             ),
             schema=schema,
         )

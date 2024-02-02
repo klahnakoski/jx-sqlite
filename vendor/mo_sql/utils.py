@@ -6,12 +6,12 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
 
-from jx_base import DataClass
+from mo_math import randoms
 
+from jx_base import DataClass
 from mo_dots import is_list, join_field
 from mo_json import *
 from mo_logs import Log
-from mo_math import randoms
 from mo_times import Date
 
 DIGITS_TABLE = "__digits__"
@@ -23,8 +23,6 @@ UID = "__id__"  # internal numeric id for single-database use
 ORDER = "__order__"
 PARENT = "__parent__"
 COLUMN = "__column"
-
-ALL_TYPES = "bns"
 
 
 def unique_name():
@@ -87,7 +85,10 @@ sql_aggs = {
     "minimum": "MIN",
     "sum": "SUM",
     "add": "SUM",
+    "any": "MAX",
+    "all": "MIN",
 }
+
 
 STATS = {
     "count": "COUNT({{value}})",
@@ -106,6 +107,7 @@ SQL_KEY_PREFIX = "$"
 
 SQL_IS_NULL_KEY = SQL_KEY_PREFIX + "0"
 SQL_BOOLEAN_KEY = SQL_KEY_PREFIX + "B"
+SQL_INTEGER_KEY = SQL_KEY_PREFIX + "I"
 SQL_NUMBER_KEY = SQL_KEY_PREFIX + "N"
 SQL_TIME_KEY = SQL_KEY_PREFIX + "T"
 SQL_INTERVAL_KEY = SQL_KEY_PREFIX + "N"

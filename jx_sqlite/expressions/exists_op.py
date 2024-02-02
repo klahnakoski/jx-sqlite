@@ -16,6 +16,4 @@ class ExistsOp(ExistsOp_):
     @check
     def to_sql(self, schema):
         sql = self.expr.partial_eval(SQLang).to_sql(schema)
-        return SqlScript(
-            jx_type=JX_BOOLEAN, expr=sql, frum=self, miss=FALSE, schema=schema
-        )
+        return SqlScript(jx_type=JX_BOOLEAN, expr=sql, frum=self, miss=FALSE, schema=schema)

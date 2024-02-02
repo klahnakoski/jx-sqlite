@@ -19,9 +19,5 @@ class BasicNotOp(BasicNotOp_):
     def to_sql(self, schema):
         term = self.term.partial_eval(SQLang).to_sql(schema)
         return SqlScript(
-            jx_type=JX_BOOLEAN,
-            miss=FALSE,
-            expr=ConcatSQL(SQL_NOT, sql_iso(term.expr)),
-            frum=self,
-            schema=schema,
+            jx_type=JX_BOOLEAN, miss=FALSE, expr=ConcatSQL(SQL_NOT, sql_iso(term.expr)), frum=self, schema=schema,
         )

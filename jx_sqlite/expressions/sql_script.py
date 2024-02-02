@@ -7,6 +7,8 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
+from mo_future import text
+
 from jx_base.expressions import (
     FALSE,
     SqlScript as _SQLScript,
@@ -17,7 +19,6 @@ from jx_base.expressions.variable import is_variable
 from jx_base.language import is_op
 from jx_sqlite.expressions._utils import SQLang, check
 from mo_imports import export
-from mo_json import JxType
 from mo_sqlite import *
 
 
@@ -88,9 +89,7 @@ class SqlScript(_SQLScript, SQL):
             self.miss = TRUE
             return SQL_NULL
 
-        return ConcatSQL(
-            SQL_CASE, SQL_WHEN, SQL_NOT, sql_iso(missing), SQL_THEN, self.expr, SQL_END,
-        )
+        return ConcatSQL(SQL_CASE, SQL_WHEN, SQL_NOT, sql_iso(missing), SQL_THEN, self.expr, SQL_END, )
 
     def __str__(self):
         return str(self._sql())

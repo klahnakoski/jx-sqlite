@@ -10,7 +10,11 @@
 from jx_base.expressions import (
     BasicInOp as BasicInOp_,
     FALSE,
-    Literal, Variable, ExistsOp, NestedOp, EqOp,
+    Literal,
+    Variable,
+    ExistsOp,
+    NestedOp,
+    EqOp,
 )
 from jx_base.expressions.variable import is_variable
 from jx_base.language import is_op
@@ -33,15 +37,12 @@ class BasicInOp(BasicInOp_):
                 values = [value2boolean(v) for v in values]
             # TODO: DUE TO LIMITED BOOLEANS, TURN THIS INTO EqOp
             sql = ConcatSQL(value, SQL_IN, quote_list(values))
-            return SqlScript(
-                jx_type=JX_BOOLEAN, expr=sql, frum=self, miss=FALSE, schema=schema
-            )
+            return SqlScript(jx_type=JX_BOOLEAN, expr=sql, frum=self, miss=FALSE, schema=schema)
 
         if not is_variable(superset):
             Log.error("Do not know how to hanldle")
 
         sub_table = schema.get_table(superset.var)
         return ExistsOp(NestedOp(
-            nested_path=sub_table.nested_path,
-            where=EqOp(Variable("."), value.frum)
+            nested_path=sub_table.nested_path, where=EqOp(Variable("."), value.frum)
         )).to_sql(schema)

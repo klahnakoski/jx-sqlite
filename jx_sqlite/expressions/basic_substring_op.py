@@ -24,6 +24,4 @@ class BasicSubstringOp(BasicSubstringOp_):
         start = AddOp(self.start, Literal(1), nulls=False).partial_eval(SQLang).to_sql(schema)
         length = SubOp(self.end, self.start).partial_eval(SQLang).to_sql(schema)
         sql = sql_call("SUBSTR", value.expr, start.expr, length.expr)
-        return SqlScript(
-            jx_type=JX_TEXT, expr=sql, frum=self, miss=FALSE, schema=schema
-        )
+        return SqlScript(jx_type=JX_TEXT, expr=sql, frum=self, miss=FALSE, schema=schema)

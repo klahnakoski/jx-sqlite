@@ -73,7 +73,7 @@ class SelectOp(SelectOp_):
 
         return SqlScript(
             jx_type=jx_type,
-            expr=SelectSQL([{"name":t.name, "value":t.expr} for t in sql_terms], schema),
+            expr=SelectSQL([{"name": t.name, "value": t.expr} for t in sql_terms], schema),
             miss=AndOp(*(t.expr.missing(SQLang) for t in sql_terms)),  # TODO: should be False?
             frum=self,
             schema=schema,

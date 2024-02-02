@@ -11,7 +11,7 @@ from datetime import datetime, date
 from decimal import Decimal
 from math import isnan
 
-from mo_dots import split_field, NullType, is_many, is_data, concat_field, is_sequence
+from mo_dots import split_field, NullType, is_many, is_data, concat_field, is_sequence, FlatList
 from mo_future import text, none_type, items, first, POS_INF
 from mo_logs import logger
 from mo_times import Date
@@ -372,6 +372,9 @@ _python_type_to_jx_type = {
     Date: JX_TIME,
     datetime: JX_TIME,
     date: JX_TIME,
+    FlatList: JX_ARRAY,
+    list: JX_ARRAY,
+    tuple: JX_ARRAY,
 }
 
 for k, v in items(_python_type_to_jx_type):

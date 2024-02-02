@@ -16,6 +16,10 @@ from mo_dots import Null
 class TupleOp(_TupleOp):
     @check
     def to_sql(self, schema):
-        output = SelectOp(Null, *(SelectOne(str(i), term) for i, term in enumerate(self.terms))).partial_eval(SQLang).to_sql(schema)
+        output = (
+            SelectOp(Null, *(SelectOne(str(i), term) for i, term in enumerate(self.terms)))
+            .partial_eval(SQLang)
+            .to_sql(schema)
+        )
         output.frum = self
         return output

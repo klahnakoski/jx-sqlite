@@ -8,8 +8,6 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-
-
 from unittest import skipIf, skip
 
 from mo_testing.fuzzytestcase import add_error_reporting

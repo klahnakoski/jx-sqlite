@@ -26,8 +26,6 @@ from mo_dots import (
 )
 from mo_files import File
 from mo_files.url import URL
-from mo_future import is_text
-from mo_future import text
 from mo_json import json2value
 from mo_logs import Except, logger
 
@@ -47,7 +45,7 @@ def get(url):
     """
     USE json.net CONVENTIONS TO LINK TO INLINE OTHER JSON
     """
-    url = text(url)
+    url = str(url)
     if "://" not in url:
         logger.error("{{url}} must have a prototcol (eg http://) declared", url=url)
 
@@ -58,9 +56,10 @@ def get(url):
         else:
             base = URL("file://" + os.getcwd().rstrip("/") + "/.")
 
-    phase1 = _replace_ref(dict_to_data({"$ref": url}), base)  # BLANK URL ONLY WORKS IF url IS ABSOLUTE
+    doc = dict_to_data({"$ref": url})
+    phase1 = _replace_ref((doc, None), base)  # BLANK URL ONLY WORKS IF url IS ABSOLUTE
     try:
-        phase2 = _replace_locals(phase1, [phase1])
+        phase2 = _replace_locals((phase1,None), url)
         return to_data(phase2)
     except Exception as cause:
         logger.error("problem replacing locals in\n{{phase1}}", phase1=phase1, cause=cause)
@@ -83,44 +82,35 @@ def expand(doc, doc_url="param://", params=None):
 
     url = URL(doc_url)
     url.query = set_default(url.query, params)
-    phase0 = _replace_str(doc, url)
-    phase1 = _replace_ref(phase0, url)  # BLANK URL ONLY WORKS IF url IS ABSOLUTE
-    phase2 = _replace_locals(phase1, [phase1])
+    phase1 = _replace_ref((doc, None), url)  # BLANK URL ONLY WORKS IF url IS ABSOLUTE
+    phase2 = _replace_locals((phase1,None), url)
     return to_data(phase2)
 
 
 is_url = re.compile(r"\{([a-zA-Z]+://[^}]*)}")
 
 
-def _replace_str(node, url):
-    if is_text(node):
-        acc = []
-        end = 0
-        for found in is_url.finditer(node):
-            acc.append(node[end: found.start()])
-            try:
-                ref = URL(found.group(1))
-                acc.append(scheme_loaders[ref.scheme](ref, url))
-            except Exception:
-                acc.append(found.group(0))
-            end = found.end()
-        if end == 0:
-            return node
-        return "".join(acc) + node[end:]
-    elif is_data(node):
-        return {
-            _replace_str(k, url): _replace_str(v, url)
-            for k, v in node.items()
-        }
-    elif is_list(node):
-        return [_replace_str(n, url) for n in node]
-    return node
+def _replace_str(text, path, url):
+    acc = []
+    end = 0
+    for found in is_url.finditer(text):
+        acc.append(text[end: found.start()])
+        try:
+            ref = URL(found.group(1))
+            acc.append(scheme_loaders[ref.scheme](ref, path, url))
+        except Exception:
+            acc.append(found.group(0))
+        end = found.end()
+    if end == 0:
+        return text
+    return "".join(acc) + text[end:]
 
 
-def _replace_ref(node, url):
+def _replace_ref(path, url):
     if url.path.endswith("/"):
         url.path = url.path[:-1]
 
+    node = path[0]
     if is_data(node):
         refs = None
         output = {}
@@ -128,7 +118,7 @@ def _replace_ref(node, url):
             if k == "$ref":
                 refs = URL(v)
             else:
-                output[k] = _replace_ref(v, url)
+                output[k] = _replace_ref((v, path), url)
 
         if not refs:
             return output
@@ -152,7 +142,7 @@ def _replace_ref(node, url):
             if ref.scheme not in scheme_loaders:
                 raise logger.error("unknown protocol {{scheme}}", scheme=ref.scheme)
             try:
-                new_value = scheme_loaders[ref.scheme](ref, url)
+                new_value = scheme_loaders[ref.scheme](ref, (node, path), url)
                 ref_found = True
             except Exception as cause:
                 ref_error = Except.wrap(cause)
@@ -165,7 +155,7 @@ def _replace_ref(node, url):
 
             if not output:
                 output = new_value
-            elif is_text(output):
+            elif isinstance(output, str):
                 pass  # WE HAVE A VALUE
             else:
                 set_default(output, new_value)
@@ -177,51 +167,34 @@ def _replace_ref(node, url):
         DEBUG and logger.note("Return {{output}}", output=output)
         return output
     elif is_list(node):
-        output = [_replace_ref(n, url) for n in node]
+        output = [_replace_ref((n, path), url) for n in node]
         return output
 
     return node
 
 
-def _replace_locals(node, doc_path):
+def _replace_locals(path, url):
+    node = path[0]
     if is_data(node):
         # RECURS, DEEP COPY
         ref = None
         output = {}
         for k, v in node.items():
             if k == "$ref":
-                ref = v
+                ref = URL(_replace_str(str(v), path, url))
             elif k == "$concat":
                 if not is_sequence(v):
                     logger.error("$concat expects an array of strings")
-                return coalesce(node.get("separator"), "").join(_replace_locals(vv, doc_path) for vv in v)
+                return coalesce(node.get("separator"), "").join(_replace_locals((vv, path), url) for vv in v)
             elif v == None:
                 continue
             else:
-                output[k] = _replace_locals(v, [v] + doc_path)
+                output[k] = _replace_locals((v, path), url)
 
         if not ref:
             return output
 
-        # REFER TO SELF
-        frag = ref.fragment
-        if frag[0] == ".":
-            # RELATIVE
-            for i, p in enumerate(frag):
-                if p != ".":
-                    if i > len(doc_path):
-                        logger.error(
-                            "{{frag|quote}} reaches up past the root document", frag=frag,
-                        )
-                    new_value = get_attr(doc_path[i - 1], frag[i::])
-                    break
-            else:
-                new_value = doc_path[len(frag) - 1]
-        else:
-            # ABSOLUTE
-            new_value = get_attr(doc_path[-1], frag)
-
-        new_value = _replace_locals(new_value, [new_value] + doc_path)
+        new_value = _get_value_from_fragment(ref, path, url)
 
         if not output:
             return new_value  # OPTIMIZATION FOR CASE WHEN node IS {}
@@ -229,25 +202,35 @@ def _replace_locals(node, doc_path):
             return from_data(set_default(output, new_value))
 
     elif is_list(node):
-        candidate = [_replace_locals(n, [n] + doc_path) for n in node]
-        return candidate
+        return [_replace_locals((n, path), url) for n in node]
 
-    elif is_text(node):
-        acc = []
-        end = 0
-        for found in is_url.finditer(node):
-            acc.append(node[end: found.start()])
-            try:
-                ref = URL(found.group(1))
-                ref.scheme = None
-                acc.append(_replace_locals({"$ref": ref}, doc_path))
-            except Exception:
-                acc.append(found.group(0))
-            end = found.end()
-        if end == 0:
-            return node
-        return "".join(acc) + node[end:]
+    elif isinstance(node, str):
+        return _replace_str(node, path[1], url)
     return node
+
+
+def _get_value_from_fragment(ref, path, url):
+    # REFER TO SELF
+    frag = ref.fragment
+    if frag[0] == ".":
+        doc = (None, path)
+        # RELATIVE
+        for i, c in enumerate(frag):
+            if c == ".":
+                if not isinstance(doc, tuple):
+                    logger.error("{frag|quote} reaches up past the root document", frag=frag)
+                doc = doc[1]
+            else:
+                break
+        new_value = get_attr(doc[0], frag[i::])
+    else:
+        # ABSOLUTE
+        top_doc = path
+        while isinstance(top_doc, tuple) and top_doc[1]:
+            top_doc = top_doc[1]
+        new_value = get_attr(top_doc[0], frag)
+    new_value = _replace_locals((new_value, path), url)
+    return new_value
 
 
 ###############################################################################
@@ -255,7 +238,7 @@ def _replace_locals(node, doc_path):
 ###############################################################################
 
 
-def _get_file(ref, url):
+def _get_file(ref, doc_path, url):
 
     if ref.path.startswith("~"):
         home_path = os.path.expanduser("~")
@@ -285,7 +268,7 @@ def _get_file(ref, url):
         content = File(path).read()
     except Exception as e:
         content = None
-        logger.error("Could not read file {{filename}}", filename=path, cause=e)
+        logger.error("Could not read file {{filename}}", filename=File(path).os_path, cause=e)
 
     try:
         new_value = json2value(content, params=ref.query, flexible=True, leaves=True)
@@ -295,11 +278,11 @@ def _get_file(ref, url):
             new_value = ini2value(content)
         except Exception:
             raise logger.error("Can not read {{file}}", file=path, cause=e)
-    new_value = _replace_ref(new_value, ref)
+    new_value = _replace_ref((new_value, path), ref)
     return new_value
 
 
-def get_http(ref, url):
+def get_http(ref, doc_path, url):
     import requests
 
     params = url.query
@@ -307,11 +290,7 @@ def get_http(ref, url):
     return new_value
 
 
-def _get_ref(ref, url):
-    return f"{{{ref}}}"
-
-
-def _get_env(ref, url):
+def _get_env(ref, doc_path, url):
     # GET ENVIRONMENT VARIABLES
     ref = ref.host
     raw_value = os.environ.get(ref)
@@ -325,7 +304,7 @@ def _get_env(ref, url):
     return new_value
 
 
-def _get_keyring(ref, url):
+def _get_keyring(ref, doc_path, url):
     try:
         import keyring
     except Exception:
@@ -353,7 +332,7 @@ def _get_keyring(ref, url):
     return new_value
 
 
-def _get_param(ref, url):
+def _get_param(ref, doc_path, url):
     # GET PARAMETERS FROM url
     param = url.query
     new_value = param[ref.host]
@@ -368,7 +347,7 @@ scheme_loaders = {
     "param": _get_param,
     "keyring": _get_keyring,
     "ssm": _get_ssm,
-    "ref": _get_ref,
+    "ref": _get_value_from_fragment,
 }
 
 

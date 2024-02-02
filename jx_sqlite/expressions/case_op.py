@@ -40,9 +40,5 @@ class CaseOp(_CaseOp):
         acc.append(ConcatSQL(SQL_ELSE, value, SQL_END,))
 
         return SqlScript(
-            jx_type=union_type(*data_type),
-            expr=ConcatSQL(*acc),
-            frum=self,
-            miss=self.missing(SQLang),
-            schema=schema,
+            jx_type=union_type(*data_type), expr=ConcatSQL(*acc), frum=self, miss=self.missing(SQLang), schema=schema,
         )

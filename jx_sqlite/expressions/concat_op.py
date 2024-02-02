@@ -85,10 +85,7 @@ class ConcatOp(ConcatOp_):
             sql = sql_call(
                 "SUBSTR",
                 sql_concat_text(acc),
-                AddOp(ONE, LengthOp(self.separator), nulls=False)
-                .partial_eval(SQLang)
-                .to_sql(schema)
-                .expr,
+                AddOp(ONE, LengthOp(self.separator), nulls=False).partial_eval(SQLang).to_sql(schema).expr,
             )
 
         return SqlScript(

@@ -9,7 +9,6 @@
 #
 
 
-
 from jx_base.expressions import SqlGroupByOp as _SqlGroupByOp, AddOp
 from jx_base.language import LanguageElement
 from mo_json import JxType, ARRAY, base_type, JX_NUMBER
@@ -54,6 +53,4 @@ class SqlGroupByOp(_SqlGroupByOp):
 
     @property
     def type(self):
-        return JxType(
-            group=self.group.type, **{json_type_to_sql_type_key[ARRAY]: self.frum.type},
-        )
+        return JxType(group=self.group.type, **{json_type_to_sql_type_key[ARRAY]: self.frum.type},)

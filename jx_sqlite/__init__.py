@@ -8,8 +8,10 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-__all__ = ["Container", "Schema", "Column"]
+__all__ = ["Container", "Schema", "Column", "SQLang", "QueryTable"]
 
 from jx_base import Column
-from jx_sqlite.container import Container
-from jx_sqlite.schema import Schema
+from jx_sqlite.expressions._utils import SQLang
+from jx_sqlite.models.container import Container
+from jx_sqlite.models.schema import Schema
+from jx_sqlite.query_table import QueryTable

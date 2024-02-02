@@ -30,16 +30,6 @@ class NotRightOp(NotRightOp_):
             return v
 
         r = self.length.to_sql(schema)
-        end = (
-            MaxOp(ZERO, SubOp(LengthOp(self.value), MaxOp(ZERO, self.length)))
-            .partial_eval(SQLang)
-            .to_sql(schema)
-        )
+        end = MaxOp(ZERO, SubOp(LengthOp(self.value), MaxOp(ZERO, self.length))).partial_eval(SQLang).to_sql(schema)
         sql = sql_call("SUBSTR", v.expr, SQL_ONE, end)
-        return SqlScript(
-            jx_type=JX_TEXT,
-            expr=sql,
-            frum=self,
-            miss=OrOp(r.miss, v.miss),
-            schema=schema,
-        )
+        return SqlScript(jx_type=JX_TEXT, expr=sql, frum=self, miss=OrOp(r.miss, v.miss), schema=schema,)

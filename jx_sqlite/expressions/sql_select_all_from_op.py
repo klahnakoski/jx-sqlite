@@ -9,7 +9,6 @@
 #
 
 
-
 from jx_base.expressions import (
     Variable,
     SqlSelectAllFromOp as _SqlSelectAllFrom,
@@ -19,7 +18,7 @@ from jx_base.expressions.aggregate_op import AggregateOp
 from jx_base.expressions.select_op import SelectOne
 from jx_base.expressions.sql_left_joins_op import Source, Join
 from jx_base.language import is_op
-from jx_sqlite.expressions import SqlLeftJoinsOp
+from jx_sqlite.expressions.sql_left_joins_op import SqlLeftJoinsOp
 from jx_sqlite.expressions.sql_group_by_op import SqlGroupByOp
 from jx_sqlite.expressions.sql_origins_op import SqlOriginsOp
 from jx_sqlite.expressions.sql_script import SqlScript
@@ -47,11 +46,7 @@ class SqlSelectAllFromOp(_SqlSelectAllFrom):
             cols = self.table.schema.get_columns(name)
             if cols:
                 return SelectOp(
-                    self,
-                    tuple(
-                        SelectOne(name, Variable(col.es_column, to_jx_type(col.json_type)))
-                        for col in cols
-                    ),
+                    self, tuple(SelectOne(name, Variable(col.es_column, to_jx_type(col.json_type))) for col in cols),
                 )
 
             alt_origin = mo_dots_relative_field(self.table.name, self.table.schema.snowflake.fact_name)
@@ -61,9 +56,7 @@ class SqlSelectAllFromOp(_SqlSelectAllFrom):
                 if cols:
                     return SelectOp(
                         self,
-                        tuple(SelectOne( name,Variable(col.es_column, to_jx_type(col.json_type)))
-                            for col in cols
-                        )
+                        tuple(SelectOne(name, Variable(col.es_column, to_jx_type(col.json_type))) for col in cols),
                     )
 
             relative_field, many_relations = self.table.schema.get_many_relations(name)
@@ -76,12 +69,7 @@ class SqlSelectAllFromOp(_SqlSelectAllFrom):
                 child_expr = SqlGroupByOp(SqlSelectAllFromOp(child_table), group)
                 child = Source("t2", child_expr, [])
                 parent = Source("t1", self, [])
-                join = Join(
-                    parent,
-                    many_relations.ones_columns,
-                    child,
-                    many_relations.many_columns,
-                )
+                join = Join(parent, many_relations.ones_columns, child, many_relations.many_columns,)
                 parent.joins.append(join)
                 # CALC THE SELECTION (ASSUME SINGLE TABLE FIRST)
                 return SqlOriginsOp(SqlLeftJoinsOp(parent, tuple()), child)
@@ -100,5 +88,5 @@ class SqlSelectAllFromOp(_SqlSelectAllFrom):
             self.table.schema.get_type(),
             ConcatSQL(SQL_SELECT, SQL_STAR, SQL_FROM, quote_column(self.table.name)),
             frum=self,
-            schema=self.table.schema
+            schema=self.table.schema,
         )

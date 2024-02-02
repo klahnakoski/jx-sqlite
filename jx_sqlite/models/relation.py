@@ -7,7 +7,6 @@
 #
 
 
-
 import jx_base
 
 

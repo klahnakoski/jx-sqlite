@@ -17,7 +17,7 @@ from mo_dots import (
     unwraplist,
     is_null,
 )
-from mo_future import PY2, is_text, text, unichr, urlparse, is_binary
+from mo_future import is_text, text, unichr, urlparse, is_binary
 from mo_logs import Log
 
 
@@ -118,7 +118,9 @@ class URL(object):
         if self.port:
             url = url + ":" + str(self.port)
         if self.path:
-            if self.path[0] == text("/"):
+            if not self.host:
+                url += str(self.path)
+            elif self.path[0] == text("/"):
                 url += str(self.path)
             else:
                 url += "/" + str(self.path)
@@ -140,20 +142,12 @@ def hex2chr(hex):
         raise e
 
 
-if PY2:
-    _map2url = {chr(i): chr(i) for i in range(32, 128)}
-    for c in "{}<>;/?@&=+$%,+":
-        _map2url[c] = "%" + str(int2hex(ord(c), 2))
-    for i in range(128, 256):
-        _map2url[chr(i)] = "%" + str(int2hex(i, 2))
-    _map2url[chr(32)] = "+"
-else:
-    _map2url = {i: unichr(i) for i in range(32, 128)}
-    for c in b"{}<>;/?@&=+$%,+":
-        _map2url[c] = "%" + int2hex(c, 2)
-    for i in range(128, 256):
-        _map2url[i] = "%" + str(int2hex(i, 2))
-    _map2url[32] = "+"
+_map2url = {i: unichr(i) for i in range(32, 128)}
+for c in b"{}<>;/?@&=+$%,+":
+    _map2url[c] = "%" + int2hex(c, 2)
+for i in range(128, 256):
+    _map2url[i] = "%" + str(int2hex(i, 2))
+_map2url[32] = "+"
 
 
 names = ["path", "query", "fragment"]
