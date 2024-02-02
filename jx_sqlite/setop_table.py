@@ -11,7 +11,6 @@ from typing import List, Dict, Tuple
 
 from mo_imports import export
 from mo_sql import SQL_DESC, SQL_ASC
-from mo_testing.fuzzytestcase import assertAlmostEqual
 
 from jx_base import Column, is_op
 from jx_base.expressions import NULL
