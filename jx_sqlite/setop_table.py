@@ -75,19 +75,13 @@ class SetOpTable(InsertTable):
         result = self.container.db.query(command)
 
         def _accumulate_nested(
-            rows, row, next_row, nested_doc_details: DocumentDetails, parent_id: int, parent_id_coord: int,
+            rows, # row generator
+            row,  # current row
+            next_row,  # we got this row, but it belongs to the next document
+            nested_doc_details: DocumentDetails,  # describes how the rows get mapped to nested docs
+            parent_id: int,  # the id of the parent doc (for detecting when to step out of loop)
+            parent_id_coord: int,  # the column of the parent_id, so we may get the value
         ) -> Tuple[Data, Data, List[Data]]:
-            """
-            :param rownum: index into rows for row
-            :param nested_doc_details: {
-                    "nested_path": wrap_nested_path(nested_path),
-                    "index_to_column": map from column number to column details
-                    "children": all possible direct decedents' nested_doc_details
-                 }
-            :param parent_id_coord: the id of the parent doc (for detecting when to step out of loop)
-            :param id_index: the column number for this data (so we ca extract from each row)
-            :return: (rownum, value) pair
-            """
             output = []
             id_coord = nested_doc_details.id_coord
             curr_nested_path, _ = untype_field(nested_doc_details.nested_path[0])

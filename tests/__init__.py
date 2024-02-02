@@ -37,11 +37,11 @@ class SQLiteUtils(object):
     @override
     def __init__(self, kwargs=None):
         self.container = None
-        self._index = None
+        self.table = None
 
     def setUp(self):
         self.container = Container(db=test_jx.global_settings.db)
-        self._index = QueryTable(name="testing", container=self.container)
+        self.table = QueryTable(name="testing", container=self.container)
 
     def tearDown(self):
         self.container.db.stop()
@@ -73,7 +73,7 @@ class SQLiteUtils(object):
 
         try:
             # INSERT DATA
-            self._index.insert(subtest.data)
+            self.table.insert(subtest.data)
         except Exception as cause:
             Log.error(
                 "can not load {{data}} into container", data=subtest.data, cause=cause
@@ -81,7 +81,7 @@ class SQLiteUtils(object):
 
         frum = subtest.query["from"]
         if isinstance(frum, text):
-            subtest.query["from"] = frum.replace(TEST_TABLE, self._index.name)
+            subtest.query["from"] = frum.replace(TEST_TABLE, self.table.name)
         else:
             Log.error("Do not know how to handle")
 
@@ -134,16 +134,16 @@ class SQLiteUtils(object):
             Log.error("Failed test {{name|quote}}", name=subtest.name, cause=cause)
 
     def execute_update(self, command):
-        return self._index.update(command)
+        return self.table.update(command)
 
     def execute_query(self, query):
         try:
             if "limit" not in query:
                 query["limit"] = 10
-            if startswith_field(query["from"], self._index.name):
-                return self._index.query(query)
+            if startswith_field(query["from"], self.table.name):
+                return self.table.query(query)
             elif query["from"] == "meta.columns":
-                return self._index.query_metadata(query)
+                return self.table.query_metadata(query)
             else:
                 Log.error("Do not know how to handle")
         except Exception as cause:

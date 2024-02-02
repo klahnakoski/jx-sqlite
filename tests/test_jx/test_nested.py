@@ -7,17 +7,17 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from unittest import skip
+from unittest import skipIf
 
 from mo_dots import list_to_data
 from mo_testing.fuzzytestcase import add_error_reporting
-from tests.test_jx import BaseTestCase, TEST_TABLE
+from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 lots_of_data = list_to_data([{"a": i} for i in range(30)])
 
 
 @add_error_reporting
-@skip
+@skipIf(global_settings.use == "sqlite", "broken")
 class TestNestedQueries(BaseTestCase):
     def test_nested_max_simple(self):
         test = {
