@@ -18,7 +18,7 @@ from tests.test_jx import BaseTestCase, global_settings
 
 class TestUpdate(BaseTestCase):
 
-    @skip("broken")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_new_field(self):
         settings = self.utils.fill_container(
             dict_to_data({"data": [

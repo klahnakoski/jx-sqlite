@@ -351,7 +351,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("Too complicated")
+    @skipIf(global_settings.use == "sqlite", "Too complicated")
     def test_select_into_children(self):
         test = {
             "name": "select into children to table",

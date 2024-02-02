@@ -18,7 +18,7 @@ from tests.test_jx import BaseTestCase, TEST_TABLE
 
 class TestMetadata(BaseTestCase):
 
-    @skip("broken")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_meta_tables(self):
         pre_test = {
             "data": [{"a": "b"}],
@@ -42,7 +42,7 @@ class TestMetadata(BaseTestCase):
         }
         self.utils.send_queries(test)
 
-    @skip("broken")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_meta(self):
         test = dict_to_data({
             "query": {"from": TEST_TABLE},
@@ -105,7 +105,7 @@ class TestMetadata(BaseTestCase):
         }
         self.utils.send_queries(test)
 
-    @skip("broken")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_get_nested_columns(self):
         settings = self.utils.fill_container({
             "query": {"from": TEST_TABLE},  # DUMMY QUERY
@@ -185,7 +185,7 @@ class TestMetadata(BaseTestCase):
 
         self.assertEqual(a.my_func("testing"), ("testing", "test_value"), "Expecting method to be run")
 
-    @skip("broken")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_cardinality(self):
         pre_test = dict_to_data({
             "data": [{"a": "b"}, {"a": "c"}],

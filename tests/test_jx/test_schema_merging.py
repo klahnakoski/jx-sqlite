@@ -16,13 +16,13 @@ from jx_base.expressions import NULL
 from tests.test_jx import BaseTestCase, TEST_TABLE
 
 
-@skip("not ready")
+@skipIf(global_settings.use == "sqlite", "not ready")
 class TestSchemaMerging(BaseTestCase):
     """
     TESTS THAT DEMONSTRATE DIFFERENT SCHEMAS
     """
 
-    @skip("broken")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select(self):
         test = {
             "data": [
@@ -194,7 +194,7 @@ class TestSchemaMerging(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_dots_in_property_names3(self):
         test = {
             "data": [
@@ -236,7 +236,7 @@ class TestSchemaMerging(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    # @skip("schema merging not working")
+    # @skipIf(global_settings.use == "sqlite", "schema merging not working")
     def test_count(self):
         test = {
             "data": [
@@ -304,7 +304,7 @@ class TestSchemaMerging(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("complicated where clause needs support")
+    @skipIf(global_settings.use == "sqlite", "complicated where clause needs support")
     def test_where(self):
         test = {
             "data": [

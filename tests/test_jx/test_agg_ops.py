@@ -534,7 +534,7 @@ class TestAggOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_union(self):
         test = {
             "data": [

@@ -16,7 +16,7 @@ from tests import error
 from tests.test_jx import BaseTestCase, TEST_TABLE
 
 
-@skip("meant for html endpoint (ES)")
+@skipIf(global_settings.use == "sqlite", "meant for html endpoint (ES)")
 class TestOther(BaseTestCase):
 
     def test_tuple_w_cubes(self):

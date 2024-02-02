@@ -23,7 +23,7 @@ lots_of_data = list_to_data([{"a": i} for i in range(30)])
 
 @add_error_reporting
 class TestDeepOps(BaseTestCase):
-    @skip("broken")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select_gt_on_sub(self):
         test = {
             "data": [{"a": {"_b": [
@@ -486,7 +486,7 @@ class TestDeepOps(BaseTestCase):
 
         self.utils.execute_tests(test)
 
-    @skip("broken")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_deep_names_select_value(self):
         test = {
             "data": [
@@ -545,7 +545,7 @@ class TestDeepOps(BaseTestCase):
 
         self.utils.execute_tests(test)
 
-    @skip("broken")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_deep_names(self):
         test = {
             "data": [
@@ -628,7 +628,7 @@ class TestDeepOps(BaseTestCase):
 
         self.utils.execute_tests(test)
 
-    @skip("broken")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_deep_agg_on_expression_w_shallow_where(self):
         # TEST WE CAN PERFORM AGGREGATES ON EXPRESSIONS OF DEEP VARIABLES
         test = {
@@ -1162,7 +1162,7 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_deep_edge_using_list(self):
         data = [{"a": {"_b": [
             {"r": "a",  "s": "aa"},
@@ -1294,7 +1294,7 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_setop_w_deep_select_value_neop(self):
         data = [{"a": {"_b": [
             {"r": {"s": "a"}, "v": {"u": 1}},
@@ -1435,7 +1435,7 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_setop_w_deep_select_value(self):
         data = [{"a": {"_b": [
             {"r": {"s": "a"}, "v": {"u": 1}},
@@ -1490,7 +1490,7 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select_average_on_none(self):
         test = {
             "data": [{"a": {"_b": [
@@ -1514,7 +1514,7 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_missing(self):
         test = {
             "data": [{"a": {"_b": [
@@ -1610,7 +1610,7 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_deep_or(self):
         test = {
             "data": [{"a": {"_b": [

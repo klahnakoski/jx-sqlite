@@ -10,7 +10,7 @@
 
 
 
-from unittest import skip
+from unittest import skip, skipIf
 
 from jx_base.expressions.select_op import SelectOp, normalize_one
 
@@ -18,6 +18,7 @@ from jx_base.expressions.query_op import _normalize_edges
 from mo_dots import Null
 from mo_json import json2value, value2json
 from mo_testing.fuzzytestcase import FuzzyTestCase
+from tests.test_jx import global_settings
 
 
 class TestQueryNormalization(FuzzyTestCase):
@@ -36,7 +37,7 @@ class TestQueryNormalization(FuzzyTestCase):
         }
         self.assertEqual(result, expected)
 
-    @skip("aggregate select and simple select are different, test is still unclear")
+    @skipIf(global_settings.use == "sqlite", "aggregate select and simple select are different, test is still unclear")
     def test_naming_select(self):
         select = {"value": "result.duration", "aggregate": "avg"}
         result = normalize_one(Null, select)

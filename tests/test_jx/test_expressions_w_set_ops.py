@@ -377,7 +377,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select_average(self):
         test = {
             "data": [{"a": {"_b": [
@@ -420,7 +420,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select_average_on_none(self):
         test = {
             "data": [{"a": {"_b": [{"a": 5}, {}]}}],
