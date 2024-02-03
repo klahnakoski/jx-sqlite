@@ -16,7 +16,7 @@ from mo_dots import (
     SLOT,
     to_data,
     leaves_to_data,
-    null_types,
+    null_types, is_list,
 )
 from mo_dots.objects import DataObject
 from mo_future import (
@@ -490,6 +490,40 @@ def _simple_expand(template, seq):
             return "[template expansion error: (" + str(cause.message) + ")]"
 
     return _variable_pattern.sub(replacer, template)
+
+
+
+def get_if_type(value, json_type):
+    """
+    RETURN value IF IT IS THE CORRECT TYPE, OTHERWISE None
+    """
+    if is_json_type(value, json_type):
+        if json_type == "object":
+            return "."
+        if isinstance(value, Date):
+            return value.unix
+        return value
+    return None
+
+
+def is_json_type(value, json_type):
+    """
+    RETURN IF  value IF OF THE RIGHT TYPE
+    """
+    if value == None:
+        return False
+    elif is_text(value) and json_type == "string":
+        return value
+    elif is_list(value):
+        return False
+    elif is_data(value) and json_type == "object":
+        return True
+    elif isinstance(value, (int, float, Date)) and json_type == "number":
+        return True
+    return False
+
+
+
 
 
 from mo_json.decoder import json_decoder

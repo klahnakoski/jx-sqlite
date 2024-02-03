@@ -48,7 +48,6 @@ from jx_sqlite.utils import (
     ORDER,
     PARENT,
     UID,
-    get_if_type,
     typed_column,
 )
 from mo_dots import (
@@ -64,7 +63,7 @@ from mo_dots import (
     relative_field,
 )
 from mo_future import text, first
-from mo_json import STRUCT, ARRAY, OBJECT, value_to_json_type
+from mo_json import STRUCT, ARRAY, OBJECT, value_to_json_type, get_if_type
 from mo_logs import Log
 from mo_times import Date
 

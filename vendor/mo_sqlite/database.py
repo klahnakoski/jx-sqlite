@@ -16,7 +16,7 @@ from mo_files import File
 from mo_future import allocate_lock as _allocate_lock, text, zip_longest
 from mo_imports import delay_import
 from mo_kwargs import override
-from mo_logs.exceptions import ERROR, Except, get_stacktrace, format_trace
+from mo_logs import ERROR, logger, Except, get_stacktrace, format_trace
 from mo_math.stats import percentile
 from mo_sql import *
 from mo_threads import Lock, Queue, Thread, Till
@@ -79,7 +79,7 @@ class Sqlite(DB):
             file.parent.create()
             self.filename = file.abs_path
             if known_databases.get(self.filename):
-                Log.error(
+                logger.error(
                     "Not allowed to create more than one Sqlite instance for {{file}}", file=self.filename,
                 )
             else:
@@ -88,7 +88,7 @@ class Sqlite(DB):
         self.trace = coalesce(trace, TRACE) or self.debug
 
         # SETUP DATABASE
-        self.debug and Log.note("Sqlite version {{version}}", version=_sqlite3.sqlite_version)
+        self.debug and logger.note("Sqlite version {{version}}", version=_sqlite3.sqlite_version)
         try:
             if not isinstance(db, _sqlite3.Connection):
                 self.db = _sqlite3.connect(
@@ -97,7 +97,7 @@ class Sqlite(DB):
             else:
                 self.db = db
         except Exception as e:
-            Log.error("could not open file {{filename}}", filename=self.filename, cause=e)
+            logger.error("could not open file {{filename}}", filename=self.filename, cause=e)
         self.upgrade = upgrade
         load_functions and self._load_functions()
 
@@ -116,7 +116,7 @@ class Sqlite(DB):
         self.worker = None
         self.worker = Thread.run("sqlite db thread", self._worker, parent_thread=self)
 
-        self.debug and Log.note(
+        self.debug and logger.note(
             "Sqlite version {{version}}", version=self.query("select sqlite_version()").data[0][0],
         )
 
@@ -221,7 +221,7 @@ class Sqlite(DB):
         :return: list OF RESULTS
         """
         if self.closed:
-            Log.error("database is closed")
+            logger.error("database is closed")
 
         signal = _allocate_lock()
         signal.acquire()
@@ -233,13 +233,13 @@ class Sqlite(DB):
             with self.locker:
                 for t in self.available_transactions:
                     if t.thread is current_thread:
-                        Log.error(DOUBLE_TRANSACTION_ERROR)
+                        logger.error(DOUBLE_TRANSACTION_ERROR)
 
         self.queue.add(CommandItem(str(command), result, signal, trace, None))
         signal.acquire()
 
         if result.exception:
-            Log.error("Problem with Sqlite call", cause=result.exception)
+            logger.error("Problem with Sqlite call", cause=result.exception)
         return result
 
     def stop(self):
@@ -263,7 +263,7 @@ class Sqlite(DB):
         pass
 
     def close(self):
-        Log.error("Use stop()")
+        logger.error("Use stop()")
 
     def __enter__(self):
         pass
@@ -289,7 +289,7 @@ class Sqlite(DB):
         except Exception as e:
             if not _load_extension_warning_sent:
                 _load_extension_warning_sent = True
-                Log.warning(
+                logger.warning(
                     "Could not load {{file}}, doing without. (no SQRT for you!)", file=full_path, cause=e,
                 )
 
@@ -304,7 +304,7 @@ class Sqlite(DB):
         blocker = self.last_command_item
         blocked = (self.delayed_queries + self.delayed_transactions)[0]
 
-        Log.warning(
+        logger.warning(
             "Query on thread {{blocked_thread|json}} at\n"
             "{{blocked_trace|indent}}"
             "is blocked by {{blocker_thread|json}} at\n"
@@ -333,7 +333,7 @@ class Sqlite(DB):
             assert old_trans not in self.transaction_stack
         if not self.transaction_stack:
             # NESTED TRANSACTIONS NOT ALLOWED IN sqlite3
-            self.debug and Log.note(FORMAT_COMMAND, command=query, **command_item.trace[0])
+            self.debug and logger.note(FORMAT_COMMAND, command=query, **command_item.trace[0])
             self.db.execute(query)
 
         has_been_too_long = False
@@ -355,7 +355,7 @@ class Sqlite(DB):
                     self.queue.push(c)
                 del self.delayed_queries[:]
         if has_been_too_long:
-            Log.note("Transaction blockage cleared")
+            logger.note("Transaction blockage cleared")
 
     def _worker(self, please_stop):
         try:
@@ -367,20 +367,20 @@ class Sqlite(DB):
                 try:
                     self._process_command_item(command_item)
                 except Exception as cause:
-                    Log.warning("can not execute command {{command}}", command=command_item.command, cause=cause)
+                    logger.warning("can not execute command {{command}}", command=command_item.command, cause=cause)
         except Exception as e:
             e = Except.wrap(e)
             if not please_stop:
-                Log.warning("Problem with sql", cause=e)
+                logger.warning("Problem with sql", cause=e)
         finally:
             self.closed = True
-            self.debug and Log.note("Database is closed")
+            self.debug and logger.note("Database is closed")
             self.db.close()
             if self.filename:
                 del known_databases[self.filename]
             else:
                 self.filename = ":memory:"
-            self.debug and Log.note("Database {name|quote} is closed", name=self.filename)
+            self.debug and logger.note("Database {name|quote} is closed", name=self.filename)
 
     def _process_command_item(self, command_item):
         query, result, signal, trace, transaction = command_item
@@ -410,7 +410,7 @@ class Sqlite(DB):
                 # ENSURE THE CURRENT TRANSACTION IS UP TO DATE FOR THIS query
                 if not self.transaction_stack:
                     # sqlite3 ALLOWS ONLY ONE TRANSACTION AT A TIME
-                    self.debug and Log.note(FORMAT_COMMAND, command=BEGIN, **command_item.trace[0])
+                    self.debug and logger.note(FORMAT_COMMAND, command=BEGIN, **command_item.trace[0])
                     self.db.execute(BEGIN)
                     self.transaction_stack.append(transaction)
                 elif transaction is not self.transaction_stack[-1]:
@@ -453,14 +453,14 @@ class Sqlite(DB):
 
                 # EXECUTE QUERY
                 self.last_command_item = command_item
-                self.debug and Log.note(FORMAT_COMMAND, command=query, **command_item.trace[0])
+                self.debug and logger.note(FORMAT_COMMAND, command=query, **command_item.trace[0])
                 curr = self.db.execute(query)
                 result.meta.format = "table"
                 result.header = [d[0] for d in curr.description] if curr.description else None
                 result.data = curr.fetchall()
                 if self.debug and result.data:
                     csv = table2csv(list(result.data))
-                    Log.note("Result:\n{{data|limit(1000)|indent}}", data=csv)
+                    logger.note("Result:\n{{data|limit(1000)|indent}}", data=csv)
             except Exception as cause:
                 cause = Except.wrap(cause)
                 err = Except(
@@ -498,7 +498,7 @@ def _upgrade():
         else:
             pass
     except Exception as e:
-        Log.warning("could not upgrade python's sqlite", cause=e)
+        logger.warning("could not upgrade python's sqlite", cause=e)
 
     import sqlite3 as _sqlite3
 

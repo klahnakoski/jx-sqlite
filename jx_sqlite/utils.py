@@ -97,30 +97,6 @@ def get_document_value(document, column):
     return get_if_type(v, column.jx_type)
 
 
-def get_if_type(value, type):
-    if is_type(value, type):
-        if type == "object":
-            return "."
-        if isinstance(value, Date):
-            return value.unix
-        return value
-    return None
-
-
-def is_type(value, type):
-    if value == None:
-        return False
-    elif is_text(value) and type == "string":
-        return value
-    elif is_list(value):
-        return False
-    elif is_data(value) and type == "object":
-        return True
-    elif isinstance(value, (int, float, Date)) and type == "number":
-        return True
-    return False
-
-
 def typed_column(name, sql_key):
     if sql_key not in SQL_KEYS:
         Log.error("not expected")
