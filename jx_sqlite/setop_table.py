@@ -9,14 +9,14 @@
 #
 from typing import List, Dict, Tuple
 
-from mo_imports import export
-from mo_sql import SQL_DESC, SQL_ASC
-
-from jx_base import Column, is_op
+from jx_base import Column, is_op, FALSE
 from jx_base.expressions import NULL
+from jx_base.expressions.sql_is_null_op import SqlIsNullOp
+from jx_base.expressions.sql_order_by_op import OneOrder
 from jx_python import jx
 from jx_sqlite.expressions._utils import SQLang
 from jx_sqlite.expressions.leaves_op import LeavesOp
+from jx_sqlite.expressions.sql_script import SqlScript
 from jx_sqlite.expressions.to_boolean_op import ToBooleanOp
 from jx_sqlite.insert_table import InsertTable
 from jx_sqlite.utils import (
@@ -42,30 +42,30 @@ from mo_dots import (
     unliteral_field,
     list_to_data,
 )
-from mo_future import text
-from mo_json.types import OBJECT, jx_type_to_json_type
+from mo_imports import export
+from mo_json.types import OBJECT, jx_type_to_json_type, JX_ANY
 from mo_logs import Log
+from mo_sql import SQL_DESC, SQL_ASC, NO_SQL
 from mo_sqlite import (
     SQL_AND,
     SQL_FROM,
-    SQL_IS_NULL,
     SQL_LEFT_JOIN,
     SQL_LIMIT,
     SQL_NULL,
     SQL_ON,
-    SQL_ORDERBY,
     SQL_SELECT,
     SQL_UNION_ALL,
     SQL_WHERE,
     sql_iso,
     sql_list,
     ConcatSQL,
-    SQL_STAR,
     SQL_EQ,
     SQL_ZERO,
     SQL_GT,
 )
 from mo_sqlite import quote_column, sql_alias
+from mo_sqlite.expressions import Variable, SqlOrderByOp
+from mo_sqlite.expressions.sql_limit_op import SqlLimitOp
 from mo_times import Date
 
 
@@ -294,10 +294,10 @@ class SetOpTable(InsertTable):
                 # SQL HAS ABS TABLE REFERENCE
                 column_alias = _make_column_name(column_number)
                 sql_selects.append(sql_alias(sql, column_alias))
-                sorts.append(quote_column(column_alias) + SQL_IS_NULL)
-                sorts.append(quote_column(column_alias) + sort_to_sqlite_order[sort.sort])
+                sorts.append(OneOrder(SqlIsNullOp(Variable(column_alias)), NO_SQL))
+                sorts.append(OneOrder(Variable(column_alias), sort_to_sqlite_order[sort.sort]))
         for t in self.snowflake.query_paths:
-            sorts.append(quote_column(COLUMN + text(index_to_uid[t])))
+            sorts.append(OneOrder(Variable(f"{COLUMN}{index_to_uid[t]}"), NO_SQL))
         unsorted_sql = self._make_sql_for_one_nest_in_set_op(
             self.snowflake.fact_name,
             sql_selects,
@@ -309,17 +309,9 @@ class SetOpTable(InsertTable):
             schema,
         )
 
-        ordered_sql = [
-            SQL_SELECT,
-            SQL_STAR,
-            SQL_FROM,
-            sql_iso(unsorted_sql),
-            SQL_ORDERBY,
-            sql_list(sorts),
-        ]
+        ordered_sql = SqlOrderByOp(unsorted_sql, sorts)
         if query.limit is not NULL:
-            ordered_sql.extend([SQL_LIMIT, query.limit.to_sql(schema)])
-        ordered_sql = ConcatSQL(*ordered_sql)
+            ordered_sql = SqlLimitOp(ordered_sql, query.limit.to_sql(schema))
         return index_to_column, ordered_sql, primary_doc_details
 
     def _make_sql_for_one_nest_in_set_op(
@@ -436,15 +428,21 @@ class SetOpTable(InsertTable):
                     index_to_sql_select,  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
                     None,
                     None,
-                    None,
+                    schema=schema,
                 ))
             else:
                 # SIBLING PATHS ARE IGNORED
                 continue
 
-        sql = SQL_UNION_ALL.join(
-            [ConcatSQL(SQL_SELECT, sql_list(select_clause), ConcatSQL(*from_clause), SQL_WHERE, where_clause,)]
-            + children_sql
+        sql = SqlScript(
+            jx_type=JX_ANY,
+            expr=SQL_UNION_ALL.join([
+                ConcatSQL(SQL_SELECT, sql_list(select_clause), ConcatSQL(*from_clause), SQL_WHERE, where_clause),
+                *children_sql
+            ]),
+            frum=None,
+            miss=FALSE,
+            schema=schema,
         )
 
         return sql

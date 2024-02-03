@@ -302,7 +302,6 @@ class TestDeepOps(BaseTestCase):
 
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select_whole_document(self):
         test = {
             "data": [
