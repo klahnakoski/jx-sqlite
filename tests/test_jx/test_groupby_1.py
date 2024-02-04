@@ -426,7 +426,7 @@ class TestgroupBy1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("requires subqueries")
+    @skipIf(global_settings.use == "sqlite", "requires subqueries")
     def test_count_values(self):
         # THIS IS NOT PART OF THE JX SPEC, IT IS AN INTERMEDIATE FORM FOR DEBUGGING
         test = {
@@ -451,7 +451,7 @@ class TestgroupBy1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("for coverage")
+    @skipIf(global_settings.use == "sqlite", "for coverage")
     def test_groupby_multivalue_nested(self):
         test = {
             "data": [
@@ -610,7 +610,7 @@ class TestgroupBy1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("requires groupby sets")
+    @skipIf(global_settings.use == "sqlite", "requires groupby sets")
     def test_groupby_multivalue_naive(self):
         test = {
             "data": [

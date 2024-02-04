@@ -7,18 +7,18 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from unittest import skip
+from unittest import skipIf
 
 from jx_base.meta_columns import META_COLUMNS_NAME, META_TABLES_NAME
 from mo_dots import to_data, dict_to_data
 from mo_future import extend
 from mo_logs import Log
-from tests.test_jx import BaseTestCase, TEST_TABLE
+from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 
 class TestMetadata(BaseTestCase):
 
-    @skip("broken")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_meta_tables(self):
         pre_test = {
             "data": [{"a": "b"}],
@@ -42,7 +42,7 @@ class TestMetadata(BaseTestCase):
         }
         self.utils.send_queries(test)
 
-    @skip("broken")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_meta(self):
         test = dict_to_data({
             "query": {"from": TEST_TABLE},
@@ -105,7 +105,7 @@ class TestMetadata(BaseTestCase):
         }
         self.utils.send_queries(test)
 
-    @skip("broken")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_get_nested_columns(self):
         settings = self.utils.fill_container({
             "query": {"from": TEST_TABLE},  # DUMMY QUERY
@@ -185,7 +185,7 @@ class TestMetadata(BaseTestCase):
 
         self.assertEqual(a.my_func("testing"), ("testing", "test_value"), "Expecting method to be run")
 
-    @skip("broken")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_cardinality(self):
         pre_test = dict_to_data({
             "data": [{"a": "b"}, {"a": "c"}],

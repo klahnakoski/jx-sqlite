@@ -118,12 +118,11 @@ class URL(object):
         if self.port:
             url = url + ":" + str(self.port)
         if self.path:
-            if not self.host:
-                url += str(self.path)
-            elif self.path[0] == text("/"):
-                url += str(self.path)
+            path = str(self.path)
+            if self.host and path[0] != "/":
+                url += "/" + path
             else:
-                url += "/" + str(self.path)
+                url += path
         if len(self.query):
             url = url + "?" + value2url_param(self.query)
         if self.fragment:

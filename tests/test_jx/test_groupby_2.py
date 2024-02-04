@@ -10,14 +10,14 @@
 
 
 
-from unittest import skip
+from unittest import skip, skipIf
 
 from jx_base.expressions import NULL
 from mo_json import null
-from tests.test_jx import BaseTestCase, TEST_TABLE
+from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 
-@skip("not ready")
+@skipIf(global_settings.use == "sqlite", "not ready")
 class TestGroupBy2(BaseTestCase):
     def test_count_rows(self):
         test = {

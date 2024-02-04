@@ -96,7 +96,7 @@ class TestSorting(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("coordinate sort clause with matching edges")
+    @skipIf(global_settings.use == "sqlite", "coordinate sort clause with matching edges")
     def test_2edge_and_sort(self):
         test = {
             "data": [
@@ -326,7 +326,7 @@ class TestSorting(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("coordinate sort clause with matching edges")
+    @skipIf(global_settings.use == "sqlite", "coordinate sort clause with matching edges")
     def test_groupby2b_and_sort(self):
         test = {
             "data": [
@@ -392,7 +392,7 @@ class TestSorting(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("coordinate sort clause with matching edges")
+    @skipIf(global_settings.use == "sqlite", "coordinate sort clause with matching edges")
     def test_groupby2c_and_sort(self):
         test = {
             "data": [
@@ -515,7 +515,7 @@ class TestSorting(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.elasticsearch.version, "ES can not sort nested amoung docs")
-    @skip("broken")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_nested(self):
         test = {
             "data": [
@@ -569,7 +569,7 @@ class TestSorting(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("nested are broken")
+    @skipIf(global_settings.use == "sqlite", "nested are broken")
     def test_single_nested(self):
         test = {
             "data": [

@@ -414,7 +414,7 @@ class TestEdge1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("deal with nested table as value")
+    @skipIf(global_settings.use == "sqlite", "deal with nested table as value")
     def test_union_values(self):
         data = [
             {"a": "x"},
@@ -471,7 +471,7 @@ class TestEdge1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("deal with nested table as value")
+    @skipIf(global_settings.use == "sqlite", "deal with nested table as value")
     def test_union_nested_objects(self):
         data = [
             {"a": "x"},
@@ -528,7 +528,7 @@ class TestEdge1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("deal with nested table as value")
+    @skipIf(global_settings.use == "sqlite", "deal with nested table as value")
     def test_multiple_union(self):
         data = [
             {"a": "x"},
@@ -574,7 +574,7 @@ class TestEdge1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("deal with nested table as value")
+    @skipIf(global_settings.use == "sqlite", "deal with nested table as value")
     def test_multiple_union2(self):
         data = [
             {"a": ["x", "z"]},
@@ -2028,7 +2028,7 @@ class TestEdge1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("not sure what first() of nested column would be.  requires schema merging of a.b.~n~ and a.~N~.b.~n~")
+    @skipIf(global_settings.use == "sqlite", "not sure what first() of nested column would be.  requires schema merging of a.b.~n~ and a.~N~.b.~n~")
     def test_shallow_with_deep_edge(self):
         test = {
             "data": [
