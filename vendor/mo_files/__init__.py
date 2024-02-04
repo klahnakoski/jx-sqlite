@@ -486,7 +486,7 @@ class TempDirectory(File):
     def __exit__(self, exc_type, exc_val, exc_tb):
         from mo_threads import Thread
 
-        Thread.run("delete dir " + self.stem, delete_daemon, file=self, caller_stack=get_stacktrace(1),).release()
+        Thread.run("delete dir " + self.stem, delete_daemon, file=self, caller_stack=get_stacktrace(1)).release()
 
 
 class TempFile(File):

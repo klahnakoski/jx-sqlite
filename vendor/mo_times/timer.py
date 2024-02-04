@@ -10,8 +10,11 @@ from datetime import timedelta
 from time import time
 
 from mo_dots import coalesce, to_data
-from mo_logs import Log
+from mo_imports import delay_import
+
 from mo_times.durations import Duration
+
+logger = delay_import("mo_logs.logger")
 
 START = time()
 
@@ -44,7 +47,9 @@ class Timer(object):
 
     def __enter__(self):
         if self.verbose:
-            Log.note("Timer start: " + self.template, default_params=self.param, stack_depth=1, static_template=False)
+            logger.note(
+                "Timer start: " + self.template, default_params=self.param, stack_depth=1, static_template=False
+            )
         self.start = time()
         return self
 
@@ -55,14 +60,14 @@ class Timer(object):
         self.param.duration = timedelta(seconds=self.interval)
         if self.verbose:
             if self.too_long == 0:
-                Log.note(
+                logger.note(
                     "Timer end  : " + self.template + " (took {{duration}})",
                     default_params=self.param,
                     stack_depth=1,
                     static_template=False,
                 )
             elif self.interval >= self.too_long:
-                Log.note(
+                logger.note(
                     "Time too long: " + self.template + " ({{duration}})",
                     default_params=self.param,
                     stack_depth=1,
@@ -80,6 +85,6 @@ class Timer(object):
     @property
     def total(self):
         if not self.end:
-            Log.error("please ask for total time outside the context of measuring")
+            logger.error("please ask for total time outside the context of measuring")
 
         return Duration(self.agg)
