@@ -132,9 +132,7 @@ class Snowflake(jx_base.Snowflake):
                         break
                 else:
                     Log.error(
-                        "Did not add column {{column}}",
-                        column=column.es_column,
-                        cause=e,
+                        "Did not add column {{column}}", column=column.es_column, cause=e,
                     )
             else:
                 Log.error("Did not add column {{column}]", column=column.es_column, cause=e)
@@ -206,7 +204,6 @@ class Snowflake(jx_base.Snowflake):
             with self.namespace.container.db.transaction() as t:
                 t.execute(command)
                 self.add_table([destination_table, *column.nested_path])
-
 
             self.namespace.columns.add(jx_base.Column(
                 name=UID,

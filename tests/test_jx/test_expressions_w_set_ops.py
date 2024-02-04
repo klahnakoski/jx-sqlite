@@ -7,9 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-
-
-
+import sys
 from unittest import skip, skipIf
 
 from jx_base.expressions import NULL
@@ -673,6 +671,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skipIf(sys.version_info <= (3, 8), "parser stack overflow")
     def test_between_missing(self):
         test = {
             "data": [

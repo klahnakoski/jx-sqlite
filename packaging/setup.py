@@ -6,7 +6,7 @@ setup(
     author_email='rohitkumar.a255@gmail.com, kyle@lahnakoski.com',
     classifiers=["Development Status :: 4 - Beta","Topic :: Software Development :: Libraries","Topic :: Software Development :: Libraries :: Python Modules","License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)","Programming Language :: Python :: 3.8","Programming Language :: Python :: 3.9","Programming Language :: Python :: 3.10","Programming Language :: Python :: 3.11","Programming Language :: Python :: 3.12"],
     description='JSON query expressions using SQLite',
-    extras_require={"tests":["mo-testing"]},
+    extras_require={"tests":["mo-testing>=7.523.24033"]},
     include_package_data=True,
     install_requires=["hjson","jx-python==4.532.24035","mo-sql==4.531.24035","mo-sqlite==1.533.24035","requests"],
     license='MPL 2.0',
@@ -16,5 +16,5 @@ setup(
     package_dir={},
     packages=["jx_sqlite","jx_sqlite.models","jx_sqlite.expressions"],
     url='https://github.com/klahnakoski/jx-sqlite',
-    version='5.534.24035'
+    version='5.535.24035'
 )
