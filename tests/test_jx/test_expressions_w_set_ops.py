@@ -671,7 +671,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(sys.version_info <= (3.8), "parser stack overflow")
+    @skipIf(sys.version_info <= (3, 8), "parser stack overflow")
     def test_between_missing(self):
         test = {
             "data": [
