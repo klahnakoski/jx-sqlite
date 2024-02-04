@@ -7,13 +7,10 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-
-
-
-from unittest import skip
+from unittest import skipIf
 
 from jx_base.expressions import NULL
-from tests.test_jx import BaseTestCase, TEST_TABLE
+from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 
 @skipIf(global_settings.use == "sqlite", "not ready")
