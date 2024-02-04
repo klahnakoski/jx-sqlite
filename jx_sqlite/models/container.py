@@ -199,7 +199,9 @@ class Container(_Container):
         return Table(nested_path, self)
 
     def get_snowflake(self, table_name):
-        fact_name = first(fact for fact, nps in self.namespace.columns._snowflakes.items() for np in nps if np[0] == table_name)
+        fact_name = first(
+            fact for fact, nps in self.namespace.columns._snowflakes.items() for np in nps if np[0] == table_name
+        )
         return Snowflake(fact_name, self.namespace)
 
     def close(self):

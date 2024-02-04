@@ -41,4 +41,3 @@ class Table(jx_base.Table):
 
 export("jx_sqlite.models.snowflake", Table)
 export("jx_sqlite.models.container", Table)
-
