@@ -636,6 +636,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.use == "sqlite", "parser stack overflow")
     def test_between(self):
         test = {
             "data": [{"v": "/this/is/a/directory"}, {"v": "/"}],

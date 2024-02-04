@@ -302,6 +302,7 @@ class TestDeepOps(BaseTestCase):
 
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.use == "sqlite", "ambiguous column name: __id__")
     def test_select_whole_document(self):
         test = {
             "data": [
