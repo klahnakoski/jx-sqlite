@@ -1,6 +1,6 @@
 from mo_sqlite import sql_query
 from mo_testing.fuzzytestcase import add_error_reporting
-from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
+from tests.test_jx import BaseTestCase
 
 
 @add_error_reporting
@@ -10,7 +10,7 @@ class TestInsert(BaseTestCase):
     """
 
     def test_nested(self):
-        self.table.insert([{
+        self.utils.table.insert([{
             "v": 0,
             "a": {"_b": [{"a": 0, "b": 7}, {"a": 1, "b": 6}, {"a": 2, "b": 5}, {"a": 3, "b": 4},]},
         }])

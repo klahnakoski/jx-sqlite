@@ -7,13 +7,13 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from unittest import skip
+from unittest import skipIf
 
 from jx_base.meta_columns import META_COLUMNS_NAME, META_TABLES_NAME
 from mo_dots import to_data, dict_to_data
 from mo_future import extend
 from mo_logs import Log
-from tests.test_jx import BaseTestCase, TEST_TABLE
+from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 
 class TestMetadata(BaseTestCase):

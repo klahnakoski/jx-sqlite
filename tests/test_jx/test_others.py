@@ -8,12 +8,11 @@
 
 
 
-from unittest import skip
+from unittest import skipIf
 
 from mo_dots import to_data
 from mo_json import value2json, json2value
-from tests import error
-from tests.test_jx import BaseTestCase, TEST_TABLE
+from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 
 @skipIf(global_settings.use == "sqlite", "meant for html endpoint (ES)")
