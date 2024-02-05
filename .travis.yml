@@ -12,7 +12,7 @@ env:
 - PYTHONPATH=.
 script:
 - python -Werror tests/smoke_test.py
-- python -m unittest discover tests
+- python -m unittest discover -v tests
 - echo test
 jobs:
   include:
