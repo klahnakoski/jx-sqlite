@@ -16,7 +16,7 @@ This library will manage your database schema to store JSON documents. You get a
 
 Significant updates to the supporting libraries has broken this code.  It still works for the simple cases that require it
 
-**Jan 2024** - 91/320 tests ignored
+**Jan 2024** - 118 of 334 tests ignored
 
 
 ## Installation
@@ -27,8 +27,6 @@ Significant updates to the supporting libraries has broken this code.  It still 
 
 The smoke test, found in the `tests` is a simple example of how to use this library.
 
-Open a database 
-
 ```python
 import jx_sqlite
 
@@ -36,9 +34,9 @@ table = (
     jx_sqlite
     .Container(filename="my.db")
     .get_or_create_facts("my_table")
-    .add({"os":"linux", "value":42})
+    .add({"os": "linux", "value": 42})
     .query({
-        "select": "os", 
+        "select": "os",
         "where": {"gt": {"value": 0}}
     })
 )
@@ -46,8 +44,8 @@ table = (
 
 ## More
 
-An attempt to store JSON documents in SQLite so that they are accessible via SQL. The hope is this will serve a basis for a general document-relational map (DRM), and leverage the database's query optimizer.
-jx-sqlite  is also responsible for making the schema, and changing it dynamically as new JSON schema are encountered and to ensure that the old queries against the new schema have the same meaning.
+This project is an attempt to store JSON documents in SQLite so that they are accessible via SQL. The hope is this will serve a basis for a general document-relational map (DRM), and leverage the database's query optimizer.
+`jx-sqlite` is responsible for expanding the schema dynamically as new JSON documents are encountered.  It also strives to ensure old queries against the new schema have the same meaning; the same results.
 
 The most interesting, and most important feature is that we query nested object arrays as if they were just another table.  This is important for two reasons:
 
@@ -65,12 +63,12 @@ Contributions are always welcome! The best thing to do is find a failing test, a
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 
-    $ git clone https://github.com/mozilla/jx-sqlite
+    $ git clone https://github.com/klahnakoski/jx-sqlite
     $ cd jx-sqlite
 
 ### Running tests
 
-There are over 200 tests used to confirm the expected behaviour: They test a variety of JSON forms, and the queries that can be performed on them. Most tests are further split into three different output formats ( list, table and cube).
+There are over 300 tests used to confirm the expected behaviour: They test a variety of JSON forms, and the queries that can be performed on them. Most tests are further split into three different output formats ( list, table and cube).
 
     export PYTHONPATH=.
     python -m unittest discover -v -s tests
@@ -89,6 +87,8 @@ This project is licensed under Mozilla Public License, v. 2.0. If a copy of the 
 
 
 ## History
+
+*Jan 2024* - Attempt to resurrect this project
 
 *Sep 2018* - Upgrade libs, start refactoring to work with other libs
 
