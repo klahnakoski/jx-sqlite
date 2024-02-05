@@ -88,7 +88,7 @@ This project is licensed under Mozilla Public License, v. 2.0. If a copy of the 
 
 ## History
 
-*Jan 2024* - Attempt to resurrect this project
+*Jan 2024* - Attempt to resurrect this project (118 of 334 tests ignored)
 
 *Sep 2018* - Upgrade libs, start refactoring to work with other libs
 
