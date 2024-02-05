@@ -69,12 +69,12 @@ from mo_times import Date
 
 
 class InsertTable(Facts):
-    def add(self, doc):
-        return self.insert([doc])
 
     def insert(self, docs):
         if not is_many(docs):
             Log.error("Expecting a list of documents")
+        if not docs:
+            return self
         doc_collection = self.flatten_many(docs)
         return self._insert(doc_collection)
 

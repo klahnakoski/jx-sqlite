@@ -37,8 +37,8 @@ class TestBasic(TestCase):
 
         db = Sqlite(file)
         table = Container(db).get_or_create_facts("my_table")
-        table.add({"os": "linux", "value": 42})
-        table.add({"os": "win", "value": 41})
+        table.insert([{"os": "linux", "value": 42}])
+        table.insert([{"os": "win", "value": 41}])
 
         db.stop()
 
@@ -65,3 +65,27 @@ class TestBasic(TestCase):
         table = container.create_or_replace_facts("my_table")
         container.drop(table)
         self.assertNotIn("my_table", container.db.get_tables().name)
+
+    def test_add_nothing(self):
+        container = Container(Sqlite())
+        table = container.create_or_replace_facts("my_table")
+        table.insert([])
+        self.assertEqual(table.query({}), {"meta": {"format": "list"}, "data": []})
+
+    def test_no_add(self):
+        container = Container(Sqlite())
+        table = container.create_or_replace_facts("my_table")
+        with self.assertRaises(Exception):
+            table.add({})
+
+    def test_simplest_query(self):
+        table = Container(Sqlite()).get_or_create_facts("my_table")
+        table.insert([
+            {"os": "linux", "value": 42},
+            {"os": "win", "value": 41}
+        ])
+
+        result = table.query({})
+        self.assertEqual(
+            result, {"meta": {"format": "list"}, "data": [{"os": "linux", "value": 42}, {"os": "win", "value": 41}]}
+        )
