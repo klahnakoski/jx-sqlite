@@ -20,7 +20,6 @@ from mo_testing.fuzzytestcase import add_error_reporting
 
 @add_error_reporting
 class TestBasic(TestCase):
-
     @classmethod
     def setUpClass(cls):
         for file in File("sql").children:
@@ -56,9 +55,9 @@ class TestBasic(TestCase):
         table1 = Container(db).get_or_create_facts("my_table")
         table2 = Container(db).get_or_create_facts("my_table")
 
-        table1.insert([{"a":"b"}])
+        table1.insert([{"a": "b"}])
 
-        result = table2.query({"select":"."})
+        result = table2.query({"select": "."})
         self.assertEqual(result, {"meta": {"format": "list"}, "data": [{"a": "b"}]})
 
     def test_delete_table(self):
@@ -66,5 +65,3 @@ class TestBasic(TestCase):
         table = container.create_or_replace_facts("my_table")
         container.drop(table)
         self.assertNotIn("my_table", container.db.get_tables().name)
-
-
