@@ -12,15 +12,13 @@ from jx_base.models.container import Container as _Container
 from jx_base.models.facts import Facts
 from jx_sqlite.expressions._utils import SQLang
 from jx_sqlite.expressions.sql_select_all_from_op import SqlSelectAllFromOp
-from jx_sqlite.models.namespace import Namespace
-from jx_sqlite.utils import UID, GUID, DIGITS_TABLE, ABOUT_TABLE, untype_field
-from mo_dots import concat_field, set_default, startswith_field
+from jx_sqlite.utils import UID, GUID, DIGITS_TABLE, ABOUT_TABLE
+from mo_dots import concat_field, set_default
 from mo_future import first, NEXT
 from mo_imports import expect
 from mo_json import STRING
 from mo_kwargs import override
-from mo_logs import Log
-from mo_sql.utils import SQL_ARRAY_KEY
+from mo_logs import logger
 from mo_sqlite import (
     SQL_SELECT,
     SQL_FROM,
@@ -39,7 +37,7 @@ from mo_sqlite import (
 from mo_threads.lock import locked
 from mo_times import Date
 
-SetOpTable, QueryTable, Table, Snowflake = expect("SetOpTable", "QueryTable", "Table", "Snowflake")
+SetOpTable, QueryTable, Table, Snowflake, Namespace = expect("SetOpTable", "QueryTable", "Table", "Snowflake", "Namespace")
 _config = None
 
 
@@ -124,12 +122,12 @@ class Container(_Container):
                 # MAP FROM COLUMN PATH TO COLUMN INDEX -> WHAT HAPPENS WHEN A CYCLE?
                 return SqlSelectAllFromOp(self.get_table(query.var))
 
-            Log.error(f"not supported yet (add jx_base.<op>.apply() function to {query.name}")
+            logger.error(f"not supported yet (add jx_base.<op>.apply() function to {query.name}")
 
         # ASSUME Data MEANT AS QUERY
         normalized_query = jx_expression(query, SQLang)
         if normalized_query.lang is not SQLang:
-            Log.error(f"cannot execute query in {normalized_query.lang}")
+            logger.error(f"cannot execute query in {normalized_query.lang}")
         command = normalized_query.apply(self)
         output = self.db.query(command)
         return output
@@ -141,27 +139,31 @@ class Container(_Container):
         :param uid: name, or list of names, for the GUID
         :return: Facts
         """
-        self.remove_facts(fact_name)
+        self.drop_facts(fact_name)
         self.namespace.columns._snowflakes[fact_name] = [fact_name]
 
         if uid != UID:
-            Log.error("do not know how to handle yet")
+            logger.error("do not know how to handle yet")
 
         command = sql_create(fact_name, {UID: "INTEGER PRIMARY KEY", GUID: "TEXT"}, unique=UID)
 
         with self.db.transaction() as t:
             t.execute(command)
 
-        snowflake = Snowflake(fact_name, self.ns)
-        return Facts(self, snowflake)
+        return QueryTable(fact_name, self)
 
-    def remove_facts(self, fact_name):
-        paths = self.namespace.columns._snowflakes[fact_name]
+    def drop(self, item):
+        if isinstance(item, QueryTable):
+            self.drop_facts(item.name)
+        else:
+            logger.error("do not know how to handle {item}", item=item)
+
+    def drop_facts(self, fact_name):
+        paths = self.namespace.columns._snowflakes.get(fact_name)
         if paths:
             with self.db.transaction() as t:
                 for p in paths:
-                    full_name = concat_field(fact_name, p[0])
-                    t.execute("DROP TABLE " + quote_column(full_name))
+                    t.execute("DROP TABLE " + quote_column(p))
             self.namespace.columns.remove_table(fact_name)
 
     def get_or_create_facts(self, fact_name, uid=UID):
@@ -174,7 +176,7 @@ class Container(_Container):
         about = self.db.about(fact_name)
         if not about:
             if uid != UID:
-                Log.error("do not know how to handle yet")
+                logger.error("do not know how to handle yet")
 
             self.namespace.columns._snowflakes[fact_name] = [fact_name]
             self.namespace.columns.add(Column(

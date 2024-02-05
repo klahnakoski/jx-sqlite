@@ -159,7 +159,10 @@ class ColumnList(Table, Container):
             self._remove(column)
 
     def remove_table(self, table_name):
-        del self.data[table_name]
+        try:
+            del self.data[table_name]
+        except KeyError:
+            pass
 
     def _add(self, column):
         """
@@ -241,9 +244,6 @@ class ColumnList(Table, Container):
         with self.locker:
             self._update_meta()
             return iter(self._all_columns())
-
-    def __len__(self):
-        return self.data[META_COLUMNS_NAME]["es_index"].count
 
     def update(self, command):
         self.dirty = True
