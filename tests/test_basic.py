@@ -51,11 +51,20 @@ class TestBasic(TestCase):
         file = self._new_file()
         file.delete()
 
-        db = Sqlite(file)
-        db.stop()
+    def test_reuse_db(self):
+        db = Sqlite()
+        table1 = Container(db).get_or_create_facts("my_table")
+        table2 = Container(db).get_or_create_facts("my_table")
 
-        container = Container(filename=file)
-        container.get_or_create_facts("my_table")
-        container.close()
+        table1.insert([{"a":"b"}])
+
+        result = table2.query({"select":"."})
+        self.assertEqual(result, {"meta": {"format": "list"}, "data": [{"a": "b"}]})
+
+    def test_delete_table(self):
+        container = Container(Sqlite())
+        table = container.create_or_replace_facts("my_table")
+        container.drop(table)
+        self.assertNotIn("my_table", container.db.get_tables().name)
 
 

@@ -7,11 +7,30 @@
 #
 
 
-from typing import List
-
 import jx_base
-from jx_base.models.nested_path import NestedPath
 from jx_sqlite.models.schema import Schema
+from jx_sqlite.utils import (
+    quoted_ORDER,
+    quoted_PARENT,
+    quoted_UID,
+    UID,
+    GUID,
+    PARENT,
+    ORDER,
+)
+from mo_dots import (
+    concat_field,
+    to_data,
+    startswith_field,
+    split_field,
+    join_field,
+    relative_field,
+)
+from mo_future import first
+from mo_imports import expect, export
+from mo_json import ARRAY, OBJECT, EXISTS, INTEGER
+from mo_logs import Log, Except
+from mo_sql.utils import SQL_ARRAY_KEY, untype_field
 from mo_sqlite import (
     SQL_FROM,
     SQL_SELECT,
@@ -30,28 +49,6 @@ from mo_sqlite import (
     SQL_INSERT,
 )
 from mo_sqlite import quote_column
-from jx_sqlite.utils import (
-    quoted_ORDER,
-    quoted_PARENT,
-    quoted_UID,
-    UID,
-    GUID,
-    PARENT,
-    ORDER,
-)
-from mo_dots import (
-    concat_field,
-    to_data,
-    startswith_field,
-    split_field,
-    join_field,
-    relative_field,
-)
-from mo_imports import expect
-from mo_future import first
-from mo_json import ARRAY, OBJECT, EXISTS, INTEGER
-from mo_logs import Log, Except
-from mo_sql.utils import SQL_ARRAY_KEY, untype_field
 from mo_times import Date
 
 Table = expect("Table")
@@ -366,3 +363,6 @@ class Snowflake(jx_base.Snowflake):
             if startswith_field(k, prefix) and k != GUID or k == prefix
             if c.json_type not in [OBJECT, EXISTS]
         )
+
+
+export("jx_sqlite.models.container", Snowflake)
