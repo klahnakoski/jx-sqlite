@@ -10,14 +10,13 @@
 
 
 
-from unittest import skip, skipIf
-
-from mo_future import first
+from unittest import skipIf
 
 import mo_math
 from jx_base.expressions import NULL
 from jx_base.expressions.query_op import DEFAULT_LIMIT, MAX_LIMIT
 from mo_dots import to_data, dict_to_data, list_to_data
+from mo_future import first
 from mo_sql.utils import SQL_STRING_KEY
 from mo_testing.fuzzytestcase import add_error_reporting
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
@@ -437,9 +436,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test, typed=False)
 
-    @skipIf(
-        global_settings.use == "sqlite", "no need for limit when using own resources"
-    )
+    @skipIf(global_settings.use == "sqlite", "no need for limit when using own resources")
     def test_max_limit(self):
         test = dict_to_data({
             "data": lots_of_data,
@@ -508,7 +505,8 @@ class TestSetOps(BaseTestCase):
 
         self.utils.fill_container(test)
         test.query.format = "list"
-        self.assertRaises(Exception, self.utils.execute_query, test.query)
+        with self.assertRaises(Exception):
+            self.utils.execute_query(test.query)
 
     def test_select_w_star(self):
         test = {
@@ -951,7 +949,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
+    @skipIf(global_settings.use == "sqlite", "fix me first")
     def test_select_w_nested_values(self):
         test = {
             "data": [

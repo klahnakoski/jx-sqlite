@@ -8,7 +8,7 @@ with Sqlite() as db:
     result = (
         Container(db)
         .get_or_create_facts("my_table")
-        .add({"os": "linux", "value": 42})
+        .insert([{"os": "linux", "value": 42}])
         .query({"select": "os", "where": {"gt": {"value": 0}}})
     )
 

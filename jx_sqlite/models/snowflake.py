@@ -46,7 +46,7 @@ from mo_sqlite import (
     SQL_RENAME_TO,
     SQL_TO,
     TextSQL,
-    SQL_INSERT,
+    SQL_INSERT, sql_create,
 )
 from mo_sqlite import quote_column
 from mo_times import Date
@@ -129,10 +129,10 @@ class Snowflake(jx_base.Snowflake):
                         break
                 else:
                     Log.error(
-                        "Did not add column {{column}}", column=column.es_column, cause=e,
+                        "Did not add column {column}", column=column.es_column, cause=e,
                     )
             else:
-                Log.error("Did not add column {{column}]", column=column.es_column, cause=e)
+                Log.error("Did not add column {column}", column=column.es_column, cause=e)
 
     def _drop_column(self, column):
         # DROP COLUMN BY RENAMING IT, WITH __ PREFIX TO HIDE IT
@@ -157,9 +157,9 @@ class Snowflake(jx_base.Snowflake):
     def _nest_column(self, column):
         new_nest = column.es_column
         existing_table = column.nested_path[0]
-        destination_table = concat_field(self.fact_name, new_nest)
+        destination_table = concat_field(column.es_index, new_nest)
         if new_nest.endswith(SQL_ARRAY_KEY):
-            old_column_prefix = join_field(split_field(new_nest)[:-1])
+            old_column_prefix, _ = untype_field(new_nest)
         else:
             raise Log.error("not expected")
 
@@ -198,9 +198,10 @@ class Snowflake(jx_base.Snowflake):
                     ),
                 ])),
             )
+            dest_nested_path = [destination_table, *column.nested_path]
             with self.namespace.container.db.transaction() as t:
                 t.execute(command)
-                self.add_table([destination_table, *column.nested_path])
+                self.add_table(dest_nested_path)
 
             self.namespace.columns.add(jx_base.Column(
                 name=UID,
@@ -208,7 +209,7 @@ class Snowflake(jx_base.Snowflake):
                 es_index=destination_table,
                 es_type="INTEGER",
                 json_type=INTEGER,
-                nested_path=[destination_table],
+                nested_path=dest_nested_path,
                 last_updated=now,
                 multi=0,
             ))
@@ -218,7 +219,7 @@ class Snowflake(jx_base.Snowflake):
                 es_index=destination_table,
                 es_type="INTEGER",
                 json_type=INTEGER,
-                nested_path=[destination_table],
+                nested_path=[destination_table, *column.nested_path],
                 last_updated=now,
                 multi=0,
             ))
@@ -228,7 +229,7 @@ class Snowflake(jx_base.Snowflake):
                 es_index=destination_table,
                 es_type="INTEGER",
                 json_type=INTEGER,
-                nested_path=[destination_table],
+                nested_path=[destination_table, *column.nested_path],
                 last_updated=now,
                 multi=0,
             ))

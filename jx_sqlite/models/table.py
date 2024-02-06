@@ -11,7 +11,7 @@ from jx_sqlite.models.snowflake import Snowflake
 from mo_imports import expect, export
 from mo_logs import Log
 
-QueryTable = expect("QueryTable")
+Facts = expect("Facts")
 
 
 class Table(jx_base.Table):
@@ -29,7 +29,7 @@ class Table(jx_base.Table):
         return self.schema.nested_path[0]
 
     def query(self, query):
-        return QueryTable(self.nested_path[0], self.container).query(query)
+        return Facts(self.nested_path[0], self.container).query(query)
 
     def map(self, mapping):
         return self

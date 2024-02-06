@@ -19,7 +19,7 @@ from mo_times import Date, Duration
 
 TYPE_CHECK = True
 
-FORMAT_COMMAND = 'Running command from "{{file}}:{{line}}"\n{{command|limit(1000)|indent}}'
+FORMAT_COMMAND = 'Running command from "{file}:{line}"\n{{command|limit(1000)|indent}}'
 
 
 CommandItem = namedtuple("CommandItem", ("command", "result", "is_done", "trace", "transaction"))

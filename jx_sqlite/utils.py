@@ -24,7 +24,7 @@ from mo_dots import (
     is_missing,
 )
 from mo_future import is_text, text
-from mo_json import BOOLEAN, ARRAY, NUMBER, OBJECT, STRING, json2value, JX_BOOLEAN
+from mo_json import BOOLEAN, ARRAY, NUMBER, OBJECT, STRING, json2value, JX_BOOLEAN, get_if_type
 from mo_json.typed_encoder import untype_path
 from mo_logs import Log
 from mo_math import randoms
@@ -126,23 +126,6 @@ untype_field = untyped_column
 def _make_column_name(number):
     return COLUMN + text(number)
 
-
-sql_aggs = {
-    "avg": "AVG",
-    "average": "AVG",
-    "count": "COUNT",
-    "first": "FIRST_VALUE",
-    "last": "LAST_VALUE",
-    "max": "MAX",
-    "maximum": "MAX",
-    "median": "MEDIAN",
-    "min": "MIN",
-    "minimum": "MIN",
-    "sum": "SUM",
-    "add": "SUM",
-    "any": "MAX",
-    "all": "MIN",
-}
 
 STATS = {
     "count": "COUNT({{value}})",

@@ -294,7 +294,7 @@ class ColumnList(Table, Container):
             with self.locker:
                 for col in columns:
                     DEBUG and Log.note(
-                        "update column {{table}}.{{column}}", table=col.es_index, column=col.es_column,
+                        "update column {table}.{column}", table=col.es_index, column=col.es_column,
                     )
                     for k in command["clear"]:
                         if k == ".":

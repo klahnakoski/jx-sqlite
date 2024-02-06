@@ -9,11 +9,10 @@ from jx_base import jx_expression, Column
 from jx_base.expressions import Expression, Variable, is_literal, GetOp, SqlScript
 from jx_base.language import is_op
 from jx_base.models.container import Container as _Container
-from jx_base.models.facts import Facts
 from jx_sqlite.expressions._utils import SQLang
 from jx_sqlite.expressions.sql_select_all_from_op import SqlSelectAllFromOp
 from jx_sqlite.utils import UID, GUID, DIGITS_TABLE, ABOUT_TABLE
-from mo_dots import concat_field, set_default
+from mo_dots import set_default
 from mo_future import first, NEXT
 from mo_imports import expect
 from mo_json import STRING
@@ -37,7 +36,7 @@ from mo_sqlite import (
 from mo_threads.lock import locked
 from mo_times import Date
 
-SetOpTable, QueryTable, Table, Snowflake, Namespace = expect("SetOpTable", "QueryTable", "Table", "Snowflake", "Namespace")
+Facts, Snowflake, Table, Namespace = expect("Facts", "snowflake", "Table", "Namespace")
 _config = None
 
 
@@ -67,7 +66,7 @@ class Container(_Container):
 
         self.setup()
         self.namespace = Namespace(container=self)
-        self.about = QueryTable("meta.about", self)
+        self.about = Facts("meta.about", self)
         self.next_uid = self._gen_ids()  # A DELIGHTFUL SOURCE OF UNIQUE INTEGERS
 
     def _gen_ids(self):
@@ -150,10 +149,10 @@ class Container(_Container):
         with self.db.transaction() as t:
             t.execute(command)
 
-        return QueryTable(fact_name, self)
+        return Facts(fact_name, self)
 
     def drop(self, item):
-        if isinstance(item, QueryTable):
+        if isinstance(item, Facts):
             self.drop_facts(item.name)
         else:
             logger.error("do not know how to handle {item}", item=item)
@@ -194,7 +193,7 @@ class Container(_Container):
             with self.db.transaction() as t:
                 t.execute(command)
 
-        return QueryTable(fact_name, self)
+        return Facts(fact_name, self)
 
     def get_table(self, table_name):
         nested_path = self.namespace.columns.get_nested_path(table_name)
