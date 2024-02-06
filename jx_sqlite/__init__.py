@@ -15,4 +15,5 @@ from jx_sqlite.expressions._utils import SQLang
 from jx_sqlite.models.container import Container
 from jx_sqlite.models.namespace import Namespace
 from jx_sqlite.models.schema import Schema
-from jx_sqlite.query_table import QueryTable
+from jx_sqlite.jx_table import QueryTable
+from jx_sqlite import edges, group, insert, query, setop, format

@@ -18,7 +18,7 @@ from jx_base.expressions import QueryOp
 from jx_python import jx
 from jx_sqlite import Container
 from jx_sqlite.expressions import SQLang
-from jx_sqlite.query_table import QueryTable
+from jx_sqlite.query import QueryTable
 from mo_dots import wrap, coalesce, from_data, listwrap, Data, startswith_field, to_data, is_many, is_sequence, Null
 from mo_files import File
 from mo_future import text

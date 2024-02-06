@@ -949,7 +949,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
+    @skipIf(global_settings.use == "sqlite", "fix me first")
     def test_select_w_nested_values(self):
         test = {
             "data": [
