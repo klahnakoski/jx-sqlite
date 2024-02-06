@@ -16,8 +16,8 @@
     "extras_require": {"tests": ["mo-testing>=7.523.24033"]},
     "include_package_data": true,
     "install_requires": [
-                         "hjson", "jx-python==4.537.24036",    "mo-sql==4.531.24035",
-        "mo-sqlite==1.537.24036",               "requests"
+                         "hjson", "jx-python==4.539.24037",    "mo-sql==4.538.24037",
+        "mo-sqlite==1.539.24037",               "requests"
     ],
     "license": "MPL 2.0",
     "long_description": {
@@ -144,5 +144,5 @@
     "package_dir": {},
     "packages": ["jx_sqlite", "jx_sqlite.models", "jx_sqlite.expressions"],
     "url": "https://github.com/klahnakoski/jx-sqlite",
-    "version": "5.537.24036"
+    "version": "5.539.24037"
 }
