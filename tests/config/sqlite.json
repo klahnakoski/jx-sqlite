@@ -7,7 +7,7 @@
 		"load_functions": true
 	},
 	"constants": {
-		"mo_sqlite.sqlite.DEBUG": true
+		"mo_sqlite.database.DEBUG": false
 	},
 	"debug": {
 		"trace":true

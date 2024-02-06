@@ -321,12 +321,6 @@ class InsertTable(Facts):
                     curr_column = first(cc for cc in columns if cc.json_type == json_type and cc.name == abs_name)
 
                 if not curr_column:
-                    # WHAT IS THE NESTING LEVEL FOR THIS PATH?
-                    deeper_nested_path = "."
-                    for path in snowflake.query_paths + insertion.query_paths:
-                        if startswith_field(abs_name, path[0]) and len(deeper_nested_path) < len(path):
-                            deeper_nested_path = path
-
                     curr_column = Column(
                         name=abs_name,
                         json_type=json_type,
@@ -364,21 +358,6 @@ class InsertTable(Facts):
                     v = [v]
                 elif len(curr_column.nested_path) < len(nested_path):
                     es_column = curr_column.es_column
-                    # # required_changes.append({"nest": c})
-                    # deeper_column = Column(
-                    #     name=abs_name,
-                    #     json_type=json_type,
-                    #     es_type=json_type_to_sqlite_type.get(json_type, json_type),
-                    #     es_column=typed_column(
-                    #         abs_name, json_type_to_sql_type_key.get(json_type)
-                    #     ),
-                    #     es_index=table_name,
-                    #     nested_path=nested_path,
-                    #     last_updated=Date.now(),
-                    #     multi=1
-                    # )
-                    # insertion.active_columns.remove(curr_column)
-                    # insertion.active_columns.append(deeper_column)
 
                     # PROMOTE COLUMN TO ARRAY OF VALUES
                     parent_rows = doc_collection[table_name].rows
@@ -449,7 +428,7 @@ class InsertTable(Facts):
             )
             if required_changes:
                 snowflake.change_schema(required_changes)
-            required_changes = []
+                required_changes = []
 
         return doc_collection
 
