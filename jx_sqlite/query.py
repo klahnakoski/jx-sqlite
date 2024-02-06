@@ -142,7 +142,6 @@ def query(self, query=None):
     return self.format_flat(normalized_query, command, index_to_columns)
 
 
-
 @extend(Facts)
 def get_table(self, table_name):
     if startswith_field(table_name, self.name):
@@ -191,40 +190,6 @@ def query_metadata(self, query):
 
     return self.format_metadata(metadata, query)
 
-
-@extend(Facts)
-def _window_op(self, query, window):
-    # http://www2.sqlite.org/cvstrac/wiki?p=UnsupportedSqlAnalyticalFunctions
-    if window.value == "rownum":
-        return (
-            "ROW_NUMBER()-1 OVER ("
-            + " PARTITION BY "
-            + sql_iso(sql_list(window.edges.values))
-            + SQL_ORDERBY
-            + sql_iso(sql_list(window.edges.sort))
-            + ") AS "
-            + quote_column(window.name)
-        )
-
-    range_min = text(coalesce(window.range.min, "UNBOUNDED"))
-    range_max = text(coalesce(window.range.max, "UNBOUNDED"))
-
-    return (
-        sql_aggs[window.aggregate]
-        + sql_iso(window.value.to_sql(schema))
-        + " OVER ("
-        + " PARTITION BY "
-        + sql_iso(sql_list(window.edges.values))
-        + SQL_ORDERBY
-        + sql_iso(sql_list(window.edges.sort))
-        + " ROWS BETWEEN "
-        + range_min
-        + " PRECEDING AND "
-        + range_max
-        + " FOLLOWING "
-        + ") AS "
-        + quote_column(window.name)
-    )
 
 
 @extend(Facts)

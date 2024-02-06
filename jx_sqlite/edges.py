@@ -41,6 +41,7 @@ from jx_sqlite.utils import (
     untyped_column,
     table_alias,
 )
+from jx_sqlite.window import _window_op
 from mo_dots import (
     startswith_field,
     is_missing,
@@ -394,7 +395,7 @@ def _edges_op(self, query, schema):
     self.aggregates(index_to_column, offset, outer_selects, query, schema)
 
     for w in query.window:
-        outer_selects.append(self._window_op(self, query, w))
+        outer_selects.append(_window_op(w, schema))
 
     facts = sql_alias(
         sql_iso(SQL_SELECT, sql_list(select_clause), SQL_FROM, ConcatSQL(*from_sql), SQL_WHERE, main_filter,),

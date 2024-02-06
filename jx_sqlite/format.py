@@ -21,7 +21,8 @@ from mo_dots import (
     coalesce,
     unwraplist,
     wrap,
-    from_data, literal_field,
+    from_data,
+    literal_field,
 )
 from mo_future import transpose, extend
 from mo_logs import Log
@@ -33,8 +34,8 @@ from mo_sqlite import quote_column
 
 
 @extend(Facts)
-def format_flat(self, normalized_query, command, index_to_columns):
-    if normalized_query.format == "container":
+def format_flat(self, query, command, index_to_columns):
+    if query.format == "container":
         new_table = "temp_" + unique_name()
         create_table = SQL_CREATE + quote_column(new_table) + SQL_AS
         self.container.db.query(create_table + command)
@@ -42,23 +43,23 @@ def format_flat(self, normalized_query, command, index_to_columns):
 
     result = self.container.db.query(command)
 
-    if normalized_query.format == "cube" or (not normalized_query.format and normalized_query.edges):
+    if query.format == "cube" or (not query.format and query.edges):
         column_names = [None] * (max(c.push_column_index for c in index_to_columns.values()) + 1)
         for c in index_to_columns.values():
             column_names[c.push_column_index] = c.push_column_name
 
-        if len(normalized_query.edges) == 0 and len(normalized_query.groupby) == 0:
+        if len(query.edges) == 0 and len(query.groupby) == 0:
             data = {n: Data() for n in column_names}
             for s in index_to_columns.values():
                 data[s.push_list_name][s.push_column_child] = from_data(s.pull(result.data[0]))
-            select = [{"name": s.name} for s in normalized_query.select.terms]
+            select = [{"name": s.name} for s in query.select.terms]
 
             return Data(data=from_data(data), select=select, meta={"format": "cube"})
 
         if not result.data:
             edges = []
             dims = []
-            for i, e in enumerate(normalized_query.edges + normalized_query.groupby):
+            for i, e in enumerate(query.edges + query.groupby):
                 allowNulls = coalesce(e.allowNulls, True)
 
                 if e.domain.type == "set" and e.domain.partitions:
@@ -82,13 +83,13 @@ def format_flat(self, normalized_query, command, index_to_columns):
                 edges.append(Data(name=e.name, allowNulls=allowNulls, domain=domain))
 
             data = {}
-            for si, s in enumerate(normalized_query.select.terms):
+            for si, s in enumerate(query.select.terms):
                 if s.aggregate == "count":
                     data[s.name] = Matrix(dims=dims, zeros=0)
                 else:
                     data[s.name] = Matrix(dims=dims)
 
-            select = [{"name": s.name} for s in normalized_query.select.terms]
+            select = [{"name": s.name} for s in query.select.terms]
 
             return Data(
                 meta={"format": "cube"}, edges=edges, select=select, data={k: v.cube for k, v in data.items()},
@@ -98,10 +99,10 @@ def format_flat(self, normalized_query, command, index_to_columns):
 
         edges = []
         dims = []
-        for g in normalized_query.groupby:
+        for g in query.groupby:
             g.is_groupby = True
 
-        for i, e in enumerate(normalized_query.edges + normalized_query.groupby):
+        for i, e in enumerate(query.edges + query.groupby):
             allowNulls = coalesce(e.allowNulls, True)
 
             if e.domain.type == "set" and e.domain.partitions:
@@ -128,7 +129,7 @@ def format_flat(self, normalized_query, command, index_to_columns):
                     allowNulls = True
                 parts -= {None}
 
-                if normalized_query.sort[i].sort == -1:
+                if query.sort[i].sort == -1:
                     domain = SimpleSetDomain(partitions=wrap(sorted(parts, reverse=True)))
                 else:
                     domain = SimpleSetDomain(partitions=jx.sort(parts))
@@ -136,7 +137,7 @@ def format_flat(self, normalized_query, command, index_to_columns):
             dims.append(len(domain.partitions) + (1 if allowNulls else 0))
             edges.append(Data(name=e.name, allowNulls=allowNulls, domain=domain))
 
-        data_cubes = {s.name: Matrix(dims=dims) for s in normalized_query.select.terms}
+        data_cubes = {s.name: Matrix(dims=dims) for s in query.select.terms}
 
         r2c = index_to_coordinate(dims)  # WORKS BECAUSE THE DATABASE SORTED THE EDGES TO CONFORM
         for record, row in enumerate(result.data):
@@ -150,12 +151,12 @@ def format_flat(self, normalized_query, command, index_to_columns):
                 else:
                     data_cubes[s.push_list_name][coord][s.push_column_child] = s.pull(row)
 
-        select = [{"name": s.name} for s in normalized_query.select.terms]
+        select = [{"name": s.name} for s in query.select.terms]
 
         return Data(
             meta={"format": "cube"}, edges=edges, select=select, data={k: v.cube for k, v in data_cubes.items()},
         )
-    elif normalized_query.format == "table" or (not normalized_query.format and normalized_query.groupby):
+    elif query.format == "table" or (not query.format and query.groupby):
         column_names = [None] * (max(c.push_column_index for c in index_to_columns.values()) + 1)
         for c in index_to_columns.values():
             column_names[c.push_column_index] = c.push_column_name
@@ -178,11 +179,11 @@ def format_flat(self, normalized_query, command, index_to_columns):
             data.append(tuple(from_data(r) for r in row))
 
         output = Data(meta={"format": "table"}, header=column_names, data=data)
-    elif normalized_query.format == "list" or (not normalized_query.edges and not normalized_query.groupby):
+    elif query.format == "list" or (not query.edges and not query.groupby):
         if (
-            not normalized_query.edges
-            and not normalized_query.groupby
-            and any(s.aggregate is not NULL for s in normalized_query.select.terms)
+            not query.edges
+            and not query.groupby
+            and any(s.aggregate is not NULL for s in query.select.terms)
         ):
             data = Data()
             for s in index_to_columns.values():
@@ -209,9 +210,10 @@ def format_flat(self, normalized_query, command, index_to_columns):
 
             output = Data(meta={"format": "list"}, data=data)
     else:
-        Log.error("unknown format {{format}}", format=normalized_query.format)
+        Log.error("unknown format {{format}}", format=query.format)
 
     return output
+
 
 @extend(Facts)
 def format_metadata(self, metadata, query):
@@ -230,6 +232,7 @@ def format_metadata(self, metadata, query):
     else:
         header = ["table", "name", "type", "nested_path"]
         return Data(meta={"format": "list"}, data=[dict(zip(header, r)) for r in metadata])
+
 
 @extend(Facts)
 def format_deep(self, data, cols, query):
@@ -260,5 +263,3 @@ def format_deep(self, data, cols, query):
         return Data(meta={"format": "table"}, header=header, data=temp_data,)
     else:
         return Data(meta={"format": "list"}, data=data)
-
-

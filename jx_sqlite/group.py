@@ -21,6 +21,7 @@ from jx_sqlite.utils import (
     UID,
     table_alias,
 )
+from jx_sqlite.window import _window_op
 from mo_dots import split_field, startswith_field, relative_field, unliteral_field, tail_field
 from mo_future import extend
 from mo_json import jx_type_to_json_type, JX_INTEGER
@@ -160,7 +161,7 @@ def _groupby_op(self, query, schema):
         column_index += 1
 
     for w in query.window:
-        selects.append(self._window_op(self, query, w))
+        selects.append(_window_op(w, schema))
 
     where = query.where.partial_eval(SQLang).to_sql(schema)
 
