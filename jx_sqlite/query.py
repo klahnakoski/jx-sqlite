@@ -8,15 +8,12 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 import mo_json
-from jx_base import Column
-from jx_base.expressions import jx_expression, QueryOp, SelectOp, NULL
-from jx_base.expressions.select_op import normalize_one
+from jx_base import Column, JX
+from jx_base.expressions import jx_expression, QueryOp, NULL
 from jx_sqlite.expressions._utils import SQLang
 from jx_sqlite.models.facts import Facts
 from jx_sqlite.utils import GUID, untyped_column
 from mo_dots import (
-    Null,
-    coalesce,
     concat_field,
     listwrap,
     relative_field,
@@ -24,18 +21,14 @@ from mo_dots import (
     unwraplist,
     list_to_data,
 )
-from mo_future import text, is_text, extend
+from mo_future import is_text, extend
 from mo_json import STRING, STRUCT
 from mo_logs import Log
-from mo_sql.utils import sql_aggs
 from mo_sqlite import (
     SQL_FROM,
-    SQL_ORDERBY,
     SQL_SELECT,
     SQL_WHERE,
     sql_count,
-    sql_iso,
-    sql_list,
     SQL_DELETE,
     ConcatSQL,
     JoinSQL,
@@ -152,9 +145,9 @@ def get_table(self, table_name):
 @extend(Facts)
 def query_metadata(self, query):
     frum, query["from"] = query["from"], self
-    # schema = self.snowflake.get_table(".").schema
-    query = QueryOp.wrap(query, schema)
     columns = self.snowflake.columns
+
+    query = QueryOp.wrap(query, JX)
     where = query.where
     table_name = None
     column_name = None
@@ -189,12 +182,6 @@ def query_metadata(self, query):
             metadata.append((table, relative_field(col.name, tname), col.jx_type, unwraplist(col.nested_path),))
 
     return self.format_metadata(metadata, query)
-
-
-
-@extend(Facts)
-def _normalize_select(self, select) -> SelectOp:
-    return normalize_one(Null, select, "list")
 
 
 @extend(Facts)

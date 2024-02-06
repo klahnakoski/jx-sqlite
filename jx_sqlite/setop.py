@@ -13,7 +13,6 @@ from jx_base import Column, is_op, FALSE
 from jx_base.expressions import NULL
 from jx_base.expressions.sql_is_null_op import SqlIsNullOp
 from jx_base.expressions.sql_order_by_op import OneOrder
-from jx_python import jx
 from jx_sqlite import Facts
 from jx_sqlite.expressions._utils import SQLang
 from jx_sqlite.expressions.leaves_op import LeavesOp
@@ -38,12 +37,10 @@ from mo_dots import (
     is_missing,
     Null,
     tail_field,
-    literal_field,
     unliteral_field,
     list_to_data,
 )
 from mo_future import extend
-from mo_imports import export
 from mo_json.types import OBJECT, jx_type_to_json_type, JX_ANY
 from mo_logs import Log
 from mo_sql import SQL_DESC, SQL_ASC, NO_SQL
@@ -118,7 +115,7 @@ def _set_op(self, query):
                 try:
                     next_row = next(rows)
                 except StopIteration:
-                    return None, None, output
+                    return Null, Null, output
             if parent_id and parent_id != next_row[parent_id_coord]:
                 return next_row, row, output
             row, next_row = next_row, None

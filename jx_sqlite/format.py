@@ -26,11 +26,7 @@ from mo_dots import (
 )
 from mo_future import transpose, extend
 from mo_logs import Log
-from mo_sqlite import (
-    SQL_CREATE,
-    SQL_AS,
-)
-from mo_sqlite import quote_column
+from mo_sqlite import SQL_CREATE, SQL_AS, quote_column
 
 
 @extend(Facts)
@@ -180,11 +176,7 @@ def format_flat(self, query, command, index_to_columns):
 
         output = Data(meta={"format": "table"}, header=column_names, data=data)
     elif query.format == "list" or (not query.edges and not query.groupby):
-        if (
-            not query.edges
-            and not query.groupby
-            and any(s.aggregate is not NULL for s in query.select.terms)
-        ):
+        if not query.edges and not query.groupby and any(s.aggregate is not NULL for s in query.select.terms):
             data = Data()
             for s in index_to_columns.values():
                 if not data[s.push_column_name][s.push_column_child]:
