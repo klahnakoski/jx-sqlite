@@ -12,7 +12,7 @@ from uuid import uuid4
 
 from jx_base import Column
 from jx_base.expressions import jx_expression, TRUE
-from jx_sqlite import QueryTable
+from jx_sqlite import Facts
 from jx_sqlite.utils import (
     GUID,
     ORDER,
@@ -68,7 +68,7 @@ from mo_sqlite import (
 from mo_times import Date
 
 
-@extend(QueryTable)
+@extend(Facts)
 def insert(self, docs):
     if not is_many(docs):
         Log.error("Expecting a list of documents")
@@ -78,7 +78,7 @@ def insert(self, docs):
     return self._insert(doc_collection)
 
 
-@extend(QueryTable)
+@extend(Facts)
 def update(self, command):
     """
     :param command:  EXPECTING dict WITH {"set": s, "clear": c, "where": w} FORMAT
@@ -257,13 +257,13 @@ def update(self, command):
         t.execute(command)
 
 
-@extend(QueryTable)
+@extend(Facts)
 def upsert(self, doc, where):
     self.delete(where)
     self.insert([doc])
 
 
-@extend(QueryTable)
+@extend(Facts)
 def flatten_many(self, docs):
     """
     :param docs: THE JSON DOCUMENTS
@@ -433,7 +433,7 @@ def flatten_many(self, docs):
     return doc_collection
 
 
-@extend(QueryTable)
+@extend(Facts)
 def _insert(self, collection):
     for nested_path, insertion in collection.items():
         column_names = [c.es_column for c in insertion.active_columns if c.json_type != ARRAY]

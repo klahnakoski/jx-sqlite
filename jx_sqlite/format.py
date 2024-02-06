@@ -8,60 +8,37 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 import mo_json
-from jx_base import Column
 from jx_base.domains import SimpleSetDomain
-from jx_base.expressions import TupleOp, jx_expression, QueryOp, SelectOp, NULL
-from jx_base.expressions.select_op import normalize_one
+from jx_base.expressions import TupleOp, NULL
 from jx_base.language import is_op
 from jx_python import jx
-from jx_sqlite.expressions._utils import SQLang
-from jx_sqlite.jx_table import QueryTable
-from jx_sqlite.utils import GUID, unique_name, untyped_column
+from jx_sqlite.models.facts import Facts
+from jx_sqlite.utils import unique_name
 from mo_collections.matrix import Matrix, index_to_coordinate
 from mo_dots import (
     Data,
-    Null,
     to_data,
     coalesce,
-    concat_field,
-    listwrap,
-    relative_field,
-    startswith_field,
     unwraplist,
     wrap,
-    list_to_data,
     from_data, literal_field,
 )
-from mo_future import text, transpose, is_text, extend
-from mo_json import STRING, STRUCT
+from mo_future import transpose, extend
 from mo_logs import Log
-from mo_sql.utils import sql_aggs
 from mo_sqlite import (
-    SQL_FROM,
-    SQL_ORDERBY,
-    SQL_SELECT,
-    SQL_WHERE,
-    sql_count,
-    sql_iso,
-    sql_list,
     SQL_CREATE,
     SQL_AS,
-    SQL_DELETE,
-    ConcatSQL,
-    JoinSQL,
-    SQL_COMMA,
 )
-from mo_sqlite import quote_column, sql_alias
-from mo_threads import register_thread
+from mo_sqlite import quote_column
 
 
-@extend(QueryTable)
+@extend(Facts)
 def format_flat(self, normalized_query, command, index_to_columns):
     if normalized_query.format == "container":
         new_table = "temp_" + unique_name()
         create_table = SQL_CREATE + quote_column(new_table) + SQL_AS
         self.container.db.query(create_table + command)
-        return QueryTable(new_table, container=self.container)
+        return Facts(new_table, container=self.container)
 
     result = self.container.db.query(command)
 
@@ -236,7 +213,7 @@ def format_flat(self, normalized_query, command, index_to_columns):
 
     return output
 
-@extend(QueryTable)
+@extend(Facts)
 def format_metadata(self, metadata, query):
     if query.format == "cube":
         num_rows = len(metadata)
@@ -254,7 +231,7 @@ def format_metadata(self, metadata, query):
         header = ["table", "name", "type", "nested_path"]
         return Data(meta={"format": "list"}, data=[dict(zip(header, r)) for r in metadata])
 
-@extend(QueryTable)
+@extend(Facts)
 def format_deep(self, data, cols, query):
     if query.format == "cube":
         num_rows = len(data)

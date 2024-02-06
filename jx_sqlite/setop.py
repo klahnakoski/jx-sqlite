@@ -14,7 +14,7 @@ from jx_base.expressions import NULL
 from jx_base.expressions.sql_is_null_op import SqlIsNullOp
 from jx_base.expressions.sql_order_by_op import OneOrder
 from jx_python import jx
-from jx_sqlite import QueryTable
+from jx_sqlite import Facts
 from jx_sqlite.expressions._utils import SQLang
 from jx_sqlite.expressions.leaves_op import LeavesOp
 from jx_sqlite.expressions.sql_script import SqlScript
@@ -69,7 +69,7 @@ from mo_sqlite.expressions.sql_limit_op import SqlLimitOp
 from mo_times import Date
 
 
-@extend(QueryTable)
+@extend(Facts)
 def _set_op(self, query):
     index_to_column, command, primary_doc_details = self.to_sql(query)
     result = self.container.db.query(command)
@@ -140,7 +140,7 @@ def _set_op(self, query):
     return self.format_deep(data, cols, query)
 
 
-@extend(QueryTable)
+@extend(Facts)
 def to_sql(self, query):
     # GET LIST OF SELECTED COLUMNS
     select_vars = set(
@@ -282,7 +282,7 @@ def to_sql(self, query):
     return index_to_column, ordered_sql, primary_doc_details
 
 
-@extend(QueryTable)
+@extend(Facts)
 def _make_sql_for_one_nest_in_set_op(
     self,
     primary_nested_path,

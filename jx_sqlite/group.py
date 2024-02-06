@@ -11,7 +11,7 @@ from jx_base.expressions import SelectOp, CountOp, DefaultOp
 from jx_base.expressions.variable import is_variable
 from jx_base.language import is_op
 from jx_python import jx
-from jx_sqlite import QueryTable
+from jx_sqlite import Facts
 from jx_sqlite.expressions._utils import SQLang
 from jx_sqlite.utils import (
     ColumnMapping,
@@ -48,7 +48,7 @@ from mo_sqlite import (
 from mo_sqlite import quote_column, sql_alias, sql_call
 
 
-@extend(QueryTable)
+@extend(Facts)
 def _groupby_op(self, query, schema):
     path = schema.nested_path[0]
     index_to_column = {}

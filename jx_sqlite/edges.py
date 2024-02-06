@@ -27,7 +27,7 @@ from jx_base.expressions import (
 )
 from jx_base.language import is_op
 from jx_python import jx
-from jx_sqlite import QueryTable
+from jx_sqlite import Facts
 from jx_sqlite.expressions._utils import SQLang
 from jx_sqlite.expressions.tuple_op import TupleOp
 from jx_sqlite.expressions.variable import Variable
@@ -52,7 +52,7 @@ from mo_sqlite import quote_column, quote_value, sql_alias
 EXISTS_COLUMN = quote_column("__exists__")
 
 
-@extend(QueryTable)
+@extend(Facts)
 def _edges_op(self, query, schema):
     query = query.copy()  # WE WILL BE MARKING UP THE QUERY
     index_to_column = {}  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
@@ -462,7 +462,7 @@ def _edges_op(self, query, schema):
     return command, index_to_column
 
 
-@extend(QueryTable)
+@extend(Facts)
 def aggregates(self, index_to_column, offset, outer_selects, query, schema):
     for si, s in enumerate(query.select.terms, start=offset):
         if is_op(s.value, Variable) and s.value.var in ["row", "."] and is_op(s.aggregate, CountOp):

@@ -18,7 +18,7 @@ from jx_base.expressions import QueryOp
 from jx_python import jx
 from jx_sqlite import Container
 from jx_sqlite.expressions import SQLang
-from jx_sqlite.query import QueryTable
+from jx_sqlite.query import Facts
 from mo_dots import wrap, coalesce, from_data, listwrap, Data, startswith_field, to_data, is_many, is_sequence, Null
 from mo_files import File
 from mo_future import text
@@ -41,7 +41,7 @@ class SQLiteUtils(object):
 
     def setUp(self):
         self.container = Container(db=test_jx.global_settings.db)
-        self.table = QueryTable(name="testing", container=self.container)
+        self.table = Facts(name="testing", container=self.container)
 
     def tearDown(self):
         self.container.db.stop()

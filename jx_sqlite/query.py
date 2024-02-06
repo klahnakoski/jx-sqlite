@@ -9,30 +9,22 @@
 #
 import mo_json
 from jx_base import Column
-from jx_base.domains import SimpleSetDomain
-from jx_base.expressions import TupleOp, jx_expression, QueryOp, SelectOp, NULL
+from jx_base.expressions import jx_expression, QueryOp, SelectOp, NULL
 from jx_base.expressions.select_op import normalize_one
-from jx_base.language import is_op
-from jx_python import jx
 from jx_sqlite.expressions._utils import SQLang
-from jx_sqlite.jx_table import QueryTable
-from jx_sqlite.utils import GUID, unique_name, untyped_column
-from mo_collections.matrix import Matrix, index_to_coordinate
+from jx_sqlite.models.facts import Facts
+from jx_sqlite.utils import GUID, untyped_column
 from mo_dots import (
-    Data,
     Null,
-    to_data,
     coalesce,
     concat_field,
     listwrap,
     relative_field,
     startswith_field,
     unwraplist,
-    wrap,
     list_to_data,
-    from_data,
 )
-from mo_future import text, transpose, is_text, extend
+from mo_future import text, is_text, extend
 from mo_json import STRING, STRUCT
 from mo_logs import Log
 from mo_sql.utils import sql_aggs
@@ -44,8 +36,6 @@ from mo_sqlite import (
     sql_count,
     sql_iso,
     sql_list,
-    SQL_CREATE,
-    SQL_AS,
     SQL_DELETE,
     ConcatSQL,
     JoinSQL,
@@ -55,12 +45,12 @@ from mo_sqlite import quote_column, sql_alias
 from mo_threads import register_thread
 
 
-@extend(QueryTable)
+@extend(Facts)
 def get_column_name(self, column):
     return relative_field(column.name, self.snowflake.fact_name)
 
 
-@extend(QueryTable)
+@extend(Facts)
 @register_thread
 def __len__(self):
     counter = self.container.db.query(ConcatSQL(
@@ -69,29 +59,29 @@ def __len__(self):
     return counter
 
 
-@extend(QueryTable)
+@extend(Facts)
 def __nonzero__(self):
     return bool(self.__len__())
 
 
-@extend(QueryTable)
+@extend(Facts)
 def delete(self, where):
     filter = jx_expression(where).partial_eval(SQLang).to_sql(self.schema)
     with self.container.db.transaction() as t:
         t.execute(ConcatSQL(SQL_DELETE, SQL_FROM, quote_column(self.snowflake.fact_name), SQL_WHERE, filter,))
 
 
-@extend(QueryTable)
+@extend(Facts)
 def vars(self):
     return set(self.schema.columns.keys())
 
 
-@extend(QueryTable)
+@extend(Facts)
 def map(self, map_):
     return self
 
 
-@extend(QueryTable)
+@extend(Facts)
 def where(self, filter):
     """
     WILL NOT PULL WHOLE OBJECT, JUST TOP-LEVEL PROPERTIES
@@ -116,7 +106,7 @@ def where(self, filter):
     return list_to_data([{c: v for c, v in zip(column_names, r)} for r in result.data])
 
 
-@extend(QueryTable)
+@extend(Facts)
 def query(self, query=None):
     """
     :param query:  JSON Query Expression, SET `format="container"` TO MAKE NEW TABLE OF RESULT
@@ -153,14 +143,14 @@ def query(self, query=None):
 
 
 
-@extend(QueryTable)
+@extend(Facts)
 def get_table(self, table_name):
     if startswith_field(table_name, self.name):
-        return QueryTable(table_name, self.container)
+        return Facts(table_name, self.container)
     Log.error("programmer error")
 
 
-@extend(QueryTable)
+@extend(Facts)
 def query_metadata(self, query):
     frum, query["from"] = query["from"], self
     # schema = self.snowflake.get_table(".").schema
@@ -202,7 +192,7 @@ def query_metadata(self, query):
     return self.format_metadata(metadata, query)
 
 
-@extend(QueryTable)
+@extend(Facts)
 def _window_op(self, query, window):
     # http://www2.sqlite.org/cvstrac/wiki?p=UnsupportedSqlAnalyticalFunctions
     if window.value == "rownum":
@@ -237,12 +227,12 @@ def _window_op(self, query, window):
     )
 
 
-@extend(QueryTable)
+@extend(Facts)
 def _normalize_select(self, select) -> SelectOp:
     return normalize_one(Null, select, "list")
 
 
-@extend(QueryTable)
+@extend(Facts)
 def transaction(self):
     """
     PERFORM MULTIPLE ACTIONS IN A TRANSACTION

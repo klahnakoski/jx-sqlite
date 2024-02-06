@@ -12,7 +12,7 @@ from mo_imports import expect
 from jx_base.expressions import QueryOp
 from jx_base.expressions.nested_op import NestedOp as _NestedOp
 
-QueryTable = expect("QueryTable")
+Facts = expect("Facts")
 
 
 class NestedOp(_NestedOp):
@@ -21,7 +21,7 @@ class NestedOp(_NestedOp):
         # LEVERAGE QUERY OP ?
         query = QueryOp(select=self.select, frum=frum, where=self.where, sort=self.sort, limit=self.limit,)
 
-        engine = QueryTable(name="testing", container=schema.container)
+        engine = Facts(name="testing", container=schema.container)
         index_to_column, ordered_sql, primary_doc_details = engine.to_sql(query)
 
         return ordered_sql

@@ -8,16 +8,12 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from jx_base.models.container import type2container
-from jx_base.models.facts import Facts
+from jx_base.models.facts import Facts as _Facts
 
 from mo_imports import export
-from mo_kwargs import override
 
 
-class QueryTable(Facts):
-    @override
-    def __init__(self, name, container):
-        Facts.__init__(self, name, container)
+class Facts(_Facts):
 
     @property
     def nested_path(self):
@@ -25,8 +21,8 @@ class QueryTable(Facts):
 
 
 # TODO: use dependency injection
-type2container["sqlite"] = QueryTable
+type2container["sqlite"] = Facts
 
-export("jx_sqlite.models.container", QueryTable)
-export("jx_sqlite.models.table", QueryTable)
-export("jx_sqlite.expressions.nested_op", QueryTable)
+export("jx_sqlite.models.container", Facts)
+export("jx_sqlite.models.table", Facts)
+export("jx_sqlite.expressions.nested_op", Facts)
