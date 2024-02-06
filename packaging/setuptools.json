@@ -58,7 +58,7 @@
             "    jx_sqlite",
             "    .Container(filename=\"my.db\")",
             "    .get_or_create_facts(\"my_table\")",
-            "    .add({\"os\": \"linux\", \"value\": 42})",
+            "    .insert([{\"os\": \"linux\", \"value\": 42}])",
             "    .query({",
             "        \"select\": \"os\",",
             "        \"where\": {\"gt\": {\"value\": 0}}",
@@ -144,5 +144,5 @@
     "package_dir": {},
     "packages": ["jx_sqlite", "jx_sqlite.models", "jx_sqlite.expressions"],
     "url": "https://github.com/klahnakoski/jx-sqlite",
-    "version": "5.539.24037"
+    "version": "5.540.24037"
 }
