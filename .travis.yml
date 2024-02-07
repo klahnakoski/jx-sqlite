@@ -3,11 +3,9 @@ cache: pip
 python:
 - '3.8'
 - '3.9'
-
 branches:
   except:
   - dev
-
 install:
 - pip install -r tests/requirements.txt
 - cp packaging/setup.py .
