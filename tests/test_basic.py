@@ -10,16 +10,18 @@
 
 from unittest import TestCase
 
+from mo_sql.utils import GUID
+
 from mo_files import File
 
 from jx_sqlite import Container
 from mo_math import randoms
 from mo_sqlite import Sqlite
-from mo_testing.fuzzytestcase import add_error_reporting
+from mo_testing.fuzzytestcase import add_error_reporting, FuzzyTestCase
 
 
 @add_error_reporting
-class TestBasic(TestCase):
+class TestBasic(FuzzyTestCase):
     @classmethod
     def setUpClass(cls):
         for file in File("sql").children:
@@ -80,12 +82,17 @@ class TestBasic(TestCase):
 
     def test_simplest_query(self):
         table = Container(Sqlite()).get_or_create_facts("my_table")
-        table.insert([
-            {"os": "linux", "value": 42},
-            {"os": "win", "value": 41}
-        ])
+        table.insert([{"os": "linux", "value": 42}, {"os": "win", "value": 41}])
 
         result = table.query({})
         self.assertEqual(
             result, {"meta": {"format": "list"}, "data": [{"os": "linux", "value": 42}, {"os": "win", "value": 41}]}
         )
+
+    def test_insert_with_uuid(self):
+        table = Container(Sqlite()).get_or_create_facts("my_table")
+        table.insert([{GUID: 42, "value": "test"}])
+        table.insert([{GUID: 42, "value": "test2"}])
+
+        result = table.query({"select":["_id", "value"]})
+        self.assertEqual(result, {"meta": {"format": "list"}, "data": [{"_id": 42, "value": "test2"}]})
