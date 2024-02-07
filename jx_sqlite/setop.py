@@ -7,6 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
+from dataclasses import dataclass
 from typing import List, Dict, Tuple
 
 from jx_base import Column, is_op, FALSE
@@ -18,6 +19,7 @@ from jx_sqlite.expressions._utils import SQLang
 from jx_sqlite.expressions.leaves_op import LeavesOp
 from jx_sqlite.expressions.sql_script import SqlScript
 from jx_sqlite.expressions.to_boolean_op import ToBooleanOp
+from jx_sqlite.format import format_deep
 from jx_sqlite.utils import (
     COLUMN,
     ColumnMapping,
@@ -66,9 +68,27 @@ from mo_sqlite.expressions.sql_limit_op import SqlLimitOp
 from mo_times import Date
 
 
+@dataclass
+class DocumentDetails(object):
+    sub_table: str
+    alias: str
+    id_coord: int
+    nested_path: List[str]
+    index_to_column: Dict[int, ColumnMapping]
+    children: List['DocumentDetails']
+
+    def __init__(self, sub_table: str):
+        self.sub_table = sub_table
+        self.alias = ""
+        self.id_coord = -1
+        self.nested_path = [sub_table]
+        self.index_to_column = {}
+        self.children = []
+
+
 @extend(Facts)
 def _set_op(self, query):
-    index_to_column, command, primary_doc_details = self.to_sql(query)
+    index_to_column, command, primary_doc_details = to_sql(self, query)
     result = self.container.db.query(command)
 
     def _accumulate_nested(
@@ -134,11 +154,11 @@ def _set_op(self, query):
     if rel_path != ".":
         data = list_to_data(data).get(rel_path)
 
-    return self.format_deep(data, cols, query)
+    return format_deep(data, cols, query)
 
 
 @extend(Facts)
-def to_sql(self, query):
+def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDetails] :
     # GET LIST OF SELECTED COLUMNS
     select_vars = set(
         rest if first == "row" else v
@@ -175,6 +195,7 @@ def to_sql(self, query):
     # ADD SQL SELECT COLUMNS
     selects = query.select.partial_eval(SQLang)
     primary_doc_details = DocumentDetails("")
+
     # EVERY SELECT STATEMENT THAT WILL BE REQUIRED, NO MATTER THE DEPTH
     # WE WILL CREATE THEM ACCORDING TO THE DEPTH REQUIRED
     for sub_table in self.snowflake.query_paths:
@@ -262,7 +283,7 @@ def to_sql(self, query):
             sorts.append(OneOrder(Variable(column_alias), sort_to_sqlite_order[sort.sort]))
     for t in self.snowflake.query_paths:
         sorts.append(OneOrder(Variable(f"{COLUMN}{index_to_uid[t]}"), NO_SQL))
-    unsorted_sql = self._make_sql_for_one_nest_in_set_op(
+    unsorted_sql = _make_sql_for_one_nest_in_set_op(self,
         self.snowflake.fact_name,
         sql_selects,
         where_clause,
@@ -384,7 +405,8 @@ def _make_sql_for_one_nest_in_set_op(
             # IMMEDIATE CHILDREN ONLY
             done.append(sub_table_name)
             # NESTED TABLES WILL USE RECURSION
-            children_sql.append(self._make_sql_for_one_nest_in_set_op(
+            children_sql.append(_make_sql_for_one_nest_in_set_op(
+                self,
                 sub_table_name,
                 selects,  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE
                 where_clause,
@@ -422,20 +444,3 @@ def test_dots(cols):
     return False
 
 
-class DocumentDetails(object):
-    __slots__ = [
-        "sub_table",
-        "alias",
-        "id_coord",
-        "nested_path",
-        "index_to_column",
-        "children",
-    ]
-
-    def __init__(self, sub_table: str):
-        self.sub_table: str = sub_table
-        self.alias: str = ""
-        self.id_coord: int = -1
-        self.nested_path: List[str] = [sub_table]
-        self.index_to_column: Dict[int, ColumnMapping] = {}
-        self.children: List[DocumentDetails] = []

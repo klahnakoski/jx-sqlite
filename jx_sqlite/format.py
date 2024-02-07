@@ -13,7 +13,6 @@ from jx_base.expressions import TupleOp, NULL
 from jx_base.language import is_op
 from jx_python import jx
 from jx_sqlite.models.facts import Facts
-from jx_sqlite.utils import unique_name
 from mo_collections.matrix import Matrix, index_to_coordinate
 from mo_dots import (
     Data,
@@ -26,19 +25,9 @@ from mo_dots import (
 )
 from mo_future import transpose, extend
 from mo_logs import Log
-from mo_sqlite import SQL_CREATE, SQL_AS, quote_column
 
 
-@extend(Facts)
-def format_flat(self, query, command, index_to_columns):
-    if query.format == "container":
-        new_table = "temp_" + unique_name()
-        create_table = SQL_CREATE + quote_column(new_table) + SQL_AS
-        self.container.db.query(create_table + command)
-        return Facts(new_table, container=self.container)
-
-    result = self.container.db.query(command)
-
+def format_flat(result, query, index_to_columns):
     if query.format == "cube" or (not query.format and query.edges):
         column_names = [None] * (max(c.push_column_index for c in index_to_columns.values()) + 1)
         for c in index_to_columns.values():
@@ -207,8 +196,7 @@ def format_flat(self, query, command, index_to_columns):
     return output
 
 
-@extend(Facts)
-def format_metadata(self, metadata, query):
+def format_metadata(metadata, query):
     if query.format == "cube":
         num_rows = len(metadata)
         header = ["table", "name", "type", "nested_path"]
@@ -226,8 +214,7 @@ def format_metadata(self, metadata, query):
         return Data(meta={"format": "list"}, data=[dict(zip(header, r)) for r in metadata])
 
 
-@extend(Facts)
-def format_deep(self, data, cols, query):
+def format_deep(data, cols, query):
     if query.format == "cube":
         num_rows = len(data)
         header = tuple(jx.sort(set(c.push_column_name for c in cols)))
