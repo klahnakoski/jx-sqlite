@@ -78,7 +78,7 @@ def expand(doc, doc_url="param://", params=None):
     :return: EXPANDED JSON-SERIALIZABLE STRUCTURE
     """
     if "://" not in doc_url:
-        logger.error("{{url}} must have a prototcol (eg http://) declared", url=doc_url)
+        logger.error("{{url}} must have a protocol (eg https://) declared", url=doc_url)
 
     url = URL(doc_url)
     url.query = set_default(url.query, params)
@@ -116,7 +116,7 @@ def _replace_ref(path, url):
         output = {}
         for k, v in node.items():
             if k == "$ref":
-                refs = URL(v)
+                refs = URL(_replace_str(str(v), path, url))
             else:
                 output[k] = _replace_ref((v, path), url)
 
@@ -238,7 +238,7 @@ def _get_value_from_fragment(ref, path, url):
 ###############################################################################
 
 
-def _get_file(ref, doc_path, url):
+def _get_file(ref, path, url):
 
     if ref.path.startswith("~"):
         home_path = os.path.expanduser("~")

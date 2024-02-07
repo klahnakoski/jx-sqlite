@@ -6,6 +6,9 @@
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
         "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
+        "Topic :: Database",
+        "Topic :: Utilities",
+        "Programming Language :: SQL",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
@@ -16,8 +19,8 @@
     "extras_require": {"tests": ["mo-testing>=7.523.24033"]},
     "include_package_data": true,
     "install_requires": [
-                         "hjson", "jx-python==4.539.24037",    "mo-sql==4.538.24037",
-        "mo-sqlite==1.539.24037",               "requests"
+                         "hjson", "jx-python==4.542.24038",    "mo-sql==4.542.24038",
+        "mo-sqlite==1.542.24038",               "requests"
     ],
     "license": "MPL 2.0",
     "long_description": {
@@ -144,5 +147,5 @@
     "package_dir": {},
     "packages": ["jx_sqlite", "jx_sqlite.models", "jx_sqlite.expressions"],
     "url": "https://github.com/klahnakoski/jx-sqlite",
-    "version": "5.540.24037"
+    "version": "5.542.24038"
 }

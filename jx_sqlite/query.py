@@ -11,8 +11,9 @@ import mo_json
 from jx_base import Column, JX
 from jx_base.expressions import jx_expression, QueryOp, NULL
 from jx_sqlite.expressions._utils import SQLang
+from jx_sqlite.format import format_metadata, format_flat
 from jx_sqlite.models.facts import Facts
-from jx_sqlite.utils import GUID, untyped_column
+from jx_sqlite.utils import GUID, untyped_column, unique_name
 from mo_dots import (
     concat_field,
     listwrap,
@@ -24,6 +25,7 @@ from mo_dots import (
 from mo_future import is_text, extend
 from mo_json import STRING, STRUCT
 from mo_logs import Log
+from mo_sql import SQL_CREATE, SQL_AS
 from mo_sqlite import (
     SQL_FROM,
     SQL_SELECT,
@@ -132,7 +134,15 @@ def query(self, query=None):
     else:
         return self._set_op(normalized_query)
 
-    return self.format_flat(normalized_query, command, index_to_columns)
+    if query.format == "container":
+        new_table = "temp_" + unique_name()
+        create_table = SQL_CREATE + quote_column(new_table) + SQL_AS
+        self.container.db.query(create_table + command)
+        return Facts(new_table, container=self.container)
+
+    result = self.container.db.query(command)
+
+    return format_flat(result, normalized_query, index_to_columns)
 
 
 @extend(Facts)
@@ -181,7 +191,7 @@ def query_metadata(self, query):
 
             metadata.append((table, relative_field(col.name, tname), col.jx_type, unwraplist(col.nested_path),))
 
-    return self.format_metadata(metadata, query)
+    return format_metadata(metadata, query)
 
 
 @extend(Facts)

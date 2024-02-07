@@ -35,7 +35,8 @@ from mo_dots import (
 )
 from mo_future import text, first, extend
 from mo_json import STRUCT, ARRAY, OBJECT, value_to_json_type, get_if_type
-from mo_logs import Log
+from mo_logs import logger
+from mo_sql import SQL_IN
 from mo_sql.utils import json_type_to_sql_type_key
 from mo_sqlite import (
     SQL_AND,
@@ -71,11 +72,11 @@ from mo_times import Date
 @extend(Facts)
 def insert(self, docs):
     if not is_many(docs):
-        Log.error("Expecting a list of documents")
+        logger.error("Expecting a list of documents")
     if not docs:
         return self
-    doc_collection = self.flatten_many(docs)
-    return self._insert(doc_collection)
+    doc_actions = self.flatten_many(docs)
+    return self._insert(doc_actions)
 
 
 @extend(Facts)
@@ -90,12 +91,12 @@ def update(self, command):
     touched_columns = command.set.keys() | clear_columns
     for c in self.schema.columns:
         if c.name in touched_columns and len(c.nested_path) > 1:
-            Log.error("Deep update not supported")
+            logger.error("Deep update not supported")
 
     # ADD NEW COLUMNS
     where = jx_expression(command.where) or TRUE
     _vars = where.vars()
-    _map = {v: c.es_column for v in _vars for c in self.columns.get(v, Null) if c.json_type not in STRUCT}
+    _map = {v: c.es_column for v in _vars for _, c in self.schema.leaves(v) if c.json_type not in STRUCT}
     where_sql = where.map(_map).to_sql(self.schema)
     new_columns = set(command.set.keys()) - set(c.name for c in self.schema.columns)
     for new_column_name in new_columns:
@@ -226,6 +227,14 @@ def update(self, command):
                     elif c.json_type not in [c.json_type for c in self.columns[c.name]]:
                         self.columns[column.name].add(column)
 
+    if "." in clear_columns:
+        if not command.set:
+            self.delete(where)
+            return
+        else:
+            # PROBABLY A DELETE AND INSERT
+            logger.error("do not know how to handle")
+
     command = ConcatSQL(
         SQL_UPDATE,
         quote_column(self.name),
@@ -276,6 +285,7 @@ def flatten_many(self, docs):
 
     facts_insertion = Insertion()
     doc_collection: Dict[str, Insertion] = {self.name: facts_insertion}
+    doc_actions = {"delete":[], "insert": doc_collection}
     # KEEP TRACK OF WHAT TABLE WILL BE MADE (SHORTLY)
     required_changes = []
     snowflake = self.container.get_or_create_facts(self.name).snowflake
@@ -419,9 +429,20 @@ def flatten_many(self, docs):
                     insertion.active_columns.append(curr_column)
                 row[curr_column.es_column] = v
 
+    guids = doc_actions['delete']
     for doc in docs:
+        if is_data(doc):
+            if UID in doc:
+                logger.error("not allowed {uid} in as top level property", uid=UID)
+            if GUID in doc:
+                guid = doc[GUID]
+                guids.append(guid)
+            else:
+                guid = str(uuid4())
+        else:
+            guid = str(uuid4())
         uid = self.container.next_uid()
-        row = {GUID: str(uuid4()), UID: uid}
+        row = {GUID: guid, UID: uid}
         facts_insertion.rows.append(row)
         _flatten(
             doc=doc, doc_path=".", nested_path=[self.name], row=row, row_num=0, row_id=uid, parent_id=0,
@@ -430,32 +451,36 @@ def flatten_many(self, docs):
             snowflake.change_schema(required_changes)
             required_changes = []
 
-    return doc_collection
+    return doc_actions
 
 
 @extend(Facts)
-def _insert(self, collection):
-    for nested_path, insertion in collection.items():
-        column_names = [c.es_column for c in insertion.active_columns if c.json_type != ARRAY]
-        rows = insertion.rows
-        table_name = nested_path
+def _insert(self, doc_actions):
+    with self.container.db.transaction() as t:
 
-        if table_name == self.name:
-            # DO NOT REQUIRE PARENT OR ORDER COLUMNS
-            meta_columns = [GUID, UID]
-        else:
-            meta_columns = [UID, PARENT, ORDER]
+        if doc_actions['delete']:
+            self.delete({"in": {GUID: doc_actions['delete']}})
 
-        all_columns = tuple(meta_columns + column_names)
-        command = ConcatSQL(
-            SQL_INSERT,
-            quote_column(table_name),
-            sql_iso(sql_list(map(quote_column, all_columns))),
-            SQL_VALUES,
-            sql_list(sql_iso(sql_list(quote_value(row.get(c)) for c in all_columns)) for row in from_data(rows)),
-        )
+        collection = doc_actions['insert']
+        for nested_path, insertion in collection.items():
+            column_names = [c.es_column for c in insertion.active_columns if c.json_type != ARRAY]
+            rows = insertion.rows
+            table_name = nested_path
 
-        with self.container.db.transaction() as t:
+            if table_name == self.name:
+                # DO NOT REQUIRE PARENT OR ORDER COLUMNS
+                meta_columns = [GUID, UID]
+            else:
+                meta_columns = [UID, PARENT, ORDER]
+
+            all_columns = tuple(meta_columns + column_names)
+            command = ConcatSQL(
+                SQL_INSERT,
+                quote_column(table_name),
+                sql_iso(sql_list(map(quote_column, all_columns))),
+                SQL_VALUES,
+                sql_list(sql_iso(sql_list(quote_value(row.get(c)) for c in all_columns)) for row in from_data(rows)),
+            )
             t.execute(command)
     return self
 
