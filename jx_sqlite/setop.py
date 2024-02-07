@@ -75,7 +75,7 @@ class DocumentDetails(object):
     id_coord: int
     nested_path: List[str]
     index_to_column: Dict[int, ColumnMapping]
-    children: List['DocumentDetails']
+    children: List["DocumentDetails"]
 
     def __init__(self, sub_table: str):
         self.sub_table = sub_table
@@ -158,7 +158,7 @@ def _set_op(self, query):
 
 
 @extend(Facts)
-def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDetails] :
+def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDetails]:
     # GET LIST OF SELECTED COLUMNS
     select_vars = set(
         rest if first == "row" else v
@@ -188,7 +188,7 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
                 last_updated=Date.now(),
             ))
     # EVERY COLUMN, AND THE COLUMN INDEX IT OCCUPIES
-    index_to_column = {}  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
+    index_to_column : Dict[int, ColumnMapping] = {}  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
     index_to_uid = {}  # FROM ARRAY PATH TO THE INDEX OF UID
     sql_selects = []  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE)
     nest_to_alias = {query_path: table_alias(i) for i, query_path in enumerate(self.snowflake.query_paths)}
@@ -283,7 +283,9 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
             sorts.append(OneOrder(Variable(column_alias), sort_to_sqlite_order[sort.sort]))
     for t in self.snowflake.query_paths:
         sorts.append(OneOrder(Variable(f"{COLUMN}{index_to_uid[t]}"), NO_SQL))
-    unsorted_sql = _make_sql_for_one_nest_in_set_op(self,
+
+    unsorted_sql = _make_sql_for_one_nest_in_set_op(
+        self,
         self.snowflake.fact_name,
         sql_selects,
         where_clause,
@@ -315,12 +317,6 @@ def _make_sql_for_one_nest_in_set_op(
     """
     FOR EACH NESTED LEVEL, WE MAKE A QUERY THAT PULLS THE VALUES/COLUMNS REQUIRED
     WE `UNION ALL` THEM WHEN DONE
-    :param primary_nested_path:
-    :param selects:
-    :param where_clause:
-    :param active_columns:
-    :param index_to_sql_select:
-    :return: SQL FOR ONE NESTED LEVEL
     """
 
     parent_alias = "a"
@@ -421,7 +417,7 @@ def _make_sql_for_one_nest_in_set_op(
             continue
 
     sql = SqlScript(
-        jx_type=JX_ANY,
+        jx_type=JX_ANY,  # TODO: IS THIS THE TYPE FOR THE SET OF COLUMNS?  (INCLUDE NESTING, SO WE MAY UNION TO GET FINAL TYPE)
         expr=SQL_UNION_ALL.join([
             ConcatSQL(SQL_SELECT, sql_list(select_clause), ConcatSQL(*from_clause), SQL_WHERE, where_clause),
             *children_sql,
@@ -442,5 +438,3 @@ def test_dots(cols):
         if "\\" in c.push_column_name:
             return True
     return False
-
-
