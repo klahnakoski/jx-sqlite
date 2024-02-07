@@ -431,9 +431,14 @@ def flatten_many(self, docs):
 
     guids = doc_actions['delete']
     for doc in docs:
-        if is_data(doc) and GUID in doc:
-            guid = doc[GUID]
-            guids.append(guid)
+        if is_data(doc):
+            if UID in doc:
+                logger.error("not allowed {uid} in as top level property", uid=UID)
+            if GUID in doc:
+                guid = doc[GUID]
+                guids.append(guid)
+            else:
+                guid = str(uuid4())
         else:
             guid = str(uuid4())
         uid = self.container.next_uid()

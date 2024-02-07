@@ -10,7 +10,7 @@
 
 from unittest import TestCase
 
-from mo_sql.utils import GUID
+from mo_sql.utils import GUID, UID
 
 from mo_files import File
 
@@ -96,3 +96,8 @@ class TestBasic(FuzzyTestCase):
 
         result = table.query({"select":["_id", "value"]})
         self.assertEqual(result, {"meta": {"format": "list"}, "data": [{"_id": 42, "value": "test2"}]})
+
+    def test_insert_with_uid(self):
+        table = Container(Sqlite()).get_or_create_facts("my_table")
+        with self.assertRaises(Exception):
+            table.insert([{UID: 42, "value": "test"}])
