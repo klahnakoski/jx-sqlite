@@ -43,7 +43,7 @@ class Container(_Container):
     @override
     def __init__(
         self,
-        db=None,  # EXISTING Sqlite3 DATBASE, OR CONFIGURATION FOR Sqlite DB
+        db=None,  # EXISTING Sqlite3 DATABASE, OR CONFIGURATION FOR Sqlite DB
         kwargs=None,  # See Sqlite parameters
     ):
         global _config
@@ -51,7 +51,7 @@ class Container(_Container):
             self.db = db
         else:
             # PASS CALL PARAMETERS TO Sqlite
-            self.db = db = Sqlite(kwargs={**db, **kwargs})
+            self.db = db = Sqlite(kwargs={**(db or {}), **kwargs})
 
         if not _config:
             # REGISTER sqlite AS THE DEFAULT CONTAINER TYPE
