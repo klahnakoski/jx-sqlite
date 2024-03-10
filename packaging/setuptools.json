@@ -19,8 +19,8 @@
     "extras_require": {"tests": ["mo-testing>=7.523.24033"]},
     "include_package_data": true,
     "install_requires": [
-                         "hjson", "jx-python==4.555.24068",    "mo-sql==4.553.24062",
-        "mo-sqlite==2.555.24068",               "requests"
+                         "hjson", "jx-python==4.556.24070",    "mo-sql==4.556.24070",
+        "mo-sqlite==2.556.24070",               "requests"
     ],
     "license": "MPL 2.0",
     "long_description": {
@@ -97,6 +97,10 @@
             "",
             "There are over 300 tests used to confirm the expected behaviour: They test a variety of JSON forms, and the queries that can be performed on them. Most tests are further split into three different output formats ( list, table and cube).",
             "",
+            "The `requirements.lock` file is the last successful combination that passed all tests, despite the version conflicts.",
+            "",
+            "    python.exe -m pip install --no-deps -r tests\\requirements.lock",
+            "",
             "",
             "Linux",
             "",
@@ -156,5 +160,5 @@
     "package_dir": {},
     "packages": ["jx_sqlite", "jx_sqlite.models", "jx_sqlite.expressions"],
     "url": "https://github.com/klahnakoski/jx-sqlite",
-    "version": "5.555.24068"
+    "version": "5.556.24070"
 }
