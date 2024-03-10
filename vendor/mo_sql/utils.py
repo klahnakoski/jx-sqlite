@@ -64,7 +64,7 @@ def untyped_column(column_name):
         else:
             return join_field([p for p in path if p != SQL_ARRAY_KEY]), None
     elif column_name in [GUID]:
-        return column_name, SQL_NUMBER_KEY
+        return column_name, SQL_STRING_KEY
     else:
         return column_name, None
 

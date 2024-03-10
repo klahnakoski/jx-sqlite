@@ -7,20 +7,19 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import SuffixOp as SuffixOp_, FALSE, TRUE
-from jx_sqlite.expressions._utils import check, SQLang
+from jx_base.expressions import SuffixOp as SuffixOp_, FALSE, TRUE, SqlScript
 from jx_sqlite.expressions.eq_op import EqOp
 from jx_sqlite.expressions.length_op import LengthOp
-from jx_sqlite.expressions.literal import Literal
 from jx_sqlite.expressions.right_op import RightOp
+from mo_sqlite import SQLang, check
 
 
 class SuffixOp(SuffixOp_):
     @check
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
         if not self.expr:
-            return FALSE.to_sql(schema)
-        elif isinstance(self.suffix, Literal) and not self.suffix.value:
-            return TRUE.to_sql(schema)
+            return FALSE.to_sql(SQLang)
+        elif self.suffix.missing(SQLang) is TRUE:
+            return TRUE.to_sql(SQLang)
         else:
             return EqOp(RightOp(self.expr, LengthOp(self.suffix)), self.suffix).partial_eval(SQLang).to_sql(schema)

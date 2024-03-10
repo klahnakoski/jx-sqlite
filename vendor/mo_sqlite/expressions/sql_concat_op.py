@@ -7,11 +7,14 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import SqlIsNullOp as SqlIsNullOp_
-from mo_sqlite.utils import sql_iso, SQL_IS_NULL, SQL
+from jx_base.expressions import SqlConcatOp as _SqlConcatOp
+from mo_sql import NO_SQL, SQL_CONCAT, SQL
 
 
-class SqlIsNullOp(SqlIsNullOp_, SQL):
+class SqlConcatOp(_SqlConcatOp, SQL):
     def __iter__(self):
-        yield from sql_iso(self.term)
-        yield from SQL_IS_NULL
+        op = NO_SQL
+        for term in self.terms:
+            yield from op
+            yield from term
+            op = SQL_CONCAT

@@ -7,17 +7,17 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import BasicNotOp as BasicNotOp_, FALSE
-from jx_sqlite.expressions._utils import check, SQLang
-from jx_sqlite.expressions.sql_script import SqlScript
-from mo_sqlite import sql_iso, SQL_NOT, ConcatSQL
+from jx_base.expressions import BasicNotOp as _BasicNotOp, FALSE, SqlScript
 from mo_json.types import JX_BOOLEAN
+from mo_sqlite import SQLang
+from mo_sqlite import check
+from mo_sqlite.expressions import SqlNotOp, SqlScript
 
 
-class BasicNotOp(BasicNotOp_):
+class BasicNotOp(_BasicNotOp):
     @check
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
         term = self.term.partial_eval(SQLang).to_sql(schema)
         return SqlScript(
-            jx_type=JX_BOOLEAN, miss=FALSE, expr=ConcatSQL(SQL_NOT, sql_iso(term.expr)), frum=self, schema=schema,
+            jx_type=JX_BOOLEAN, miss=FALSE, expr=SqlNotOp(term.expr), frum=self, schema=schema,
         )

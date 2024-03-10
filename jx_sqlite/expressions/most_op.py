@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import MostOp as _MostOp
+from jx_base.expressions import MostOp as _MostOp, SqlScript
 from jx_sqlite.expressions._utils import multiop_to_sql
 
 

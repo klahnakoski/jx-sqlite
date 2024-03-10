@@ -7,14 +7,14 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import DateOp as _DateOp
-from jx_sqlite.expressions._utils import check
-from jx_sqlite.expressions.sql_script import SqlScript
+from jx_base.expressions import DateOp as _DateOp, SqlScript
+from mo_sqlite import check
+from mo_sqlite.expressions.sql_script import SqlScript
 from mo_sqlite import quote_value
 
 
 class DateOp(_DateOp):
     @check
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
         value = self.value
         return SqlScript(jx_type=self.data_type, expr=quote_value(value), frum=self, schema=schema)

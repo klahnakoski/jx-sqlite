@@ -7,24 +7,22 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import (
+from jx_base.expressions import (SqlScript,
     LeftOp as _LeftOp,
     ONE,
     LengthOp,
     WhenOp,
-    BasicSubstringOp,
     ZERO,
-    MaxOp,
-    MinOp,
     SqlSubstrOp,
     EqOp,
 )
-from jx_sqlite.expressions._utils import check, SQLang
+from mo_sqlite import SQLang
+from mo_sqlite import check
 
 
 class LeftOp(_LeftOp):
     @check
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
         return SqlSubstrOp(self.value, ONE, self.length).partial_eval(SQLang).to_sql(schema)
 
     def partial_eval(self, lang):

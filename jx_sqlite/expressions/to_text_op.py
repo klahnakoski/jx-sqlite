@@ -7,44 +7,40 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import ToTextOp as ToTextOp_, SelectOp, CoalesceOp
+from jx_base import NULL
+from jx_base.expressions import ToTextOp as ToTextOp_, SelectOp, CoalesceOp, SqlScript, Literal
 from jx_base.language import is_op
-from jx_sqlite.expressions._utils import check, SQLang
-from jx_sqlite.expressions.sql_script import SqlScript
+from mo_json import JX_TEXT, JX_BOOLEAN, JX_NUMBER_TYPES, split_field, base_type
+from mo_sqlite import SQLang, check, SqlScript
+from mo_sqlite import quote_value, sql_call
 from mo_sqlite import (
-    SQL_CASE,
-    SQL_ELSE,
-    SQL_END,
-    SQL_THEN,
-    SQL_WHEN,
-    sql_iso,
-    ConcatSQL,
     sql_cast,
 )
-from mo_sqlite import quote_value, sql_call
-from mo_json import JX_TEXT, JX_BOOLEAN, JX_NUMBER_TYPES, split_field, base_type
+from mo_sqlite.expressions import SqlCaseOp, SqlWhenOp
+from mo_sqlite.expressions.sql_cast_op import SqlCastOp
 
 
 class ToTextOp(ToTextOp_):
     @check
-    def to_sql(self, schema):
-        expr = self.term.to_sql(schema)
-        type = base_type(expr.jx_type)
+    def to_sql(self, schema) -> SqlScript:
+        sql_script = self.term.to_sql(schema)
+        if is_op(sql_script.expr, CoalesceOp):
+            return SqlScript(
+                jx_type=JX_TEXT,
+                expr=CoalesceOp(*(ToTextOp(t) for t in sql_script.expr.terms)).partial_eval(SQLang).to_sql(schema).expr,
+                frum=self,
+                schema=schema,
+            )
+        elif sql_script.expr is NULL:
+            return sql_script
+
+        type = base_type(sql_script.jx_type)
         if type == JX_TEXT:
-            return expr
+            return sql_script
         elif type == JX_BOOLEAN:
             return SqlScript(
                 jx_type=JX_TEXT,
-                expr=ConcatSQL(
-                    SQL_CASE,
-                    SQL_WHEN,
-                    sql_iso(expr.expr),
-                    SQL_THEN,
-                    quote_value("true"),
-                    SQL_ELSE,
-                    quote_value("false"),
-                    SQL_END,
-                ),
+                expr=SqlCaseOp(SqlWhenOp(sql_script.expr, Literal("true")), _else=Literal("false")),
                 frum=self,
                 schema=schema,
             )
@@ -52,16 +48,16 @@ class ToTextOp(ToTextOp_):
             return SqlScript(
                 jx_type=JX_TEXT,
                 expr=sql_call(
-                    "RTRIM", sql_call("RTRIM", sql_cast(expr.expr, "TEXT"), quote_value("0"),), quote_value("."),
+                    "RTRIM", sql_call("RTRIM", SqlCastOp(sql_script.expr, "TEXT"), quote_value("0"),), quote_value("."),
                 ),
                 frum=self,
                 schema=schema,
             )
-        elif is_op(expr.frum, SelectOp) and len(expr.frum.terms) > 1:
+        elif is_op(sql_script.frum, SelectOp) and len(sql_script.frum.terms) > 1:
             return (
-                CoalesceOp(*(ToTextOp(t.value) for t in expr.frum.terms if len(split_field(t.name)) == 1))
+                CoalesceOp(*(ToTextOp(t.value) for t in sql_script.frum.terms if len(split_field(t.name)) == 1))
                 .partial_eval(SQLang)
                 .to_sql(schema)
             )
         else:
-            return SqlScript(jx_type=JX_TEXT, expr=sql_cast(expr.expr, "TEXT"), frum=self, schema=schema,)
+            return SqlScript(jx_type=JX_TEXT, expr=sql_cast(sql_script.expr, "TEXT"), frum=self, schema=schema,)

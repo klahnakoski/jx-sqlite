@@ -8,14 +8,15 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from jx_base.expressions import ToIntegerOp as IntegerOp_
-from jx_sqlite.expressions._utils import check, SqlScript
-from mo_sqlite import sql_cast
 from mo_json import base_type, JX_TEXT, JX_INTEGER
+from mo_sqlite import sql_cast
+from mo_sqlite.expressions import SqlScript
+from mo_sqlite import check
 
 
 class ToIntegerOp(IntegerOp_):
     @check
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
         value = self.term.to_sql(schema)
 
         if base_type(value) == JX_TEXT:

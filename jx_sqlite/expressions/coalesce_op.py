@@ -7,16 +7,15 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import CoalesceOp as CoalesceOp_
-from jx_sqlite.expressions._utils import SQLang, check, SqlScript
+from mo_sqlite import SQLang, check, SqlScript
+from mo_sqlite.expressions import SqlCoalesceOp as _CoalesceOp
 from mo_json import union_type, base_type
-from mo_sql import sql_coalesce
 
 
-class CoalesceOp(CoalesceOp_):
+class CoalesceOp(_CoalesceOp):
     @check
-    def to_sql(self, schema):
-        terms = [t.partial_eval(SQLang).to_sql(schema) for t in self.terms]
+    def to_sql(self, schema) -> SqlScript:
+        terms = [t.partial_eval(SQLang).to_sql(schema).expr for t in self.terms]
         data_type = union_type(*(base_type(t.jx_type) for t in terms))
 
-        return SqlScript(jx_type=data_type, expr=sql_coalesce(terms), frum=self, schema=schema)
+        return SqlScript(jx_type=data_type, expr=_CoalesceOp(*terms), frum=self, schema=schema)

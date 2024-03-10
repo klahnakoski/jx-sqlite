@@ -7,23 +7,26 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import OrOp as OrOp_
+from jx_base import is_op
+from jx_base.expressions import OrOp as OrOp_, SqlScript
 from jx_base.expressions.false_op import FALSE
-from jx_sqlite.expressions._utils import SQLang, check
-from mo_sqlite import SQL_OR, sql_iso, JoinSQL
-from mo_imports import export, expect
+from mo_imports import export
 from mo_json import JX_BOOLEAN
-
-SqlScript = expect("SqlScript")
+from mo_sqlite import SQLang, check
+from mo_sqlite import SqlScript
+from mo_sqlite.expressions import SqlOrOp
 
 
 class OrOp(OrOp_):
     @check
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
+        this = self.partial_eval(SQLang)
+        if not is_op(this, OrOp):
+            return this.to_sql(schema)
         return SqlScript(
             jx_type=JX_BOOLEAN,
             miss=FALSE,
-            expr=JoinSQL(SQL_OR, [sql_iso(t.partial_eval(SQLang).to_sql(schema)) for t in self.terms],),
+            expr=SqlOrOp(*(t.to_sql(schema) for t in self.terms)),
             frum=self,
             schema=schema,
         )

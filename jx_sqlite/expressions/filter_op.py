@@ -9,7 +9,7 @@
 #
 
 
-from jx_base.expressions import FilterOp as FilterOp_
+from jx_base.expressions import FilterOp as FilterOp_, SqlScript
 
 
 class FilterOp(FilterOp_):

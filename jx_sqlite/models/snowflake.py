@@ -22,8 +22,6 @@ from mo_dots import (
     concat_field,
     to_data,
     startswith_field,
-    split_field,
-    join_field,
     relative_field,
 )
 from mo_future import first
@@ -46,8 +44,7 @@ from mo_sqlite import (
     SQL_RENAME_TO,
     SQL_TO,
     TextSQL,
-    SQL_INSERT, sql_create,
-)
+    SQL_INSERT, )
 from mo_sqlite import quote_column
 from mo_times import Date
 
@@ -61,7 +58,7 @@ class Snowflake(jx_base.Snowflake):
 
     def __init__(self, fact_name, namespace):
         if not namespace.columns._snowflakes.get(fact_name):
-            Log.error("{{name}} does not exist", name=fact_name)
+            Log.error("{name} does not exist", name=fact_name)
         self.fact_name = fact_name  # THE CENTRAL FACT TABLE
         self.namespace = namespace
 
@@ -85,6 +82,16 @@ class Snowflake(jx_base.Snowflake):
         RETURN ALL RELATIONS WITHIN THIS SNOWFLAKE
         """
         return self.namespace.get_relations()
+
+    def rename_tables(self, name_map):
+        """
+        :param name_map: IN {new_name: old_name} FORM
+        :return: NEW Snowflake WITH RENAMED TABLES
+        """
+        return Snowflake(
+            name_map.get(self.fact_name, self.fact_name),
+            self.namespace.rename_tables(name_map)
+        )
 
     def change_schema(self, required_changes):
         """
@@ -233,7 +240,7 @@ class Snowflake(jx_base.Snowflake):
                 last_updated=now,
                 multi=0,
             ))
-            self.namespace.relations.extend(self.namespace.container.db.get_relations(destination_table))
+            self.namespace.columns.relations.extend(self.namespace.container.db.get_relations(destination_table))
             self.namespace.columns.primary_keys[destination_table] = (UID,)
 
         # TEST IF THERE IS ANY DATA IN THE NEW NESTED ARRAY

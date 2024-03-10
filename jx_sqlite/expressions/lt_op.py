@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import LtOp as _LtOp
+from jx_base.expressions import LtOp as _LtOp, SqlScript
 from jx_sqlite.expressions._utils import _inequality_to_sql
 
 

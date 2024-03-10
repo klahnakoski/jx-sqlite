@@ -101,7 +101,7 @@ class ObjectStream(Stream):
         if isinstance(accessor, str):
             type_ = getattr(self.typer, accessor)
             return ObjectStream(((getattr(v, accessor), a) for v, a in self._iter), type_, self._schema)
-        fact = normalize(accessor, self.typer)
+        fact = normalize(accessor, domain_type=self.typer)
         acc_func, acc_type, acc_schema = fact.build(self.typer, self._schema)
 
         def read():
@@ -264,7 +264,7 @@ class ObjectStream(Stream):
                         yield v, {**a, name: group}
 
                 # THIS IS A BAD IDEA, ObjectStream CAN GET EXPENSIVE IN A LOOP
-                yield ObjectStream(read_rows(), self.typer, sub_schema), {name: group}
+                yield ObjectStream(read_rows(), StreamTyper(self.typer, sub_schema), group_schema), {name: group}
 
         return ObjectStream(read(), StreamTyper(self.typer, sub_schema), group_schema)
 
@@ -276,7 +276,7 @@ class ObjectStream(Stream):
         return ObjectStream(list(self._iter), self.typer, self._schema)
 
     def to_list(self):
-        return list(v for v, _ in self._iter)
+        return list(v.to_list() if isinstance(v, Stream) else v for v, _ in self._iter)
 
     def to_data(self):
         return list_to_data(list(v for v, _ in self._iter))

@@ -7,11 +7,12 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import BetweenOp as BetweenOp_
-from jx_sqlite.expressions._utils import check, SQLang
+from jx_base.expressions import BetweenOp as BetweenOp_, SqlScript, SqlScript
+from mo_sqlite import SQLang
+from mo_sqlite import check
 
 
 class BetweenOp(BetweenOp_):
     @check
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
         return self.partial_eval(SQLang).to_sql(schema)

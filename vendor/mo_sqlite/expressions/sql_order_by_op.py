@@ -13,7 +13,7 @@ from mo_future import extend
 from mo_sql import SQL_SELECT, sql_iso, SQL_FROM, SQL_STAR, SQL_ORDERBY, NO_SQL, SQL_COMMA, SQL
 
 
-class SqlOrderByOp(SQL, _SqlOrderByOp):
+class SqlOrderByOp(_SqlOrderByOp, SQL):
 
     def __iter__(self):
         yield from SQL_SELECT

@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import RowsOp as _RowsOp
+from jx_base.expressions import RowsOp as _RowsOp, SqlScript
 
 
 class RowsOp(_RowsOp):

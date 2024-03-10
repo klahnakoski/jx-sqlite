@@ -18,22 +18,13 @@ from jx_base.meta_columns import (
 )
 from jx_python import jx
 from jx_sqlite.utils import untyped_column, untype_field
-from mo_dots import (
-    Data,
-    Null,
-    coalesce,
-    is_data,
-    is_list,
-    startswith_field,
-    unwraplist,
-    wrap,
-    list_to_data )
+from mo_dots import Data, Null, coalesce, is_data, is_list, startswith_field, unwraplist, wrap, list_to_data
 from mo_future import first
 from mo_json import STRUCT, IS_NULL
-from mo_json.typed_encoder import unnest_path, detype
+from mo_json.typed_encoder import detype
 from mo_logs import Log
 from mo_sql.utils import sql_type_key_to_json_type, SQL_ARRAY_KEY
-from mo_threads import Queue
+from mo_threads import Queue, Lock
 from mo_times.dates import Date
 
 DEBUG = False
@@ -42,7 +33,7 @@ COLUMN_LOAD_PERIOD = 10
 COLUMN_EXTRACT_PERIOD = 2 * 60
 ID = {"field": ["es_index", "es_column"], "version": "last_updated"}
 
-
+CACHE_LOCKER = Lock()
 CACHE = {}  # MAP FROM id(db) TO ColumnList MANAGING THAT DB
 
 
@@ -52,24 +43,68 @@ class ColumnList(Table, Container):
     """
 
     def __new__(cls, db):
-        output = CACHE.get(id(db))
-        if not output:
-            output = CACHE[id(db)] = object.__new__(cls)
+        with CACHE_LOCKER:
+            output = CACHE.get(id(db))
+            if not output:
+                output = CACHE[id(db)] = object.__new__(cls)
         return output
 
     def __init__(self, db):
+        with CACHE_LOCKER:
+            if hasattr(self, "db"):
+                return
+            self.db = db
         Table.__init__(self, META_COLUMNS_NAME)
         self.data = {}  # MAP FROM fact_name TO (abs_column_name to COLUMNS)
-        self.locker = _FakeLock()
+        self.locker = Lock()
         self._schema = None
         self.dirty = False
-        self.db = db
         self.es_index = None
         self.last_load = Null
         self.todo = Queue("update columns to es")  # HOLD (action, column) PAIR, WHERE action in ['insert', 'update']
         self._snowflakes = {}  # MAP FROM fact_name TO LIST OF PATHS, STARTING WITH FACT AND BREADTH FIRST TO LEAVES
         self.primary_keys = {}  # MAP FROM table TO LIST OF PRIMARY KEY COLUMNS
+        self.relations = None
         self._load_from_database()
+
+    def rename_tables(self, name_map):
+        output = object.__new__(ColumnList)
+        output.db = None
+        output.data = {
+            name_map.get(table_name, table_name): {
+                col_name: [
+                    Column(
+                        name=col.name,
+                        es_column=col.es_column,
+                        es_index=name_map.get(col.es_index, col.es_index),
+                        es_type=col.es_type,
+                        json_type=col.json_type,
+                        nested_path=[name_map.get(n, n) for n in col.nested_path],
+                        count=col.count,
+                        cardinality=col.cardinality,
+                        multi=col.multi,
+                        partitions=col.partitions,
+                        last_updated=col.last_updated,
+                    )
+                    for col in cols
+                ]
+                for col_name, cols in v.items()
+            }
+            for table_name, v in self.data.items()
+        }
+        output.locker = Lock()
+        output._schema = None
+        output.dirty = False
+        output.es_index = None
+        output.last_load = Null
+        output.todo = None
+        output._snowflakes = {
+            name_map.get(table_name, table_name): [name_map.get(qp, qp) for qp in query_paths]
+            for table_name, query_paths in self._snowflakes.items()
+        }
+        output.primary_keys = {}
+        output.relations = None
+        return output
 
     def _query(self, query):
         result = Data()
@@ -118,6 +153,8 @@ class ColumnList(Table, Container):
                     last_updated=Date.now(),
                 ))
             last_nested_path = full_nested_path
+
+        self.relations = [r for t in tables for r in self.db.get_relations(t.name)]
 
     def find(self, fact_table, abs_column_name=None):
         try:
@@ -325,7 +362,10 @@ class ColumnList(Table, Container):
         with self.locker:
             self._update_meta()
             if not self._schema:
-                self._schema = Schema([self.name], Snowflake(None, [self.name], [c for cs in self.data[META_COLUMNS_NAME].values() for c in cs]))
+                self._schema = Schema(
+                    [self.name],
+                    Snowflake(None, [self.name], [c for cs in self.data[META_COLUMNS_NAME].values() for c in cs]),
+                )
             snapshot = self._all_columns()
 
         from jx_python.containers.list import ListContainer
@@ -364,19 +404,10 @@ class ColumnList(Table, Container):
         return self._all_columns()
 
     def get_nested_path(self, table_name):
-        fixer = (
-            (lambda x:x)
-            if SQL_ARRAY_KEY in table_name
-            else (lambda x: untype_field(x)[0])
-        )
+        fixer = (lambda x: x) if SQL_ARRAY_KEY in table_name else (lambda x: untype_field(x)[0])
         clean_name = fixer(table_name)
 
-        query_paths = first(
-            qps
-            for k, qps in self._snowflakes.items()
-            for qp in qps
-            if fixer(qp) == clean_name
-        )
+        query_paths = first(qps for k, qps in self._snowflakes.items() for qp in qps if fixer(qp) == clean_name)
         if not query_paths:
             Log.error("not found", table_name=table_name)
         nested_path = []
@@ -395,7 +426,7 @@ class ColumnList(Table, Container):
     def denormalized(self):
         """
         THE INTERNAL STRUCTURE FOR THE COLUMN METADATA IS VERY DIFFERENT FROM
-        THE DENORMALIZED PERSPECITVE. THIS PROVIDES THAT PERSPECTIVE FOR QUERIES
+        THE DENORMALIZED PERSPECTIVE. THIS PROVIDES THAT PERSPECTIVE FOR QUERIES
         """
         with self.locker:
             self._update_meta()
@@ -408,7 +439,7 @@ class ColumnList(Table, Container):
                     "es_index": c.es_index,
                     "last_updated": c.last_updated,
                     "count": c.count,
-                    "nested_path": [unnest_path(n) for n in c.nested_path],
+                    "nested_path": [untype_field(n)[0] for n in c.nested_path],
                     "es_type": c.es_type,
                     "type": c.json_type,
                 }

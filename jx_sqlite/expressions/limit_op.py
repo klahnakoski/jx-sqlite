@@ -8,14 +8,14 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from jx_base.expressions import LimitOp as LimitOp_
-from jx_sqlite.expressions._utils import SQLang, SqlScript
+from jx_base.expressions import LimitOp as LimitOp_, SqlScript
+from mo_sqlite import SQLang, SqlScript
 
 from mo_sql import SQL_LIMIT, ConcatSQL
 
 
 class LimitOp(LimitOp_):
-    def to_sql(self, schema=None):
+    def to_sql(self, schema) -> SqlScript:
         frum = self.frum.partial_eval(SQLang).to_sql(schema)
         amount = self.amount.partial_eval(SQLang).to_sql(schema)
         return SqlScript(data_type=frum.type, expr=ConcatSQL(frum, SQL_LIMIT, amount), frum=self, schema=schema)

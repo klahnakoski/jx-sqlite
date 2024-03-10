@@ -17,8 +17,6 @@ class SQL(object):
     ENSURES ONLY SQL OBJECTS ARE CONCATENATED TO MAKE MORE SQL OBJECTS
     """
 
-    __slots__ = []
-
     def __new__(cls, value=None, *args, **kwargs):
         if not args and is_text(value):
             return object.__new__(TextSQL)
@@ -33,7 +31,10 @@ class SQL(object):
         raise Log.error("not implemented")
 
     def __len__(self):
-        return len(self.sql)
+        raise Log.error("not implemented")
+
+    def __bool__(self):
+        return True
 
     def __add__(self, other):
         if not isinstance(other, SQL):
@@ -68,9 +69,10 @@ class SQL(object):
     def __str__(self):
         return "".join(self)
 
+    __repr__ = __str__
+
 
 class TextSQL(SQL):
-    __slots__ = ["value"]
 
     def __init__(self, value):
         """
@@ -79,10 +81,10 @@ class TextSQL(SQL):
         SQL.__init__(self)
         if ENABLE_TYPE_CHECKING and isinstance(value, SQL):
             Log.error("Expecting text, not SQL")
-        self.value = value
+        self._value = value
 
     def __iter__(self):
-        yield self.value
+        yield self._value
 
 
 class JoinSQL(SQL):
@@ -123,6 +125,7 @@ class IndentSQL(SQL):
                 concat = tuple(concat)
             if any(not isinstance(s, SQL) for s in concat):
                 Log.error("Can only join other SQL")
+
         self.concat = concat
 
     def __iter__(self):
@@ -219,8 +222,8 @@ SQL_AS = SQL(" AS ")
 SQL_LIKE = SQL(" LIKE ")
 SQL_ESCAPE = SQL(" ESCAPE ")
 SQL_TO = SQL(" TO ")
-SQL_OP = SQL("(")
-SQL_CP = SQL(")")
+SQL_LP = SQL_OP = SQL("(")
+SQL_RP = SQL_CP = SQL(")")
 SQL_IN = SQL(" IN ")
 SQL_GT = SQL(" > ")
 SQL_GE = SQL(" >= ")

@@ -55,6 +55,20 @@ class Typer:
             item=item,
         ))
 
+    def __getitem__(self, item):
+        try:
+            item_type = self.python_type.__annotations__[item]
+            return Typer(python_type=item_type)
+        except:
+            pass
+
+        # AT LEAST INDICATE WE DO NOT KNOW WHAT THE TYPE IS
+        return UnknownTyper(lambda t: logger.error(
+            """expecting {type}[{item|quote}] to have declared with a type annotation""",
+            type=self.python_type.__name__,
+            item=item,
+        ))
+
     def __add__(self, other):
         if self.python_type is str or other.typer is str:
             return Typer(python_type=str)
@@ -62,11 +76,19 @@ class Typer:
             return Typer(python_type=float)
         logger.error("not handled")
 
+    def __mod__(self, other):
+        if self.python_type in (int, float) or other.python_type in (int, float):
+            return Typer(python_type=int)
+        logger.error("not handled")
+
     def __call__(self, *args, **kwargs):
         logger.error("programmer error")
 
     def __str__(self):
-        return f"Typer(class={self.python_type.__name__})"
+        try:
+            return f"Typer(class={self.python_type.__name__})"
+        except Exception:
+            return f"Typer(class={self.python_type})"
 
 
 class JxTyper(Typer):
@@ -80,12 +102,6 @@ class JxTyper(Typer):
     def __getattr__(self, item):
         attribute_type = self.type_[item]
         return Typer(python_type=attribute_type)
-
-        # logger.error(
-        #     """expecting {{type}} to have attribute {{item|quote}}""",
-        #     type=self.type_,
-        #     item=item,
-        # )
 
     __getitem__ = __getattr__
 

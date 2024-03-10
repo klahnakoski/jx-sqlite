@@ -6,12 +6,11 @@
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
 import jx_base
+from jx_sqlite.models.facts import Facts
 from jx_sqlite.models.schema import Schema
 from jx_sqlite.models.snowflake import Snowflake
-from mo_imports import expect, export
+from mo_imports import export
 from mo_logs import Log
-
-Facts = expect("Facts")
 
 
 class Table(jx_base.Table):

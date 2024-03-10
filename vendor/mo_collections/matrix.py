@@ -381,10 +381,10 @@ def index_to_coordinate(dims):
     coords = []
     for i in domain:
         if i == num_dims - 1:
-            commands.append("\tc" + text(i) + " = index")
+            commands.append("\tc" + str(i) + " = index")
         else:
-            commands.append("\tc" + text(i) + ", index = divmod(index, " + text(prod[i]) + ")")
-        coords.append("c" + text(i))
+            commands.append("\tc" + str(i) + ", index = divmod(index, " + str(prod[i]) + ")")
+        coords.append("c" + str(i))
     output = None
     if num_dims == 1:
         code = (

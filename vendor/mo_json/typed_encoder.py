@@ -80,20 +80,18 @@ def untype_path(encoded):
         return join_field(decode_property(c) for c in split_field(encoded) if not IS_TYPE_KEY.match(c))
 
 
-def unnest_path(encoded):
+def untype_path(encoded):
+    """
+
+    :param encoded:
+    :return:
+    """
     if encoded.startswith(".."):
         remainder = encoded.lstrip(".")
         back = len(encoded) - len(remainder)
-        return ("." * back) + unnest_path(remainder)
+        return ("." * back) + untype_path(remainder)
 
     path = split_field(encoded)
-    if not path:
-        return "."
-    if path[-1] == ARRAY_KEY:
-        path = path[:-1]
-        if not path:
-            return "."
-
     return join_field(
         [decode_property(c) for c in path[:-1] if not IS_TYPE_KEY.match(c)] + [decode_property(path[-1])]
     )
@@ -106,7 +104,7 @@ def get_nested_path(typed_path):
     nested_path = (parent,)
     for i, p in enumerate(path[:-1]):
         if p == ARRAY_KEY:
-            step = concat_field(parent, join_field(path[0: i + 1]))
+            step = concat_field(parent, join_field(path[0 : i + 1]))
             nested_path = (step,) + nested_path
     return nested_path
 
@@ -175,7 +173,6 @@ def typed_encode(value, sub_schema, path, net_new_properties, buffer):
     :return:
     """
     try:
-        # from jx_base import Column
         if sub_schema.__class__.__name__ == "Column":
             value_json_type = python_type_to_jx_type[value.__class__]
             column_json_type = es_type_to_json_type[sub_schema.es_type]
@@ -183,7 +180,7 @@ def typed_encode(value, sub_schema, path, net_new_properties, buffer):
             if value_json_type == column_json_type:
                 pass  # ok
             elif value_json_type == ARRAY and all(
-                    python_type_to_jx_type[v.__class__] == column_json_type for v in value if v != None
+                python_type_to_jx_type[v.__class__] == column_json_type for v in value if v != None
             ):
                 pass  # empty arrays can be anything
             else:
@@ -234,7 +231,7 @@ def typed_encode(value, sub_schema, path, net_new_properties, buffer):
                     )
                     append(buffer, "]" + COMMA)
                     append(buffer, QUOTED_EXISTS_KEY)
-                    append(buffer, text(len(value)))
+                    append(buffer, str(len(value)))
                     append(buffer, "}")
                 else:
                     # SINGLETON LIST
@@ -289,7 +286,7 @@ def typed_encode(value, sub_schema, path, net_new_properties, buffer):
 
             append(buffer, "{")
             append(buffer, QUOTED_NUMBER_KEY)
-            append(buffer, text(value))
+            append(buffer, str(value))
             append(buffer, "}")
         elif _type in (float, Decimal):
             if NUMBER_KEY not in sub_schema:
@@ -408,11 +405,11 @@ def typed_encode(value, sub_schema, path, net_new_properties, buffer):
         else:
             from mo_logs import Log
 
-            Log.error(text(repr(value)) + " is not JSON serializable")
+            Log.error(str(repr(value)) + " is not JSON serializable")
     except Exception as e:
         from mo_logs import Log
 
-        Log.error(text(repr(value)) + " is not JSON serializable", cause=e)
+        Log.error(str(repr(value)) + " is not JSON serializable", cause=e)
 
 
 def _list2json(value, sub_schema, path, net_new_properties, buffer):
@@ -427,7 +424,7 @@ def _list2json(value, sub_schema, path, net_new_properties, buffer):
         append(buffer, "]")
         # append(buffer, COMMA)
         # append(buffer, QUOTED_EXISTS_KEY)
-        # append(buffer, text(len(value)))
+        # append(buffer, str(len(value)))
 
 
 def _multivalue2json(value, sub_schema, path, net_new_properties, buffer):
@@ -456,7 +453,7 @@ def _iter2json(value, sub_schema, path, net_new_properties, buffer):
     append(buffer, "]")
     append(buffer, COMMA)
     append(buffer, QUOTED_EXISTS_KEY)
-    append(buffer, text(count))
+    append(buffer, str(count))
 
 
 def _dict2json(value, sub_schema, path, net_new_properties, buffer):

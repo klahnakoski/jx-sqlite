@@ -77,7 +77,7 @@ class URL(object):
 
     def __truediv__(self, other):
         output = self.__copy__()
-        output.path = output.path.rstrip("/") + "/" + text(other).lstrip("/")
+        output.path = output.path.rstrip("/") + "/" + str(other).lstrip("/")
         return output
 
     def __add__(self, other):
@@ -98,7 +98,7 @@ class URL(object):
         return output
 
     def decode(self, encoding=""):
-        return text(self).decode(encoding)
+        return str(self).decode(encoding)
 
     def __data__(self):
         return str(self)
@@ -107,7 +107,7 @@ class URL(object):
         return hash(str(self))
 
     def __eq__(self, other):
-        return text(self) == text(other)
+        return str(self) == str(other)
 
     def __str__(self):
         url = ""

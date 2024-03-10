@@ -232,11 +232,11 @@ def mod(value, mod=1):
     return value % mod
 
 
-# RETURN A VALUE CLOSE TO value, BUT WITH SHORTER len(text(value))<len(text(value)):
+# RETURN A VALUE CLOSE TO value, BUT WITH SHORTER len(str(value))<len(str(value)):
 
 
 def approx_str(value):
-    v = text(value)
+    v = str(value)
     d = v.find(".")
     if d == -1:
         return value

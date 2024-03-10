@@ -7,32 +7,26 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import ToNumberOp as NumberOp_
-from jx_base.language import is_op
-from jx_sqlite.expressions._utils import SQLang, check, SqlScript
-from mo_sqlite import (
-    ConcatSQL,
-    SQL_CAST,
-    SQL_OP,
-    SQL_CP,
-    SQL_AS,
-    TextSQL,
-    json_type_to_sqlite_type,
-)
+from jx_base.expressions import ToNumberOp as _ToNumberOp, SqlScript
+from mo_sqlite import SQLang
+from mo_sqlite import check
+from jx_sqlite.expressions._utils import SqlScript
 from mo_imports import export
-from mo_json import JX_NUMBER, base_type
+from mo_json import JX_NUMBER, base_type, NUMBER
+from mo_sqlite import json_type_to_sqlite_type
+from mo_sqlite.expressions.sql_cast_op import SqlCastOp
 
 
-class ToNumberOp(NumberOp_):
+class ToNumberOp(_ToNumberOp):
     @check
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
         value = self.term.partial_eval(SQLang).to_sql(schema)
         if base_type(value.jx_type) == JX_NUMBER:
             return value
 
         return SqlScript(
             jx_type=JX_NUMBER,
-            expr=ConcatSQL(SQL_CAST, SQL_OP, value, SQL_AS, TextSQL(json_type_to_sqlite_type[JX_NUMBER]), SQL_CP,),
+            expr=SqlCastOp(value, json_type_to_sqlite_type[NUMBER]),
             frum=self,
             miss=self.term.missing(SQLang),
             schema=schema,

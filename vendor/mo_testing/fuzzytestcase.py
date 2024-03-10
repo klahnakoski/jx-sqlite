@@ -306,3 +306,14 @@ def add_error_reporting(suite):
                 h.__name__ = get_function_name(func)
                 setattr(suite, name, h)
     return suite
+
+
+class StructuredLogger_usingList(object):
+    def __init__(self):
+        self.lines = []
+
+    def write(self, template, params):
+        self.lines.append(expand_template(template, params))
+
+    def stop(self):
+        self.lines.append("logger stopped")

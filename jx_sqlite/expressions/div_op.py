@@ -7,20 +7,22 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import (
+from jx_base.expressions import (SqlScript,
     DivOp as _DivOp,
     MissingOp,
     OrOp,
     ToNumberOp,
 )
-from jx_sqlite.expressions._utils import SQLang, check, SqlScript
+from mo_sqlite import SQLang
+from mo_sqlite import check
+from jx_sqlite.expressions._utils import SqlScript
 from mo_json import JX_NUMBER
 from mo_sqlite import sql_iso, ConcatSQL, SQL_DIV
 
 
 class DivOp(_DivOp):
     @check
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
         lhs = ToNumberOp(self.lhs).partial_eval(SQLang).to_sql(schema)
         rhs = ToNumberOp(self.rhs).partial_eval(SQLang).to_sql(schema)
 

@@ -9,8 +9,8 @@
 #
 
 from jx_base.expressions import SqlInnerJoinOp as _SqlInnerJoinOp
-from mo_sqlite.utils import SQL, SQL_INNER_JOIN, SQL_ON
-
+from mo_sql import SQL_INNER_JOIN, SQL_ON
+from mo_sqlite.expressions._utils import SQL
 
 class SqlInnerJoinOp(_SqlInnerJoinOp, SQL):
     def __iter__(self):

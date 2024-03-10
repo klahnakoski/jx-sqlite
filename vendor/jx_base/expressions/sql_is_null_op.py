@@ -16,7 +16,7 @@ from mo_json.types import JX_BOOLEAN
 
 
 class SqlIsNullOp(Expression):
-    _data_type = JX_BOOLEAN
+    _jx_type = JX_BOOLEAN
 
     def __init__(self, term):
         Expression.__init__(self, term)
@@ -29,6 +29,4 @@ class SqlIsNullOp(Expression):
         return FALSE
 
     def __eq__(self, other):
-        if not is_op(other, SqlIsNullOp):
-            return False
-        return self.term == other.term
+        return is_op(other, SqlIsNullOp) and self.term == other.term

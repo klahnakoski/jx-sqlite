@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import LastOp as _LastOp
+from jx_base.expressions import LastOp as _LastOp, SqlScript
 
 
 class LastOp(_LastOp):

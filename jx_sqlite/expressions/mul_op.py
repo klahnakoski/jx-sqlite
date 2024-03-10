@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import MulOp as _MulOp
+from jx_base.expressions import MulOp as _MulOp, SqlScript
 from jx_sqlite.expressions._utils import multiop_to_sql
 
 

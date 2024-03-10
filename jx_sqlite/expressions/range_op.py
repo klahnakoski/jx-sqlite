@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import RangeOp as _RangeOp
+from jx_base.expressions import RangeOp as _RangeOp, SqlScript
 
 
 class RangeOp(_RangeOp):

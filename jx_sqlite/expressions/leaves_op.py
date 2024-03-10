@@ -7,18 +7,20 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import LeavesOp as LeavesOp_, CoalesceOp
+from jx_base.expressions import LeavesOp as LeavesOp_, CoalesceOp, SqlScript
 from jx_base.expressions.select_op import SelectOp, SelectOne
 from jx_base.expressions.variable import is_variable
-from jx_sqlite.expressions._utils import check, SQLang
-from jx_sqlite.expressions.variable import Variable
-from mo_dots import Null, concat_field, literal_field
+from mo_json import to_jx_type
+from mo_sqlite import SQLang
+from mo_sqlite import check
+from mo_dots import Null, literal_field
 from mo_logs import Log
+from mo_sqlite.expressions import SqlVariable
 
 
 class LeavesOp(LeavesOp_):
     @check
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
         if not is_variable(self.term):
             Log.error("Can only handle Variable")
         var_name = self.term.var
@@ -30,7 +32,7 @@ class LeavesOp(LeavesOp_):
             *(
                 SelectOne(
                     literal_field(r),
-                    CoalesceOp(*(Variable(c.es_column) for rr, c in leaves if rr == r)).partial_eval(SQLang),
+                    CoalesceOp(*(SqlVariable(c.es_index, c.es_column, jx_type=to_jx_type(c.es_type)) for rr, c in leaves if rr == r)).partial_eval(SQLang),
                 )
                 for r in unique
             )

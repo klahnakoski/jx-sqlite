@@ -7,14 +7,14 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import UnixOp as _UnixOp
-from jx_sqlite.expressions._utils import check
+from jx_base.expressions import UnixOp as _UnixOp, SqlScript
+from mo_sqlite import check
 from mo_dots import wrap
 from mo_sqlite import sql_iso
 
 
 class UnixOp(_UnixOp):
     @check
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
         v = self.value.to_sql(schema)[0].sql
         return wrap([{"name": ".", "sql": {"n": "UNIX_TIMESTAMP" + sql_iso(v.n)}}])

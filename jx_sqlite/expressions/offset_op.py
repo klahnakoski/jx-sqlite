@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import OffsetOp as OffsetOp_
+from jx_base.expressions import OffsetOp as OffsetOp_, SqlScript
 
 
 class OffsetOp(OffsetOp_):

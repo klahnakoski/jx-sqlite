@@ -7,13 +7,12 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import Literal as _Literal
-from jx_sqlite.expressions._utils import check, SqlScript
-from mo_sqlite import quote_value
+from jx_base.expressions import Literal as _Literal, SqlScript
+from mo_sqlite import check
+from jx_sqlite.expressions._utils import SqlScript
 
 
 class Literal(_Literal):
     @check
-    def to_sql(self, schema):
-        value = self.value
-        return SqlScript(jx_type=self.jx_type, expr=quote_value(value), frum=self, schema=schema)
+    def to_sql(self, schema) -> SqlScript:
+        return SqlScript(jx_type=self.jx_type, expr=self, frum=self, schema=schema)

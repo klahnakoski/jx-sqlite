@@ -12,12 +12,12 @@ from typing import List, Tuple
 from jx_base.expressions import Expression, NULL
 from jx_base.expressions.sql_inner_join_op import SqlJoinOne
 from mo_future import flatten
-from mo_sqlite.expressions.select_op import SelectOp
+from mo_sqlite.expressions.sql_select_op import SqlSelectOp
 from mo_sqlite.expressions.sql_inner_join_op import SqlInnerJoinOp
 from mo_sqlite.expressions.sql_alias_op import SqlAliasOp
 from mo_sqlite.expressions.sql_and_op import SqlAndOp
 from mo_sqlite.expressions.sql_eq_op import SqlEqOp
-from mo_sqlite.expressions.variable import Variable
+from mo_sqlite.expressions.sql_variable import SqlVariable
 from mo_sqlite.utils import (
     JoinSQL,
     ConcatSQL,
@@ -71,18 +71,18 @@ class SqlStep:
         SQL TO PULL MINIMUM COLUMNS FOR LEFT JOINS
         """
         columns = [
-            *(SqlAliasOp(f"o{self.id}_{oi}", ov) for oi, ov in enumerate(self.order)),
-            *(SqlAliasOp(f"i{self.id}_{ii}", iv) for ii, iv, in enumerate(self.uids)),
+            *(SqlAliasOp( ov,f"o{self.id}_{oi}") for oi, ov in enumerate(self.order)),
+            *(SqlAliasOp( iv,f"i{self.id}_{ii}") for ii, iv, in enumerate(self.uids)),
         ]
         parent_end = self.parent.end if self.parent else 0
         start_of_values = self.start + len(self.order) + len(self.uids)
         return (
             [
-                *(SqlAliasOp(s, NULL) for s in all_selects[parent_end : self.start]),
-                *(Variable(s) for s in all_selects[self.start : start_of_values]),
-                *(SqlAliasOp(s, NULL) for s in all_selects[start_of_values : self.end]),
+                *(SqlAliasOp( NULL,s) for s in all_selects[parent_end : self.start]),
+                *(SqlVariable( s) for s in all_selects[self.start: start_of_values]),
+                *(SqlAliasOp( NULL,s) for s in all_selects[start_of_values : self.end]),
             ],
-            SqlAliasOp(f"t{self.id}", SelectOp(self.subquery, *columns)),
+            SqlAliasOp(SqlSelectOp(self.subquery, *columns), f"t{self.id}"),
         )
 
     def leaf_sql(self, all_selects):
@@ -90,18 +90,18 @@ class SqlStep:
         SQL TO PULL ALL COLUMNS FOR LEAF
         """
         columns = [
-            *(SqlAliasOp(f"o{self.id}_{oi}", ov) for oi, ov in enumerate(self.order)),
-            *(SqlAliasOp(f"i{self.id}_{ii}", iv) for ii, iv, in enumerate(self.uids)),
-            *(SqlAliasOp(f"c{self.id}_{ci}", cv.value) for ci, cv in enumerate(self.selects)),
+            *(SqlAliasOp( ov,f"o{self.id}_{oi}") for oi, ov in enumerate(self.order)),
+            *(SqlAliasOp( iv,f"i{self.id}_{ii}") for ii, iv, in enumerate(self.uids)),
+            *(SqlAliasOp(cv.value, f"c{self.id}_{ci}") for ci, cv in enumerate(self.selects)),
         ]
         parent_end = self.parent.end if self.parent else 0
         return (
             [
-                *(SqlAliasOp(s, NULL) for s in all_selects[parent_end : self.start]),
-                *(Variable(s) for s in all_selects[self.start : self.end]),
-                *(SqlAliasOp(s, NULL) for s in all_selects[self.end :]),
+                *(SqlAliasOp( NULL,s) for s in all_selects[parent_end : self.start]),
+                *(SqlVariable( s) for s in all_selects[self.start: self.end]),
+                *(SqlAliasOp( NULL,s) for s in all_selects[self.end :]),
             ],
-            SqlAliasOp(f"t{self.id}", SelectOp(self.subquery, *columns)),
+            SqlAliasOp(SqlSelectOp(self.subquery, *columns), f"t{self.id}"),
         )
 
     def branch_sql(self, done: List, sql_queries: List[SQL], all_selects: List[str]) -> Tuple:
@@ -115,7 +115,7 @@ class SqlStep:
         if not self.parent:
             done.append(self)
             selects, leaf = self.leaf_sql(all_selects)
-            sql_queries.append(SelectOp(leaf, *selects))
+            sql_queries.append(SqlSelectOp(leaf, *selects))
             return (self,)
 
         nested_path = self.parent.branch_sql(done, sql_queries, all_selects)
@@ -134,7 +134,7 @@ class SqlStep:
                 leaf,
                 SqlAndOp(
                     *(
-                        SqlEqOp(Variable(f"i{step.id}_{i}"), Variable(f"i{step.parent.id}_{i}"))
+                        SqlEqOp(SqlVariable(f"i{step.id}_{i}"), SqlVariable(f"i{step.parent.id}_{i}"))
                         for i, _ in enumerate(step.parent.uids)
                     )
                 ),
@@ -145,12 +145,12 @@ class SqlStep:
             leaf,
             SqlAndOp(
                 *(
-                    SqlEqOp(Variable(f"i{self.id}_{i}"), Variable(f"i{self.parent.id}_{i}"))
+                    SqlEqOp(SqlVariable( f"i{self.id}_{i}"), SqlVariable( f"i{self.parent.id}_{i}"))
                     for i, _ in enumerate(self.parent.uids)
                 )
             ),
         ))
-        sql_queries.append(SelectOp(SqlInnerJoinOp(frum, *sql_joins), *sql_selects))
+        sql_queries.append(SqlSelectOp(SqlInnerJoinOp(frum, *sql_joins), *sql_selects))
         return nested_path + (self,)
 
 
@@ -171,8 +171,8 @@ class SqlTree:
 
         ordering = list(flatten(
             [
-                *(Variable(f"o{n.id}_{oi}") for oi, ov in enumerate(n.order)),
-                *(Variable(f"i{n.id}_{ii}") for ii, iv in enumerate(n.uids)),
+                *(SqlVariable(f"o{n.id}_{oi}") for oi, ov in enumerate(n.order)),
+                *(SqlVariable(f"i{n.id}_{ii}") for ii, iv in enumerate(n.uids)),
             ]
             for n in done
         ))

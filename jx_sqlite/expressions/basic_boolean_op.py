@@ -7,11 +7,12 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import BasicBooleanOp as _BasicBooleanOp
-from jx_sqlite.expressions._utils import SQLang, check
+from jx_base.expressions import BasicBooleanOp as _BasicBooleanOp, SqlScript, SqlScript
+from mo_sqlite import SQLang
+from mo_sqlite import check
 
 
 class BasicBooleanOp(_BasicBooleanOp):
     @check
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
         return self.partial_eval(SQLang).to_sql(schema)

@@ -7,28 +7,30 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import (
+from jx_base.expressions import ( SqlScript,
     BasicInOp as BasicInOp_,
     FALSE,
     Literal,
-    Variable,
     ExistsOp,
     NestedOp,
     EqOp,
 )
 from jx_base.expressions.variable import is_variable
 from jx_base.language import is_op
-from jx_sqlite.expressions._utils import check, SQLang, value2boolean
-from jx_sqlite.expressions.sql_script import SqlScript
-from mo_sqlite import quote_list
+from mo_sqlite import SQLang
+from mo_sqlite import check
+from jx_sqlite.expressions._utils import value2boolean
+from mo_sqlite.expressions.sql_script import SqlScript
 from mo_json.types import JX_BOOLEAN
 from mo_logs import Log
 from mo_sql import ConcatSQL, SQL_IN
+from mo_sqlite import quote_list
+from mo_sqlite.expressions import SqlVariable
 
 
 class BasicInOp(BasicInOp_):
     @check
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
         value = self.value.partial_eval(SQLang).to_sql(schema)
         superset = self.superset.partial_eval(SQLang)
         if is_op(superset, Literal):
@@ -44,5 +46,5 @@ class BasicInOp(BasicInOp_):
 
         sub_table = schema.get_table(superset.var)
         return ExistsOp(NestedOp(
-            nested_path=sub_table.nested_path, where=EqOp(Variable("."), value.frum)
+            nested_path=sub_table.nested_path, where=EqOp(SqlVariable(None, "."), value.frum)
         )).to_sql(schema)

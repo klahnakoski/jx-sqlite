@@ -411,7 +411,7 @@ class TestgroupBy1(BaseTestCase):
     @skipIf(global_settings.elasticsearch.version.startswith("5."), "Not supported by es5")
     def test_groupby_left_id(self):
         test = {
-            "data": [set_default(d, {"_id": "aa" + text(i)}) for i, d in enumerate(simple_test_data)],
+            "data": [set_default(d, {"_id": "aa" + str(i)}) for i, d in enumerate(simple_test_data)],
             "query": {
                 "from": TEST_TABLE,
                 "groupby": {"name": "prefix", "value": {"left": {"_id": 2}}}

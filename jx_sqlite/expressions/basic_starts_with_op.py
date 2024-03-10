@@ -7,22 +7,18 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import (
-    BasicStartsWithOp as _BasicStartsWithOp,
-    is_literal,
-    FALSE,
-)
-from jx_sqlite.expressions._utils import SQLang, check, SqlScript
-from jx_sqlite.expressions.sql_eq_op import SqlEqOp
-from jx_sqlite.expressions.sql_instr_op import SqlInstrOp
-from mo_sqlite import SQL, ConcatSQL, SQL_LIKE, SQL_ESCAPE, SQL_ONE
-from mo_sqlite import quote_value
+from jx_base.expressions import BasicStartsWithOp as _BasicStartsWithOp, is_literal, FALSE
 from mo_json.types import JX_BOOLEAN
+from mo_sqlite import ConcatSQL, SQL_LIKE, SQL_ESCAPE, SQL_ONE
+from mo_sqlite import SQLang, check, quote_value, SqlScript
+from mo_sqlite.expressions._utils import SQL
+from mo_sqlite.expressions.sql_eq_op import SqlEqOp
+from mo_sqlite.expressions.sql_instr_op import SqlInstrOp
 
 
 class BasicStartsWithOp(_BasicStartsWithOp):
     @check
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
         prefix = self.prefix.partial_eval(SQLang)
         if is_literal(prefix):
             value = self.value.partial_eval(SQLang).to_sql(schema)
@@ -33,6 +29,7 @@ class BasicStartsWithOp(_BasicStartsWithOp):
                 sql = ConcatSQL(value, SQL_LIKE, quote_value(prefix + "%"), SQL_ESCAPE, SQL("\\"))
             else:
                 sql = ConcatSQL(value, SQL_LIKE, quote_value(prefix + "%"))
-            return SqlScript(jx_type=JX_BOOLEAN, expr=sql, frum=self, miss=FALSE, schema=schema)
         else:
-            return SqlEqOp(SqlInstrOp(self.value, prefix), SQL_ONE).partial_eval(SQLang).to_sql()
+            sql = SqlEqOp(SqlInstrOp(self.value, prefix), SQL_ONE).partial_eval(SQLang).to_sql()
+
+        return SqlScript(jx_type=JX_BOOLEAN, expr=sql, frum=self, miss=FALSE, schema=schema)

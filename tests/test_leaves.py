@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-
+from mo_sql.utils import GUID
 
 from jx_sqlite import Schema
 from mo_dots import Data
@@ -79,7 +79,7 @@ class TestLeaves(FuzzyTestCase):
             ]
         )
 
-        result = Schema.leaves(schema, "_id")
+        result = Schema.leaves(schema, GUID)
         self.assertEqual(result, [])
 
     def test_deep_child_found(self):

@@ -7,18 +7,12 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from mo_sql import SQL
-
-from jx_base.expressions import Variable as Variable_
-from mo_sqlite import quote_column
+from jx_base.expressions import SqlInOp as _SqlInOp
+from mo_sql import SQL_IN, SQL
 
 
-class Variable(Variable_, SQL):
-
-    __new__ = object.__new__
-
-    def __init__(self, var):
-        Variable_.__init__(self, var)
-
+class SqlInOp(_SqlInOp, SQL):
     def __iter__(self):
-        yield from quote_column(self.var)
+        yield from self.value
+        yield from SQL_IN
+        yield from self.superset

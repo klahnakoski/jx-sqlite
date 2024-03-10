@@ -7,21 +7,22 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import (
+from jx_base.expressions import (SqlScript,
     LengthOp as LengthOp_,
     is_literal,
-    ToBooleanOp,
     IsTextOp,
 )
-from jx_sqlite.expressions._utils import SQLang, check, SqlScript
-from mo_sqlite import quote_value, sql_call, SQL_NULL
+from mo_sqlite import SQLang
+from mo_sqlite import check
+from jx_sqlite.expressions._utils import SqlScript
 from mo_future import text
 from mo_json import JX_INTEGER
+from mo_sqlite import quote_value, sql_call, SQL_NULL
 
 
 class LengthOp(LengthOp_):
     @check
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
         term = self.term.partial_eval(SQLang)
         if is_literal(term):
             val = term.value

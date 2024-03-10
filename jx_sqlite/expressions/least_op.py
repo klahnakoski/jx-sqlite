@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import LeastOp as _LeastOp
+from jx_base.expressions import LeastOp as _LeastOp, SqlScript
 from jx_sqlite.expressions._utils import multiop_to_sql
 
 

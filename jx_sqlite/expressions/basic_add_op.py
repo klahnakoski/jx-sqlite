@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import BasicAddOp as BasicAddOp_
+from jx_base.expressions import BasicAddOp as BasicAddOp_, SqlScript
 from jx_sqlite.expressions._utils import basic_multiop_to_sql
 
 

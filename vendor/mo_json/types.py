@@ -11,17 +11,18 @@ from datetime import datetime, date
 from decimal import Decimal
 from math import isnan
 
-from mo_dots import split_field, NullType, is_many, is_data, concat_field, is_sequence, FlatList
+from mo_dots import Data, split_field, NullType, is_many, is_data, concat_field, is_sequence, FlatList
+from mo_times import Date
+
 from mo_future import text, none_type, items, first, POS_INF
 from mo_logs import logger
-from mo_times import Date
 
 
 def to_jx_type(value):
     if isinstance(value, JxType):
         return value
     try:
-        return _json_type_to_jx_type[value]
+        return _any_type_to_jx_type[value]
     except Exception:
         return JX_ANY
 
@@ -29,7 +30,7 @@ def to_jx_type(value):
 class JxType(object):
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
-            if k=="..":
+            if k == "..":
                 logger.error("not allowed")
             setattr(self, k, v)
 
@@ -91,6 +92,8 @@ class JxType(object):
     def leaves(self):
         if self in JX_PRIMITIVE:
             yield ".", self
+        elif self is JX_ANY:
+            logger.error("must be better defined")
         else:
             for k, v in self.__dict__.items():
                 for p, t in v.leaves():
@@ -122,12 +125,12 @@ class JxType(object):
         if other is ARRAY and hasattr(self, ARRAY_KEY):
             # SHALLOW CHECK IF THIS IS AN ARRAY
             return True
-
+        if other is OBJECT:
+            return True
         if not isinstance(other, JxType):
             return False
-
-        if self is JX_INTEGER or self is JX_NUMBER:
-            if other is JX_INTEGER or other is JX_NUMBER:
+        if other is JX_INTEGER or other is JX_NUMBER:
+            if self is JX_INTEGER or self is JX_NUMBER:
                 return True
 
         # DETECT DIFFERENCE BY ONLY NAME DEPTH
@@ -207,7 +210,10 @@ def base_type(type_):
         if t in (ARRAY, JSON):
             return type_
         type_ = t
-        d = t.__dict__
+        try:
+            d = t.__dict__
+        except Exception as cause:
+            raise cause
         ld = len(d)
     return type_
 
@@ -299,7 +305,7 @@ JX_NUMBER_TYPES.__dict__ = [
     for d in [JX_INTEGER.__dict__, JX_NUMBER.__dict__, JX_TIME.__dict__, JX_INTERVAL.__dict__]
 ][0]
 
-_json_type_to_jx_type = {
+_any_type_to_jx_type = {
     IS_NULL: JX_IS_NULL,
     BOOLEAN: JX_BOOLEAN,
     INTEGER: JX_INTERVAL,
@@ -308,6 +314,12 @@ _json_type_to_jx_type = {
     INTERVAL: JX_INTERVAL,
     STRING: JX_TEXT,
     ARRAY: JX_ARRAY,
+    # Sqlite TYPES
+    "TEXT": JX_TEXT,
+    "REAL": JX_NUMBER,
+    "INT": JX_INTEGER,
+    "INTEGER": JX_INTEGER,
+    "TINYINT": JX_BOOLEAN,
 }
 
 
@@ -331,6 +343,23 @@ def value_to_json_type(v):
     return None
 
 
+_python_type_to_jx_type = {
+    int: JX_INTEGER,
+    text: JX_TEXT,
+    float: JX_NUMBER,
+    Decimal: JX_NUMBER,
+    bool: JX_BOOLEAN,
+    NullType: JX_IS_NULL,
+    none_type: JX_IS_NULL,
+    Date: JX_TIME,
+    datetime: JX_TIME,
+    date: JX_TIME,
+}
+
+for k, v in items(_python_type_to_jx_type):
+    _python_type_to_jx_type[k.__name__] = v
+
+
 def value_to_jx_type(value):
     if is_many(value):
         return _primitive(ARRAY_KEY, union_type(*(value_to_json_type(v) for v in value)))
@@ -342,6 +371,37 @@ def value_to_jx_type(value):
 
 def python_type_to_jx_type(type):
     return _python_type_to_jx_type.get(type, JX_ANY)
+
+
+_python_type_to_json_type = {
+    int: INTEGER,
+    text: STRING,
+    float: NUMBER,
+    Decimal: NUMBER,
+    bool: BOOLEAN,
+    NullType: IS_NULL,
+    none_type: IS_NULL,
+    Date: TIME,
+    datetime: TIME,
+    date: TIME,
+    list: ARRAY,
+    set: ARRAY,
+    dict: OBJECT,
+    Data: OBJECT,
+}
+for k, v in items(_python_type_to_json_type):
+    _python_type_to_json_type[k.__name__] = v
+
+
+def python_type_to_json_type(python_type):
+    json_type = _python_type_to_json_type.get(python_type)
+    if json_type:
+        return json_type
+    if is_data(python_type):
+        return OBJECT
+    if is_many(python_type):
+        return ARRAY
+    logger.error("not expected {python_type}", python_type=python_type)
 
 
 _jx_type_to_json_type = {
@@ -358,7 +418,10 @@ _jx_type_to_json_type = {
 
 
 def jx_type_to_json_type(jx_type):
-    return _jx_type_to_json_type.get(base_type(jx_type))
+    basic_type = base_type(jx_type)
+    if basic_type == OBJECT:
+        return OBJECT
+    return _jx_type_to_json_type.get(basic_type)
 
 
 _python_type_to_jx_type = {
@@ -376,9 +439,6 @@ _python_type_to_jx_type = {
     list: JX_ARRAY,
     tuple: JX_ARRAY,
 }
-
-for k, v in items(_python_type_to_jx_type):
-    _python_type_to_jx_type[k.__name__] = v
 
 jx_type_to_key = {
     JX_IS_NULL: JSON_KEY,

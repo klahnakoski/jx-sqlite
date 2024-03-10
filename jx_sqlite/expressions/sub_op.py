@@ -7,26 +7,26 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import (
+from jx_base.expressions import (SqlScript,
     SubOp as _SubOp,
     TRUE,
     OrOp,
     MissingOp,
-    AndOp,
     IsNumberOp,
     NULL,
 )
-from jx_sqlite.expressions._utils import _binaryop_to_sql, check, SQLang
-from jx_sqlite.expressions.sql_script import SqlScript
+from jx_sqlite.expressions._utils import _binaryop_to_sql, check
+from mo_sqlite import SQLang
+from mo_sqlite.expressions.sql_script import SqlScript
 from mo_json import JX_NUMBER
-from mo_sqlite import ConcatSQL, sql_iso, SQL_SUB, sql_call
+from mo_sqlite import ConcatSQL, sql_iso, SQL_SUB
 
 
 class SubOp(_SubOp):
     to_sql = _binaryop_to_sql
 
     @check
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
         lhs = IsNumberOp(self.lhs).partial_eval(SQLang).to_sql(schema)
         rhs = self.rhs.partial_eval(SQLang).to_sql(schema)
 

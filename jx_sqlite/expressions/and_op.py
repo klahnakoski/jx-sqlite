@@ -7,24 +7,25 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import AndOp as _AndOp, ToBooleanOp
-from jx_sqlite.expressions._utils import SQLang, check
-from jx_sqlite.expressions.sql_script import SqlScript
-from mo_sqlite import SQL_AND, SQL_FALSE, SQL_TRUE, sql_iso
+from jx_base import is_op, TRUE
+from jx_base.expressions import AndOp as _AndOp, ToBooleanOp, CoalesceOp, SqlScript
 from mo_json.types import JX_BOOLEAN
+from mo_sqlite.expressions import SqlAndOp, SqlScript, SqlCoalesceOp
+from mo_sqlite import SQLang, check
 
 
 class AndOp(_AndOp):
     @check
-    def to_sql(self, schema):
-        if not self.terms:
-            return SqlScript(jx_type=JX_BOOLEAN, expr=SQL_TRUE, frum=self, schema=schema)
-        elif all(self.terms):
-            return SqlScript(
-                jx_type=JX_BOOLEAN,
-                expr=SQL_AND.join([sql_iso(ToBooleanOp(t).partial_eval(SQLang).to_sql(schema)) for t in self.terms]),
-                frum=self,
-                schema=schema,
-            )
-        else:
-            return SqlScript(jx_type=JX_BOOLEAN, expr=SQL_FALSE, frum=self, schema=schema)
+    def to_sql(self, schema) -> SqlScript:
+        w = self.terms[0].to_sql(schema)
+        this = SqlAndOp(
+            *(SqlCoalesceOp(ToBooleanOp(t).to_sql(schema).expr, TRUE) for t in self.terms)
+        ).partial_eval(SQLang)
+        if not is_op(this, AndOp):
+            return this.to_sql(schema)
+        terms = this.terms
+        if not terms:
+            return SqlScript(jx_type=JX_BOOLEAN, expr=TRUE.to_sql(), frum=self, schema=schema)
+        return SqlScript(
+            jx_type=JX_BOOLEAN, expr=SqlAndOp(*(t.to_sql(schema) for t in self.terms)), frum=self, schema=schema,
+        )
