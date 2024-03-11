@@ -16,5 +16,5 @@ setup(
     package_dir={},
     packages=["jx_sqlite","jx_sqlite.models","jx_sqlite.expressions"],
     url='https://github.com/klahnakoski/jx-sqlite',
-    version='5.559.24071'
+    version='5.560.24071'
 )
