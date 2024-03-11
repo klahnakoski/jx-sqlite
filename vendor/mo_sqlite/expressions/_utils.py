@@ -8,7 +8,7 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from jx_base.expressions import FalseOp,NullOp,TrueOp
+from jx_base.expressions import FalseOp, NullOp, TrueOp
 from mo_future import extend, decorate
 from mo_logs import Log
 from mo_sqlite.expressions.sql_script import SqlScript, SQLang, SQL

@@ -5,7 +5,6 @@ from mo_sql import SQL_SELECT, sql_iso, SQL_FROM, SQL_STAR, sql_list, SQL_GROUPB
 
 
 class SqlGroupByOp(SQL, _SqlGroupByOp):
-
     def __iter__(self):
         yield from SQL_SELECT
         yield from SQL_STAR

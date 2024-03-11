@@ -1,4 +1,3 @@
-
 from mo_sqlite.expressions._utils import SQLang, SqlScript
 from mo_sqlite.expressions.sql_add_op import AddOp as SqlAddOp
 from mo_sqlite.expressions.sql_concat_op import SqlConcatOp

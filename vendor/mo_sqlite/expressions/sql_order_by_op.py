@@ -14,7 +14,6 @@ from mo_sql import SQL_SELECT, sql_iso, SQL_FROM, SQL_STAR, SQL_ORDERBY, NO_SQL,
 
 
 class SqlOrderByOp(_SqlOrderByOp, SQL):
-
     def __iter__(self):
         yield from SQL_SELECT
         yield from SQL_STAR
@@ -33,5 +32,3 @@ def __iter__(self):
     yield from self.expr
     if self.direction:
         yield from self.direction
-
-

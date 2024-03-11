@@ -18,4 +18,3 @@ class SqlEqOp(_SqlEqOp, SQL):
         yield from self.lhs
         yield from SQL_EQ
         yield from self.rhs
-

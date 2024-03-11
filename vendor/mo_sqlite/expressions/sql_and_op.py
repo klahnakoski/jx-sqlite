@@ -28,11 +28,11 @@ class SqlAndOp(_SqlAndOp, SQL):
 
     def to_sql(self, schema):
         return SqlScript(
-            jx_type = JX_BOOLEAN,
-            expr = SqlAndOp(*(t.to_sql(schema) for t in self.terms)).partial_eval(SQLang),
-            frum = self,
-            miss = FALSE,
-            schema=schema
+            jx_type=JX_BOOLEAN,
+            expr=SqlAndOp(*(t.to_sql(schema) for t in self.terms)).partial_eval(SQLang),
+            frum=self,
+            miss=FALSE,
+            schema=schema,
         )
 
     def partial_eval(self, lang):
@@ -81,4 +81,3 @@ class SqlAndOp(_SqlAndOp, SQL):
         return SqlOrOp(
             *(lang.AndOp(*and_terms) if len(and_terms) > 1 else and_terms[0] for and_terms in or_terms)
         ).partial_eval(lang)
-

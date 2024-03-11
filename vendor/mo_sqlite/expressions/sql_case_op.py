@@ -17,7 +17,8 @@ from mo_sql import (
     SQL_ELSE,
     SQL_END,
     SQL_THEN,
-    SQL_WHEN, SQL,
+    SQL_WHEN,
+    SQL,
 )
 from mo_sqlite.expressions.sql_and_op import SqlAndOp
 from mo_sqlite.expressions.sql_not_op import NotOp as SqlNotOp
@@ -33,10 +34,8 @@ class WhenOp(_WhenOp, SQL):
 
 
 class CaseOp(_CaseOp, SQL):
-
     def __init__(self, *whens, _else=NULL):
         super().__init__(*whens, _else)
-
 
     def __iter__(self):
         yield from SQL_CASE
@@ -55,10 +54,7 @@ class CaseOp(_CaseOp, SQL):
                 ors.append(SqlAndOp(*nots, w.when, w.then))
                 nots.append(SqlNotOp(w.when))
             ors.append(SqlAndOp(*nots, self.els_))
-            return (
-                SqlOrOp(*ors)
-                .partial_eval(lang)
-            )
+            return SqlOrOp(*ors).partial_eval(lang)
 
         whens = []
         _else = self._else.partial_eval(lang)

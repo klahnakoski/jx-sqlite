@@ -21,5 +21,3 @@ class SqlCastOp(_SqlCastOp, SQL):
         yield from SQL_AS
         yield from TextSQL(self.es_type)
         yield from SQL_CP
-
-

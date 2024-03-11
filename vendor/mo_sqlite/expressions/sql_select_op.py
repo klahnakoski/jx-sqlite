@@ -22,15 +22,11 @@ from mo_sqlite.expressions._utils import SQL
 
 
 class SqlSelectOp(_SqlSelectOp, SQL):
-
     def __init__(self, frum, *terms: Tuple[SqlAliasOp], **kwargs: Dict[str, Expression]):
         """
         :param terms: list OF SelectOne DESCRIPTORS
         """
-        terms = tuple(
-            SqlAliasOp(term, term.es_path[-1]) if is_op(term, SqlVariable) else term
-            for term in terms
-        )
+        terms = tuple(SqlAliasOp(term, term.es_path[-1]) if is_op(term, SqlVariable) else term for term in terms)
 
         if TYPE_CHECK and (
             not all(is_op(term, SqlAliasOp) for term in terms) or any(term.name is None for term in terms)
