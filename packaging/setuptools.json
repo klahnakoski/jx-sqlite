@@ -20,7 +20,7 @@
     "include_package_data": true,
     "install_requires": [
                          "hjson", "jx-python==4.556.24070",    "mo-sql==4.556.24070",
-        "mo-sqlite==2.557.24070",               "requests"
+        "mo-sqlite==2.558.24071",               "requests"
     ],
     "license": "MPL 2.0",
     "long_description": {
