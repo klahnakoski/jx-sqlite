@@ -1,10 +1,10 @@
-from jx_base.expressions import DefaultOp as _DefaultOp, AndOp
-from jx_sqlite.expressions.sql_script import SqlScript
+from jx_base.expressions import DefaultOp as _DefaultOp, AndOp, SqlScript
+from mo_sqlite.expressions.sql_script import SqlScript
 from mo_sql import sql_coalesce
 
 
 class DefaultOp(_DefaultOp):
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
         frum = self.frum.to_sql(schema)
         default = self.default.to_sql(schema)
         return SqlScript(

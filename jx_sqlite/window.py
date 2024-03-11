@@ -27,8 +27,8 @@ def _window_op(window, schema):
             + quote_column(window.name)
         )
 
-    range_min = text(coalesce(window.range.min, "UNBOUNDED"))
-    range_max = text(coalesce(window.range.max, "UNBOUNDED"))
+    range_min = str(coalesce(window.range.min, "UNBOUNDED"))
+    range_max = str(coalesce(window.range.max, "UNBOUNDED"))
 
     return (
         sql_aggs[window.aggregate]

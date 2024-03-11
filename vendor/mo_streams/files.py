@@ -40,6 +40,11 @@ def content(self):
 
 
 @extend(File)
+def stream(self):
+    return _get_file_stream(self.os_path, ByteStream(open(self.os_path, "rb")))
+
+
+@extend(File)
 def bytes(self):
     return ByteStream(open(self.os_path, "rb"))
 

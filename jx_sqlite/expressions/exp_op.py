@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import ExpOp as _ExpOp
+from jx_base.expressions import ExpOp as _ExpOp, SqlScript
 from jx_sqlite.expressions._utils import _binaryop_to_sql
 
 

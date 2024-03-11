@@ -24,9 +24,9 @@ from mo_logs.exceptions import (
     format_trace,
     WARNING,
     get_stacktrace,
-    ERROR
+    ERROR,
 )
-from mo_logs.log_usingStream import StructuredLogger_usingStream
+from mo_logs.log_usingPrint import StructuredLogger_usingPrint
 from mo_logs.strings import CR, indent
 
 STACKTRACE = "\n{trace_text|indent}\n{cause_text}"
@@ -45,7 +45,7 @@ class Log(object):
     """
 
     trace = False
-    main_log = StructuredLogger_usingStream(STDOUT)
+    main_log = StructuredLogger_usingPrint()
     logging_multi = None
     profiler = None  # simple pypy-friendly profiler
     error_mode = False  # prevent error loops
@@ -123,7 +123,7 @@ class Log(object):
         EXECUTING MULUTIPLE TIMES IN A ROW IS SAFE, IT HAS NO NET EFFECT, IT STILL LOGS TO stdout
         :return: NOTHING
         """
-        old_log, cls.main_log = cls.main_log, StructuredLogger_usingStream(STDOUT)
+        old_log, cls.main_log = cls.main_log, StructuredLogger_usingPrint()
         old_log.stop()
         cls.trace = False
         cls.cprofile = False
@@ -156,7 +156,9 @@ class Log(object):
             old_log.stop()
 
     @classmethod
-    def note(cls, template, default_params={}, *, stack_depth=0, static_template=None, **more_params):
+    def note(
+        cls, template, default_params={}, *, stack_depth=0, static_template=None, **more_params,
+    ):
         """
         :param template: *string* human readable string with placeholders for parameters
         :param default_params: *dict* parameters to fill in template
@@ -183,7 +185,9 @@ class Log(object):
     info = note
 
     @classmethod
-    def alarm(cls, template, default_params={}, *, stack_depth=0, static_template=None, **more_params):
+    def alarm(
+        cls, template, default_params={}, *, stack_depth=0, static_template=None, **more_params,
+    ):
         """
         :param template: *string* human readable string with placeholders for parameters
         :param default_params: *dict* parameters to fill in template
@@ -236,7 +240,9 @@ class Log(object):
         trace = exceptions.get_stacktrace(stack_depth + 1)
 
         e = Except(severity=log_severity, template=template, params=params, cause=cause, trace=trace,)
-        Log._annotate(e, stack_depth + 1, cls.static_template if static_template is None else static_template)
+        Log._annotate(
+            e, stack_depth + 1, cls.static_template if static_template is None else static_template,
+        )
 
     warn = warning
 
@@ -418,7 +424,7 @@ def _using_file(config):
 def _using_console(config):
     from mo_logs.log_usingThread import StructuredLogger_usingThread
 
-    return StructuredLogger_usingThread(StructuredLogger_usingStream(STDOUT))
+    return StructuredLogger_usingThread(StructuredLogger_usingPrint())
 
 
 def _using_mozlog(config):
@@ -429,6 +435,7 @@ def _using_mozlog(config):
 
 def _using_stream(config):
     from mo_logs.log_usingThread import StructuredLogger_usingThread
+    from mo_logs.log_usingStream import StructuredLogger_usingStream
 
     return StructuredLogger_usingThread(StructuredLogger_usingStream(config.stream))
 

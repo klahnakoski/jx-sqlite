@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import (
+from jx_base.expressions import (SqlScript,
     NotLeftOp as NotLeftOp_,
     GteOp,
     LengthOp,
@@ -16,14 +16,16 @@ from jx_base.expressions import (
     ZERO,
     ONE,
 )
-from jx_sqlite.expressions._utils import check, SQLang, SqlScript, OrOp
-from mo_sqlite import sql_call, SQL_ZERO, ConcatSQL, SQL_ONE, SQL_PLUS
+from mo_sqlite import SQLang
+from mo_sqlite import check
+from jx_sqlite.expressions._utils import SqlScript, OrOp
 from mo_json import JX_TEXT
+from mo_sqlite import sql_call
 
 
 class NotLeftOp(NotLeftOp_):
     @check
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
         v = self.value.to_sql(schema)
         start = AddOp(MaxOp(ZERO, self.length), ONE, nulls=False).partial_eval(SQLang).to_sql(schema)
 

@@ -66,7 +66,7 @@ class BaseMultiOp(Expression):
         literal_acc = None
         terms = []
         for t in self.terms:
-            simple = ToNumberOp(t).partial_eval(lang)
+            simple = t.partial_eval(lang)
             if simple is NULL:
                 if self.decisive:
                     pass
@@ -87,7 +87,7 @@ class BaseMultiOp(Expression):
         else:
             if literal_acc is not None:
                 terms.append(Literal(literal_acc))
-            return self.__class__(*terms, nulls=self.decisive)
+            return getattr(lang, self.__class__.__name__)(*terms, nulls=self.decisive)
 
 
 _jx_identity = {"add": ZERO, "mul": ONE, "cardinality": ZERO, "sum": ZERO, "product": ONE}

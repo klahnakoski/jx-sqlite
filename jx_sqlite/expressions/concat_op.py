@@ -7,43 +7,22 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
+from jx_base import TRUE, FALSE
+from jx_base.expressions import SqlScript, ConcatOp as ConcatOp_, ToTextOp, AddOp, AndOp, MissingOp, ONE
 from jx_base.expressions.null_op import NULL
-
-from jx_base.expressions.literal import Literal
-
-from jx_base.expressions import (
-    ConcatOp as ConcatOp_,
-    TrueOp,
-    is_literal,
-    ToTextOp,
-    AddOp,
-    AndOp,
-    MissingOp,
-    ONE,
-)
-from jx_sqlite.expressions._utils import SQLang, check
 from jx_sqlite.expressions.length_op import LengthOp
-from jx_sqlite.expressions.sql_script import SqlScript
-from mo_sqlite import (
-    SQL_CASE,
-    SQL_ELSE,
-    SQL_EMPTY_STRING,
-    SQL_END,
-    SQL_THEN,
-    SQL_WHEN,
-    sql_iso,
-    sql_concat_text,
-    ConcatSQL,
-)
-from mo_sqlite import sql_call
 from mo_json import JX_TEXT
+from mo_sqlite import SQL_EMPTY_STRING
+from mo_sqlite import SQLang
+from mo_sqlite import check
+from mo_sqlite.expressions import SqlCoalesceOp, SqlConcatOp, SqlSubstrOp, SqlCaseOp, SqlWhenOp, SqlScript
 
 
 class ConcatOp(ConcatOp_):
     @check
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
         if len(self.terms) == 0:
-            return NULL.to_sql(schema)
+            return NULL
         len_sep = LengthOp(self.separator).partial_eval(SQLang)
         no_sep = len_sep is NULL
         if no_sep:
@@ -54,39 +33,31 @@ class ConcatOp(ConcatOp_):
         acc = []
         for t in self.terms:
             t = ToTextOp(t).partial_eval(SQLang)
-            missing = t.missing(SQLang).partial_eval(SQLang)
 
             term = t.to_sql(schema).expr
+            # TODO - use this
+            missing = term.missing(SQLang).partial_eval(SQLang).to_sql(schema).expr
 
             if no_sep:
                 sep_term = term
             else:
-                sep_term = sql_iso(sql_concat_text([sep, term]))
+                sep_term = SqlConcatOp(sep, term)
 
-            if isinstance(missing, TrueOp):
-                acc.append(SQL_EMPTY_STRING)
-            elif missing:
-                acc.append(ConcatSQL(
-                    SQL_CASE,
-                    SQL_WHEN,
-                    missing.to_sql(schema).expr,
-                    SQL_THEN,
-                    SQL_EMPTY_STRING,
-                    SQL_ELSE,
-                    sep_term,
-                    SQL_END,
-                ))
-            else:
+            if missing is TRUE:
+                pass
+            elif missing is FALSE:
                 acc.append(sep_term)
+            else:
+                acc.append(SqlCaseOp(SqlWhenOp(missing, SQL_EMPTY_STRING), _else=sep_term))
 
         if no_sep:
-            sql = sql_concat_text(acc)
+            sql = SqlConcatOp(*acc)
         else:
-            sql = sql_call(
-                "SUBSTR",
-                sql_concat_text(acc),
+            sql = SqlSubstrOp(
+                SqlConcatOp(*acc),
                 AddOp(ONE, LengthOp(self.separator), nulls=False).partial_eval(SQLang).to_sql(schema).expr,
             )
+        sql = sql.partial_eval(SQLang)
 
         return SqlScript(
             jx_type=JX_TEXT,

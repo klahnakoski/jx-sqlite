@@ -9,24 +9,21 @@
 #
 
 
-from jx_base.expressions.expression import Expression
-from jx_base.expressions.sql_is_null_op import SqlIsNullOp
+from jx_base.expressions.base_multi_op import BaseMultiOp
+from jx_base.expressions.or_op import OrOp
 from jx_base.language import is_op
 from mo_json.types import JX_BOOLEAN
 
 
-class SqlAndOp(Expression):
-    _data_type = JX_BOOLEAN
-
-    def __init__(self, *terms):
-        Expression.__init__(self, *terms)
-        self.terms = terms
+class SqlAndOp(BaseMultiOp):
+    _jx_type = JX_BOOLEAN
 
     def __data__(self):
         return {"sql.and": [t.__data__() for t in self.terms]}
 
     def missing(self, lang):
-        return SqlIsNullOp(self)
+        # TECHNICALLY NOT CORRECT, ANY FALSE TERM WILL MAKE THE WHOLE THING FALSE, BUT EASIER TO REASON ABOUT
+        return OrOp(*(t.missing(lang) for t in self.terms))
 
     def __eq__(self, other):
         if not is_op(other, SqlAndOp):

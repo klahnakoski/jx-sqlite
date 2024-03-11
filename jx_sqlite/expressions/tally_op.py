@@ -8,14 +8,15 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from jx_base.expressions import TallyOp as _TallyOp, ZERO, AndOp, FALSE, ONE, WhenOp, NotOp
-from jx_sqlite.expressions._utils import multiop_to_sql, SQLang, SqlScript
+from jx_base.expressions import TallyOp as _TallyOp, ZERO, FALSE, NotOp, SqlScript
+from mo_sqlite import SQLang
+from jx_sqlite.expressions._utils import SqlScript
 from mo_json import JX_INTEGER
-from mo_sql import SQL_PLUS, sql_call, sql_iso
+from mo_sql import SQL_PLUS, sql_iso
 
 
 class TallyOp(_TallyOp):
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
         if len(self.terms) == 0:
             return ZERO.to_sql(schema)
 

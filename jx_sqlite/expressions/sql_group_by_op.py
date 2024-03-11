@@ -9,7 +9,7 @@
 #
 
 
-from jx_base.expressions import SqlGroupByOp as _SqlGroupByOp, AddOp
+from jx_base.expressions import SqlGroupByOp as _SqlGroupByOp, AddOp, SqlScript
 from jx_base.language import LanguageElement
 from mo_json import JxType, ARRAY, base_type, JX_NUMBER
 from mo_logs import logger
@@ -20,7 +20,7 @@ class SqlGroupByOp(_SqlGroupByOp):
     """
     without aggregation
     this is a hierarchical result; with the grouped columns and the rows that belong to each group
-    the sql sould show that one-to-many result
+    the sql should show that one-to-many result
 
     SELECT
         p.*

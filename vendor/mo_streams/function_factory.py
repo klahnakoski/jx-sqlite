@@ -248,7 +248,20 @@ class FunctionFactory:
         type_ = Typer(example=other) + _get(self, "typer")
         return FunctionFactory(builder, type_, f"{other} + {self}")
 
+    def __mod__(self, other):
+        func_other = factory(other)
 
+        def builder(domain_type, domain_schema) -> BuiltFunction:
+            sf, st, ss = self.build(domain_type, domain_schema)
+            of, ot, os = func_other.build(domain_type, domain_schema)
+
+            def func(v, a):
+                return sf(v, a) % of(v, a)
+
+            return BuiltFunction(func, st, domain_schema)
+
+        type_ = _get(self, "typer") % _get(func_other, "typer")
+        return FunctionFactory(builder, type_, f"{self} % {other}")
 
     def __call__(self, *args, **kwargs):
         args = [factory(a) for a in args]
@@ -299,7 +312,7 @@ def factory(item, return_type=None):
     return FunctionFactory(build_constant, Typer(example=item), f"{item}")
 
 
-def normalize(item, return_type=None):
+def normalize(item, *, domain_type=None, return_type=None):
     """
     RETURN A FUNCTION THAT CAN ACT ON THE value/attachment PAIR FOUND IN STREAMS
     """
@@ -438,7 +451,9 @@ def wrap_func(func, return_type=None):
             return func()
 
         wrapper = wrapper0
-    elif num_args == 2 and spec.args[-1].startswith("att"):
+    elif num_args == 2:
+        if not spec.args[-1].startswith("att"):
+            logger.error("expecting second parameter to be `att`", stack_depth=3)
         wrapper = func
     else:
         locals = {}

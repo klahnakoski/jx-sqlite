@@ -12,7 +12,7 @@ from math import isnan
 
 from jx_base import DataClass
 from jx_base import Snowflake
-from jx_base.expressions import NULL
+from jx_base.expressions import NULL, SqlScript
 from mo_dots import (
     Data,
     concat_field,
@@ -23,13 +23,13 @@ from mo_dots import (
     is_sequence,
     is_missing,
 )
-from mo_future import is_text, text
+from mo_future import is_text
 from mo_json import BOOLEAN, ARRAY, NUMBER, OBJECT, STRING, json2value, JX_BOOLEAN, get_if_type
 from mo_json.typed_encoder import untype_path
 from mo_logs import Log
 from mo_math import randoms
-from mo_sql.utils import SQL_KEYS, SQL_ARRAY_KEY, SQL_KEY_PREFIX, SQL_NUMBER_KEY, UID, GUID, ORDER, PARENT, COLUMN, DIGITS_TABLE, ABOUT_TABLE
-from mo_sqlite import quote_column
+from mo_sql.utils import SQL_KEYS, SQL_ARRAY_KEY, SQL_KEY_PREFIX, SQL_NUMBER_KEY, UID, GUID, ORDER, PARENT, COLUMN
+from mo_sqlite.utils import quote_column
 from mo_times import Date
 
 
@@ -82,7 +82,7 @@ def table_alias(i):
     :param i:
     :return:
     """
-    return "__t" + text(i) + "__"
+    return "__t" + str(i) + "__"
 
 
 def get_document_value(document, column):
@@ -124,7 +124,7 @@ untype_field = untyped_column
 
 
 def _make_column_name(number):
-    return COLUMN + text(number)
+    return COLUMN + str(number)
 
 
 STATS = {

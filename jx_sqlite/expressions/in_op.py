@@ -7,41 +7,39 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import (
-    InOp as _InOp,
-    FALSE,
-    NestedOp,
-    Variable,
-    EqOp,
-    ExistsOp,
-)
+from jx_base.expressions import InOp as _InOp, FALSE, SqlLiteral
 from jx_base.expressions.variable import is_variable
 from jx_base.language import is_op
-from jx_sqlite.expressions._utils import SQLang, check, SqlScript, value2boolean
+from jx_sqlite.expressions._utils import value2boolean
 from jx_sqlite.expressions.literal import Literal
+from jx_sqlite.expressions.sql_select_all_from_op import SqlSelectAllFromOp
 from mo_json import JX_BOOLEAN
 from mo_logs import Log
-from mo_sqlite import SQL_IN, ConcatSQL
-from mo_sqlite import quote_list
+from mo_sqlite import SQLang, check, SqlScript
+from mo_sqlite.expressions import SqlInOp, SqlAliasOp, SqlCoalesceOp
 
 
 class InOp(_InOp):
     @check
-    def to_sql(self, schema):
-        value = self.value.partial_eval(SQLang).to_sql(schema)
+    def to_sql(self, schema) -> SqlScript:
+        value = self.value.partial_eval(SQLang).to_sql(schema).expr
+        if is_op(value, SqlAliasOp):
+            value = value.value
         superset = self.superset.partial_eval(SQLang)
         if is_op(superset, Literal):
-            values = superset.value
             if value.jx_type == JX_BOOLEAN:
-                values = [value2boolean(v) for v in values]
-            # TODO: DUE TO LIMITED BOOLEANS, TURN THIS INTO EqOp
-            sql = ConcatSQL(value, SQL_IN, quote_list(values))
+                superset = SqlLiteral([value2boolean(v) for v in superset.value])
+                return SqlScript(jx_type=JX_BOOLEAN, expr=SqlInOp(value, superset), frum=self, miss=FALSE, schema=schema)
+            sql = SqlCoalesceOp(SqlInOp(value, superset), FALSE)
             return SqlScript(jx_type=JX_BOOLEAN, expr=sql, frum=self, miss=FALSE, schema=schema)
 
         if not is_variable(superset):
-            Log.error("Do not know how to hanldle")
+            Log.error("Do not know how to hanlde")
 
-        sub_table = schema.get_table(superset.var)
-        return ExistsOp(NestedOp(
-            nested_path=sub_table.nested_path, where=EqOp(Variable("."), value.frum)
-        )).to_sql(schema)
+        return SqlScript(
+            jx_type=JX_BOOLEAN,
+            expr=SqlInOp(value, SqlSelectAllFromOp(superset.to_sql())),
+            frum=self,
+            miss=FALSE,
+            schema=schema
+        )

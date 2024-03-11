@@ -33,6 +33,7 @@ class TypedObject(OrderedDict):
     """
     LAZY BOX FOR TYPED OBJECTS
     """
+
     __slots__ = ["_attachments", "_boxed_value"]
 
     def __init__(self, value, **attachments):
@@ -104,9 +105,15 @@ class TypedObject(OrderedDict):
         if is_missing(value):
             return self._attachments.items()
         if is_data(value):
-            return [*((k, TypedObject(v)) for k, v in value.items()), *((k, TypedObject(v)) for k, v in self._attachments.items())]
+            return [
+                *((k, TypedObject(v)) for k, v in value.items()),
+                *((k, TypedObject(v)) for k, v in self._attachments.items()),
+            ]
         if is_many(value):
-            return [(ARRAY_KEY, [TypedObject(v) for v in value]), *((k, TypedObject(v)) for k, v in self._attachments.items())]
+            return [
+                (ARRAY_KEY, [TypedObject(v) for v in value]),
+                *((k, TypedObject(v)) for k, v in self._attachments.items()),
+            ]
         type_key = python_type_to_jx_type_key.get(type(value))
         return [(type_key, value), *((k, TypedObject(v)) for k, v in self._attachments.items())]
 

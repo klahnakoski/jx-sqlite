@@ -15,14 +15,14 @@ from mo_future import is_text
 from mo_imports import expect, export
 from mo_json import value2json, value_to_jx_type
 
-(DateOp,
- FALSE, TRUE, NULL) = expect("DateOp", "FALSE", "TRUE", "NULL")
+(DateOp, FALSE, TRUE, NULL) = expect("DateOp", "FALSE", "TRUE", "NULL")
 
 
 class Literal(Expression):
     """
     A literal JSON document
     """
+    simplified = True
 
     def __new__(cls, term):
         if term == None:
@@ -44,7 +44,6 @@ class Literal(Expression):
 
     def __init__(self, value):
         Expression.__init__(self)
-        self.simplified = True
         self._value = value
 
     @classmethod
@@ -119,6 +118,8 @@ ZERO = object.__new__(Literal)
 Literal.__init__(ZERO, 0)
 ONE = object.__new__(Literal)
 Literal.__init__(ONE, 1)
+NEG_ONE = object.__new__(Literal)
+Literal.__init__(NEG_ONE, -1)
 EMPTY_ARRAY = object.__new__(Literal)
 Literal.__init__(EMPTY_ARRAY, [])
 

@@ -7,11 +7,12 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
+from dataclasses import is_dataclass
 from typing import Dict, List
 from uuid import uuid4
 
 from jx_base import Column
-from jx_base.expressions import jx_expression, TRUE
+from jx_base.expressions import jx_expression, TRUE, SqlScript
 from jx_sqlite import Facts
 from jx_sqlite.utils import (
     GUID,
@@ -23,7 +24,6 @@ from jx_sqlite.utils import (
 from jx_sqlite.utils import untyped_column
 from mo_dots import (
     Data,
-    Null,
     concat_field,
     listwrap,
     startswith_field,
@@ -31,12 +31,11 @@ from mo_dots import (
     is_many,
     is_data,
     to_data,
-    relative_field,
+    relative_field, exists,
 )
 from mo_future import text, first, extend
 from mo_json import STRUCT, ARRAY, OBJECT, value_to_json_type, get_if_type
 from mo_logs import logger
-from mo_sql import SQL_IN
 from mo_sql.utils import json_type_to_sql_type_key
 from mo_sqlite import (
     SQL_AND,
@@ -118,7 +117,7 @@ def update(self, command):
             nested_table_name = concat_field(self.name, nested_column_name)
             nested_table = nested_tables[nested_column_name]
             self_primary_key = sql_list(quote_column(c.es_column) for u in self.uid for c in self.columns[u])
-            extra_key_name = UID + text(len(self.uid))
+            extra_key_name = UID + str(len(self.uid))
             extra_key = [e for e in nested_table.columns[extra_key_name]][0]
 
             sql_command = ConcatSQL(
@@ -431,6 +430,9 @@ def flatten_many(self, docs):
 
     guids = doc_actions['delete']
     for doc in docs:
+        if is_dataclass(doc):
+            doc = {k: v for k, v in doc.__dict__.items() if exists(v)}
+
         if is_data(doc):
             if UID in doc:
                 logger.error("not allowed {uid} in as top level property", uid=UID)

@@ -17,7 +17,6 @@ import mo_json_config
 from jx_base.expressions import QueryOp
 from jx_python import jx
 from jx_sqlite import Container
-from jx_sqlite.expressions import SQLang
 from jx_sqlite.query import Facts
 from mo_dots import wrap, coalesce, from_data, listwrap, Data, startswith_field, to_data, is_many, is_sequence, Null
 from mo_files import File
@@ -26,11 +25,15 @@ from mo_json import json2value
 from mo_kwargs import override
 from mo_logs import Log, Except, constants
 from mo_logs.exceptions import get_stacktrace
+from mo_sqlite import SQLang
 from mo_testing.fuzzytestcase import assertAlmostEqual
 from tests import test_jx
 from tests.test_jx import TEST_TABLE
 
 Log.static_template = False
+
+
+NEW_DB_EACH_RUN = False
 
 
 class SQLiteUtils(object):
@@ -40,6 +43,8 @@ class SQLiteUtils(object):
         self.table = None
 
     def setUp(self):
+        if NEW_DB_EACH_RUN and test_jx.global_settings.db.filename:
+            File(test_jx.global_settings.db.filename).delete()
         self.container = Container(db=test_jx.global_settings.db)
         self.table = Facts(name="testing", container=self.container)
 
@@ -142,7 +147,7 @@ class SQLiteUtils(object):
                 query["limit"] = 10
             if startswith_field(query["from"], self.table.name):
                 return self.table.query(query)
-            elif query["from"] == "meta.columns":
+            elif startswith_field(query["from"], "meta"):
                 return self.table.query_metadata(query)
             else:
                 Log.error("Do not know how to handle")
@@ -262,11 +267,11 @@ def sort_table(result):
     """
     SORT ROWS IN TABLE, EVEN IF ELEMENTS ARE JSON
     """
-    data = wrap([{text(i): v for i, v in enumerate(row)} for row in result.data])
+    data = wrap([{str(i): v for i, v in enumerate(row)} for row in result.data])
     sort_columns = jx.sort(set(jx.get_columns(data, leaves=True).name))
     data = jx.sort(data, sort_columns)
     result.data = [
-        tuple(row[text(i)] for i in range(len(result.header))) for row in data
+        tuple(row[str(i)] for i in range(len(result.header))) for row in data
     ]
 
 
@@ -326,5 +331,5 @@ try:
 
     Log.start(test_jx.global_settings.debug)
     test_jx.utils = SQLiteUtils(test_jx.global_settings)
-except Exception as e:
-    Log.warning("problem", e)
+except Exception as cause:
+    Log.warning("problem", cause)

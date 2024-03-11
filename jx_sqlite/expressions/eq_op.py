@@ -7,28 +7,52 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import EqOp as _EqOp, FALSE, TRUE, is_literal
-from jx_base.expressions._utils import builtin_ops, simplified
-from jx_sqlite.expressions._utils import SQLang, check
-from jx_sqlite.expressions.basic_eq_op import BasicEqOp
-from jx_sqlite.expressions.case_op import CaseOp
-from jx_sqlite.expressions.in_op import InOp
-from jx_sqlite.expressions.when_op import WhenOp
-from mo_json import JX_ARRAY
+from jx_base import builtin_ops, simplified
+from jx_base.expressions import EqOp as _EqOp, FALSE, TRUE, is_literal,NotOp
+from jx_sqlite.expressions._utils import value2boolean
+from mo_json import JX_ARRAY, ARRAY, JX_BOOLEAN
+from mo_logs import logger
+from mo_sqlite import SQLang, check, SqlScript
+from mo_sqlite.expressions import SqlEqOp, SqlCaseOp, SqlWhenOp, SqlInOp, SqlNotOp, SqlAndOp, SqlOrOp
 
 
 class EqOp(_EqOp):
     @check
-    def to_sql(self, schema):
-        m_rhs = self.rhs.missing(SQLang)
-        output = (
-            CaseOp(
-                WhenOp(self.lhs.missing(SQLang), then=m_rhs), WhenOp(m_rhs, then=FALSE), BasicEqOp(self.lhs, self.rhs),
-            )
-            .partial_eval(SQLang)
-            .to_sql(schema)
-        )
-        return output
+    def to_sql(self, schema) -> SqlScript:
+        if is_literal(self.rhs) and self.rhs.jx_type == ARRAY:
+            return SqlInOp(self.lhs, self.rhs).to_sql(schema)
+
+        lhs = self.lhs.to_sql(schema)
+        if is_literal(self.rhs) and lhs.jx_type == JX_BOOLEAN:
+            # SPECIAL CASE FOR BOOLEAN
+            rhs = value2boolean(self.rhs.value)
+            lhs_exists = NotOp(lhs.missing(SQLang)).to_sql(schema).expr
+            if rhs is True:
+                return SqlScript(
+                    jx_type=JX_BOOLEAN,
+                    expr=SqlAndOp(lhs_exists, lhs.expr),
+                    frum=self,
+                    miss=FALSE,
+                    schema=schema
+                )
+            elif rhs is False:
+                return SqlScript(
+                    jx_type=JX_BOOLEAN,
+                    expr=SqlAndOp(lhs_exists, SqlNotOp(lhs.expr)),
+                    frum=self,
+                    miss=FALSE,
+                    schema=schema
+                )
+            else:
+                logger.error("not expected")
+
+        m_rhs = self.rhs.missing(SQLang).to_sql(schema).expr
+        output = SqlCaseOp(
+            SqlWhenOp(self.lhs.missing(SQLang).to_sql(schema).expr, then=m_rhs),
+            SqlWhenOp(m_rhs, then=FALSE),
+            _else=SqlEqOp(self.lhs.to_sql(schema).expr, self.rhs.to_sql(schema).expr)
+        ).partial_eval(SQLang)
+        return SqlScript(jx_type=JX_BOOLEAN, expr=output, frum=self, miss=FALSE, schema=schema)
 
     @simplified
     def partial_eval(self, lang):
@@ -48,7 +72,7 @@ class EqOp(_EqOp):
             .CaseOp(
                 lang.WhenOp(lhs.missing(SQLang), then=rhs_missing),
                 lang.WhenOp(rhs_missing, then=FALSE),
-                lang.BasicEqOp(lhs, rhs),
+                lang.SqlEqOp(lhs, rhs),
             )
             .partial_eval(SQLang)
         )

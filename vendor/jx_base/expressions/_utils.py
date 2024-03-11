@@ -120,10 +120,10 @@ _json_encoder = utf8_json_encoder
 def value2json(value):
     try:
         scrubbed = scrub(value, scrub_number=float)
-        return text(_json_encoder(scrubbed))
+        return str(_json_encoder(scrubbed))
     except Exception as e:
         e = Except.wrap(e)
-        Log.warning("problem serializing {{type}}", type=text(repr(value)), cause=e)
+        Log.warning("problem serializing {{type}}", type=str(repr(value)), cause=e)
         raise e
 
 
@@ -152,6 +152,7 @@ builtin_ops = {
     "min": lambda *v: min(*v),
     "most": lambda *v: max(*v),
     "least": lambda *v: min(*v),
+    "sql.concat": lambda *v: "".join(*v)
 }
 
 operators = {}

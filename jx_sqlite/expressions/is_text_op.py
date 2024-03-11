@@ -7,19 +7,18 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
+from jx_base.expressions import IsTextOp as IsTextOp_, NULL, SqlScript
 from jx_base.expressions.select_op import SelectOp
-
-from jx_base.expressions import IsTextOp as IsTextOp_, NULL
 from jx_base.expressions.variable import is_variable
 from jx_base.language import is_op
-from jx_sqlite.expressions._utils import check
+from mo_sqlite import check
 from mo_json.types import JX_TEXT
 from mo_logs import logger
 
 
 class IsTextOp(IsTextOp_):
     @check
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
         if is_variable(self.term):
             var_name = self.term.var
         else:
@@ -30,11 +29,11 @@ class IsTextOp(IsTextOp_):
             for t in value.frum.terms:
                 if t.jx_type[var_name] == JX_TEXT:
                     return t.value.to_sql(schema)
-            return NULL.to_sql(schema)
+            return NULL
         elif is_variable(value.frum):
             if value.jx_type == JX_TEXT:
                 return value
             else:
-                return NULL.to_sql(schema)
+                return NULL
 
         logger.error("not implemented yet")

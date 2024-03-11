@@ -8,12 +8,36 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from jx_base.expressions.false_op import FalseOp
-from jx_base.expressions.null_op import NullOp
-from jx_base.expressions.true_op import TrueOp
-from jx_base.language import Language
-from mo_future import extend
-from mo_sqlite.utils import SQL_NULL, SQL_TRUE, SQL_FALSE
+from jx_base.expressions import FalseOp, NullOp, TrueOp
+from mo_future import extend, decorate
+from mo_logs import Log
+from mo_sqlite.expressions.sql_script import SqlScript, SQLang, SQL
+from mo_sqlite.utils import SQL_NULL, SQL_TRUE, SQL_FALSE, TYPE_CHECK
+
+
+__all__ = ["check", "SQLang", "SqlScript", "SQL"]
+
+
+def check(func):
+    """
+    TEMPORARY TYPE CHECKING TO ENSURE to_sql() IS OUTPUTTING THE CORRECT FORMAT
+    """
+    if not TYPE_CHECK:
+        return func
+
+    @decorate(func)
+    def to_sql(self, schema) -> SqlScript:
+        try:
+            output = func(self, schema)
+        except Exception as e:
+            output = func(self, schema)
+            raise Log.error("not expected", cause=e)
+        if not isinstance(output, SqlScript):
+            output = func(self, schema)
+            Log.error("expecting SqlScript")
+        return output
+
+    return to_sql
 
 
 @extend(NullOp)
@@ -29,6 +53,3 @@ def __iter__(self):
 @extend(FalseOp)
 def __iter__(self):
     yield from SQL_FALSE
-
-
-Sqlite = Language("Sqlite")

@@ -9,7 +9,7 @@
 #
 from jx_base.expressions import RightOp as _RightOp, ZERO
 from jx_base.expressions._utils import simplified
-from jx_sqlite.expressions import SQLang
+from jx_sqlite.expressions._utils import SQLang
 from jx_sqlite.expressions.basic_substring_op import BasicSubstringOp
 from jx_sqlite.expressions.length_op import LengthOp
 from jx_sqlite.expressions.max_op import MaxOp

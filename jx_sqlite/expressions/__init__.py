@@ -1,4 +1,14 @@
-from jx_sqlite.expressions._utils import SQLang
+# encoding: utf-8
+#
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this file,
+# You can obtain one at http:# mozilla.org/MPL/2.0/.
+#
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
+#
+from jx_base.language import Language
+from jx_sqlite.expressions._utils import JxSql
 from jx_sqlite.expressions.abs_op import AbsOp
 from jx_sqlite.expressions.add_op import AddOp
 from jx_sqlite.expressions.and_op import AndOp
@@ -54,10 +64,6 @@ from jx_sqlite.expressions.or_op import OrOp
 from jx_sqlite.expressions.prefix_op import PrefixOp
 from jx_sqlite.expressions.reg_exp_op import RegExpOp
 from jx_sqlite.expressions.select_op import SelectOp
-from jx_sqlite.expressions.sql_eq_op import SqlEqOp
-from jx_sqlite.expressions.sql_instr_op import SqlInstrOp
-from jx_sqlite.expressions.sql_script import SqlScript
-from jx_sqlite.expressions.sql_substr_op import SqlSubstrOp
 from jx_sqlite.expressions.sub_op import SubOp
 from jx_sqlite.expressions.suffix_op import SuffixOp
 from jx_sqlite.expressions.sum_op import SumOp
@@ -70,4 +76,5 @@ from jx_sqlite.expressions.tuple_op import TupleOp
 from jx_sqlite.expressions.variable import Variable
 from jx_sqlite.expressions.when_op import WhenOp
 
-SQLang.register_ops(vars())
+JxSql.register_ops(vars())
+

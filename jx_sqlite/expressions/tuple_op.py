@@ -7,15 +7,16 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import TupleOp as _TupleOp, SelectOp
+from jx_base.expressions import TupleOp as _TupleOp, SelectOp, SqlScript
 from jx_base.expressions.select_op import SelectOne
-from jx_sqlite.expressions._utils import SQLang, check
+from mo_sqlite import SQLang
+from mo_sqlite import check
 from mo_dots import Null
 
 
 class TupleOp(_TupleOp):
     @check
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
         output = (
             SelectOp(Null, *(SelectOne(str(i), term) for i, term in enumerate(self.terms)))
             .partial_eval(SQLang)

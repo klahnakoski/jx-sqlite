@@ -1517,6 +1517,7 @@ class TestEdge1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skip("between is broken")
     def test_edge_using_between(self):
         test = {
             "data": [

@@ -7,70 +7,39 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
+from jx_base.expressions import FalseOp, FALSE, ZERO, ONE, SqlScript
 from jx_base.expressions.and_op import AndOp
-
-from jx_base.expressions._utils import TYPE_CHECK
-from jx_base.expressions import FalseOp, FALSE, CoalesceOp, ZERO, ONE
 from jx_base.expressions.null_op import NULL, NullOp
 from jx_base.expressions.true_op import TrueOp, TRUE
 from jx_base.language import Language
-from mo_future import decorate, extend
+from mo_future import extend
 from mo_imports import expect
-from mo_json import BOOLEAN, ARRAY, OBJECT, STRING, NUMBER, IS_NULL, TIME, INTERVAL
-from mo_json.types import JX_IS_NULL, JX_BOOLEAN, JX_NUMBER, JX_TIME, JX_INTERVAL, JX_TEXT, JX_INTEGER
+from mo_json.types import JX_IS_NULL, JX_BOOLEAN, JX_NUMBER, JX_INTEGER
 from mo_sql import *
-from mo_sql.utils import (
-    SQL_IS_NULL_KEY,
-    SQL_BOOLEAN_KEY,
-    SQL_NUMBER_KEY,
-    SQL_TIME_KEY,
-    SQL_INTERVAL_KEY,
-    SQL_STRING_KEY,
-    SQL_OBJECT_KEY,
-    SQL_ARRAY_KEY,
-)
+from mo_sqlite.expressions import SqlCoalesceOp, SqlScript, SqlGtOp, SqlGteOp, SqlLteOp, SqlLtOp
+from mo_sqlite import check, SQLang
 
-ToNumberOp, OrOp, SqlScript = expect("ToNumberOp", "OrOp", "SqlScript")
+ToNumberOp, OrOp = expect("ToNumberOp", "OrOp")
 
-
-def check(func):
-    """
-    TEMPORARY TYPE CHECKING TO ENSURE to_sql() IS OUTPUTTING THE CORRECT FORMAT
-    """
-    if not TYPE_CHECK:
-        return func
-
-    @decorate(func)
-    def to_sql(self, schema):
-        try:
-            output = func(self, schema)
-        except Exception as e:
-            # output = func(self, schema)
-            raise Log.error("not expected", cause=e)
-        if not isinstance(output, SqlScript):
-            output = func(self, schema)
-            Log.error("expecting SqlScript")
-        return output
-
-    return to_sql
+JxSql = Language("JxSql")
 
 
 @extend(NullOp)
 @check
-def to_sql(self, schema):
-    return SqlScript(jx_type=JX_IS_NULL, expr=SQL_NULL, frum=self, miss=TRUE, schema=schema)
+def to_sql(self, schema) -> SqlScript:
+    return SqlScript(jx_type=JX_IS_NULL, expr=NULL, frum=self, miss=TRUE, schema=schema)
 
 
 @extend(TrueOp)
 @check
-def to_sql(self, schema):
-    return SqlScript(jx_type=JX_BOOLEAN, expr=SQL_TRUE, frum=self, miss=FALSE, schema=schema)
+def to_sql(self, schema) -> SqlScript:
+    return SqlScript(jx_type=JX_BOOLEAN, expr=TRUE, frum=self, miss=FALSE, schema=schema)
 
 
 @extend(FalseOp)
 @check
-def to_sql(self, schema):
-    return SqlScript(jx_type=JX_BOOLEAN, expr=SQL_FALSE, frum=self, miss=FALSE, schema=schema)
+def to_sql(self, schema) -> SqlScript:
+    return SqlScript(jx_type=JX_BOOLEAN, expr=FALSE, frum=self, miss=FALSE, schema=schema)
 
 
 def _inequality_to_sql(self, schema):
@@ -79,7 +48,7 @@ def _inequality_to_sql(self, schema):
     lhs = ToNumberOp(self.lhs).partial_eval(SQLang).to_sql(schema)
     rhs = ToNumberOp(self.rhs).partial_eval(SQLang).to_sql(schema)
 
-    sql = sql_call("COALESCE", ConcatSQL(sql_iso(lhs.expr), op, sql_iso(rhs.expr)), SQL_ZERO)
+    sql = SqlCoalesceOp(op(lhs.expr, rhs.expr), ZERO)
 
     return SqlScript(jx_type=JX_BOOLEAN, expr=sql, frum=self, miss=FALSE, schema=schema)
 
@@ -104,7 +73,7 @@ def multiop_to_sql(self, schema):
 
     if self.decisive:
         miss = AndOp(*(t.missing(SQLang) for t in self.terms))
-        temp = [CoalesceOp(t, zero).partial_eval(SQLang).to_sql(schema).expr for t in self.terms]
+        temp = [SqlCoalesceOp(t, zero).partial_eval(SQLang).to_sql(schema).expr for t in self.terms]
         expr = iso(sign.join(sql_iso(t) for t in temp))
     else:
         miss = OrOp(*(t.missing(SQLang) for t in self.terms), nulls=True)
@@ -133,8 +102,6 @@ def basic_multiop_to_sql(self, schema, many=False):
     return SqlScript(jx_type=jx_type, frum=self, expr=sql, miss=FALSE, schema=schema,)  # basic operations are "strict"
 
 
-SQLang = Language("SQLang")
-
 _sql_operators = {
     # (operator, zero-array default value) PAIR
     "add": (sql_iso, SQL_PLUS, ZERO, JX_NUMBER),
@@ -144,10 +111,10 @@ _sql_operators = {
     "div": (sql_iso, SQL_DIV, NULL, JX_NUMBER),
     "exp": (sql_iso, SQL(" ** "), NULL, JX_NUMBER),
     "mod": (sql_iso, SQL(" % "), NULL, JX_NUMBER),
-    "gt": (sql_iso, SQL_GT, NULL, JX_BOOLEAN),
-    "gte": (sql_iso, SQL_GE, NULL, JX_BOOLEAN),
-    "lte": (sql_iso, SQL_LE, NULL, JX_BOOLEAN),
-    "lt": (sql_iso, SQL_LT, NULL, JX_BOOLEAN),
+    "gt": (sql_iso, SqlGtOp, FALSE, JX_BOOLEAN),
+    "gte": (sql_iso, SqlGteOp, FALSE, JX_BOOLEAN),
+    "lte": (sql_iso, SqlLteOp, FALSE, JX_BOOLEAN),
+    "lt": (sql_iso, SqlLtOp, FALSE, JX_BOOLEAN),
     "most": (lambda x: ConcatSQL(SQL("MAX"), SQL_OP, x, SQL_CP), SQL_COMMA, NULL, JX_NUMBER),
     "least": (lambda x: ConcatSQL(SQL("MIN"), SQL_OP, x, SQL_CP), SQL_COMMA, NULL, JX_NUMBER),
     "tally": (sql_iso, SQL_PLUS, ZERO, JX_INTEGER),

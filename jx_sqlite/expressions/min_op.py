@@ -7,14 +7,14 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import MinOp as _MinOp
-from jx_sqlite.expressions._utils import check
-from jx_sqlite.expressions.sql_script import SqlScript
+from jx_base.expressions import MinOp as _MinOp, SqlScript
+from mo_sqlite import check
+from mo_sqlite.expressions.sql_script import SqlScript
 from mo_json import JX_NUMBER
 from mo_sqlite import sql_call
 
 
 class MinOp(_MinOp):
     @check
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
         return SqlScript(jx_type=JX_NUMBER, expr=sql_call("MIN", self.frum.to_sql(schema)), frum=self, schema=schema)

@@ -11,13 +11,12 @@ from dataclasses import dataclass
 from typing import List, Dict, Tuple
 
 from jx_base import Column, is_op, FALSE
-from jx_base.expressions import NULL
+from jx_base.expressions import NULL, ZERO, SqlScript
 from jx_base.expressions.sql_is_null_op import SqlIsNullOp
 from jx_base.expressions.sql_order_by_op import OneOrder
+from jx_base.utils import GUID
 from jx_sqlite import Facts
-from jx_sqlite.expressions._utils import SQLang
 from jx_sqlite.expressions.leaves_op import LeavesOp
-from jx_sqlite.expressions.sql_script import SqlScript
 from jx_sqlite.expressions.to_boolean_op import ToBooleanOp
 from jx_sqlite.format import format_deep
 from jx_sqlite.utils import (
@@ -43,7 +42,7 @@ from mo_dots import (
     list_to_data,
 )
 from mo_future import extend
-from mo_json.types import OBJECT, jx_type_to_json_type, JX_ANY
+from mo_json.types import OBJECT, jx_type_to_json_type, JX_ANY, STRING, INTEGER, JX_TEXT, JX_INTEGER
 from mo_logs import Log
 from mo_sql import SQL_DESC, SQL_ASC, NO_SQL
 from mo_sqlite import (
@@ -58,13 +57,14 @@ from mo_sqlite import (
     sql_iso,
     sql_list,
     ConcatSQL,
-    SQL_EQ,
     SQL_ZERO,
     SQL_GT,
 )
 from mo_sqlite import quote_column, sql_alias
-from mo_sqlite.expressions import Variable, SqlOrderByOp
-from mo_sqlite.expressions.sql_limit_op import SqlLimitOp
+from mo_sqlite.expressions import SqlVariable, SqlOrderByOp, SqlEqOp, SqlAliasOp, SqlLimitOp, SqlGtOp
+from mo_sqlite import SQLang
+from mo_sqlite.expressions.sql_and_op import SqlAndOp
+from mo_sqlite.expressions.sql_script import SqlScript
 from mo_times import Date
 
 
@@ -159,6 +159,8 @@ def _set_op(self, query):
 
 @extend(Facts)
 def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDetails]:
+    # EACH SELECT VALUE BELONGS AT QUERY DEPTH, FIND LEAST DEEP FOR EACH (AND THE VARIABLES REQUIRED)
+
     # GET LIST OF SELECTED COLUMNS
     select_vars = set(
         rest if first == "row" else v
@@ -168,7 +170,30 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
     )
     schema = query.frum.schema
     known_vars = schema.keys()
-    active_paths = {schema.nested_path[0]: set()}
+    active_paths = {schema.nested_path[0]: {
+        Column(
+            name=GUID,
+            json_type=STRING,
+            es_column=GUID,
+            es_index=self.name,
+            es_type=str,
+            nested_path=[self.name],
+            multi=1,
+            cardinality=0,
+            last_updated=Date.now(),
+        ),
+        Column(
+            name=UID,
+            json_type=INTEGER,
+            es_column=UID,
+            es_index=self.name,
+            es_type=str,
+            nested_path=[self.name],
+            multi=1,
+            cardinality=0,
+            last_updated=Date.now(),
+        ),
+    }}
     for v in select_vars:
         for _, c in schema.leaves(v):
             active_paths.setdefault(c.nested_path[0], set()).add(c)
@@ -188,56 +213,53 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
                 last_updated=Date.now(),
             ))
     # EVERY COLUMN, AND THE COLUMN INDEX IT OCCUPIES
-    index_to_column : Dict[int, ColumnMapping] = {}  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
+    index_to_column: Dict[int, ColumnMapping] = {}  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
     index_to_uid = {}  # FROM ARRAY PATH TO THE INDEX OF UID
     sql_selects = []  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE)
-    nest_to_alias = {query_path: table_alias(i) for i, query_path in enumerate(self.snowflake.query_paths)}
+    # nest_to_alias = {query_path: table_alias(i) for i, query_path in enumerate(self.snowflake.query_paths)}
     # ADD SQL SELECT COLUMNS
+
     selects = query.select.partial_eval(SQLang)
-    primary_doc_details = DocumentDetails("")
 
     # EVERY SELECT STATEMENT THAT WILL BE REQUIRED, NO MATTER THE DEPTH
     # WE WILL CREATE THEM ACCORDING TO THE DEPTH REQUIRED
-    for sub_table in self.snowflake.query_paths:
-        fact, step = tail_field(sub_table)
+    for table_number, sub_table in enumerate(self.snowflake.query_paths):
         nested_doc_details = DocumentDetails(sub_table)
         sub_schema = self.snowflake.get_schema(list(reversed([
             t for t in self.snowflake.query_paths if startswith_field(sub_table, t)
         ])))
-
-        if step == ".":
+        if table_number == 0:
             # ROOT OF TREE
             primary_doc_details = nested_doc_details
         else:
             # INSERT INTO TREE
             def place(parent_doc_details: DocumentDetails):
-                if sub_table == parent_doc_details.nested_path[0]:
-                    return True
                 if startswith_field(sub_table, parent_doc_details.nested_path[0]):
                     for c in parent_doc_details.children:
                         if place(c):
                             return True
                     parent_doc_details.children.append(nested_doc_details)
                     nested_doc_details.nested_path = [sub_table, *parent_doc_details.nested_path]
+                    return True
 
             place(primary_doc_details)
 
         nested_path = nested_doc_details.nested_path
-        alias = nested_doc_details.alias = nest_to_alias[sub_table]
+        alias = nested_doc_details.alias = sub_table
 
         # WE ALWAYS ADD THE UID
         column_number = index_to_uid[sub_table] = nested_doc_details.id_coord = len(sql_selects)
-        sql_select = quote_column(alias, UID)
+        sql_select = SqlVariable(alias, UID, jx_type=JX_TEXT)
         sql_selects.append(sql_alias(sql_select, _make_column_name(column_number)))
-        if step != ".":
-            # ID FOR CHILD TABLE (REPLACE UID)
+        if table_number > 0:
+            # UID FOR CHILD TABLE
             index_to_column[column_number] = ColumnMapping(
                 sql=sql_select, type="number", nested_path=nested_path, column_alias=_make_column_name(column_number),
             )
 
             # ORDER FOR CHILD TABLE
             column_number = len(sql_selects)
-            sql_select = quote_column(alias, ORDER)
+            sql_select = SqlVariable(alias, ORDER, jx_type=JX_INTEGER)
             sql_selects.append(sql_alias(sql_select, _make_column_name(column_number)))
             index_to_column[column_number] = ColumnMapping(
                 sql=sql_select, type="number", nested_path=nested_path, column_alias=_make_column_name(column_number),
@@ -247,16 +269,16 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
         if sub_table not in active_paths:
             continue
 
-        sub_selects = selects.partial_eval(SQLang).to_sql(sub_schema).frum
+        sub_selects = selects.partial_eval(SQLang).to_sql(sub_schema).expr
         for i, term in enumerate(sub_selects.terms):
             name, value = term.name, term.value
             column_number = len(sql_selects)
             if is_op(value, LeavesOp):
                 Log.error("expecting SelectOp to subsume the LeavesOp")
 
-            sql = value.partial_eval(SQLang).to_sql(sub_schema)
+            sql = value
             column_alias = _make_column_name(column_number)
-            sql_selects.append(sql_alias(sql, column_alias))
+            sql_selects.append(SqlAliasOp(sql, column_alias))
             push_column_name, push_column_child = tail_field(name)
             index_to_column[column_number] = nested_doc_details.index_to_column[column_number] = ColumnMapping(
                 push_list_name=name,
@@ -279,10 +301,10 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
             # SQL HAS ABS TABLE REFERENCE
             column_alias = _make_column_name(column_number)
             sql_selects.append(sql_alias(sql, column_alias))
-            sorts.append(OneOrder(SqlIsNullOp(Variable(column_alias)), NO_SQL))
-            sorts.append(OneOrder(Variable(column_alias), sort_to_sqlite_order[sort.sort]))
+            sorts.append(OneOrder(SqlIsNullOp(SqlVariable(None, column_alias)), NO_SQL))
+            sorts.append(OneOrder(SqlVariable(None, column_alias), sort_to_sqlite_order[sort.sort]))
     for t in self.snowflake.query_paths:
-        sorts.append(OneOrder(Variable(f"{COLUMN}{index_to_uid[t]}"), NO_SQL))
+        sorts.append(OneOrder(SqlVariable(None, f"{COLUMN}{index_to_uid[t]}", jx_type=JX_TEXT), NO_SQL))
 
     unsorted_sql = _make_sql_for_one_nest_in_set_op(
         self,
@@ -331,7 +353,7 @@ def _make_sql_for_one_nest_in_set_op(
         if any(startswith_field(sub_table_name, d) for d in done):
             continue
 
-        alias = table_alias(i)
+        alias = sub_table_name  # was table_alias(i)
 
         if primary_nested_path == sub_table_name:
             select_clause = []
@@ -343,42 +365,41 @@ def _make_sql_for_one_nest_in_set_op(
                     continue
 
                 if startswith_field(column_mapping.nested_path[0], sub_table_name):
-                    select_clause.append(sql_alias(column_mapping.sql, column_mapping.column_alias))
+                    select_clause.append(SqlAliasOp(column_mapping.sql, column_mapping.column_alias))
                 else:
                     # DO NOT INCLUDE DEEP STUFF AT THIS LEVEL
-                    select_clause.append(sql_alias(SQL_NULL, column_mapping.column_alias))
+                    select_clause.append(SqlAliasOp(NULL.to_sql(schema), column_mapping.column_alias))
 
             if sub_table_name == self.snowflake.fact_name:
-                from_clause.append(ConcatSQL(SQL_FROM, sql_alias(quote_column(self.snowflake.fact_name), alias),))
+                from_clause.append(ConcatSQL(
+                    SQL_FROM,
+                    SqlAliasOp(SqlVariable(self.snowflake.fact_name, None, jx_type=self.schema.jx_type), alias),
+                ))
             else:
                 from_clause.append(ConcatSQL(
                     SQL_LEFT_JOIN,
-                    sql_alias(quote_column(sub_table_name), alias),
+                    SqlAliasOp(SqlVariable(sub_table_name, None), alias),
                     SQL_ON,
-                    quote_column(alias, PARENT),
-                    SQL_EQ,
-                    quote_column(parent_alias, UID),
+                    SqlEqOp(SqlVariable(alias, PARENT), SqlVariable(parent_alias, UID)),
                 ))
-                where_clause = ConcatSQL(sql_iso(where_clause), SQL_AND, quote_column(alias, ORDER), SQL_GT, SQL_ZERO,)
+                where_clause = SqlAndOp(where_clause, SqlGtOp(SqlVariable(alias, ORDER), ZERO))
             parent_alias = alias
 
         elif startswith_field(primary_nested_path, sub_table_name):
             # PARENT TABLE
             # NO NEED TO INCLUDE COLUMNS, BUT WILL INCLUDE ID AND ORDER
             if sub_table_name == self.snowflake.fact_name:
-                from_clause.append(ConcatSQL(SQL_FROM, sql_alias(quote_column(self.snowflake.fact_name), alias),))
+                from_clause.append(ConcatSQL(SQL_FROM, sql_alias(quote_column(self.snowflake.fact_name), alias)))
             else:
                 parent_alias = alias = table_alias(i)
                 from_clause.append(ConcatSQL(
                     SQL_LEFT_JOIN,
                     sql_alias(quote_column(sub_table_name), alias),
                     SQL_ON,
-                    quote_column(alias, PARENT),
-                    SQL_EQ,
-                    quote_column(parent_alias, UID),
+                    SqlEqOp(SqlVariable(alias, PARENT), SqlVariable(parent_alias, UID)),
                 ))
                 where_clause = ConcatSQL(
-                    sql_iso(where_clause), SQL_AND, quote_column(parent_alias, ORDER), SQL_GT, SQL_ZERO,
+                    sql_iso(where_clause), SQL_AND, SqlVariable(parent_alias, ORDER), SQL_GT, SQL_ZERO,
                 )
             parent_alias = alias
 
@@ -387,15 +408,11 @@ def _make_sql_for_one_nest_in_set_op(
             # GET FIRST ROW FOR EACH NESTED TABLE
             from_clause.append(ConcatSQL(
                 SQL_LEFT_JOIN,
-                sql_alias(quote_column(sub_table_name), alias),
+                sql_alias(SqlVariable(sub_table_name, None), alias),
                 SQL_ON,
-                quote_column(alias, PARENT),
-                SQL_EQ,
-                quote_column(parent_alias, UID),
+                SqlEqOp(SqlVariable(alias, PARENT), SqlVariable(parent_alias, UID)),
                 SQL_AND,
-                quote_column(alias, ORDER),
-                SQL_EQ,
-                SQL_ZERO,
+                SqlEqOp(SqlVariable(alias, ORDER), ZERO),
             ))
 
             # IMMEDIATE CHILDREN ONLY
@@ -417,7 +434,8 @@ def _make_sql_for_one_nest_in_set_op(
             continue
 
     sql = SqlScript(
-        jx_type=JX_ANY,  # TODO: IS THIS THE TYPE FOR THE SET OF COLUMNS?  (INCLUDE NESTING, SO WE MAY UNION TO GET FINAL TYPE)
+        jx_type=JX_ANY,
+        # TODO: IS THIS THE TYPE FOR THE SET OF COLUMNS?  (INCLUDE NESTING, SO WE MAY UNION TO GET FINAL TYPE)
         expr=SQL_UNION_ALL.join([
             ConcatSQL(SQL_SELECT, sql_list(select_clause), ConcatSQL(*from_clause), SQL_WHERE, where_clause),
             *children_sql,

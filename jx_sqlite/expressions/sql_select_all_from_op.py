@@ -9,7 +9,7 @@
 #
 
 
-from jx_base.expressions import (
+from jx_base.expressions import (SqlScript,
     Variable,
     SqlSelectAllFromOp as _SqlSelectAllFrom,
     SelectOp,
@@ -18,14 +18,15 @@ from jx_base.expressions.aggregate_op import AggregateOp
 from jx_base.expressions.select_op import SelectOne
 from jx_base.expressions.sql_left_joins_op import Source, Join
 from jx_base.language import is_op
-from jx_sqlite.expressions.sql_left_joins_op import SqlLeftJoinsOp
 from jx_sqlite.expressions.sql_group_by_op import SqlGroupByOp
+from jx_sqlite.expressions.sql_left_joins_op import SqlLeftJoinsOp
 from jx_sqlite.expressions.sql_origins_op import SqlOriginsOp
-from jx_sqlite.expressions.sql_script import SqlScript
-from mo_sqlite import ConcatSQL, SQL_SELECT, SQL_FROM, SQL_STAR, quote_column
+from mo_sqlite.expressions.sql_script import SqlScript
 from mo_dots import relative_field as mo_dots_relative_field
-from mo_json import to_jx_type, concat_field
+from mo_json import concat_field, to_jx_type
 from mo_sql.utils import untyped_column
+from mo_sqlite import ConcatSQL, SQL_SELECT, SQL_FROM, SQL_STAR, quote_column
+from mo_sqlite.expressions import SqlVariable
 
 
 class SqlSelectAllFromOp(_SqlSelectAllFrom):
@@ -46,7 +47,7 @@ class SqlSelectAllFromOp(_SqlSelectAllFrom):
             cols = self.table.schema.get_columns(name)
             if cols:
                 return SelectOp(
-                    self, tuple(SelectOne(name, Variable(col.es_column, to_jx_type(col.json_type))) for col in cols),
+                    self, tuple(SelectOne(name, SqlVariable(col.es_index, col.es_column, jx_type=to_jx_type(col.es_type))) for col in cols),
                 )
 
             alt_origin = mo_dots_relative_field(self.table.name, self.table.schema.snowflake.fact_name)
@@ -56,7 +57,7 @@ class SqlSelectAllFromOp(_SqlSelectAllFrom):
                 if cols:
                     return SelectOp(
                         self,
-                        tuple(SelectOne(name, Variable(col.es_column, to_jx_type(col.json_type))) for col in cols),
+                        tuple(SelectOne(name, Variable(col.es_index, col.es_column, jx_type=to_jx_type(col.es_type))) for col in cols),
                     )
 
             relative_field, many_relations = self.table.schema.get_many_relations(name)
@@ -82,7 +83,7 @@ class SqlSelectAllFromOp(_SqlSelectAllFrom):
     def __str__(self):
         return str(self.to_sql(None))
 
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
         #  def __init__(self, data_type, expr, frum, miss=None, schema=None):
         return SqlScript(
             self.table.schema.get_type(),

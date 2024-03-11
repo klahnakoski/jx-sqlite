@@ -6,26 +6,24 @@
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
 from jx_base import jx_expression, Column
-from jx_base.expressions import Expression, Variable, is_literal, GetOp, SqlScript
+from jx_base.expressions import Expression, Variable, is_literal, GetOp, SqlScript, SqlScript
 from jx_base.language import is_op
 from jx_base.models.container import Container as _Container
-from jx_sqlite.expressions._utils import SQLang
+from jx_base.utils import UID, GUID
 from jx_sqlite.expressions.sql_select_all_from_op import SqlSelectAllFromOp
-from jx_sqlite.utils import UID, GUID, DIGITS_TABLE, ABOUT_TABLE
 from mo_dots import set_default
 from mo_future import first, NEXT
 from mo_imports import expect
 from mo_json import STRING
 from mo_kwargs import override
 from mo_logs import logger
+from mo_sql.utils import ABOUT_TABLE, DIGITS_TABLE
 from mo_sqlite import (
     SQL_SELECT,
     SQL_FROM,
     SQL_UPDATE,
     SQL_SET,
     ConcatSQL,
-)
-from mo_sqlite import (
     Sqlite,
     quote_column,
     sql_eq,
@@ -33,6 +31,7 @@ from mo_sqlite import (
     sql_insert,
     json_type_to_sqlite_type,
 )
+from mo_sqlite import SQLang
 from mo_threads.lock import locked
 from mo_times import Date
 
@@ -44,8 +43,7 @@ class Container(_Container):
     @override
     def __init__(
         self,
-        db=None,  # EXISTING Sqlite3 DATBASE, OR CONFIGURATION FOR Sqlite DB
-        filename=None,  # FILE FOR THE DATABASE (None FOR MEMORY DATABASE)
+        db=None,  # EXISTING Sqlite3 DATABASE, OR CONFIGURATION FOR Sqlite DB
         kwargs=None,  # See Sqlite parameters
     ):
         global _config
@@ -53,9 +51,7 @@ class Container(_Container):
             self.db = db
         else:
             # PASS CALL PARAMETERS TO Sqlite
-            self.db = db = Sqlite(filename=filename, kwargs=set_default({}, db, kwargs))
-
-        self.db.create_new_functions()  # creating new functions: regexp
+            self.db = db = Sqlite(kwargs={**(db or {}), **kwargs})
 
         if not _config:
             # REGISTER sqlite AS THE DEFAULT CONTAINER TYPE
@@ -87,8 +83,9 @@ class Container(_Container):
         return locked(NEXT(output()))
 
     def setup(self):
-        if not self.db.about(ABOUT_TABLE):
-            with self.db.transaction() as t:
+        with self.db.transaction() as t:
+            if not t.about(ABOUT_TABLE):
+                self.db.create_new_functions()  # creating new functions: regexp
                 t.execute(sql_create(ABOUT_TABLE, {"version": "TEXT", "next_id": "INTEGER"}))
                 t.execute(sql_insert(ABOUT_TABLE, {"version": "1.0", "next_id": 1000}))
                 t.execute(sql_create(DIGITS_TABLE, {"value": "INTEGER"}))

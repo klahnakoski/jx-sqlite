@@ -7,24 +7,24 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import (
+from jx_base.expressions import (SqlScript,
     NotRightOp as NotRightOp_,
     LengthOp,
     MaxOp,
     SubOp,
-    Literal,
     ZERO,
 )
-from jx_sqlite.expressions._utils import check, OrOp, SQLang
-from jx_sqlite.expressions.sql_script import SqlScript
+from mo_sqlite import check
+from jx_sqlite.expressions._utils import OrOp, SQLang
+from mo_sqlite.expressions.sql_script import SqlScript
+from mo_json import JX_TEXT
 from mo_sqlite import SQL_ONE
 from mo_sqlite import sql_call
-from mo_json import JX_TEXT
 
 
 class NotRightOp(NotRightOp_):
     @check
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
         v = self.value.to_sql(schema)
         if self.length == ZERO:
             return v

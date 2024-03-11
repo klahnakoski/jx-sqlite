@@ -24,5 +24,4 @@ class Facts(_Facts):
 type2container["sqlite"] = Facts
 
 export("jx_sqlite.models.container", Facts)
-export("jx_sqlite.models.table", Facts)
-export("jx_sqlite.expressions.nested_op", Facts)
+

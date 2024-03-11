@@ -7,17 +7,16 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-
-from unittest import TestCase
-
-from mo_sql.utils import GUID, UID
-
-from mo_files import File
+from dataclasses import dataclass
 
 from jx_sqlite import Container
+from mo_files import File
+from mo_logs import logger
 from mo_math import randoms
+from mo_sql.utils import GUID, UID
 from mo_sqlite import Sqlite
-from mo_testing.fuzzytestcase import add_error_reporting, FuzzyTestCase
+from mo_testing.fuzzytestcase import add_error_reporting, FuzzyTestCase, StructuredLogger_usingList
+from mo_threads import Thread, join_all_threads
 
 
 @add_error_reporting
@@ -94,10 +93,60 @@ class TestBasic(FuzzyTestCase):
         table.insert([{GUID: 42, "value": "test"}])
         table.insert([{GUID: 42, "value": "test2"}])
 
-        result = table.query({"select":["_id", "value"]})
+        result = table.query({"select": ["_id", "value"]})
         self.assertEqual(result, {"meta": {"format": "list"}, "data": [{"_id": 42, "value": "test2"}]})
 
     def test_insert_with_uid(self):
         table = Container(Sqlite()).get_or_create_facts("my_table")
         with self.assertRaises(Exception):
             table.insert([{UID: 42, "value": "test"}])
+
+    def test_many_container(self):
+        sink = StructuredLogger_usingList()
+        logger.main_log, old_log = sink, logger.main_log
+        try:
+            db = Sqlite(debug=True)
+            container1 = Container(db)
+            container2 = Container(db)
+
+            table_requests = [line for line in sink.lines if "sqlite_master" in line]
+            self.assertEqual(len(table_requests), 1)  # ONLY ONE METADATA SCAN
+        finally:
+            logger.main_log = old_log
+
+    def test_create_and_drop_facts(self):
+        db = Sqlite()
+        container = Container(db)
+        table = container.get_or_create_facts("temp")
+        container.drop(table)
+        self.assertNotIn("temp", db.get_tables().name)
+
+    def test_insert_dataclass(self):
+
+        @dataclass
+        class Temp:
+            name: str
+            value: int
+            amount: float
+
+        data = [
+            Temp("a", 1, 1.1),
+            Temp("b", 2, 2.1),
+
+        ]
+        db = Sqlite()
+        table = Container(db).get_or_create_facts("temp")
+        table.insert(data)
+        with db.transaction() as t:
+            result = t.query("select * from temp", as_dataclass=Temp)
+
+        self.assertEqual(result, data)
+
+    def test_many_container(self):
+
+        def make_one(db, please_stop):
+            return Container(db)
+
+        db = Sqlite()
+        threads = [Thread.run(str(i), make_one, db) for i in range(100)]
+        join_all_threads(threads)

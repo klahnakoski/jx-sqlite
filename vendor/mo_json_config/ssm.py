@@ -11,6 +11,7 @@
 import re
 
 from mo_dots import Data, join_field
+from mo_files import URL
 from mo_future import get_function_name
 from mo_logs import logger, Except
 from mo_imports import delay_import
@@ -45,7 +46,7 @@ def _retry(func):
     return output
 
 
-def get_ssm(ref, doc_path, _):
+def get_ssm(ref, doc_path=None, location=None):
     global has_failed
 
     output = Data()
@@ -56,6 +57,10 @@ def get_ssm(ref, doc_path, _):
         import boto3
     except Exception:
         logger.error("Missing boto3: `pip install boto3` to use ssm://")
+
+    if isinstance(ref, str):
+        ref = URL(ref)
+
     try:
         ssm = boto3.client("ssm")
         describe_parameters = _retry(ssm.describe_parameters)

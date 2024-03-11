@@ -9,7 +9,7 @@
 #
 
 
-from jx_base.expressions import SqlOriginsOp as _SqlOriginsOp
+from jx_base.expressions import SqlOriginsOp as _SqlOriginsOp, SqlScript
 from jx_base.expressions.sql_left_joins_op import Source
 
 

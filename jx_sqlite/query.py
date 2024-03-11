@@ -9,8 +9,8 @@
 #
 import mo_json
 from jx_base import Column, JX
-from jx_base.expressions import jx_expression, QueryOp, NULL
-from jx_sqlite.expressions._utils import SQLang
+from jx_base.expressions import jx_expression, QueryOp, NULL, SqlScript
+from mo_sqlite import SQLang
 from jx_sqlite.format import format_metadata, format_flat
 from jx_sqlite.models.facts import Facts
 from jx_sqlite.utils import GUID, untyped_column, unique_name
@@ -25,7 +25,7 @@ from mo_dots import (
 from mo_future import is_text, extend
 from mo_json import STRING, STRUCT
 from mo_logs import Log
-from mo_sql import SQL_CREATE, SQL_AS
+from mo_sql import SQL_CREATE, SQL_AS, SQL_STAR
 from mo_sqlite import (
     SQL_FROM,
     SQL_SELECT,
@@ -49,7 +49,7 @@ def get_column_name(self, column):
 @register_thread
 def __len__(self):
     counter = self.container.db.query(ConcatSQL(
-        SQL_SELECT, sql_count("*"), SQL_FROM, quote_column(self.snowflake.fact_name)
+        SQL_SELECT, sql_count(SQL_STAR), SQL_FROM, quote_column(self.snowflake.fact_name)
     ))[0][0]
     return counter
 
@@ -157,7 +157,7 @@ def query_metadata(self, query):
     frum, query["from"] = query["from"], self
     columns = self.snowflake.columns
 
-    query = QueryOp.wrap(query, JX)
+    query = QueryOp.wrap(query, self.container, JX)
     where = query.where
     table_name = None
     column_name = None

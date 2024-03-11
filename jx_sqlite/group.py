@@ -7,12 +7,12 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import SelectOp, CountOp, DefaultOp
+from jx_base.expressions import SelectOp, CountOp, DefaultOp, SqlScript, SqlSelectOp
 from jx_base.expressions.variable import is_variable
 from jx_base.language import is_op
 from jx_python import jx
 from jx_sqlite import Facts
-from jx_sqlite.expressions._utils import SQLang
+from mo_sqlite import SQLang
 from jx_sqlite.utils import (
     ColumnMapping,
     _make_column_name,
@@ -54,6 +54,7 @@ def _groupby_op(self, query, schema):
     path = schema.nested_path[0]
     index_to_column = {}
     nest_to_alias = {nested_path: table_alias(i) for i, nested_path in enumerate(self.schema.snowflake.query_paths)}
+    inner_schema = schema.rename_tables(nest_to_alias)
     tables = []
     for n, a in nest_to_alias.items():
         if startswith_field(path, n):
@@ -78,9 +79,9 @@ def _groupby_op(self, query, schema):
     column_index = 0
     for edge in query.groupby:
         top = edge["name"] != "."
-        edge_sql = edge.value.partial_eval(SQLang).to_sql(schema)
-        if is_op(edge_sql.frum, SelectOp):
-            for t in edge_sql.frum.terms:
+        edge_sql = edge.value.partial_eval(SQLang).to_sql(inner_schema)
+        if is_op(edge_sql.expr, SqlSelectOp):
+            for t in edge_sql.expr.terms:
                 name, value = t.name, t.value
                 if top:
                     top_name = edge["name"]
@@ -89,7 +90,7 @@ def _groupby_op(self, query, schema):
                     top_name, end_name = tail_field(name)
                 column_number = len(selects)
 
-                part_edge_sql = value.to_sql(schema)
+                part_edge_sql = value.to_sql(inner_schema)
                 json_type = jx_type_to_json_type(part_edge_sql.jx_type)
 
                 column_alias = _make_column_name(column_number)
@@ -139,12 +140,12 @@ def _groupby_op(self, query, schema):
             sql = sql_count(SQL_ONE)
             json_type = JX_INTEGER
         else:
-            sql = select.value.partial_eval(SQLang).to_sql(schema)
+            sql = select.value.partial_eval(SQLang).to_sql(inner_schema)
             json_type = sql.frum.jx_type
             sql = sql_call(sql_aggs[base_agg.op], sql)
 
         if is_op(select.aggregate, DefaultOp):
-            sql = sql_coalesce([sql, select.default.partial_eval(SQLang).to_sql(schema),])
+            sql = sql_coalesce([sql, select.default.partial_eval(SQLang).to_sql(inner_schema),])
 
         selects.append(sql_alias(sql, select.name))
 
@@ -163,7 +164,7 @@ def _groupby_op(self, query, schema):
     for w in query.window:
         selects.append(_window_op(w, schema))
 
-    where = query.where.partial_eval(SQLang).to_sql(schema)
+    where = query.where.partial_eval(SQLang).to_sql(inner_schema)
 
     command = [ConcatSQL(
         SQL_SELECT,

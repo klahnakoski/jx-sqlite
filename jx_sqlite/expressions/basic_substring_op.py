@@ -7,21 +7,19 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import BasicSubstringOp as BasicSubstringOp_, FALSE
-from jx_sqlite.expressions._utils import SQLang, check
+from jx_base.expressions import BasicSubstringOp as BasicSubstringOp_, FALSE, SqlScript, ONE
 from jx_sqlite.expressions.add_op import AddOp
-from jx_sqlite.expressions.literal import Literal
-from jx_sqlite.expressions.sql_script import SqlScript
 from jx_sqlite.expressions.sub_op import SubOp
-from mo_sqlite import sql_call
 from mo_json import JX_TEXT
+from mo_sqlite import SQLang, check, SqlScript
+from mo_sqlite.expressions import SqlSubstrOp
 
 
 class BasicSubstringOp(BasicSubstringOp_):
     @check
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
         value = self.value.partial_eval(SQLang).to_sql(schema)
-        start = AddOp(self.start, Literal(1), nulls=False).partial_eval(SQLang).to_sql(schema)
+        start = AddOp(self.start, ONE, nulls=False).partial_eval(SQLang).to_sql(schema)
         length = SubOp(self.end, self.start).partial_eval(SQLang).to_sql(schema)
-        sql = sql_call("SUBSTR", value.expr, start.expr, length.expr)
+        sql = SqlSubstrOp(value.expr, start.expr, length.expr)
         return SqlScript(jx_type=JX_TEXT, expr=sql, frum=self, miss=FALSE, schema=schema)

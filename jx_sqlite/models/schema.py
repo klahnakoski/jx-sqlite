@@ -6,13 +6,11 @@
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
 
-from typing import Set, Tuple
-
-from jx_base.models.nested_path import NestedPath
-
-from jx_base.models.snowflake import Snowflake
+from typing import Set, Tuple, List
 
 from jx_base import Column, Schema as _Schema
+from jx_base.expressions import Expression, SqlScript
+from jx_base.models.nested_path import NestedPath
 from jx_base.queries import get_property_name
 from mo_dots import (
     concat_field,
@@ -25,9 +23,10 @@ from mo_future import first
 from mo_json import EXISTS, OBJECT, STRUCT, to_jx_type, JxType
 from mo_logs import Log
 from mo_sql.utils import typed_column, SQL_ARRAY_KEY, untyped_column, untype_field, GUID
+from mo_sqlite.expressions import SqlVariable
 
 
-class Schema(_Schema):
+class Schema(_Schema, Expression):
     """
     A Schema MAPS ALL COLUMNS IN SNOWFLAKE FROM THE PERSPECTIVE OF A SINGLE TABLE (a nested_path)
     """
@@ -36,10 +35,12 @@ class Schema(_Schema):
         if not isinstance(nested_path, list) or nested_path[-1] == ".":
             Log.error(
                 "Expecting full nested path so we can track the tables, and deal with"
-                " abiguity in the event the names are not typed"
+                " ambiguity in the event the names are not typed"
             )
         self.nested_path = nested_path
         self.snowflake = snowflake
+
+        # TODO: ENSURE TO SET THE _jx_type ATTRIBUTE
 
     @property
     def path(self):
@@ -115,6 +116,16 @@ class Schema(_Schema):
             if r.many_table == many_name and endswith_field(r.ones_table, relative_path)
         ]
 
+    def rename_tables(self, name_map):
+        """
+        :param name_map: IN {new_name: old_name} FORM
+        :return: NEW SCHEMA WITH RENAMED TABLES
+        """
+        return Schema(
+            NestedPath([name_map.get(p, p) for p in self.nested_path]),
+            self.snowflake.rename_tables(name_map)
+        )
+
     def keys(self):
         """
         :return: ALL DYNAMIC TYPED COLUMN NAMES
@@ -125,7 +136,7 @@ class Schema(_Schema):
         return self.snowflake.namespace.columns.primary_keys.get(self.nested_path[0], tuple())
 
     @property
-    def columns(self):
+    def columns(self) -> List[Column]:
         return self.snowflake.namespace.columns.find(self.snowflake.fact_name)
 
     def get_type(self) -> JxType:
@@ -164,16 +175,16 @@ class Schema(_Schema):
             *(p for p in self.snowflake.query_paths if p.startswith(self.nested_path[0] + ".")),
         ]
 
-        for np in search_path:
-            rel_path, _ = untype_field(relative_field(np, self.snowflake.fact_name))
+        for q_path in search_path:
+            rel_path, _ = untype_field(relative_field(q_path, self.snowflake.fact_name))
             if startswith_field(prefix, rel_path):
                 prefix = relative_field(prefix, rel_path)
 
-            full_name = concat_field(np, prefix)
+            full_name = concat_field(q_path, prefix)
             output = set(
                 pair
                 for c in candidates
-                if startswith_field(c.nested_path[0], np)
+                if startswith_field(c.nested_path[0], q_path)
                 for pair in [first(
                     (untype_field(relative_field(k, full_name))[0], c)
                     for k in [
@@ -215,6 +226,9 @@ class Schema(_Schema):
                         fact_dict.setdefault(concat_field(var, c.name), []).append(c)
 
         return set_default(origin_dict, fact_dict)
+
+    def to_sql(self, schema) -> SqlScript:
+        return SqlVariable(*reversed(self.path), jx_type=self.jx_type)
 
 
 NO_SCHEMA = Schema([None], None)

@@ -25,13 +25,21 @@ class Namespace(jx_base.Namespace):
     def __init__(self, container):
         self.container = container
         self.columns = ColumnList(container.db)
-        self.relations = self._load_relations()
 
     def __copy__(self):
         output = object.__new__(Namespace)
         output.db = None
         output.columns = copy(self.columns)
         return output
+
+    def rename_tables(self, name_map):
+        output = object.__new__(Namespace)
+        output.db = None
+        output.columns = self.columns.rename_tables(name_map)
+        return output
+
+
+
 
     def get_facts(self, fact_name):
         snowflake = Snowflake(fact_name, self)
@@ -45,17 +53,13 @@ class Namespace(jx_base.Namespace):
         return Snowflake(fact_name, self)
 
     def get_relations(self):
-        return self.relations[:]
+        return self.columns.relations[:]
 
     def get_columns(self, table_name):
         return self.columns.find_columns(table_name)
 
     def get_tables(self):
         return list(sorted(self.columns.data.keys()))
-
-    def _load_relations(self):
-        db = self.container.db
-        return [r for t in db.get_tables() for r in db.get_relations(t.name)]
 
     def add_column_to_schema(self, column):
         self.columns.add(column)

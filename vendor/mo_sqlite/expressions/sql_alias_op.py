@@ -7,10 +7,11 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from mo_sql import SQL_OP, SQL_CP
-
 from jx_base.expressions import SqlAliasOp as _SqlAliasOp
-from mo_sqlite import SQL, SQL_AS, quote_column
+from mo_sqlite.expressions._utils import SQL
+from mo_sql import SQL_AS
+from mo_sql import SQL_OP, SQL_CP
+from mo_sqlite.utils import quote_column
 
 
 class SqlAliasOp(_SqlAliasOp, SQL):

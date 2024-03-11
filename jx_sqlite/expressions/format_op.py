@@ -9,7 +9,7 @@
 #
 
 
-from jx_base.expressions import FormatOp as FormatOp_
+from jx_base.expressions import FormatOp as FormatOp_, SqlScript
 
 
 class FormatOp(FormatOp_):

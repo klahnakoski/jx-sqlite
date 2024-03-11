@@ -15,7 +15,7 @@ from decimal import Decimal
 from time import time as unix_now
 
 from mo_dots import Null, null_types
-from mo_future import utcnow as _utcnow, utcfromtimestamp
+from mo_future import utcnow as _utcnow, utcfromtimestamp, allocate_lock
 from mo_imports import delay_import
 from mo_math import is_integer
 
@@ -480,7 +480,7 @@ _deformats = [
     "%d|%B|%y|%H|%M|%S",
     "%Y|%m|%d|%H|%M|%S|%f",
 ]
-
+attempts_locker = allocate_lock()
 attempts = [*(_formatted(f) for f in _datetime_formats), *(_deformatted(f) for f in _deformats)]
 
 
@@ -511,16 +511,17 @@ def unicode2Date(value, format=None):
     if any(n in value.lower() for n in ["now", "today", "eod", "tomorrow"] + list(MILLI_VALUES.keys())):
         return parse_time_expression(value)
 
-    for f in attempts:
-        try:
-            result = f(value)
-            attempts.remove(f)
-            attempts.insert(0, f)
-            return result
-        except Exception as cause:
-            pass
-    else:
-        logger.error("Can not interpret {{value}} as a datetime", value=value)
+    with attempts_locker:
+        for f in attempts:
+            try:
+                result = f(value)
+                attempts.remove(f)
+                attempts.insert(0, f)
+                return result
+            except Exception:
+                pass
+        else:
+            logger.error("Can not interpret {{value}} as a datetime", value=value)
 
 
 def datetime2unix(value):

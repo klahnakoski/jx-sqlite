@@ -9,12 +9,12 @@
 #
 
 
-from jx_base.expressions import SqlEqOp as SqlEqOp_
-from mo_sqlite import SQL_EQ, SQL
+from jx_base.expressions import SqlEqOp as _SqlEqOp
+from mo_sql import SQL_EQ, SQL
 
 
-class SqlEqOp(SqlEqOp_, SQL):
+class SqlEqOp(_SqlEqOp, SQL):
     def __iter__(self):
-        yield from self.lhs.sql
+        yield from self.lhs
         yield from SQL_EQ
-        yield from self.rhs.sql
+        yield from self.rhs

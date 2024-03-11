@@ -12,10 +12,10 @@
 from dataclasses import dataclass
 from typing import Dict, Tuple, Optional
 
-from jx_base.expressions import NULL
+from jx_base.expressions import NULL, SqlScript
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.select_op import SelectOp as _SelectOp
-from jx_sqlite.expressions.sql_script import SqlScript
+from mo_sqlite.expressions.sql_script import SqlScript
 from mo_json import JxType, JX_INTEGER
 from mo_sqlite import sql_alias, ConcatSQL, SQL_SELECT, sql_list, SQL_FROM, sql_iso
 
@@ -24,10 +24,7 @@ class SelectOp(_SelectOp):
     def __init__(self, frum, selects: Tuple[Dict[str, Expression]]):
         _SelectOp.__init__(self, frum, selects)
 
-    def apply(self, container):
-        print("details")
-
-    def to_sql(self, schema):
+    def to_sql(self, schema) -> SqlScript:
         return SqlScript(
             data_type=self.type,
             expr=ConcatSQL(

@@ -9,10 +9,9 @@
 #
 import mo_json
 from jx_base.domains import SimpleSetDomain
-from jx_base.expressions import TupleOp, NULL
+from jx_base.expressions import TupleOp, NULL, SqlScript
 from jx_base.language import is_op
 from jx_python import jx
-from jx_sqlite.models.facts import Facts
 from mo_collections.matrix import Matrix, index_to_coordinate
 from mo_dots import (
     Data,
@@ -23,7 +22,7 @@ from mo_dots import (
     from_data,
     literal_field,
 )
-from mo_future import transpose, extend
+from mo_future import transpose
 from mo_logs import Log
 
 
