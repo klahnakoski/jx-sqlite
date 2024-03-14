@@ -8,6 +8,7 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from dataclasses import is_dataclass, fields
+from typing import Optional
 
 from mo_dots import unwraplist, Data, is_missing
 from mo_future import allocate_lock as _allocate_lock
@@ -128,7 +129,7 @@ def table_to_list(result, *, as_dataclass):
     for row in result.data:
         obj = object.__new__(as_dataclass)
         obj.__dict__ = {
-            f.name: None if hi is None else value_to_type(row[hi], f.type)
+            f.name: None if hi is None else row.get(hi)
             for f, hi in zip(field_names, fields_to_index)
         }
         output.append(obj)

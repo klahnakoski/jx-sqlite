@@ -8,6 +8,7 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from dataclasses import dataclass
+from typing import Optional
 
 from jx_sqlite import Container
 from mo_files import File
@@ -127,12 +128,11 @@ class TestBasic(FuzzyTestCase):
         class Temp:
             name: str
             value: int
-            amount: float
+            amount: Optional[float]
 
         data = [
             Temp("a", 1, 1.1),
             Temp("b", 2, 2.1),
-
         ]
         db = Sqlite()
         table = Container(db).get_or_create_facts("temp")
