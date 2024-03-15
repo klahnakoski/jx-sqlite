@@ -181,6 +181,8 @@ def _scrub(value, is_done, stack, scrub_text, scrub_number):
         return scrub_number(value.seconds)
     elif type_ is str:
         return value.decode("utf8")
+    elif type_ is bytes:
+        return ''.join(f"\\x{char:02x}" if not 32 <= char <= 126 else chr(char) for char in value)
     elif type_ is Decimal:
         return scrub_number(value)
     elif type_ is Data:
@@ -414,7 +416,7 @@ def json2value(json_string, params=Null, flexible=False, leaves=False):
 
 
 def bytes2hex(value, separator=" "):
-    return separator.join("{:02X}".format(x) for x in value)
+    return separator.join(f"{x:02X}" for x in value)
 
 
 DATETIME_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)

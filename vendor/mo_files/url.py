@@ -76,8 +76,24 @@ class URL(object):
         return False
 
     def __truediv__(self, other):
+        if self.scheme == "file" and not self.path:
+            # keep relative path
+            path = str(other).lstrip('/')
+        else:
+            path = f"{self.path.rstrip('/')}/{str(other).lstrip('/')}"
+
+        parts = []
+        for step in path.split("/"):
+            if step == ".":  # IGNORE
+                pass
+            elif step == ".." and parts and (len(parts) > 1 or parts[0]):  # BACK UP
+                parts.pop()
+            else:
+                parts.append(step)
+        path = "/".join(parts)
+
         output = self.__copy__()
-        output.path = output.path.rstrip("/") + "/" + str(other).lstrip("/")
+        output.path = path
         return output
 
     def __add__(self, other):
