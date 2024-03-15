@@ -131,7 +131,7 @@ def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=
 
                 t = mo_dots.get_attr(test, literal_field(k))
                 assertAlmostEqual(t, e, msg=msg, digits=digits, places=places, delta=delta)
-        elif is_container(test) and isinstance(expected, set):
+        elif is_many(test) and isinstance(expected, set):
             test = set(to_data(t) for t in test)
             if len(test) != len(expected):
                 Log.error(

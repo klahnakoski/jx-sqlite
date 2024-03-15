@@ -121,16 +121,16 @@ def table_to_list(result, *, as_dataclass):
     field_names = fields(as_dataclass)
     fields_to_index = [None] * len(field_names)
     for fi, f in enumerate(field_names):
-        for hi, h in enumerate(result.header):
+        for index, h in enumerate(result.header):
             if untype_field(h)[0] == f.name:
-                fields_to_index[fi] = hi
+                fields_to_index[fi] = index
 
     output = []
     for row in result.data:
         obj = object.__new__(as_dataclass)
         obj.__dict__ = {
-            f.name: None if hi is None else row.get(hi)
-            for f, hi in zip(field_names, fields_to_index)
+            f.name: None if header_index is None else row[header_index]
+            for f, header_index in zip(field_names, fields_to_index)
         }
         output.append(obj)
     return output

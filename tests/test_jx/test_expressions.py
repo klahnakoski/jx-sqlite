@@ -10,7 +10,7 @@
 from jx_base import Column, JX, FALSE, TRUE, jx_expression
 from jx_base.utils import is_variable_name
 from jx_python.expressions import Python
-from mo_json import INTEGER, ARRAY
+from mo_json import INTEGER, ARRAY, ARRAY_KEY
 from mo_testing.fuzzytestcase import FuzzyTestCase, add_error_reporting
 from mo_times import Date, MONTH
 
@@ -73,7 +73,7 @@ class TestExpressions(FuzzyTestCase):
     def test_column_constraints(self):
         multi = Column(
             name="name",
-            es_column="es_column.~N~",
+            es_column=f"es_column.{ARRAY_KEY}",
             es_index="es_index",
             es_type="nested",
             json_type=ARRAY,
@@ -86,7 +86,7 @@ class TestExpressions(FuzzyTestCase):
         with self.assertRaises(Exception):
             Column(
                 name="name",
-                es_column="es_column.~N~",
+                es_column=f"es_column.{ARRAY_KEY}",
                 es_index="es_index",
                 es_type="es_type",
                 json_type=INTEGER,
@@ -98,7 +98,7 @@ class TestExpressions(FuzzyTestCase):
         with self.assertRaises(Exception):
             Column(
                 name="name",
-                es_column="es_column.~N~",
+                es_column=f"es_column.{ARRAY_KEY}",
                 es_index="es_index",
                 es_type="es_type",
                 json_type=INTEGER,
@@ -110,7 +110,7 @@ class TestExpressions(FuzzyTestCase):
         with self.assertRaises(Exception):
             Column(
                 name="name",
-                es_column="es_column.~N~",
+                es_column=f"es_column.{ARRAY_KEY}",
                 es_index="es_index",
                 es_type="es_type",
                 json_type=INTEGER,
@@ -122,7 +122,7 @@ class TestExpressions(FuzzyTestCase):
 
         row = Column(
             name="name",
-            es_column="es_column.~N~",
+            es_column=f"es_column.{ARRAY_KEY}",
             es_index="es_index",
             es_type="nested",
             json_type=ARRAY,
@@ -132,10 +132,8 @@ class TestExpressions(FuzzyTestCase):
             last_updated=Date.now(),
         )
 
-        def set_bad_multi():
+        with self.assertRaises(Exception):
             row.multi = None
-
-        self.assertRaises(Exception, set_bad_multi)
 
 
 class S(object):

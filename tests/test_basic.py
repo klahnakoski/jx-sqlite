@@ -150,3 +150,21 @@ class TestBasic(FuzzyTestCase):
         db = Sqlite()
         threads = [Thread.run(str(i), make_one, db) for i in range(100)]
         join_all_threads(threads)
+
+    def test_create_copy_of_table(self):
+        db = Sqlite()
+        container = Container(db)
+        table = container.get_or_create_facts("temp")
+        table.insert([
+            {"name":"1", "value":1, "amount":1.1},
+            {"name":"2", "value":2, "amount":2.2}
+        ])
+
+        with db.transaction() as t:
+            t.execute("create table temp2 as select * from temp limit 0")
+
+        table2 = container.get_or_create_facts("temp2")
+        result = table2.query({"format":"table"})
+        self.assertEqual(result, {"meta": {"format": "table"}, "header":{"name", "value", "amount"}, "data": []})
+
+

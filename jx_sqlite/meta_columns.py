@@ -22,7 +22,7 @@ from mo_dots import Data, Null, coalesce, is_data, is_list, startswith_field, un
 from mo_future import first
 from mo_json import STRUCT, IS_NULL
 from mo_json.typed_encoder import detype
-from mo_logs import Log
+from mo_logs import Log, logger
 from mo_sql.utils import sql_type_key_to_json_type, SQL_ARRAY_KEY
 from mo_threads import Queue, Lock
 from mo_times.dates import Date
@@ -114,6 +114,55 @@ class ColumnList(Table, Container):
         result.data = curr.fetchall()
         return result
 
+    def load_existing_table(self, table_name, known_tables=None):
+        """
+        IN THE EVENT SOMETHING ELSE MADE THE TABLE
+        """
+        if table_name in [vv for v in self._snowflakes.values() for vv in v]:
+            # ALREADY LOADED
+            return
+
+        tables = known_tables or self.db.get_tables()
+        if table_name not in tables.name:
+            logger.error("expecting table to be in database")
+
+        # CONSTRUCT NESTED PATH, MAKE PARENT TABLES TOO
+        full_nested_path = []
+        for table in tables:
+            if startswith_field(table_name, table.name) and table_name != table.name:
+                self.load_existing_table(table.name, known_tables)
+                full_nested_path = [table.name, *full_nested_path]
+
+        if not full_nested_path and table_name not in self._snowflakes:
+            self._snowflakes[table_name] = []
+        full_nested_path = [table_name, *full_nested_path]
+        self._snowflakes[full_nested_path[-1]].append(table_name)
+
+        # LOAD THE COLUMNS
+        details = self.db.about(table_name)
+
+        for cid, name, sql_type, notnull, dfft_value, pk in details:
+            if name.startswith("__"):
+                continue
+            cname, sql_type_key = untyped_column(name)
+            self.add(Column(
+                name=cname,
+                json_type=coalesce(
+                    sql_type_key_to_json_type.get(sql_type_key),
+                    sql_type_key_to_json_type.get(sql_type),
+                    IS_NULL,
+                ),
+                nested_path=full_nested_path,
+                es_type=sql_type,
+                es_column=name,
+                es_index=table.name,
+                multi=1,
+                last_updated=Date.now(),
+            ))
+
+        self.relations = [r for t in tables for r in self.db.get_relations(t.name)]
+
+
     def _load_from_database(self):
         # FIND ALL TABLES
         tables = self.db.get_tables()
@@ -143,16 +192,18 @@ class ColumnList(Table, Container):
                 self.add(Column(
                     name=cname,
                     json_type=coalesce(
-                        sql_type_key_to_json_type.get(sql_type_key), sql_type_key_to_json_type.get(sql_type), IS_NULL,
+                        sql_type_key_to_json_type.get(sql_type_key),
+                        sql_type_key_to_json_type.get(sql_type),
+                        IS_NULL,
                     ),
-                    nested_path=[table.name],
+                    nested_path=full_nested_path,
                     es_type=sql_type,
                     es_column=name,
                     es_index=table.name,
                     multi=1,
                     last_updated=Date.now(),
                 ))
-            last_nested_path = full_nested_path
+            last_nested_path=full_nested_path
 
         self.relations = [r for t in tables for r in self.db.get_relations(t.name)]
 
