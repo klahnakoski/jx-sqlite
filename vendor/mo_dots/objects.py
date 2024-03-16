@@ -24,20 +24,21 @@ from mo_future import (
 )
 from mo_imports import export, expect
 
-from mo_dots.datas import register_data, Data, _iadd
-from mo_dots.lists import FlatList
+from mo_dots.datas import register_data, Data, _iadd, dict_to_data
+from mo_dots.lists import FlatList, list_to_data
 from mo_dots.nones import NullType, Null
 from mo_dots.utils import CLASS, SLOT, get_logger
 
-get_attr, set_attr, list_to_data, dict_to_data, to_data, from_data, set_default = expect(
-    "get_attr", "set_attr", "list_to_data", "dict_to_data", "to_data", "from_data", "set_default"
+get_attr, set_attr, to_data, from_data, set_default = expect(
+    "get_attr", "set_attr", "to_data", "from_data", "set_default"
 )
 
 _new = object.__new__
 _get = object.__getattribute__
 _set = object.__setattr__
-WRAPPED_CLASSES = set()
 
+WRAPPED_CLASSES = set()
+known_types = {}  #  map from type to field names
 
 class DataObject(Mapping):
     """
@@ -89,12 +90,23 @@ class DataObject(Mapping):
             pass
 
         _type = obj.__class__
+        keys = known_types.get(_type)
+        if keys:
+            return keys
+
         try:
-            return _type.__slots__
+            keys = _type.__slots__
+            known_types[_type] = keys
+            return keys
         except Exception:
             pass
 
-        raise Exception("cannot get keys")
+        keys=known_types[_type]=tuple(
+            k
+            for k in dir(_type)
+            if getattr(_type, k).__class__.__name__ in ['member_descriptor', 'getset_descriptor']
+        )
+        return keys
 
     def items(self):
         keys = self.keys()
@@ -159,9 +171,6 @@ def object_to_data(v):
     return DataObject(v)
 
 
-datawrap = object_to_data
-
-
 class DataClass(object):
     """
     ALLOW INSTANCES OF class_ TO ACT LIKE dicts
@@ -202,5 +211,4 @@ def params_pack(params, *args):
     return output
 
 
-export("mo_dots.lists", "object_to_data", object_to_data)
-export("mo_dots.lists", "datawrap", object_to_data)
+export("mo_dots.lists", object_to_data)
