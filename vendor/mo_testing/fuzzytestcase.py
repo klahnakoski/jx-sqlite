@@ -14,13 +14,13 @@ import types
 import unittest
 from unittest import SkipTest, TestCase
 
-from mo_collections.unique_index import UniqueIndex
 import mo_dots
-from mo_dots import coalesce, is_container, is_list, literal_field, from_data, to_data, is_data, is_many
+import mo_math
+from mo_collections.unique_index import UniqueIndex
+from mo_dots import coalesce, is_list, literal_field, from_data, to_data, is_data, is_many
 from mo_future import is_text, zip_longest, first, get_function_name
 from mo_logs import Except, Log, suppress_exception
 from mo_logs.strings import expand_template, quote
-import mo_math
 from mo_math import is_number, log10
 from mo_times import dates
 
@@ -131,7 +131,7 @@ def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=
 
                 t = mo_dots.get_attr(test, literal_field(k))
                 assertAlmostEqual(t, e, msg=msg, digits=digits, places=places, delta=delta)
-        elif is_container(test) and isinstance(expected, set):
+        elif is_many(test) and isinstance(expected, set):
             test = set(to_data(t) for t in test)
             if len(test) != len(expected):
                 Log.error(

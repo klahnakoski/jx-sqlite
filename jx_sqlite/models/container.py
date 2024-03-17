@@ -6,12 +6,11 @@
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
 from jx_base import jx_expression, Column
-from jx_base.expressions import Expression, Variable, is_literal, GetOp, SqlScript, SqlScript
+from jx_base.expressions import Expression, Variable, is_literal, GetOp, SqlScript
 from jx_base.language import is_op
 from jx_base.models.container import Container as _Container
 from jx_base.utils import UID, GUID
 from jx_sqlite.expressions.sql_select_all_from_op import SqlSelectAllFromOp
-from mo_dots import set_default
 from mo_future import first, NEXT
 from mo_imports import expect
 from mo_json import STRING
@@ -71,7 +70,7 @@ class Container(_Container):
                 with self.db.transaction() as t:
                     top_id = first(first(
                         t
-                        .query(ConcatSQL(SQL_SELECT, quote_column("next_id"), SQL_FROM, quote_column(ABOUT_TABLE),))
+                        .query(ConcatSQL(SQL_SELECT, quote_column("next_id"), SQL_FROM, quote_column(ABOUT_TABLE)), raw=True)
                         .data
                     ))
                     max_id = top_id + 1000
@@ -170,7 +169,9 @@ class Container(_Container):
         :return: Facts
         """
         about = self.db.about(fact_name)
-        if not about:
+        if about:
+            self.namespace.columns.load_existing_table(fact_name)
+        else:
             if uid != UID:
                 logger.error("do not know how to handle yet")
 

@@ -9,15 +9,15 @@
 #
 from dataclasses import is_dataclass, fields
 
-from mo_dots import unwraplist, Data, is_missing
+from mo_dots import unwraplist, Data, is_missing, dict_to_data
 from mo_future import allocate_lock as _allocate_lock
+from mo_json import to_jx_type, union_type
 from mo_logs import Except, logger
 from mo_logs.exceptions import get_stacktrace
 from mo_sql import sql_iso
-from mo_sql.utils import untype_field
-from mo_threads import Lock
-
+from mo_sql.utils import untype_field, sql_type_key_to_json_type
 from mo_sqlite.utils import CommandItem, FORMAT_COMMAND, ROLLBACK, COMMIT, quote_column
+from mo_threads import Lock
 
 
 class Transaction(object):
@@ -79,7 +79,14 @@ class Transaction(object):
         except Exception as e:
             logger.error("problem running commands", current=c, cause=e)
 
-    def query(self, query, *, as_dataclass=None):
+    def query(
+        self,
+        query,
+        *,
+        format="table",  # RETURN TABLE OR LIST
+        as_dataclass=None,  # RETURN TABLE AS LIST OF DATACLASS OBJECTS
+        raw=False,  # raw=False WILL UNTYPE THE DATA
+    ):
         if self.db.closed:
             logger.error("database is closed")
 
@@ -91,10 +98,35 @@ class Transaction(object):
         signal.acquire()
         if result.exception:
             logger.error("Problem with Sqlite call", cause=result.exception)
-        if as_dataclass is None:
-            # RETURN TABLE
+        if raw:
             return result
-        return table_to_list(result, as_dataclass=as_dataclass)
+        if as_dataclass is None:
+            if not result.header:
+                return result
+            # REMOVE TYPING
+            clean_header, jx_type = zip(*(
+                (name, name+to_jx_type(json_type))
+                for h in result.header
+                for name, json_type in [untype_field(h)]
+            ))
+            jx_type = union_type(*jx_type)
+            if format == "list":
+                return dict_to_data({
+                    "meta": {"format": "list"},
+                    "type": jx_type,
+                    "data": [{h: c for h, c in zip(clean_header, row)} for row in result.data]
+                })
+            else:
+                # RETURN TABLE
+                return dict_to_data({
+                    "meta": result.meta,
+                    "type": jx_type,
+                    "header": clean_header,
+                    "data": result.data
+                })
+        else:
+            result.header = [untype_field(h)[0] for h in result.header]
+            return table_to_list(result, as_dataclass=as_dataclass)
 
     def about(self, table_name):
         """
@@ -102,7 +134,7 @@ class Transaction(object):
         :return: SOME INFORMATION ABOUT THE TABLE
             (cid, name, dtype, notnull, dfft_value, pk) tuples
         """
-        details = self.query("PRAGMA table_info" + sql_iso(quote_column(table_name)))
+        details = self.query("PRAGMA table_info" + sql_iso(quote_column(table_name)), raw=True)
         return details.data
 
     def rollback(self):
@@ -120,16 +152,16 @@ def table_to_list(result, *, as_dataclass):
     field_names = fields(as_dataclass)
     fields_to_index = [None] * len(field_names)
     for fi, f in enumerate(field_names):
-        for hi, h in enumerate(result.header):
-            if untype_field(h)[0] == f.name:
-                fields_to_index[fi] = hi
+        for index, h in enumerate(result.header):
+            if h == f.name:
+                fields_to_index[fi] = index
 
     output = []
     for row in result.data:
         obj = object.__new__(as_dataclass)
         obj.__dict__ = {
-            f.name: None if hi is None else value_to_type(row[hi], f.type)
-            for f, hi in zip(field_names, fields_to_index)
+            f.name: None if header_index is None else row[header_index]
+            for f, header_index in zip(field_names, fields_to_index)
         }
         output.append(obj)
     return output

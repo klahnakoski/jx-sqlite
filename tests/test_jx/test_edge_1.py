@@ -2029,7 +2029,7 @@ class TestEdge1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "not sure what first() of nested column would be.  requires schema merging of a.b.~n~ and a.~N~.b.~n~")
+    @skipIf(global_settings.use == "sqlite", "not sure what first() of nested column would be.  requires schema merging of a.b.~n~ and a.~a~.b.~n~")
     def test_shallow_with_deep_edge(self):
         test = {
             "data": [

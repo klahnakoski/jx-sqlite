@@ -8,6 +8,7 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from dataclasses import dataclass
+from typing import Optional
 
 from jx_sqlite import Container
 from mo_files import File
@@ -127,12 +128,11 @@ class TestBasic(FuzzyTestCase):
         class Temp:
             name: str
             value: int
-            amount: float
+            amount: Optional[float]
 
         data = [
             Temp("a", 1, 1.1),
             Temp("b", 2, 2.1),
-
         ]
         db = Sqlite()
         table = Container(db).get_or_create_facts("temp")
@@ -150,3 +150,38 @@ class TestBasic(FuzzyTestCase):
         db = Sqlite()
         threads = [Thread.run(str(i), make_one, db) for i in range(100)]
         join_all_threads(threads)
+
+    def test_create_copy_of_table(self):
+        db = Sqlite()
+        container = Container(db)
+        table = container.get_or_create_facts("temp")
+        table.insert([
+            {"name":"1", "value":1, "amount":1.1},
+            {"name":"2", "value":2, "amount":2.2}
+        ])
+
+        with db.transaction() as t:
+            t.execute("create table temp2 as select * from temp limit 0")
+
+        table2 = container.get_or_create_facts("temp2")
+        result = table2.query({"format":"table"})
+        self.assertEqual(result, {"meta": {"format": "table"}, "header":{"name", "value", "amount"}, "data": []})
+
+    def test_insert_typed_json(self):
+        db = Sqlite()
+        container = Container(db)
+        table = container.get_or_create_facts("temp")
+        table.insert([
+            {"name":"1", "value":1, "amount":1.1},
+            {"name":"2", "value":2, "amount":2.2}
+        ])
+
+        with db.transaction() as t:
+            result = t.query("select * from temp", format="list")
+
+        self.assertEqual(result, {"data":[
+            {"name":"1", "value":1, "amount":1.1},
+            {"name":"2", "value":2, "amount":2.2}
+        ]})
+
+

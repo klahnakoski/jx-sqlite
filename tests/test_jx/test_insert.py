@@ -18,9 +18,9 @@ class TestInsert(BaseTestCase):
         name = self.utils.table.name
         self.assertIn(name, db.get_tables().name)
         with db.transaction() as t:
-            facts = table2list(t.query(sql_query({"from": name})))
+            facts = table2list(t.query(sql_query({"from": name}), raw=True))
             self.assertAlmostEqual(facts, [{"v.$N": 0}])
-            branches = table2list(t.query(sql_query({"from": name + ".a._b.$A"})))
+            branches = table2list(t.query(sql_query({"from": name + ".a._b.$A"}), raw=True))
             self.assertAlmostEqual(
                 branches,
                 [{"a.$N": 0, "b.$N": 7}, {"a.$N": 1, "b.$N": 6}, {"a.$N": 2, "b.$N": 5}, {"a.$N": 3, "b.$N": 4}],
@@ -40,9 +40,9 @@ class TestInsert(BaseTestCase):
         name = self.utils.table.name
         self.assertIn(name, db.get_tables().name)
         with db.transaction() as t:
-            facts = table2list(t.query(sql_query({"from": name})))
+            facts = table2list(t.query(sql_query({"from": name}), raw=True))
             self.assertAlmostEqual(facts, [{"v.$N": 0}, {"v.$N": 11}])
-            branches = table2list(t.query(sql_query({"from": name + ".a._b.$A"})))
+            branches = table2list(t.query(sql_query({"from": name + ".a._b.$A"}), raw=True))
             self.assertAlmostEqual(
                 branches,
                 [

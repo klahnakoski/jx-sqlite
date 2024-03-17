@@ -64,7 +64,7 @@ def get(url):
             except Exception as cause:
                 causes.append(cause)
         else:
-            logger.error("problem replacing ref in {{url}}", url=url, causes=causes)
+            logger.error("problem replacing ref in {{url}}", url=url, cause=causes)
     else:
         phase1 = _replace_ref(path, URL(""))  # BLANK URL ONLY WORKS IF url IS ABSOLUTE
 

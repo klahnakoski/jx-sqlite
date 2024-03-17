@@ -17,7 +17,7 @@ from mo_dots import (
     to_data,
     leaves_to_data,
     null_types,
-    is_list,
+    is_list, from_data, exists,
 )
 from mo_dots.objects import DataObject
 from mo_future import (
@@ -28,8 +28,9 @@ from mo_future import (
 from mo_imports import delay_import
 from mo_logs import Except, strings
 from mo_logs.strings import toString, FORMATTERS
-from mo_times import Duration
+from mo_times import Duration, Timer
 
+from mo_json.scrubber import Scrubber, _keep_whitespace, trim_whitespace
 from mo_json.types import *
 
 logger = delay_import("mo_logs.logger")
@@ -112,145 +113,8 @@ def _snap_to_base_10(mantissa):
     return digits, 0
 
 
-def _scrub_number(value):
-    d = float(value)
-    i_d = int(d)
-    if float(i_d) == d:
-        return i_d
-    else:
-        return d
-
-
-def _keep_whitespace(value):
-    if value.strip():
-        return value
-    else:
-        return None
-
-
-def trim_whitespace(value):
-    value_ = value.strip()
-    if value_:
-        return value_
-    else:
-        return None
-
-
-def is_number(s):
-    try:
-        s = float(s)
-        return not math.isnan(s)
-    except Exception:
-        return False
-
-
-def scrub(value, scrub_text=_keep_whitespace, scrub_number=_scrub_number):
-    """
-    REMOVE/REPLACE VALUES THAT CAN NOT BE JSON-IZED
-    """
-    return _scrub(value, set(), [], scrub_text=scrub_text, scrub_number=scrub_number)
-
-
-def _scrub(value, is_done, stack, scrub_text, scrub_number):
-    if FIND_LOOPS:
-        _id = id(value)
-        if _id in stack and type(_id).__name__ not in ["int"]:
-            logger.error("loop in JSON")
-        stack = stack + [_id]
-    type_ = value.__class__
-
-    if type_ in null_types:
-        return None
-    elif type_ is text:
-        return scrub_text(value)
-    elif type_ is float:
-        if math.isnan(value) or math.isinf(value):
-            return None
-        return scrub_number(value)
-    elif type_ is bool:
-        return value
-    elif type_ in integer_types:
-        return scrub_number(value)
-    elif type_ in (date, datetime):
-        return scrub_number(datetime2unix(value))
-    elif type_ is timedelta:
-        return value.total_seconds()
-    elif type_ is Date:
-        return scrub_number(value.unix)
-    elif type_ is Duration:
-        return scrub_number(value.seconds)
-    elif type_ is str:
-        return value.decode("utf8")
-    elif type_ is Decimal:
-        return scrub_number(value)
-    elif type_ is Data:
-        return _scrub(_get(value, SLOT), is_done, stack, scrub_text, scrub_number)
-    elif is_data(value):
-        _id = id(value)
-        if _id in is_done:
-            # logger.warning("possible loop in structure detected")
-            return '"<LOOP IN STRUCTURE>"'
-        is_done.add(_id)
-        try:
-            output = {}
-            for k, v in value.items():
-                if is_text(k):
-                    pass
-                elif is_binary(k):
-                    k = k.decode("utf8")
-                else:
-                    logger.error("keys must be strings")
-                v = _scrub(v, is_done, stack, scrub_text, scrub_number)
-                if v != None or is_data(v):
-                    output[k] = v
-        finally:
-            is_done.discard(_id)
-        return output
-    elif type_ in (tuple, list, FlatList):
-        output = []
-        for v in value:
-            v = _scrub(v, is_done, stack, scrub_text, scrub_number)
-            output.append(v)
-        return output  # if output else None
-    elif type_ is type:
-        return value.__name__
-    elif type_.__name__ == "bool_":  # DEAR ME!  Numpy has it's own booleans (value==False could be used, but 0==False in Python.  DOH!)
-        if value == False:
-            return False
-        else:
-            return True
-    elif not isinstance(value, Except) and isinstance(value, Exception):
-        return _scrub(Except.wrap(value), is_done, stack, scrub_text, scrub_number)
-    elif hasattr(value, "__json__"):
-        try:
-            j = value.__json__()
-            if is_text(j):
-                data = json_decoder(j)
-            else:
-                data = json_decoder("".join(j))
-            return _scrub(data, is_done, stack, scrub_text, scrub_number)
-        except Exception as cause:
-            logger.error("problem with calling __json__()", cause)
-    elif hasattr(value, "__data__"):
-        try:
-            return _scrub(value.__data__(), is_done, stack, scrub_text, scrub_number)
-        except Exception as cause:
-            logger.error("problem with calling __data__()", cause)
-    elif hasattr(value, "co_code") or hasattr(value, "f_locals"):
-        return None
-    elif hasattr(value, "__iter__"):
-        output = []
-        for v in value:
-            v = _scrub(v, is_done, stack, scrub_text, scrub_number)
-            output.append(v)
-        return output
-    elif hasattr(value, "__call__"):
-        return str(repr(value))
-    elif is_number(value):
-        # for numpy values
-        return scrub_number(value)
-    else:
-        return _scrub(DataObject(value), is_done, stack, scrub_text, scrub_number)
+def scrub(value, keep_whitespace=True):
+    return Scrubber(scrub_text=_keep_whitespace if keep_whitespace else trim_whitespace).scrub(value)
 
 
 def value2json(obj, pretty=False, sort_keys=False, keep_whitespace=True):
@@ -261,8 +125,8 @@ def value2json(obj, pretty=False, sort_keys=False, keep_whitespace=True):
     :param keep_whitespace: False TO strip() THE WHITESPACE IN THE VALUES
     :return:
     """
-    if FIND_LOOPS:
-        obj = scrub(obj, scrub_text=_keep_whitespace if keep_whitespace else trim_whitespace)
+    with Timer("scrub", too_long=0.1):
+        obj = Scrubber(scrub_text=_keep_whitespace if keep_whitespace else trim_whitespace).scrub(obj)
     try:
         json = json_encoder(obj, pretty=pretty)
         if json == None:
@@ -414,33 +278,7 @@ def json2value(json_string, params=Null, flexible=False, leaves=False):
 
 
 def bytes2hex(value, separator=" "):
-    return separator.join("{:02X}".format(x) for x in value)
-
-
-DATETIME_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
-
-DATE_EPOCH = date(1970, 1, 1)
-
-
-def datetime2unix(value):
-    try:
-        if value == None:
-            return None
-        elif isinstance(value, datetime):
-            if value.tzinfo:
-                diff = value - DATETIME_EPOCH
-            else:
-                diff = value - DATETIME_EPOCH.replace(tzinfo=None)
-            return diff.total_seconds()
-        elif isinstance(value, date):
-            diff = value - DATE_EPOCH
-            return diff.total_seconds()
-        else:
-            logger.error(
-                "Can not convert {{value}} of type {{type}}", value=value, type=value.__class__,
-            )
-    except Exception as e:
-        logger.error("Can not convert {{value}}", value=value, cause=e)
+    return separator.join(f"{x:02X}" for x in value)
 
 
 _variable_pattern = re.compile(r"\{\{([\w_\.]+(\|[^\}^\|]+)*)\}\}")
