@@ -10,17 +10,17 @@
 
 
 
-from unittest import skip, skipIf
-
-from jx_base.expressions.select_op import SelectOp, normalize_one
+from unittest import skipIf
 
 from jx_base.expressions.query_op import _normalize_edges
+from jx_base.expressions.select_op import normalize_one
 from mo_dots import Null
 from mo_json import json2value, value2json
-from mo_testing.fuzzytestcase import FuzzyTestCase
+from mo_testing.fuzzytestcase import FuzzyTestCase, add_error_reporting
 from tests.test_jx import global_settings
 
 
+@add_error_reporting
 class TestQueryNormalization(FuzzyTestCase):
     def test_complex_edge_with_no_name(self):
         edge = {"value": ["a", "c"]}

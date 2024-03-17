@@ -100,13 +100,13 @@ class Scrubber:
         }
         self.more_scrubbers = [
             # (TEST, SCRUB) PAIRS
+            (lambda value: hasattr(value, "__json__"), lambda value, is_done, stack: self._scrub_json(value, is_done, stack)),
+            (lambda value: hasattr(value, "__data__"), lambda value, is_done, stack: self._scrub(value.__data__(), is_done, stack)),
+            (lambda value: isinstance(value, Exception), lambda value, is_done, stack: self._scrub(Except.wrap(value), is_done, stack)),
             (is_number, scrub_number),
             (lambda value: value.__class__.__name__ == "bool_", lambda value, is_done, stack: False if value == False else True),
             (lambda value: hasattr(value, "co_code") or hasattr(value, "f_locals"), lambda value, is_done, stack: None),
             (lambda value: hasattr(value, "__call__"), lambda value, is_done, stack: str(repr(value))),
-            (lambda value: hasattr(value, "__json__"), lambda value, is_done, stack: self._scrub_json(value, is_done, stack)),
-            (lambda value: hasattr(value, "__data__"), lambda value, is_done, stack: self._scrub(value.__data__(), is_done, stack)),
-            (lambda value: isinstance(value, Exception), lambda value, is_done, stack: self._scrub(Except.wrap(value), is_done, stack))
         ]
 
     def scrub(self, value):
@@ -131,8 +131,11 @@ class Scrubber:
             return scrubber(value, is_done, stack)
 
         for test, scrub in self.more_scrubbers:
-            if test(value):
-                return scrub(value, is_done, stack)
+            try:
+                if test(value):
+                    return scrub(value, is_done, stack)
+            except Exception:
+                pass
         # FINALLY, WRAP IN OBJECT AND ATTEMPT TO SERIALIZE
         return self._scrub_data(DataObject(value), is_done, stack)
 
