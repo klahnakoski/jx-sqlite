@@ -167,4 +167,21 @@ class TestBasic(FuzzyTestCase):
         result = table2.query({"format":"table"})
         self.assertEqual(result, {"meta": {"format": "table"}, "header":{"name", "value", "amount"}, "data": []})
 
+    def test_insert_typed_json(self):
+        db = Sqlite()
+        container = Container(db)
+        table = container.get_or_create_facts("temp")
+        table.insert([
+            {"name":"1", "value":1, "amount":1.1},
+            {"name":"2", "value":2, "amount":2.2}
+        ])
+
+        with db.transaction() as t:
+            result = t.query("select * from temp", format="list")
+
+        self.assertEqual(result, {"data":[
+            {"name":"1", "value":1, "amount":1.1},
+            {"name":"2", "value":2, "amount":2.2}
+        ]})
+
 

@@ -70,7 +70,7 @@ class Container(_Container):
                 with self.db.transaction() as t:
                     top_id = first(first(
                         t
-                        .query(ConcatSQL(SQL_SELECT, quote_column("next_id"), SQL_FROM, quote_column(ABOUT_TABLE),))
+                        .query(ConcatSQL(SQL_SELECT, quote_column("next_id"), SQL_FROM, quote_column(ABOUT_TABLE)), raw=True)
                         .data
                     ))
                     max_id = top_id + 1000
