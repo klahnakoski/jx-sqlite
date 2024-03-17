@@ -9,7 +9,7 @@
 #
 from dataclasses import is_dataclass, fields
 
-from mo_dots import unwraplist, Data, is_missing
+from mo_dots import unwraplist, Data, is_missing, dict_to_data
 from mo_future import allocate_lock as _allocate_lock
 from mo_json import to_jx_type, union_type
 from mo_logs import Except, logger
@@ -110,20 +110,20 @@ class Transaction(object):
                 for name, json_type in [untype_field(h)]
             ))
             jx_type = union_type(*jx_type)
-            if format=="list":
-                return {
-                    "meta":{"format":"list"},
-                    "type":jx_type,
-                    "data":[{h:c for h, c in zip(clean_header, row)} for row in result.data]
-                }
+            if format == "list":
+                return dict_to_data({
+                    "meta": {"format": "list"},
+                    "type": jx_type,
+                    "data": [{h: c for h, c in zip(clean_header, row)} for row in result.data]
+                })
             else:
                 # RETURN TABLE
-                return {
+                return dict_to_data({
                     "meta": result.meta,
                     "type": jx_type,
-                    "header":clean_header,
-                    "data":result.data
-                }
+                    "header": clean_header,
+                    "data": result.data
+                })
         else:
             result.header = [untype_field(h)[0] for h in result.header]
             return table_to_list(result, as_dataclass=as_dataclass)
