@@ -9,13 +9,13 @@
 #
 from dataclasses import is_dataclass, fields
 
-from mo_dots import unwraplist, Data, is_missing, dict_to_data
+from mo_dots import unwraplist, Data, is_missing, dict_to_data, from_data, leaves_to_data
 from mo_future import allocate_lock as _allocate_lock
 from mo_json import to_jx_type, union_type
 from mo_logs import Except, logger
 from mo_logs.exceptions import get_stacktrace
 from mo_sql import sql_iso
-from mo_sql.utils import untype_field, sql_type_key_to_json_type
+from mo_sql.utils import untype_field, sql_type_key_to_json_type, GUID, UID
 from mo_sqlite.utils import CommandItem, FORMAT_COMMAND, ROLLBACK, COMMIT, quote_column
 from mo_threads import Lock
 
@@ -105,16 +105,23 @@ class Transaction(object):
                 return result
             # REMOVE TYPING
             clean_header, jx_type = zip(*(
-                (name, name+to_jx_type(json_type))
+                (name, name+to_jx_type(json_type) if name not in (GUID, UID) else None)
                 for h in result.header
                 for name, json_type in [untype_field(h)]
             ))
-            jx_type = union_type(*jx_type)
+            jx_type = union_type(*(t for t in jx_type if t))
             if format == "list":
+                clean_data = []
+                for row in result.data:
+                    clean_row = Data()
+                    for h, c in zip(clean_header, row):
+                        if h not in (GUID, UID):
+                            clean_row |= leaves_to_data({h:c})
+                    clean_data.append(from_data(clean_row))
                 return dict_to_data({
                     "meta": {"format": "list"},
                     "type": jx_type,
-                    "data": [{h: c for h, c in zip(clean_header, row)} for row in result.data]
+                    "data": clean_data
                 })
             else:
                 # RETURN TABLE
