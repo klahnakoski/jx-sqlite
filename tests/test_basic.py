@@ -123,7 +123,6 @@ class TestBasic(FuzzyTestCase):
         self.assertNotIn("temp", db.get_tables().name)
 
     def test_insert_dataclass(self):
-
         @dataclass
         class Temp:
             name: str
@@ -143,7 +142,6 @@ class TestBasic(FuzzyTestCase):
         self.assertEqual(result, data)
 
     def test_many_container(self):
-
         def make_one(db, please_stop):
             return Container(db)
 
@@ -155,33 +153,35 @@ class TestBasic(FuzzyTestCase):
         db = Sqlite()
         container = Container(db)
         table = container.get_or_create_facts("temp")
-        table.insert([
-            {"name":"1", "value":1, "amount":1.1},
-            {"name":"2", "value":2, "amount":2.2}
-        ])
+        table.insert([{"name": "1", "value": 1, "amount": 1.1}, {"name": "2", "value": 2, "amount": 2.2}])
 
         with db.transaction() as t:
             t.execute("create table temp2 as select * from temp limit 0")
 
         table2 = container.get_or_create_facts("temp2")
-        result = table2.query({"format":"table"})
-        self.assertEqual(result, {"meta": {"format": "table"}, "header":{"name", "value", "amount"}, "data": []})
+        result = table2.query({"format": "table"})
+        self.assertEqual(result, {"meta": {"format": "table"}, "header": {"name", "value", "amount"}, "data": []})
 
-    def test_insert_typed_json(self):
+    def test_query_w_format(self):
         db = Sqlite()
         container = Container(db)
         table = container.get_or_create_facts("temp")
-        table.insert([
-            {"name":"1", "value":1, "amount":1.1},
-            {"name":"2", "value":2, "amount":2.2}
-        ])
+        table.insert([{"name": "1", "value": 1, "amount": 1.1}, {"name": "2", "value": 2, "amount": 2.2}])
 
         with db.transaction() as t:
             result = t.query("select * from temp", format="list")
 
-        self.assertEqual(result, {"data":[
-            {"name":"1", "value":1, "amount":1.1},
-            {"name":"2", "value":2, "amount":2.2}
-        ]})
+        self.assertEqual(
+            result, {"data": [{"name": "1", "value": 1, "amount": 1.1}, {"name": "2", "value": 2, "amount": 2.2}]}
+        )
 
+    def test_query_w_format_multi_type(self):
+        db = Sqlite()
+        container = Container(db)
+        table = container.get_or_create_facts("temp")
+        table.insert(["1", 2, 3.3])
 
+        with db.transaction() as t:
+            result = t.query("select * from temp", format="list")
+
+        self.assertEqual(result, {"type": {"~s~": "string", "~n~":"number"}, "data": ["1", 2, 3.3]})
