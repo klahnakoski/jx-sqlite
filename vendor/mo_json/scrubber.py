@@ -76,7 +76,6 @@ def datetime2unix(value):
 
 
 class Scrubber:
-
     def __init__(self, scrub_text=_keep_whitespace, scrub_number=_scrub_number):
         self.scrub_text = lambda value, is_done, stack: scrub_text(value)
         self.scrub_number = lambda value, is_done, stack: scrub_number(value)
@@ -84,7 +83,9 @@ class Scrubber:
         self.scrubbers = {
             **{t: lambda value, is_done, stack: None for t in null_types},
             str: self.scrub_text,
-            float: lambda value, is_done, stack: None if math.isnan(value) or math.isinf(value) else scrub_number(value),
+            float: lambda value, is_done, stack: None
+            if math.isnan(value) or math.isinf(value)
+            else scrub_number(value),
             **{t: self.scrub_number for t in integer_types},
             **{t: self._scrub_many for t in lists.many_types},
             **{t: self._scrub_data for t in datas.data_types},
@@ -94,18 +95,33 @@ class Scrubber:
             timedelta: lambda value, is_done, stack: scrub_number(value.total_seconds()),
             Date: lambda value, is_done, stack: scrub_number(value.unix),
             Duration: lambda value, is_done, stack: scrub_number(value.seconds),
-            bytes: lambda value, is_done, stack: value.decode('latin1'),
+            bytes: lambda value, is_done, stack: value.decode("latin1"),
             Decimal: lambda value, is_done, stack: scrub_number(value),
-            type: lambda value, is_done, stack: value.__name__
+            type: lambda value, is_done, stack: value.__name__,
         }
         self.more_scrubbers = [
             # (TEST, SCRUB) PAIRS
-            (lambda value: hasattr(value, "__json__"), lambda value, is_done, stack: self._scrub_json(value, is_done, stack)),
-            (lambda value: hasattr(value, "__data__"), lambda value, is_done, stack: self._scrub(value.__data__(), is_done, stack)),
-            (lambda value: isinstance(value, Exception), lambda value, is_done, stack: self._scrub(Except.wrap(value), is_done, stack)),
+            (
+                lambda value: hasattr(value, "__json__"),
+                lambda value, is_done, stack: self._scrub_json(value, is_done, stack),
+            ),
+            (
+                lambda value: hasattr(value, "__data__"),
+                lambda value, is_done, stack: self._scrub(value.__data__(), is_done, stack),
+            ),
+            (
+                lambda value: isinstance(value, Exception),
+                lambda value, is_done, stack: self._scrub(Except.wrap(value), is_done, stack),
+            ),
             (is_number, scrub_number),
-            (lambda value: value.__class__.__name__ == "bool_", lambda value, is_done, stack: False if value == False else True),
-            (lambda value: hasattr(value, "co_code") or hasattr(value, "f_locals"), lambda value, is_done, stack: None),
+            (
+                lambda value: value.__class__.__name__ == "bool_",
+                lambda value, is_done, stack: False if value == False else True,
+            ),
+            (
+                lambda value: hasattr(value, "co_code") or hasattr(value, "f_locals"),
+                lambda value, is_done, stack: None,
+            ),
             (lambda value: hasattr(value, "__call__"), lambda value, is_done, stack: str(repr(value))),
         ]
 
@@ -138,7 +154,6 @@ class Scrubber:
                 pass
         # FINALLY, WRAP IN OBJECT AND ATTEMPT TO SERIALIZE
         return self._scrub_data(DataObject(value), is_done, stack)
-
 
     def _scrub_data(self, value, is_done, stack):
         """
