@@ -18,7 +18,7 @@ from jx_base.expressions import QueryOp
 from jx_python import jx
 from jx_sqlite import Container
 from jx_sqlite.query import Facts
-from mo_dots import wrap, coalesce, from_data, listwrap, Data, startswith_field, to_data, is_many, is_sequence, Null
+from mo_dots import coalesce, from_data, listwrap, Data, startswith_field, to_data, is_many, is_sequence, Null
 from mo_files import File
 from mo_future import text
 from mo_json import json2value
@@ -61,7 +61,7 @@ class SQLiteUtils(object):
         return True
 
     def execute_tests(self, subtest, tjson=False, places=6):
-        subtest = wrap(subtest)
+        subtest = to_data(subtest)
         subtest.name = get_stacktrace()[1]["method"]
 
         if subtest.disable:
@@ -74,7 +74,7 @@ class SQLiteUtils(object):
         """
         RETURN SETTINGS THAT CAN BE USED TO POINT TO THE INDEX THAT'S FILLED
         """
-        subtest = wrap(subtest)
+        subtest = to_data(subtest)
 
         try:
             # INSERT DATA
@@ -85,12 +85,14 @@ class SQLiteUtils(object):
             )
 
         frum = subtest.query["from"]
-        if isinstance(frum, text):
-            subtest.query["from"] = frum.replace(TEST_TABLE, self.table.name)
+        if not frum:
+            frum = subtest.query["from"] = self.table.name
+        elif isinstance(frum, text):
+            frum = subtest.query["from"] = frum.replace(TEST_TABLE, self.table.name)
         else:
             Log.error("Do not know how to handle")
 
-        return to_data({"index": subtest.query["from"]})
+        return to_data({"index": frum, "alias":frum})
 
     def send_queries(self, subtest):
         subtest = to_data(subtest)
@@ -160,8 +162,8 @@ class SQLiteUtils(object):
 
 
 def compare_to_expected(query, result, expect):
-    query = wrap(query)
-    expect = wrap(expect)
+    query = to_data(query)
+    expect = to_data(expect)
 
     if result.meta.format == "table":
         assertAlmostEqual(set(result.header), set(expect.header))
@@ -258,7 +260,7 @@ def list2cube(rows, header):
             if h == ".":
                 output[h].append(r)
             else:
-                r = wrap(r)
+                r = to_data(r)
                 output[h].append(r[h])
     return output
 
@@ -267,7 +269,7 @@ def sort_table(result):
     """
     SORT ROWS IN TABLE, EVEN IF ELEMENTS ARE JSON
     """
-    data = wrap([{str(i): v for i, v in enumerate(row)} for row in result.data])
+    data = to_data([{str(i): v for i, v in enumerate(row)} for row in result.data])
     sort_columns = jx.sort(set(jx.get_columns(data, leaves=True).name))
     data = jx.sort(data, sort_columns)
     result.data = [

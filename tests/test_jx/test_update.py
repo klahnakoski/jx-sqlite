@@ -13,9 +13,11 @@ from unittest import skip, skipIf
 
 from jx_base.expressions import NULL
 from mo_dots import dict_to_data
+from mo_testing.fuzzytestcase import add_error_reporting
 from tests.test_jx import BaseTestCase, global_settings
 
 
+@add_error_reporting
 class TestUpdate(BaseTestCase):
 
     @skipIf(global_settings.use == "sqlite", "broken")

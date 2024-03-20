@@ -99,7 +99,7 @@ class JoinSQL(SQL):
         SQL.__init__(self)
         if ENABLE_TYPE_CHECKING:
             if not isinstance(concat, (tuple, list)):
-                concat = tuple(concat)
+                concat = list(concat)
             if not isinstance(sep, SQL):
                 Log.error("Expecting SQL, not text")
             if any(not isinstance(s, SQL) for s in concat):

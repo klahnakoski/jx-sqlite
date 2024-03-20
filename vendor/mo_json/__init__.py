@@ -336,7 +336,7 @@ def is_json_type(value, json_type):
     """
     if value == None:
         return False
-    elif is_text(value) and json_type == "string":
+    elif isinstance(value, str) and json_type == "string":
         return value
     elif is_list(value):
         return False
