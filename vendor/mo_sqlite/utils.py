@@ -10,12 +10,14 @@
 import re
 from collections import namedtuple
 
-from mo_dots import coalesce, listwrap, to_data, is_many
+from mo_dots import coalesce, listwrap, to_data, is_many, is_data
 from mo_future import Mapping
 from mo_logs import logger
 from mo_logs.strings import quote
+from mo_math import is_number
 from mo_sql import *
 from mo_times import Date, Duration
+
 
 TYPE_CHECK = True
 
@@ -64,18 +66,19 @@ def quote_value(value):
         return SQL_TRUE
     elif value is False:
         return SQL_FALSE
-    elif is_many(value):
-        return sql_iso(sql_list(map(quote_value, value)))
-    elif isinstance(value, (Mapping, list)):
-        return SQL(".")
     elif isinstance(value, Date):
         return SQL(str(value.unix))
     elif isinstance(value, Duration):
         return SQL(str(value.seconds))
-    elif is_text(value):
-        return SQL("'" + value.replace("'", "''") + "'")
-    else:
+    elif is_number(value):
         return SQL(str(value))
+    elif is_many(value):
+        return sql_iso(sql_list(map(quote_value, value)))
+    elif is_data(value):
+        return SQL(".")
+    else:
+        esc = str(value).replace("'", "''")
+        return SQL(f"'{esc}'")
 
 
 def quote_list(values):

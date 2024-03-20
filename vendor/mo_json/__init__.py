@@ -7,31 +7,18 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-import math
-from datetime import timedelta, timezone
 
 from mo_dots import (
-    Data,
     Null,
-    SLOT,
     to_data,
     leaves_to_data,
-    null_types,
-    is_list, from_data, exists,
-)
-from mo_dots.objects import DataObject
-from mo_future import (
-    integer_types,
-    is_binary,
-    is_text,
-)
+    is_list, )
 from mo_imports import delay_import
-from mo_logs import Except, strings
-from mo_logs.strings import toString, FORMATTERS
-from mo_times import Duration, Timer
-
 from mo_json.scrubber import Scrubber, _keep_whitespace, trim_whitespace
 from mo_json.types import *
+from mo_logs import Except, strings
+from mo_logs.strings import toString, FORMATTERS
+from mo_times import Timer
 
 logger = delay_import("mo_logs.logger")
 hjson2value = delay_import("hjson.loads")
@@ -219,8 +206,7 @@ def json2value(json_string, params=Null, flexible=False, leaves=False):
     :param leaves: ASSUME JSON KEYS ARE DOT-DELIMITED
     :return: Python value
     """
-    json_string = str(json_string)
-    if not is_text(json_string) and json_string.__class__.__name__ != "FileString":
+    if not isinstance(json_string, str) and json_string.__class__.__name__ != "FileString":
         logger.error("only unicode json accepted")
 
     try:

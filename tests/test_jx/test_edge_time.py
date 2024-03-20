@@ -12,6 +12,7 @@
 
 from unittest import skip
 
+from mo_testing.fuzzytestcase import add_error_reporting
 from mo_times.dates import Date
 from mo_times.durations import DAY
 from tests.test_jx import BaseTestCase, TEST_TABLE
@@ -48,6 +49,7 @@ simple_test_data =[
 ]
 
 
+@add_error_reporting
 class TestEdgeTime(BaseTestCase):
 
     def test_count_over_time(self):
