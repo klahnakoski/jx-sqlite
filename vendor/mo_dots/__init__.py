@@ -34,6 +34,7 @@ __all__ = [
     "inverse",
     "is_container",
     "is_data",
+    "is_list",
     "is_many",
     "is_missing",
     "is_not_null",

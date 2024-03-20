@@ -12,7 +12,8 @@ from mo_dots import (
     Null,
     to_data,
     leaves_to_data,
-    is_list, )
+    is_list
+)
 from mo_imports import delay_import
 from mo_json.scrubber import Scrubber, _keep_whitespace, trim_whitespace
 from mo_json.types import *
