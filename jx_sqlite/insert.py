@@ -34,7 +34,7 @@ from mo_dots import (
     relative_field, exists,
 )
 from mo_future import text, first, extend
-from mo_json import STRUCT, ARRAY, OBJECT, value_to_json_type, get_if_type
+from mo_json import STRUCT, ARRAY, OBJECT, value_to_json_type, get_if_type, jx_type_to_json_type, base_type
 from mo_logs import logger
 from mo_sql.utils import json_type_to_sql_type_key
 from mo_sqlite import (
@@ -99,8 +99,8 @@ def update(self, command):
     where_sql = where.map(_map).to_sql(self.schema)
     new_columns = set(command.set.keys()) - set(c.name for c in self.schema.columns)
     for new_column_name in new_columns:
-        nested_value = command.set[new_column_name]
-        json_type = value_to_json_type(nested_value)
+        expr = jx_expression(command.set[new_column_name])
+        json_type = jx_type_to_json_type(expr.jx_type)
         column = Column(
             name=new_column_name,
             json_type=json_type,
@@ -115,8 +115,8 @@ def update(self, command):
         self.snowflake._add_column(column)
 
     # UPDATE THE ARRAY VALUES
-    for nested_column_name, nested_value in command.set.items():
-        if value_to_json_type(nested_value) == "nested":
+    for nested_column_name, expr in command.set.items():
+        if value_to_json_type(expr) == "nested":
             nested_table_name = concat_field(self.name, nested_column_name)
             nested_table = nested_tables[nested_column_name]
             self_primary_key = sql_list(quote_column(c.es_column) for u in self.uid for c in self.columns[u])
@@ -150,11 +150,11 @@ def update(self, command):
             self.container.db.execute(sql_command)
 
             # INSERT NEW RECORDS
-            if not nested_value:
+            if not expr:
                 continue
 
             doc_collection = {}
-            for d in listwrap(nested_value):
+            for d in listwrap(expr):
                 nested_table.flatten(d, Data(), doc_collection, path=nested_column_name)
 
             prefix = ConcatSQL(

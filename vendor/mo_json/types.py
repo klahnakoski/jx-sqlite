@@ -419,10 +419,7 @@ _jx_type_to_json_type = {
 
 def jx_type_to_json_type(jx_type):
     basic_type = base_type(jx_type)
-    if basic_type == OBJECT:
-        return OBJECT
-    return _jx_type_to_json_type.get(basic_type)
-
+    return _jx_type_to_json_type.get(basic_type, OBJECT)
 
 _python_type_to_jx_type = {
     int: JX_INTEGER,
