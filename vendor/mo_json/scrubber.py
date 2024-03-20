@@ -8,6 +8,7 @@ from mo_dots.objects import DataObject
 from mo_future import integer_types, is_text
 from mo_imports import delay_import
 from mo_logs import Except
+from mo_math import is_number
 from mo_times import Duration
 
 from mo_json.types import *
@@ -44,14 +45,6 @@ def trim_whitespace(value):
         return value_
     else:
         return None
-
-
-def is_number(s):
-    try:
-        s = float(s)
-        return not math.isnan(s)
-    except Exception:
-        return False
 
 
 def datetime2unix(value):
