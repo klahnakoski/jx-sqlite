@@ -93,23 +93,26 @@ def update(self, command):
             logger.error("Deep update not supported")
 
     # ADD NEW COLUMNS
-    where = jx_expression(command.where) or TRUE
+    where = jx_expression(command.where) if command.where else TRUE
     _vars = where.vars()
     _map = {v: c.es_column for v in _vars for _, c in self.schema.leaves(v) if c.json_type not in STRUCT}
     where_sql = where.map(_map).to_sql(self.schema)
     new_columns = set(command.set.keys()) - set(c.name for c in self.schema.columns)
     for new_column_name in new_columns:
         nested_value = command.set[new_column_name]
-        ctype = value_to_json_type(nested_value)
+        json_type = value_to_json_type(nested_value)
         column = Column(
             name=new_column_name,
-            json_type=ctype,
+            json_type=json_type,
             es_index=self.name,
-            es_type=json_type_to_sqlite_type(ctype),
-            es_column=typed_column(new_column_name, ctype),
+            es_type=json_type_to_sqlite_type[json_type],
+            es_column=typed_column(new_column_name, json_type_to_sql_type_key[json_type]),
+            nested_path=[self.name],
+            multi=1,
+            cardinality=1,
             last_updated=Date.now(),
         )
-        self.add_column(column)
+        self.snowflake._add_column(column)
 
     # UPDATE THE ARRAY VALUES
     for nested_column_name, nested_value in command.set.items():
@@ -238,15 +241,15 @@ def update(self, command):
         SQL_UPDATE,
         quote_column(self.name),
         SQL_SET,
-        sql_list(
-            [
-                ConcatSQL(quote_column(c.es_column), SQL_EQ, quote_value(get_if_type(v, c.json_type)),)
+        sql_list([
+            *(
+                ConcatSQL(quote_column(c.es_column), SQL_EQ, jx_expression(v).to_sql(self.schema))
                 for c in self.schema.columns
                 if c.json_type != ARRAY and len(c.nested_path) == 1
                 for v in [command.set[c.name]]
                 if v != None
-            ]
-            + [
+            ),
+            *(
                 ConcatSQL(quote_column(c.es_column), SQL_EQ, SQL_NULL)
                 for c in self.schema.columns
                 if (
@@ -255,8 +258,8 @@ def update(self, command):
                     and c.json_type != ARRAY
                     and len(c.nested_path) == 1
                 )
-            ]
-        ),
+            )
+        ]),
         SQL_WHERE,
         where_sql,
     )
