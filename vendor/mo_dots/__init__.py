@@ -25,6 +25,7 @@ __all__ = [
     "DataClass",
     "DataObject",
     "datawrap",
+    "dict_to_data",
     "endswith_field",
     "exists",
     "FlatList",

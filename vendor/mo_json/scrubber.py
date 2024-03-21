@@ -92,31 +92,7 @@ class Scrubber:
             Decimal: lambda value, is_done, stack: scrub_number(value),
             type: lambda value, is_done, stack: value.__name__,
         }
-        self.more_scrubbers = [
-            # (TEST, SCRUB) PAIRS
-            (
-                lambda value: hasattr(value, "__json__"),
-                lambda value, is_done, stack: self._scrub_json(value, is_done, stack),
-            ),
-            (
-                lambda value: hasattr(value, "__data__"),
-                lambda value, is_done, stack: self._scrub(value.__data__(), is_done, stack),
-            ),
-            (
-                lambda value: isinstance(value, Exception),
-                lambda value, is_done, stack: self._scrub(Except.wrap(value), is_done, stack),
-            ),
-            (is_number, scrub_number),
-            (
-                lambda value: value.__class__.__name__ == "bool_",
-                lambda value, is_done, stack: False if value == False else True,
-            ),
-            (
-                lambda value: hasattr(value, "co_code") or hasattr(value, "f_locals"),
-                lambda value, is_done, stack: None,
-            ),
-            (lambda value: hasattr(value, "__call__"), lambda value, is_done, stack: str(repr(value))),
-        ]
+
 
     def scrub(self, value):
         """
@@ -139,14 +115,25 @@ class Scrubber:
         if scrubber:
             return scrubber(value, is_done, stack)
 
-        for test, scrub in self.more_scrubbers:
-            try:
-                if test(value):
-                    return scrub(value, is_done, stack)
-            except Exception:
-                pass
-        # FINALLY, WRAP IN OBJECT AND ATTEMPT TO SERIALIZE
-        return self._scrub_data(DataObject(value), is_done, stack)
+        if isinstance(value, str):
+            return str(value)
+        elif hasattr(value, "__json__"):
+            return self._scrub_json(value, is_done, stack)
+        elif hasattr(value, "__data__"):
+            return self._scrub(value.__data__(), is_done, stack)
+        elif isinstance(value, Exception):
+            return self._scrub(Except.wrap(value), is_done, stack)
+        elif is_number(value):
+            return self.scrub_number(value, is_done, stack)
+        elif value.__class__.__name__ == "bool_":
+            return False if value == False else True
+        elif hasattr(value, "co_code") and getattr(value, "co_code") or hasattr(value, "f_locals") and getattr(value, "f_locals"):
+            return None
+        elif hasattr(value, "__call__"):
+            return str(repr(value))
+        else:
+            # FINALLY, WRAP IN OBJECT AND ATTEMPT TO SERIALIZE
+            return self._scrub_data(DataObject(value), is_done, stack)
 
     def _scrub_data(self, value, is_done, stack):
         """
