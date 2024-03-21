@@ -13,9 +13,11 @@ from jx_base.meta_columns import META_COLUMNS_NAME, META_TABLES_NAME
 from mo_dots import to_data, dict_to_data
 from mo_future import extend
 from mo_logs import Log
+from mo_testing.fuzzytestcase import add_error_reporting
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 
+@add_error_reporting
 class TestMetadata(BaseTestCase):
 
     @skipIf(global_settings.use == "sqlite", "broken")

@@ -57,7 +57,7 @@ class Snowflake(jx_base.Snowflake):
     """
 
     def __init__(self, fact_name, namespace):
-        if not namespace.columns._snowflakes.get(fact_name):
+        if not namespace.find_snowflake(fact_name):
             Log.error("{name} does not exist", name=fact_name)
         self.fact_name = fact_name  # THE CENTRAL FACT TABLE
         self.namespace = namespace
@@ -305,7 +305,7 @@ class Snowflake(jx_base.Snowflake):
             all_columns.add(c)
 
     def add_table(self, nested_path):
-        query_paths = self.namespace.columns._snowflakes[self.fact_name]
+        query_paths = self.namespace.find_snowflake(self.fact_name)
         if nested_path in query_paths:
             Log.error("table exists")
         query_paths.append(nested_path[0])

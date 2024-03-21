@@ -154,10 +154,9 @@ def get_table(self, table_name):
 
 @extend(Facts)
 def query_metadata(self, query):
-    frum, query["from"] = query["from"], self
-    columns = self.snowflake.columns
+    container = self.container.namespace.columns.denormalized()
+    query = QueryOp.wrap(query, container, JX)
 
-    query = QueryOp.wrap(query, self.container, JX)
     where = query.where
     table_name = None
     column_name = None
@@ -172,8 +171,10 @@ def query_metadata(self, query):
     else:
         raise Log.error('Only simple filters are expected like: "eq" on table and column name')
 
+
     tables = [concat_field(self.snowflake.fact_name, i) for i in self.tables.keys()]
 
+    columns = self.snowflake.columns
     metadata = []
     if columns[-1].es_column != GUID:
         columns.append(Column(

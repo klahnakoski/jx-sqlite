@@ -12,7 +12,8 @@ from mo_dots import (
     Null,
     to_data,
     leaves_to_data,
-    is_list, )
+    is_list
+)
 from mo_imports import delay_import
 from mo_json.scrubber import Scrubber, _keep_whitespace, trim_whitespace
 from mo_json.types import *
@@ -336,7 +337,7 @@ def is_json_type(value, json_type):
     """
     if value == None:
         return False
-    elif is_text(value) and json_type == "string":
+    elif isinstance(value, str) and json_type == "string":
         return value
     elif is_list(value):
         return False

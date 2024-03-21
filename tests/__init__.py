@@ -18,19 +18,19 @@ from jx_base.expressions import QueryOp
 from jx_python import jx
 from jx_sqlite import Container
 from jx_sqlite.query import Facts
-from mo_dots import wrap, coalesce, from_data, listwrap, Data, startswith_field, to_data, is_many, is_sequence, Null
+from mo_dots import coalesce, from_data, listwrap, Data, startswith_field, to_data, is_many, is_sequence, Null
 from mo_files import File
 from mo_future import text
 from mo_json import json2value
 from mo_kwargs import override
-from mo_logs import Log, Except, constants
+from mo_logs import logger, Except, constants
 from mo_logs.exceptions import get_stacktrace
 from mo_sqlite import SQLang
 from mo_testing.fuzzytestcase import assertAlmostEqual
 from tests import test_jx
 from tests.test_jx import TEST_TABLE
 
-Log.static_template = False
+logger.static_template = False
 
 
 NEW_DB_EACH_RUN = False
@@ -61,7 +61,7 @@ class SQLiteUtils(object):
         return True
 
     def execute_tests(self, subtest, tjson=False, places=6):
-        subtest = wrap(subtest)
+        subtest = to_data(subtest)
         subtest.name = get_stacktrace()[1]["method"]
 
         if subtest.disable:
@@ -74,23 +74,25 @@ class SQLiteUtils(object):
         """
         RETURN SETTINGS THAT CAN BE USED TO POINT TO THE INDEX THAT'S FILLED
         """
-        subtest = wrap(subtest)
+        subtest = to_data(subtest)
 
         try:
             # INSERT DATA
             self.table.insert(subtest.data)
         except Exception as cause:
-            Log.error(
+            logger.error(
                 "can not load {{data}} into container", data=subtest.data, cause=cause
             )
 
         frum = subtest.query["from"]
-        if isinstance(frum, text):
-            subtest.query["from"] = frum.replace(TEST_TABLE, self.table.name)
+        if not frum:
+            frum = subtest.query["from"] = self.table.name
+        elif isinstance(frum, text):
+            frum = subtest.query["from"] = frum.replace(TEST_TABLE, self.table.name)
         else:
-            Log.error("Do not know how to handle")
+            logger.error("Do not know how to handle")
 
-        return to_data({"index": subtest.query["from"]})
+        return to_data({"index": frum, "alias":frum})
 
     def send_queries(self, subtest):
         subtest = to_data(subtest)
@@ -119,24 +121,24 @@ class SQLiteUtils(object):
                         if expected in cause:
                             return
                         else:
-                            Log.error(
+                            logger.error(
                                 "Query failed, but for wrong reason; expected"
                                 " {{expected}}, got {{reason}}",
                                 expected=expected,
                                 reason=cause,
                             )
                     else:
-                        Log.error("did not expect error", cause=cause)
+                        logger.error("did not expect error", cause=cause)
 
                 compare_to_expected(subtest.query, result, expected)
             if num_expectations == 0:
-                Log.error(
+                logger.error(
                     "Expecting test {{name|quote}} to have property named 'expecting_*'"
                     " for testing the various format clauses",
                     {"name": subtest.name},
                 )
         except Exception as cause:
-            Log.error("Failed test {{name|quote}}", name=subtest.name, cause=cause)
+            logger.error("Failed test {{name|quote}}", name=subtest.name, cause=cause)
 
     def execute_update(self, command):
         return self.table.update(command)
@@ -150,9 +152,9 @@ class SQLiteUtils(object):
             elif startswith_field(query["from"], "meta"):
                 return self.table.query_metadata(query)
             else:
-                Log.error("Do not know how to handle")
+                logger.error("Do not know how to handle")
         except Exception as cause:
-            Log.warning("Failed query", cause)
+            logger.warning("Failed query", cause)
             raise
 
     def try_till_response(self, *args, **kwargs):
@@ -160,8 +162,8 @@ class SQLiteUtils(object):
 
 
 def compare_to_expected(query, result, expect):
-    query = wrap(query)
-    expect = wrap(expect)
+    query = to_data(query)
+    expect = to_data(expect)
 
     if result.meta.format == "table":
         assertAlmostEqual(set(result.header), set(expect.header))
@@ -215,7 +217,7 @@ def compare_to_expected(query, result, expect):
                 try:
                     result.data = jx.sort(result.data, sort_order.name)
                 except Exception as cause:
-                    Log.warning("sorting failed", cause=cause)
+                    logger.warning("sorting failed", cause=cause)
 
     elif (
         result.meta.format == "cube"
@@ -258,7 +260,7 @@ def list2cube(rows, header):
             if h == ".":
                 output[h].append(r)
             else:
-                r = wrap(r)
+                r = to_data(r)
                 output[h].append(r[h])
     return output
 
@@ -267,7 +269,7 @@ def sort_table(result):
     """
     SORT ROWS IN TABLE, EVEN IF ELEMENTS ARE JSON
     """
-    data = wrap([{str(i): v for i, v in enumerate(row)} for row in result.data])
+    data = to_data([{str(i): v for i, v in enumerate(row)} for row in result.data])
     sort_columns = jx.sort(set(jx.get_columns(data, leaves=True).name))
     data = jx.sort(data, sort_columns)
     result.data = [
@@ -284,9 +286,9 @@ def error(response):
         e = None
 
     if e:
-        Log.error("Failed request", e)
+        logger.error("Failed request", e)
     else:
-        Log.error("Failed request\n {{response}}", {"response": response})
+        logger.error("Failed request\n {{response}}", {"response": response})
 
 
 def run_app(please_stop, server_is_ready):
@@ -310,7 +312,7 @@ def run_app(please_stop, server_is_ready):
             continue
         if line.find(" * Running on") >= 0:
             server_is_ready.go()
-        Log.note("SERVER: {{line}}", {"line": line.strip()})
+        logger.note("SERVER: {{line}}", {"line": line.strip()})
 
     proc.send_signal(signal.CTRL_C_EVENT)
 
@@ -320,16 +322,16 @@ try:
     default_file = File("tests/config/sqlite.json")
     filename = os.environ.get("TEST_CONFIG")
     config_file = File(filename) if filename else default_file
-    Log.alert(
+    logger.alert(
         f"Use TEST_CONFIG environment variable to point to config file.  Using {config_file.abs_path}"
     )
     test_jx.global_settings = mo_json_config.get("file://" + config_file.abs_path)
     constants.set(test_jx.global_settings.constants)
 
     if not test_jx.global_settings.use:
-        Log.error('Must have a {"use": type} set in the config file')
+        logger.error('Must have a {"use": type} set in the config file')
 
-    Log.start(test_jx.global_settings.debug)
+    logger.start(test_jx.global_settings.debug)
     test_jx.utils = SQLiteUtils(test_jx.global_settings)
 except Exception as cause:
-    Log.warning("problem", cause)
+    logger.warning("problem", cause)

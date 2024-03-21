@@ -76,7 +76,7 @@ def multiop_to_sql(self, schema):
         temp = [SqlCoalesceOp(t, zero).partial_eval(SQLang).to_sql(schema).expr for t in self.terms]
         expr = iso(sign.join(sql_iso(t) for t in temp))
     else:
-        miss = OrOp(*(t.missing(SQLang) for t in self.terms), nulls=True)
+        miss = OrOp(*(t.missing(SQLang) for t in self.terms), nulls=False)
         expr = iso(sign.join(sql_iso(t.partial_eval(SQLang).to_sql(schema)) for t in self.terms))
 
     return SqlScript(jx_type=jx_type, expr=expr, frum=self, miss=miss, schema=schema)
@@ -103,7 +103,7 @@ def basic_multiop_to_sql(self, schema, many=False):
 
 
 _sql_operators = {
-    # (operator, zero-array default value) PAIR
+    # (operator, zero-array default value) TUPLE
     "add": (sql_iso, SQL_PLUS, ZERO, JX_NUMBER),
     "sum": (sql_iso, SQL_PLUS, ZERO, JX_NUMBER),
     "mul": (sql_iso, SQL_STAR, ONE, JX_NUMBER),

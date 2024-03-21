@@ -26,7 +26,7 @@ class OrOp(OrOp_):
         return SqlScript(
             jx_type=JX_BOOLEAN,
             miss=FALSE,
-            expr=SqlOrOp(*(t.to_sql(schema) for t in self.terms)),
+            expr=SqlOrOp(*(t.to_sql(schema).expr for t in self.terms)),
             frum=self,
             schema=schema,
         )

@@ -8,10 +8,11 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from jx_base import NULL, TRUE, FALSE, is_op
-from jx_base.expressions import CaseOp as _CaseOp, ZERO, is_literal
+from jx_base.expressions import CaseOp as _CaseOp, ZERO, is_literal, Expression
 from jx_base.expressions import WhenOp as _WhenOp
 from mo_imports import export
 from mo_json import JX_BOOLEAN
+from mo_logs import logger
 from mo_sql import (
     SQL_CASE,
     SQL_ELSE,
@@ -35,7 +36,14 @@ class WhenOp(_WhenOp, SQL):
 
 class CaseOp(_CaseOp, SQL):
     def __init__(self, *whens, _else=NULL):
-        super().__init__(*whens, _else)
+        Expression.__init__(self, *whens, _else)
+
+        self._whens, self._else = whens, _else
+
+        for w in self._whens:
+            if not is_op(w, WhenOp) or w.els_ is not NULL:
+                logger.error("case expression does not allow `else` clause in `when` sub-clause {case}", case=self.__data__())
+
 
     def __iter__(self):
         yield from SQL_CASE

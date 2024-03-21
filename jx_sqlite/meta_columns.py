@@ -10,15 +10,17 @@
 from copy import copy
 
 import jx_base
-from jx_base import Schema, Table, Container, Column, Snowflake
+from jx_base import Schema, Container, Column, Snowflake
 from jx_base.meta_columns import (
     META_COLUMNS_DESC,
     META_COLUMNS_NAME,
     SIMPLE_METADATA_COLUMNS,
+    META_TABLES_NAME,
 )
 from jx_python import jx
+from jx_sqlite.models.table import Table
 from jx_sqlite.utils import untyped_column, untype_field
-from mo_dots import Data, Null, coalesce, is_data, is_list, startswith_field, unwraplist, wrap, list_to_data
+from mo_dots import Data, Null, coalesce, is_data, is_list, startswith_field, unwraplist, list_to_data, to_data
 from mo_future import first
 from mo_json import STRUCT, IS_NULL
 from mo_json.typed_encoder import detype
@@ -54,7 +56,7 @@ class ColumnList(Table, Container):
             if hasattr(self, "db"):
                 return
             self.db = db
-        Table.__init__(self, META_COLUMNS_NAME)
+        Table.__init__(self, [META_COLUMNS_NAME], self)
         self.data = {}  # MAP FROM fact_name TO (abs_column_name to COLUMNS)
         self.locker = Lock()
         self._schema = None
@@ -445,9 +447,13 @@ class ColumnList(Table, Container):
         return self
 
     def get_table(self, table_name):
-        if table_name != META_COLUMNS_NAME:
-            Log.error("this container has only the " + META_COLUMNS_NAME)
-        return self
+        if table_name in (META_TABLES_NAME, META_COLUMNS_NAME):
+            return Table([table_name], self)
+        Log.error("this container has only the " + META_COLUMNS_NAME)
+
+    def find_snowflake(self, fact_name):
+        if fact_name in (META_TABLES_NAME, META_COLUMNS_NAME):
+            return [fact_name]
 
     def get_columns(self, table_name):
         if table_name != META_COLUMNS_NAME:
@@ -503,12 +509,12 @@ class ColumnList(Table, Container):
         from jx_python.containers.list import ListContainer
 
         return ListContainer(
-            self.name, data=output, schema=jx_base.Schema(META_COLUMNS_NAME, SIMPLE_METADATA_COLUMNS),
+            self.name, data=output, schema=jx_base.Schema([META_COLUMNS_NAME], SIMPLE_METADATA_COLUMNS),
         )
 
 
 def doc_to_column(doc):
-    return Column(**wrap(detype(doc)))
+    return Column(**to_data(detype(doc)))
 
 
 def mark_as_deleted(col):
