@@ -154,7 +154,7 @@ class Container(_Container):
             logger.error("do not know how to handle {item}", item=item)
 
     def drop_facts(self, fact_name):
-        paths = self.namespace.columns._snowflakes.get(fact_name)
+        paths = self.namespace.find_snowflake(fact_name)
         if paths:
             with self.db.transaction() as t:
                 for p in paths:
@@ -192,6 +192,8 @@ class Container(_Container):
                 t.execute(command)
 
         return Facts(fact_name, self)
+
+    get_or_create_table = get_or_create_facts
 
     def get_table(self, table_name):
         nested_path = self.namespace.columns.get_nested_path(table_name)

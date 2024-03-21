@@ -38,8 +38,11 @@ class Namespace(jx_base.Namespace):
         output.columns = self.columns.rename_tables(name_map)
         return output
 
-
-
+    def find_snowflake(self, fact_name):
+        """
+        RETURN ALL PATHS IF EXISTS
+        """
+        return self.columns._snowflakes.get(fact_name)
 
     def get_facts(self, fact_name):
         snowflake = Snowflake(fact_name, self)
