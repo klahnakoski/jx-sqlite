@@ -44,7 +44,7 @@ class TestMetadata(BaseTestCase):
         }
         self.utils.send_queries(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
+    # @skipIf(global_settings.use == "sqlite", "broken")
     def test_meta(self):
         test = dict_to_data({
             "query": {"from": TEST_TABLE},
@@ -77,16 +77,16 @@ class TestMetadata(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
-                    {"table": table_name, "name": "_id", "type": "string", "nested_path": "."},
-                    {"table": table_name, "name": "a", "type": "string", "nested_path": "."}
+                    {"table": table_name, "name": "_id", "type": "string", "nested_path": ["testing"]},
+                    {"table": table_name, "name": "a", "type": "string", "nested_path": ["testing"]}
                 ]
             },
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["table", "name", "type", "nested_path"],
                 "data": [
-                    [table_name, "_id", "string", "."],
-                    [table_name, "a", "string", "."]
+                    [table_name, "_id", "string", "testing"],
+                    [table_name, "a", "string", "testing"]
                 ]
             },
             "expecting_cube": {
@@ -101,7 +101,7 @@ class TestMetadata(BaseTestCase):
                     "table": [table_name, table_name],
                     "name": ["_id", "a"],
                     "type": ["string", "string"],
-                    "nested_path": [".", "."]
+                    "nested_path": ["testing", "testing"]
                 }
             }
         }

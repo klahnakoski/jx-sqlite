@@ -17,7 +17,7 @@ from jx_base.meta_columns import (
     SIMPLE_METADATA_COLUMNS,
     META_TABLES_NAME,
 )
-from jx_python import jx
+from jx_python import jx, ListContainer
 from jx_sqlite.models.table import Table
 from jx_sqlite.utils import untyped_column, untype_field
 from mo_dots import Data, Null, coalesce, is_data, is_list, startswith_field, unwraplist, list_to_data, to_data
@@ -487,7 +487,7 @@ class ColumnList(Table, Container):
         """
         with self.locker:
             self._update_meta()
-            output = [
+            data = [
                 {
                     "table": c.es_index,
                     "name": untyped_column(c.name)[0],
@@ -506,12 +506,16 @@ class ColumnList(Table, Container):
                 if c.json_type not in STRUCT  # and c.es_column != "_id"
             ]
 
-        from jx_python.containers.list import ListContainer
-
-        return ListContainer(
-            self.name, data=output, schema=jx_base.Schema([META_COLUMNS_NAME], SIMPLE_METADATA_COLUMNS),
+        output = ListContainer(
+            META_COLUMNS_NAME,
+            data=data,
+            schema=jx_base.Schema(
+                [META_COLUMNS_NAME],
+                Snowflake(None, [META_COLUMNS_NAME], SIMPLE_METADATA_COLUMNS)
+            )
         )
-
+        output.schema.snowflake.namespace = output
+        return output
 
 def doc_to_column(doc):
     return Column(**to_data(detype(doc)))

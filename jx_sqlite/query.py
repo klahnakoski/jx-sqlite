@@ -152,47 +152,6 @@ def get_table(self, table_name):
     Log.error("programmer error")
 
 
-@extend(Facts)
-def query_metadata(self, query):
-    container = self.container.namespace.columns.denormalized()
-    query = QueryOp.wrap(query, container, JX)
-
-    where = query.where
-    table_name = None
-    column_name = None
-
-    if query.edges or query.groupby:
-        raise Log.error("Aggregates(groupby or edge) are not supported")
-
-    if where.op == "eq" and where.lhs.var == "table":
-        table_name = mo_json.json2value(where.rhs.json)
-    elif where.op == "eq" and where.lhs.var == "name":
-        column_name = mo_json.json2value(where.rhs.json)
-    else:
-        raise Log.error('Only simple filters are expected like: "eq" on table and column name')
-
-
-    tables = [concat_field(self.snowflake.fact_name, i) for i in self.tables.keys()]
-
-    columns = self.snowflake.columns
-    metadata = []
-    if columns[-1].es_column != GUID:
-        columns.append(Column(
-            name=GUID, json_type=STRING, es_column=GUID, es_index=self.snowflake.fact_name, nested_path=["."],
-        ))
-
-    for tname, table in zip(t, tables):
-        if table_name != None and table_name != table:
-            continue
-
-        for col in columns:
-            cname, ctype = untyped_column(col.es_column)
-            if column_name != None and column_name != cname:
-                continue
-
-            metadata.append((table, relative_field(col.name, tname), col.jx_type, unwraplist(col.nested_path),))
-
-    return format_metadata(metadata, query)
 
 
 @extend(Facts)
