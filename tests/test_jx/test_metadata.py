@@ -44,7 +44,6 @@ class TestMetadata(BaseTestCase):
         }
         self.utils.send_queries(test)
 
-    # @skipIf(global_settings.use == "sqlite", "broken")
     def test_meta(self):
         test = dict_to_data({
             "query": {"from": TEST_TABLE},
@@ -187,7 +186,7 @@ class TestMetadata(BaseTestCase):
 
         self.assertEqual(a.my_func("testing"), ("testing", "test_value"), "Expecting method to be run")
 
-    @skipIf(global_settings.use == "sqlite", "broken")
+    @skipIf(global_settings.use == "sqlite", "cardinality not tracked")
     def test_cardinality(self):
         pre_test = dict_to_data({
             "data": [{"a": "b"}, {"a": "c"}],
