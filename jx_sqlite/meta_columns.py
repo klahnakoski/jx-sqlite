@@ -116,7 +116,14 @@ class ColumnList(Table, Container):
         result.data = curr.fetchall()
         return result
 
-    def load_existing_table(self, table_name, known_tables=None):
+    def load_existing_table(self, table_name, *, about=None, known_tables=None):
+        """
+        :param table_name:
+        :param about: the db.about() result, if you have it
+        :param known_tables: the db.get_tables() result, if you have it
+        """
+
+
         """
         IN THE EVENT SOMETHING ELSE MADE THE TABLE
         """
@@ -141,7 +148,7 @@ class ColumnList(Table, Container):
         self._snowflakes[full_nested_path[-1]].append(table_name)
 
         # LOAD THE COLUMNS
-        details = self.db.about(table_name)
+        details = about or self.db.about(table_name)
 
         for cid, name, sql_type, notnull, dfft_value, pk in details:
             if name.startswith("__"):

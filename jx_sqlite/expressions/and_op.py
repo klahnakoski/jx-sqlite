@@ -17,6 +17,12 @@ from mo_sqlite import SQLang, check
 class AndOp(_AndOp):
     @check
     def to_sql(self, schema) -> SqlScript:
+
+        for t in self.terms:
+            b = ToBooleanOp(t)
+            s = b.to_sql(schema)
+            SqlCoalesceOp(s.expr, TRUE)
+
         this = SqlAndOp(
             *(SqlCoalesceOp(ToBooleanOp(t).to_sql(schema).expr, TRUE) for t in self.terms)
         ).partial_eval(SQLang)

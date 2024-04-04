@@ -185,3 +185,10 @@ class TestBasic(FuzzyTestCase):
             result = t.query("select * from temp", format="list")
 
         self.assertEqual(result, {"type": {"~s~": "string", "~n~":"number"}, "data": ["1", 2, 3.3]})
+
+
+    def test_create_and_exists(self):
+        db = Sqlite()
+        container = Container(db).get_or_create_facts("temp")
+
+        self.assertIn("temp", db.get_tables().name)

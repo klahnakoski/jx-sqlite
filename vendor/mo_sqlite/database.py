@@ -10,6 +10,8 @@
 import os
 import re
 import sys
+from collections import namedtuple
+from typing import List
 
 from mo_dots import Data, coalesce, list_to_data, from_data
 from mo_files import File
@@ -40,6 +42,8 @@ _sqlite3 = None
 _load_extension_warning_sent = False
 _upgraded = False
 known_databases = {}
+
+SqliteColumn = namedtuple("SqliteColumn", ["cid", "name", "dtype", "notnull", "dflt_value", "pk"])
 
 
 class Sqlite(DB):
@@ -177,14 +181,14 @@ class Sqlite(DB):
         self.available_transactions.append(output)
         return output
 
-    def about(self, table_name):
+    def about(self, table_name) -> List[SqliteColumn]:
         """
         :param table_name: TABLE OF INTEREST
         :return: SOME INFORMATION ABOUT THE TABLE
             (cid, name, dtype, notnull, dfft_value, pk) tuples
         """
         details = self.query("PRAGMA table_info" + sql_iso(quote_column(table_name)))
-        return details.data
+        return [SqliteColumn(*row)  for row in details.data]
 
     def get_tables(self):
         result = self.query(sql_query({

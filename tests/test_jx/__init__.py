@@ -7,9 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-
-
-
+from mo_files import File
 from mo_logs import Log
 from mo_testing.fuzzytestcase import FuzzyTestCase
 
@@ -45,3 +43,8 @@ class BaseTestCase(FuzzyTestCase):
 
     def tearDown(self):
         utils.tearDown()
+
+
+for file in File(".").leaves:
+    if "__pycache__" in file.abs_path:
+        file.delete()
