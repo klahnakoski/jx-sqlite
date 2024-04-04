@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import BasicStartsWithOp as _BasicStartsWithOp, is_literal, FALSE
+from jx_base.expressions import StrictStartsWithOp as _StrictStartsWithOp, is_literal, FALSE
 from mo_json.types import JX_BOOLEAN
 from mo_sqlite import ConcatSQL, SQL_LIKE, SQL_ESCAPE, SQL_ONE
 from mo_sqlite import SQLang, check, quote_value, SqlScript
@@ -16,7 +16,7 @@ from mo_sqlite.expressions.sql_eq_op import SqlEqOp
 from mo_sqlite.expressions.sql_instr_op import SqlInstrOp
 
 
-class BasicStartsWithOp(_BasicStartsWithOp):
+class StrictStartsWithOp(_StrictStartsWithOp):
     @check
     def to_sql(self, schema) -> SqlScript:
         prefix = self.prefix.partial_eval(SQLang)

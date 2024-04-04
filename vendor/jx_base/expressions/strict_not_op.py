@@ -14,7 +14,7 @@ from jx_base.language import is_op
 from mo_json.types import JX_BOOLEAN
 
 
-class BasicNotOp(Expression):
+class StrictNotOp(Expression):
     _jx_type = JX_BOOLEAN
 
     def __init__(self, term):
@@ -22,13 +22,13 @@ class BasicNotOp(Expression):
         self.term = term
 
     def __data__(self):
-        return {"basic.not": self.term.__data__()}
+        return {"strict.not": self.term.__data__()}
 
     def __call__(self, row, rownum=None, rows=None):
         return not self.term(row, rownum, rows)
 
     def __eq__(self, other):
-        if not is_op(other, BasicNotOp):
+        if not is_op(other, StrictNotOp):
             return False
         return self.term == other.term
 
@@ -45,7 +45,7 @@ class BasicNotOp(Expression):
         return self.term.partial_eval(lang)
 
     def partial_eval(self, lang):
-        if is_op(self.term, BasicNotOp):
+        if is_op(self.term, StrictNotOp):
             return self.term
         else:
             return self

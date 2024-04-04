@@ -7,14 +7,14 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import BasicNotOp as _BasicNotOp, FALSE, SqlScript
+from jx_base.expressions import StrictNotOp as _StrictNotOp, FALSE, SqlScript
 from mo_json.types import JX_BOOLEAN
 from mo_sqlite import SQLang
 from mo_sqlite import check
 from mo_sqlite.expressions import SqlNotOp, SqlScript
 
 
-class BasicNotOp(_BasicNotOp):
+class StrictNotOp(_StrictNotOp):
     @check
     def to_sql(self, schema) -> SqlScript:
         term = self.term.partial_eval(SQLang).to_sql(schema)

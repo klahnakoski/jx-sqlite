@@ -96,8 +96,8 @@ def with_var(var, expression, eval):
     )
 
 
-def basic_multiop_to_sql(self, schema, many=False):
-    iso, op, identity, jx_type = _sql_operators[self.op.split("basic.")[1]]
+def strict_multiop_to_sql(self, schema, many=False):
+    iso, op, identity, jx_type = _sql_operators[self.op.split("strict.")[1]]
     sql = iso(op.join(sql_iso(t.partial_eval(SQLang).to_sql(schema)) for t in self.terms))
     return SqlScript(jx_type=jx_type, frum=self, expr=sql, miss=FALSE, schema=schema,)  # basic operations are "strict"
 

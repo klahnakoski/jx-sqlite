@@ -18,7 +18,7 @@ from jx_base.language import is_op
 from mo_json.types import JX_NUMBER
 
 
-class BasicMultiOp(Expression):
+class StrictMultiOp(Expression):
     """
     PLACEHOLDER FOR STRICT MULTI-VALUED OPERATIONS (CAN NOT DEAL WITH NULLS)
     """

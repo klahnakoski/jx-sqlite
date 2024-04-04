@@ -9,20 +9,20 @@
 #
 
 
-from jx_base.expressions import BasicAddOp as _BasicAddOp, FALSE
+from jx_base.expressions import StrictEqOp as _StrictEqOp, FALSE
 from jx_base.expressions.python_script import PythonScript
-from jx_python.expressions import Python
 from jx_python.utils import merge_locals
 from mo_json import JX_BOOLEAN
 
 
-class BasicAddOp(_BasicAddOp):
+class StrictEqOp(_StrictEqOp):
     def to_python(self, loop_depth=0):
-        terms = [t.partial_eval(Python).to_python(loop_depth) for t in self.terms]
+        lhs = self.lhs.to_python(loop_depth)
+        rhs = self.rhs.to_python(loop_depth)
         return PythonScript(
-            merge_locals(*(t.locals for t in terms)),
+            merge_locals(lhs.locals, rhs.locals),
             loop_depth,
             JX_BOOLEAN,
-            " + ".join(f"({t.source})" for t in terms),
+            "(" + lhs.source + ") == (" + rhs.source + ")",
             FALSE,
         )

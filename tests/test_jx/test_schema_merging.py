@@ -233,7 +233,6 @@ class TestSchemaMerging(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    # @skipIf(global_settings.use == "sqlite", "schema merging not working")
     def test_count(self):
         test = {
             "data": [

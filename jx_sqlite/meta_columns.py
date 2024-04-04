@@ -17,7 +17,7 @@ from jx_base.meta_columns import (
     SIMPLE_METADATA_COLUMNS,
     META_TABLES_NAME,
 )
-from jx_python import jx
+from jx_python import jx, ListContainer
 from jx_sqlite.models.table import Table
 from jx_sqlite.utils import untyped_column, untype_field
 from mo_dots import Data, Null, coalesce, is_data, is_list, startswith_field, unwraplist, list_to_data, to_data
@@ -116,7 +116,14 @@ class ColumnList(Table, Container):
         result.data = curr.fetchall()
         return result
 
-    def load_existing_table(self, table_name, known_tables=None):
+    def load_existing_table(self, table_name, *, about=None, known_tables=None):
+        """
+        :param table_name:
+        :param about: the db.about() result, if you have it
+        :param known_tables: the db.get_tables() result, if you have it
+        """
+
+
         """
         IN THE EVENT SOMETHING ELSE MADE THE TABLE
         """
@@ -141,7 +148,7 @@ class ColumnList(Table, Container):
         self._snowflakes[full_nested_path[-1]].append(table_name)
 
         # LOAD THE COLUMNS
-        details = self.db.about(table_name)
+        details = about or self.db.about(table_name)
 
         for cid, name, sql_type, notnull, dfft_value, pk in details:
             if name.startswith("__"):
@@ -487,7 +494,7 @@ class ColumnList(Table, Container):
         """
         with self.locker:
             self._update_meta()
-            output = [
+            data = [
                 {
                     "table": c.es_index,
                     "name": untyped_column(c.name)[0],
@@ -506,12 +513,16 @@ class ColumnList(Table, Container):
                 if c.json_type not in STRUCT  # and c.es_column != "_id"
             ]
 
-        from jx_python.containers.list import ListContainer
-
-        return ListContainer(
-            self.name, data=output, schema=jx_base.Schema([META_COLUMNS_NAME], SIMPLE_METADATA_COLUMNS),
+        output = ListContainer(
+            META_COLUMNS_NAME,
+            data=data,
+            schema=jx_base.Schema(
+                [META_COLUMNS_NAME],
+                Snowflake(None, [META_COLUMNS_NAME], SIMPLE_METADATA_COLUMNS)
+            )
         )
-
+        output.schema.snowflake.namespace = output
+        return output
 
 def doc_to_column(doc):
     return Column(**to_data(detype(doc)))

@@ -7,9 +7,9 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import BasicAddOp as BasicAddOp_, SqlScript
-from jx_sqlite.expressions._utils import basic_multiop_to_sql
+from jx_base.expressions import StrictAddOp as StrictAddOp_
+from jx_sqlite.expressions._utils import strict_multiop_to_sql
 
 
-class BasicAddOp(BasicAddOp_):
-    to_sql = basic_multiop_to_sql
+class StrictAddOp(StrictAddOp_):
+    to_sql = strict_multiop_to_sql

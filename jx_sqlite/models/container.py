@@ -161,6 +161,8 @@ class Container(_Container):
                     t.execute("DROP TABLE " + quote_column(p))
             self.namespace.columns.remove_table(fact_name)
 
+    drop_table = drop_facts
+
     def get_or_create_facts(self, fact_name, uid=UID):
         """
         FIND TABLE BY NAME, OR CREATE IT IF IT DOES NOT EXIST
@@ -170,7 +172,7 @@ class Container(_Container):
         """
         about = self.db.about(fact_name)
         if about:
-            self.namespace.columns.load_existing_table(fact_name)
+            self.namespace.columns.load_existing_table(fact_name, about=about)
         else:
             if uid != UID:
                 logger.error("do not know how to handle yet")

@@ -15,6 +15,7 @@ import subprocess
 
 import mo_json_config
 from jx_base.expressions import QueryOp
+from jx_base.meta_columns import query_metadata
 from jx_python import jx
 from jx_sqlite import Container
 from jx_sqlite.query import Facts
@@ -150,7 +151,7 @@ class SQLiteUtils(object):
             if startswith_field(query["from"], self.table.name):
                 return self.table.query(query)
             elif startswith_field(query["from"], "meta"):
-                return self.table.query_metadata(query)
+                return query_metadata(self.table.container, query)
             else:
                 logger.error("Do not know how to handle")
         except Exception as cause:

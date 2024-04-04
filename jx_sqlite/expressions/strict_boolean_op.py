@@ -7,12 +7,12 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import BasicBooleanOp as _BasicBooleanOp, SqlScript, SqlScript
+from jx_base.expressions import StrictBooleanOp as _StrictBooleanOp, SqlScript, SqlScript
 from mo_sqlite import SQLang
 from mo_sqlite import check
 
 
-class BasicBooleanOp(_BasicBooleanOp):
+class StrictBooleanOp(_StrictBooleanOp):
     @check
     def to_sql(self, schema) -> SqlScript:
         return self.partial_eval(SQLang).to_sql(schema)
