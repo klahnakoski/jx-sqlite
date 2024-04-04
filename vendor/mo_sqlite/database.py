@@ -7,30 +7,27 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-import os
 import re
-import sys
+import sqlite3
 from collections import namedtuple
 from typing import List
 
 from mo_dots import Data, coalesce, list_to_data, from_data
 from mo_files import File
-from mo_future import allocate_lock as _allocate_lock, text, zip_longest
+from mo_future import allocate_lock as _allocate_lock
 from mo_imports import delay_import
 from mo_kwargs import override
 from mo_logs import ERROR, logger, Except, get_stacktrace, format_trace
 from mo_math.stats import percentile
 from mo_sql import *
+from mo_sqlite.transacfion import Transaction
+from mo_sqlite.utils import quote_column, sql_query, CommandItem, COMMIT, BEGIN, ROLLBACK, FORMAT_COMMAND
 from mo_threads import Lock, Queue, Thread, Till
 from mo_times import Timer
-
-from mo_sqlite.transacfion import Transaction
-from mo_sqlite.utils import quote_column, sql_query, CommandItem, COMMIT, quote_value, BEGIN, ROLLBACK, FORMAT_COMMAND
 
 jx_expression = delay_import("jx_base.jx_expression")
 table2csv = delay_import("jx_python.convert.table2csv")
 Relation = delay_import("jx_sqlite.models.relation.Relation")
-
 
 DEBUG = False
 TRACE = True
@@ -38,9 +35,6 @@ TRACE = True
 DOUBLE_TRANSACTION_ERROR = "You can not query outside a transaction you have open already"
 TOO_LONG_TO_HOLD_TRANSACTION = 10
 
-_sqlite3 = None
-_load_extension_warning_sent = False
-_upgraded = False
 known_databases = {}
 
 SqliteColumn = namedtuple("SqliteColumn", ["cid", "name", "dtype", "notnull", "dflt_value", "pk"])
@@ -54,27 +48,16 @@ class Sqlite(DB):
 
     @override
     def __init__(
-        self, filename=None, db=None, trace=None, upgrade=False, load_functions=False, debug=False, kwargs=None,
+        self, filename=None, db=None, trace=None, load_functions=False, debug=False, kwargs=None,
     ):
         """
         :param filename:  FILE TO USE FOR DATABASE
         :param db: AN EXISTING sqlite3 DB YOU WOULD LIKE TO USE (INSTEAD OF USING filename)
         :param trace: GET THE STACK TRACE AND THREAD FOR EVERY DB COMMAND (GOOD FOR DEBUGGING)
-        :param upgrade: REPLACE PYTHON sqlite3 DLL WITH MORE RECENT ONE, WITH MORE FUNCTIONS (NOT WORKING)
         :param load_functions: LOAD EXTENDED MATH FUNCTIONS (MAY REQUIRE upgrade)
         :param kwargs:
         """
-        global _upgraded
-        global _sqlite3
-
         self.settings = kwargs
-        if not _upgraded:
-            if upgrade:
-                _upgrade()
-            _upgraded = True
-            import sqlite3 as _sqlite3
-
-            _ = _sqlite3
 
         if filename is None:
             self.filename = None
@@ -92,18 +75,16 @@ class Sqlite(DB):
         self.trace = coalesce(trace, TRACE) or self.debug
 
         # SETUP DATABASE
-        self.debug and logger.note("Sqlite version {{version}}", version=_sqlite3.sqlite_version)
+        self.debug and logger.note("Sqlite version {{version}}", version=sqlite3.sqlite_version)
         try:
-            if not isinstance(db, _sqlite3.Connection):
-                self.db = _sqlite3.connect(
+            if not isinstance(db, sqlite3.Connection):
+                self.db = sqlite3.connect(
                     database=coalesce(self.filename, ":memory:"), check_same_thread=False, isolation_level=None,
                 )
             else:
                 self.db = db
         except Exception as e:
             logger.error("could not open file {{filename}}", filename=self.filename, cause=e)
-        self.upgrade = upgrade
-        load_functions and self._load_functions()
 
         self.locker = Lock()
         self.available_transactions = []  # LIST OF ALL THE TRANSACTIONS BEING MANAGED
@@ -188,7 +169,7 @@ class Sqlite(DB):
             (cid, name, dtype, notnull, dfft_value, pk) tuples
         """
         details = self.query("PRAGMA table_info" + sql_iso(quote_column(table_name)))
-        return [SqliteColumn(*row)  for row in details.data]
+        return [SqliteColumn(*row) for row in details.data]
 
     def get_tables(self):
         result = self.query(sql_query({
@@ -274,28 +255,6 @@ class Sqlite(DB):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.stop()
-
-    def _load_functions(self):
-        global _load_extension_warning_sent
-        library_loc = File.new_instance(sys.modules[__name__].__file__, "../../..")
-        full_path = File.new_instance(library_loc, "vendor/sqlite/libsqlitefunctions.so").abs_path
-        try:
-            trace = get_stacktrace(0)[0]
-            if self.upgrade:
-                if os.name == "nt":
-                    file = File.new_instance(trace["file"], "../../vendor/sqlite/libsqlitefunctions.so")
-                else:
-                    file = File.new_instance(trace["file"], "../../vendor/sqlite/libsqlitefunctions")
-
-                full_path = file.abs_path
-                self.db.enable_load_extension(True)
-                self.db.execute(str(SQL_SELECT + "load_extension" + sql_iso(quote_value(full_path))))
-        except Exception as e:
-            if not _load_extension_warning_sent:
-                _load_extension_warning_sent = True
-                logger.warning(
-                    "Could not load {{file}}, doing without. (no SQRT for you!)", file=full_path, cause=e,
-                )
 
     def create_new_functions(self):
         def regexp(pattern, item):
@@ -478,32 +437,3 @@ class Sqlite(DB):
                     transaction.exception = err
             finally:
                 signal.release()
-
-
-def _upgrade():
-    global _upgraded
-    global _sqlite3
-
-    try:
-        import sys
-        import platform
-
-        if "windows" in platform.system().lower():
-            original_dll = File.new_instance(sys.exec_prefix, "dlls/sqlite3.dll")
-            if platform.architecture()[0] == "32bit":
-                source_dll = File("vendor/jx-sqlite/vendor/sqlite/sqlite3_32.dll")
-            else:
-                source_dll = File("vendor/jx-sqlite/vendor/sqlite/sqlite3_64.dll")
-
-            if not all(a == b for a, b in zip_longest(source_dll.read_bytes(), original_dll.read_bytes())):
-                original_dll.backup()
-                File.copy(source_dll, original_dll)
-        else:
-            pass
-    except Exception as e:
-        logger.warning("could not upgrade python's sqlite", cause=e)
-
-    import sqlite3 as _sqlite3
-
-    _ = _sqlite3
-    _upgraded = True
