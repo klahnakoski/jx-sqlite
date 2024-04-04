@@ -45,6 +45,10 @@ class TestMetadata(BaseTestCase):
         self.utils.send_queries(test)
 
     def test_meta(self):
+
+        self.assertAlmostEqual(["test"], "test")
+
+
         test = dict_to_data({
             "query": {"from": TEST_TABLE},
             "data": [
