@@ -46,7 +46,7 @@ class SqlNotOp(Expression):
     def invert(self, lang):
         return (
             WhenOp(
-                OrOp(self.term.missing(lang), BasicEqOp(self.term, ZERO)),
+                OrOp(self.term.missing(lang), StrictEqOp(self.term, ZERO)),
                 *{"then": self, "else": ToBoolean(self.term)}
             )
             .term

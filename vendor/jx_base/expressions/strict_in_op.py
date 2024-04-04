@@ -23,7 +23,7 @@ EqOp, MissingOp, NestedOp, NotOp, NULL, Variable, is_variable = expect(
 )
 
 
-class BasicInOp(Expression):
+class StrictInOp(Expression):
     has_simple_form = True
     _jx_type = JX_BOOLEAN
 
@@ -41,12 +41,12 @@ class BasicInOp(Expression):
 
     def __data__(self):
         if is_variable(self.value) and is_literal(self.superset):
-            return {"basic.in": {self.value.var: self.superset.value}}
+            return {"strict.in": {self.value.var: self.superset.value}}
         else:
-            return {"basic.in": [self.value.__data__(), self.superset.__data__()]}
+            return {"strict.in": [self.value.__data__(), self.superset.__data__()]}
 
     def __eq__(self, other):
-        if is_op(other, BasicInOp):
+        if is_op(other, StrictInOp):
             return self.value == other.value and self.superset == other.superset
         return False
 
@@ -54,7 +54,7 @@ class BasicInOp(Expression):
         return self.value.vars()
 
     def map(self, map_):
-        return BasicInOp(self.value.map(map_), self.superset.map(map_))
+        return StrictInOp(self.value.map(map_), self.superset.map(map_))
 
     def partial_eval(self, lang):
         value = self.value.partial_eval(lang)
@@ -67,12 +67,12 @@ class BasicInOp(Expression):
             return Literal(value() in superset())
         elif is_op(value, NestedOp):
             return (
-                NestedOp(value.nested_path, None, lang.AndOp(BasicInOp(value.select, superset), value.where),)
+                NestedOp(value.nested_path, None, lang.AndOp(StrictInOp(value.select, superset), value.where),)
                 .exists()
                 .partial_eval(lang)
             )
         else:
-            return lang.BasicInOp(value, superset)
+            return lang.StrictInOp(value, superset)
 
     def __call__(self, row, rownum=None, rows=None):
         value = self.value(row)
@@ -88,7 +88,7 @@ class BasicInOp(Expression):
 
     def invert(self, lang):
         this = self.partial_eval(lang)
-        if is_op(this, BasicInOp):
+        if is_op(this, StrictInOp):
             inv = NotOp(this)
             inv.simplified = True
             return inv

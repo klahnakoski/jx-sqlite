@@ -19,7 +19,7 @@ from jx_base.language import is_op
 from mo_json import JX_INTEGER
 
 
-class BasicIndexOfOp(Expression):
+class StrictIndexOfOp(Expression):
     """
     PLACEHOLDER FOR STRICT value.indexOf(find, start) (CAN NOT DEAL WITH NULLS)
     RETURN -1 IF NOT FOUND
@@ -40,7 +40,7 @@ class BasicIndexOfOp(Expression):
         return value.find(find, start)
 
     def __data__(self):
-        return {"basic.indexOf": [self.value.__data__(), self.find.__data__(), self.start.__data__()]}
+        return {"strict.indexOf": [self.value.__data__(), self.find.__data__(), self.start.__data__()]}
 
     def vars(self):
         return self.value.vars() | self.find.vars() | self.start.vars()
@@ -53,11 +53,11 @@ class BasicIndexOfOp(Expression):
 
     def partial_eval(self, lang):
         start = ToIntegerOp(MaxOp(ZERO, self.start)).partial_eval(lang)
-        return self.lang.BasicIndexOfOp(
+        return self.lang.StrictIndexOfOp(
             ToTextOp(self.value).partial_eval(lang), ToTextOp(self.find).partial_eval(lang), start,
         )
 
     def __eq__(self, other):
-        if not is_op(other, BasicIndexOfOp):
+        if not is_op(other, StrictIndexOfOp):
             return False
         return self.value == self.value and self.find == other.find and self.start == other.start

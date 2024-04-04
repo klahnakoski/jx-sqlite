@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import BasicEqOp as BasicEqOp_, FALSE, is_literal, SqlScript
+from jx_base.expressions import StrictEqOp as StrictEqOp_, FALSE, is_literal, SqlScript
 from mo_sqlite import SQLang
 from mo_sqlite import check
 from jx_sqlite.expressions._utils import value2boolean
@@ -18,7 +18,7 @@ from mo_sql import ConcatSQL
 from mo_sqlite import sql_iso, SQL_EQ
 
 
-class BasicEqOp(BasicEqOp_):
+class StrictEqOp(StrictEqOp_):
     @check
     def to_sql(self, schema) -> SqlScript:
         rhs = self.rhs.partial_eval(SQLang)

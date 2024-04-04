@@ -9,20 +9,21 @@
 #
 
 
-from jx_base.expressions.basic_starts_with_op import BasicStartsWithOp as _BasicStartsWithOp
+from jx_base.expressions.strict_substring_op import StrictSubstringOp as _StrictSubstringOp
 from jx_base.expressions.python_script import PythonScript
 from jx_python.utils import merge_locals
-from mo_json import JX_BOOLEAN
+from mo_json import JX_TEXT
 
 
-class BasicStartsWithOp(_BasicStartsWithOp):
+class StrictSubstringOp(_StrictSubstringOp):
     def to_python(self, loop_depth=0):
         value = self.value.to_python(loop_depth)
-        prefix = self.prefix.to_python(loop_depth)
+        start = self.start.to_python(loop_depth)
+        end = self.end.to_python(loop_depth)
         return PythonScript(
-            merge_locals(value.locals, prefix.locals),
+            merge_locals(value.locals, start.locals, end.locals),
             loop_depth,
-            JX_BOOLEAN,
-            f"({value.source}).startswith({prefix.source})",
+            JX_TEXT,
+            f"({value})[int({self.start.to_python(loop_depth)}):int({self.end.to_python(loop_depth)})]",
             self,
         )

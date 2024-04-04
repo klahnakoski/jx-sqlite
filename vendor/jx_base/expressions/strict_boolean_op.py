@@ -17,7 +17,7 @@ from jx_base.expressions.not_op import NotOp
 from mo_json.types import JX_BOOLEAN
 
 
-class BasicBooleanOp(Expression):
+class StrictBooleanOp(Expression):
     """
     FORCE VALUE TO BOOLEAN, USING COMMON SENSE
     * NULL IS FALSE
@@ -32,13 +32,13 @@ class BasicBooleanOp(Expression):
         self.term = term
 
     def __data__(self):
-        return {"basic.boolean": self.term.__data__()}
+        return {"strict.boolean": self.term.__data__()}
 
     def vars(self):
         return self.term.vars()
 
     def map(self, map_):
-        return BasicBooleanOp(self.term.map(map_))
+        return StrictBooleanOp(self.term.map(map_))
 
     def missing(self, lang):
         return FALSE

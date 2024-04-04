@@ -16,7 +16,7 @@ from jx_base.language import is_op
 from mo_json.types import JX_BOOLEAN
 
 
-class BasicStartsWithOp(Expression):
+class StrictStartsWithOp(Expression):
     """
     PLACEHOLDER FOR BASIC value.startsWith(find, start) (CAN NOT DEAL WITH NULLS)
     """
@@ -34,22 +34,22 @@ class BasicStartsWithOp(Expression):
             return False
 
     def __data__(self):
-        return {"basic.startsWith": [self.value.__data__(), self.prefix.__data__()]}
+        return {"strict.startsWith": [self.value.__data__(), self.prefix.__data__()]}
 
     def __eq__(self, other):
-        if is_op(other, BasicStartsWithOp):
+        if is_op(other, StrictStartsWithOp):
             return self.value == other.value and self.prefix == other.prefix
 
     def vars(self):
         return self.value.vars() | self.prefix.vars()
 
     def map(self, map_):
-        return self.lang.BasicStartsWithOp(self.value.map(map_), self.prefix.map(map_),)
+        return self.lang.StrictStartsWithOp(self.value.map(map_), self.prefix.map(map_),)
 
     def missing(self, lang):
         return FALSE
 
     def partial_eval(self, lang):
-        return lang.BasicStartsWithOp(
+        return lang.StrictStartsWithOp(
             IsTextOp(self.value).partial_eval(lang), IsTextOp(self.prefix).partial_eval(lang),
         )

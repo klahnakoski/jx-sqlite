@@ -14,7 +14,7 @@ from jx_base.expressions.false_op import FALSE
 from mo_json.types import JX_TEXT
 
 
-class BasicSubstringOp(Expression):
+class StrictSubstringOp(Expression):
     """
     PLACEHOLDER FOR BASIC value.substring(start, end) (CAN NOT DEAL WITH NULLS)
     """
@@ -29,10 +29,10 @@ class BasicSubstringOp(Expression):
         return self.value(row, rownum, rows)[self.start(row, rownum, rows) : self.end(row, rownum, rows)]
 
     def __data__(self):
-        return {"basic.substring": [self.value.__data__(), self.start.__data__(), self.end.__data__()]}
+        return {"strict.substring": [self.value.__data__(), self.start.__data__(), self.end.__data__()]}
 
     def map(self, map_):
-        return BasicSubstringOp(self.value.map(map_), self.start.map(map_), self.end.map(map_),)
+        return StrictSubstringOp(self.value.map(map_), self.start.map(map_), self.end.map(map_),)
 
     def vars(self):
         return self.value.vars() | self.start.vars() | self.end.vars()

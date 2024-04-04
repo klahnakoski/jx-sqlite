@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import BasicIndexOfOp as _BasicIndexOfOp, FALSE, SqlScript
+from jx_base.expressions import StrictIndexOfOp as _StrictIndexOfOp, FALSE, SqlScript
 from mo_sqlite import check
 from jx_sqlite.expressions._utils import SqlScript
 from jx_sqlite.expressions.literal import Literal
@@ -28,7 +28,7 @@ from mo_sql import (
 from mo_sqlite import sql_call
 
 
-class BasicIndexOfOp(_BasicIndexOfOp):
+class StrictIndexOfOp(_StrictIndexOfOp):
     data_type = JX_NUMBER
 
     @check

@@ -8,7 +8,7 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from jx_base.expressions import ( SqlScript,
-    BasicInOp as BasicInOp_,
+    StrictInOp as StrictInOp_,
     FALSE,
     Literal,
     ExistsOp,
@@ -28,7 +28,7 @@ from mo_sqlite import quote_list
 from mo_sqlite.expressions import SqlVariable
 
 
-class BasicInOp(BasicInOp_):
+class StrictInOp(StrictInOp_):
     @check
     def to_sql(self, schema) -> SqlScript:
         value = self.value.partial_eval(SQLang).to_sql(schema)

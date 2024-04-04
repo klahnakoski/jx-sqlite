@@ -7,20 +7,10 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.language import Language
 from jx_sqlite.expressions._utils import JxSql
 from jx_sqlite.expressions.abs_op import AbsOp
 from jx_sqlite.expressions.add_op import AddOp
 from jx_sqlite.expressions.and_op import AndOp
-from jx_sqlite.expressions.basic_add_op import BasicAddOp
-from jx_sqlite.expressions.basic_boolean_op import BasicBooleanOp
-from jx_sqlite.expressions.basic_eq_op import BasicEqOp
-from jx_sqlite.expressions.basic_in_op import BasicInOp
-from jx_sqlite.expressions.basic_index_of_op import BasicIndexOfOp
-from jx_sqlite.expressions.basic_mul_op import BasicMulOp
-from jx_sqlite.expressions.basic_not_op import BasicNotOp
-from jx_sqlite.expressions.basic_starts_with_op import BasicStartsWithOp
-from jx_sqlite.expressions.basic_substring_op import BasicSubstringOp
 from jx_sqlite.expressions.between_op import BetweenOp
 from jx_sqlite.expressions.case_op import CaseOp
 from jx_sqlite.expressions.coalesce_op import CoalesceOp
@@ -64,6 +54,15 @@ from jx_sqlite.expressions.or_op import OrOp
 from jx_sqlite.expressions.prefix_op import PrefixOp
 from jx_sqlite.expressions.reg_exp_op import RegExpOp
 from jx_sqlite.expressions.select_op import SelectOp
+from jx_sqlite.expressions.strict_add_op import StrictAddOp
+from jx_sqlite.expressions.strict_boolean_op import StrictBooleanOp
+from jx_sqlite.expressions.strict_eq_op import StrictEqOp
+from jx_sqlite.expressions.strict_in_op import StrictInOp
+from jx_sqlite.expressions.strict_index_of_op import StrictIndexOfOp
+from jx_sqlite.expressions.strict_mul_op import StrictMulOp
+from jx_sqlite.expressions.strict_not_op import StrictNotOp
+from jx_sqlite.expressions.strict_starts_with_op import StrictStartsWithOp
+from jx_sqlite.expressions.strict_substring_op import StrictSubstringOp
 from jx_sqlite.expressions.sub_op import SubOp
 from jx_sqlite.expressions.suffix_op import SuffixOp
 from jx_sqlite.expressions.sum_op import SumOp

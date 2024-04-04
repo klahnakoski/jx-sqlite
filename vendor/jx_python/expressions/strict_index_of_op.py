@@ -9,13 +9,13 @@
 #
 
 
-from jx_base.expressions import BasicIndexOfOp as _BasicIndexOfOp
+from jx_base.expressions import StrictIndexOfOp as _StrictIndexOfOp
 from jx_python.expressions._utils import with_var, PythonScript
 from jx_python.utils import merge_locals
 from mo_json import JX_INTEGER
 
 
-class BasicIndexOfOp(_BasicIndexOfOp):
+class StrictIndexOfOp(_StrictIndexOfOp):
     def to_python(self, loop_depth=0):
         find = self.find.to_python(loop_depth)
         value = self.value.to_python(loop_depth)
