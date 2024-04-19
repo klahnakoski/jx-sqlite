@@ -26,18 +26,6 @@ from mo_times import dates
 
 
 class FuzzyTestCase(unittest.TestCase):
-    """
-    COMPARE STRUCTURE AND NUMBERS!
-
-    ONLY THE ATTRIBUTES IN THE expected STRUCTURE ARE TESTED TO EXIST
-    EXTRA ATTRIBUTES ARE IGNORED.
-
-    NUMBERS ARE MATCHED BY ...
-    * places (UP TO GIVEN SIGNIFICANT DIGITS)
-    * digits (UP TO GIVEN DECIMAL PLACES, WITH NEGATIVE MEANING LEFT-OF-UNITS)
-    * delta (MAXIMUM ABSOLUTE DIFFERENCE FROM expected)
-    """
-
     def __init__(self, *args, **kwargs):
         unittest.TestCase.__init__(self, *args, **kwargs)
         self.default_places=15
@@ -98,6 +86,17 @@ class RaiseContext(object):
 
 
 def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=None):
+    """
+    COMPARE STRUCTURE AND NUMBERS!
+
+    ONLY THE ATTRIBUTES IN THE expected STRUCTURE ARE TESTED TO EXIST
+    EXTRA ATTRIBUTES ARE IGNORED.
+
+    NUMBERS ARE MATCHED BY ...
+    * places (UP TO GIVEN SIGNIFICANT DIGITS)
+    * digits (UP TO GIVEN DECIMAL PLACES, WITH NEGATIVE MEANING LEFT-OF-UNITS)
+    * delta (MAXIMUM ABSOLUTE DIFFERENCE FROM expected)
+    """
     show_detail = True
     test = from_data(test)
     expected = from_data(expected)
@@ -114,7 +113,10 @@ def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=
         elif is_data(expected) and is_data(test):
             for k, e in from_data(expected).items():
                 t = test.get(k)
-                assertAlmostEqual(t, e, msg=coalesce(msg, "")+"key "+quote(k)+": ", digits=digits, places=places, delta=delta)
+                try:
+                    assertAlmostEqual(t, e, msg=coalesce(msg, "")+"key "+quote(k)+": ", digits=digits, places=places, delta=delta)
+                except Exception as cause:
+                    Log.error("key {k}={t} does not match expected {k}={e}", k=k, t=t, e=e, cause=cause)
         elif is_data(expected):
             if is_many(test):
                 test = list(test)
@@ -243,8 +245,8 @@ def assertAlmostEqualValue(test, expected, digits=None, places=None, msg=None, d
 
     if digits is not None:
         with suppress_exception:
-            diff = log10(abs(test-expected))
-            if diff < digits:
+            diff = round(abs(test-expected)*pow(10, digits))
+            if diff == 0:
                 return
 
         standardMsg = expand_template("{{test|json}} != {{expected|json}} within {{digits}} decimal places", locals())
@@ -258,10 +260,9 @@ def assertAlmostEqualValue(test, expected, digits=None, places=None, msg=None, d
             places = 15
 
         with suppress_exception:
-            diff = mo_math.log10(abs(test-expected))
-            if diff == None:
-                return  # Exactly the same
-            if diff < mo_math.ceiling(mo_math.log10(abs(test)))-places:
+            factor = mo_math.ceiling(log10(abs(test)))
+            diff = log10(abs(test-expected))-factor + places
+            if diff < -0.3:
                 return
 
         standardMsg = expand_template("{{test|json}} != {{expected|json}} within {{places}} places", locals())
