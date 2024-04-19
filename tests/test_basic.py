@@ -95,7 +95,7 @@ class TestBasic(FuzzyTestCase):
         table.insert([{GUID: 42, "value": "test2"}])
 
         result = table.query({"select": ["_id", "value"]})
-        self.assertEqual(result, {"meta": {"format": "list"}, "data": [{"_id": 42, "value": "test2"}]})
+        self.assertEqual(result, {"meta": {"format": "list"}, "data": [{"_id": "42", "value": "test2"}]})
 
     def test_insert_with_uid(self):
         table = Container(Sqlite()).get_or_create_facts("my_table")
