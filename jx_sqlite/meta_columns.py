@@ -63,7 +63,6 @@ class ColumnList(Table, Container):
         self.dirty = False
         self.es_index = None
         self.last_load = Null
-        self.todo = Queue("update columns to es")  # HOLD (action, column) PAIR, WHERE action in ['insert', 'update']
         self._snowflakes = {}  # MAP FROM fact_name TO LIST OF PATHS, STARTING WITH FACT AND BREADTH FIRST TO LEAVES
         self.primary_keys = {}  # MAP FROM table TO LIST OF PRIMARY KEY COLUMNS
         self.relations = None
@@ -99,7 +98,6 @@ class ColumnList(Table, Container):
         output.dirty = False
         output.es_index = None
         output.last_load = Null
-        output.todo = None
         output._snowflakes = {
             name_map.get(table_name, table_name): [name_map.get(qp, qp) for qp in query_paths]
             for table_name, query_paths in self._snowflakes.items()
@@ -247,7 +245,6 @@ class ColumnList(Table, Container):
             canonical = self._add(column)
         if canonical == None:
             return column  # ALREADY ADDED
-        self.todo.add(canonical)
         return canonical
 
     def remove(self, column):
@@ -361,7 +358,6 @@ class ColumnList(Table, Container):
 
                         for c in cols:
                             mark_as_deleted(c)
-                            self.todo.add(c)
                         return
 
                     # FASTEST
@@ -396,7 +392,6 @@ class ColumnList(Table, Container):
                     for k in command["clear"]:
                         if k == ".":
                             mark_as_deleted(col)
-                            self.todo.add(col)
                             lst = self.data[col.es_index]
                             cols = lst[col.name]
                             cols.remove(col)
@@ -411,7 +406,6 @@ class ColumnList(Table, Container):
                         # DID NOT DELETE COLUMNM ("."), CONTINUE TO SET PROPERTIES
                         for k, v in command.set.items():
                             col[k] = v
-                        self.todo.add(col)
 
         except Exception as e:
             Log.error("should not happen", cause=e)
