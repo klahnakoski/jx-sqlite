@@ -80,8 +80,8 @@ class Scrubber:
             if math.isnan(value) or math.isinf(value)
             else scrub_number(value),
             **{t: self.scrub_number for t in integer_types},
-            **{t: self._scrub_many for t in lists.many_types},
-            **{t: self._scrub_data for t in datas.data_types},
+            **{t: self._scrub_many for t in lists._many_types},
+            **{t: self._scrub_data for t in datas._data_types},
             bool: lambda value, is_done, stack: value,
             date: lambda value, is_done, stack: scrub_number(datetime2unix(value)),
             datetime: lambda value, is_done, stack: scrub_number(datetime2unix(value)),

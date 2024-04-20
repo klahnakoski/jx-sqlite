@@ -15,7 +15,7 @@ from collections import deque
 from copy import copy
 
 
-class Queue(object):
+class Queue:
     """
     A SET WITH ADDED ORDER MAINTAINED
 
