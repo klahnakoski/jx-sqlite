@@ -101,7 +101,7 @@ class Scrubber:
         return self._scrub(value, set(), [])
 
     def _scrub(self, value, is_done, stack):
-        while isinstance(value, DataObject):
+        while isinstance(value, (DataObject, Data)):
             value = from_data(value)
 
         if FIND_LOOPS:

@@ -11,12 +11,11 @@
 
 import datetime
 import types
-import unittest
 from unittest import SkipTest, TestCase
 
 import mo_math
 from mo_collections.unique_index import UniqueIndex
-from mo_dots import coalesce, is_list, literal_field, from_data, to_data, is_data, is_many,is_missing, get_attr
+from mo_dots import coalesce, is_list, literal_field, from_data, to_data, is_data, is_many, get_attr, is_missing
 from mo_future import is_text, zip_longest, first, get_function_name
 from mo_logs import Except, Log, suppress_exception
 from mo_logs.strings import expand_template, quote
@@ -24,9 +23,9 @@ from mo_math import is_number, log10, COUNT
 from mo_times import dates
 
 
-class FuzzyTestCase(unittest.TestCase):
+class FuzzyTestCase(TestCase):
     def __init__(self, *args, **kwargs):
-        unittest.TestCase.__init__(self, *args, **kwargs)
+        TestCase.__init__(self, *args, **kwargs)
         self.default_places = 15
 
     def set_default_places(self, places):
@@ -35,7 +34,7 @@ class FuzzyTestCase(unittest.TestCase):
         """
         self.default_places = places
 
-    def assertAlmostEqual(self, test_value, expected, *, msg=None, digits=None, places=None, delta=None):
+    def assertAlmostEqual(self, test_value, expected, msg=None, *, digits=None, places=None, delta=None):
         if delta or digits:
             assertAlmostEqual(test_value, expected, msg=msg, digits=digits, places=places, delta=delta)
         else:
@@ -48,7 +47,7 @@ class FuzzyTestCase(unittest.TestCase):
                 delta=delta
             )
 
-    def assertEqual(self, test_value, expected, *, msg=None, digits=None, places=None, delta=None):
+    def assertEqual(self, test_value, expected, msg=None, *, digits=None, places=None, delta=None):
         self.assertAlmostEqual(test_value, expected, msg=msg, digits=digits, places=places, delta=delta)
 
     def assertRaises(self, problem=None, function=None, *args, **kwargs):
@@ -122,8 +121,16 @@ def assertAlmostEqual(test, expected, *, digits=None, places=None, msg=None, del
         elif isinstance(test, UniqueIndex):
             if test ^ expected:
                 Log.error("Sets do not match")
-        elif not is_many(test) and is_list(expected) and len(expected)==1:
-            assertAlmostEqual(test, expected[0], msg=msg, digits=digits, places=places, delta=delta)
+        elif is_list(expected) and len(expected) == 0:
+            if is_missing(test):
+                return
+            Log.error(
+                "{test|json|limit(10000)} is expected to not exist",
+                test=test,
+                expected=expected,
+            )
+        elif is_list(expected) and len(expected)==1 and not is_many(test):
+            return assertAlmostEqual(test, expected[0], msg=msg, digits=digits, places=places, delta=delta)
         elif is_data(expected) and is_data(test):
             for k, e in from_data(expected).items():
                 t = test.get(k)
