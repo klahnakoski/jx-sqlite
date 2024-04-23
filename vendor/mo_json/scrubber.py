@@ -93,7 +93,6 @@ class Scrubber:
             type: lambda value, is_done, stack: value.__name__,
         }
 
-
     def scrub(self, value):
         """
         REMOVE/REPLACE VALUES THAT CAN NOT BE JSON-IZED

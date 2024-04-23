@@ -13,6 +13,7 @@
 
 from collections import deque
 from copy import copy
+from mo_dots import register_many
 
 
 class Queue:
@@ -90,3 +91,6 @@ class Queue:
         output = self.list.popleft()
         self.set.remove(output)
         return output
+
+
+register_many(Queue)

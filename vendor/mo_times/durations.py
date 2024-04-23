@@ -12,7 +12,7 @@
 import datetime
 import re
 
-from mo_dots import dict_to_data
+from mo_dots import dict_to_data, register_primitive
 from mo_imports import delay_import
 from mo_math import MIN, is_nan, is_number, abs, floor, round
 
@@ -306,6 +306,9 @@ class Duration(object):
         output = self / interval
         output = round(output, decimal)
         return output
+
+
+register_primitive(Duration)
 
 
 def _string2Duration(text):

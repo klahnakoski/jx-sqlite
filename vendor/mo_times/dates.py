@@ -14,7 +14,7 @@ from datetime import timezone
 from decimal import Decimal
 from time import time as unix_now
 
-from mo_dots import Null, null_types
+from mo_dots import Null, null_types, register_primitive
 from mo_future import utcnow as _utcnow, utcfromtimestamp, allocate_lock
 from mo_imports import delay_import
 from mo_math import is_integer
@@ -292,6 +292,7 @@ class Date(object):
                 output = v
         return output
 
+register_primitive(Date)
 
 def parse(*args):
     try:

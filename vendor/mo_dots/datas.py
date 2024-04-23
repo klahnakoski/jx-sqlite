@@ -9,7 +9,7 @@
 
 
 from copy import copy, deepcopy
-from datetime import datetime, time, timedelta
+from datetime import datetime, date, timedelta, time
 from decimal import Decimal
 
 from mo_future import (
@@ -20,7 +20,6 @@ from mo_future import (
     MutableMapping,
     OrderedDict,
     first,
-    binary_type,
 )
 from mo_imports import expect
 
@@ -252,7 +251,7 @@ class Data(object):
             if ov == None:
                 continue
 
-            sv = d.get(ok)
+            sv = to_data(d.get(ok))
             if sv == None:
                 d[ok] = ov
             elif is_data(sv):
@@ -433,7 +432,7 @@ def leaves(value, prefix=None):
 def _leaves(parent, value):
     value = from_data(value)
     obj = object_to_data(value)
-    if obj is value:
+    if obj is value or is_many(value):
         yield parent, value
         return
 
@@ -518,7 +517,7 @@ def _iadd(self, other):
     return self
 
 
-_data_types = (Data, dict, OrderedDict)  # TYPES TO HOLD DATA
+_data_types = data_types = (Data, dict, OrderedDict)  # TYPES TO HOLD DATA
 
 
 def register_data(type_):
@@ -594,10 +593,10 @@ def _leaves_to_data(value):
     if value == None:
         return None
 
-    class_ = _get(value, CLASS)
-    if class_ in (text, binary_type, int, float):
+    if is_primitive(value):
         return value
 
+    class_ = _get(value, CLASS)
     if class_ in _data_types:
         if class_ is Data:
             value = from_data(value)
@@ -633,3 +632,15 @@ def _leaves_to_data(value):
         return [_leaves_to_data(v) for v in value]
 
     return value
+
+
+_primitive_types = (str, bytes, int, float, bool, Decimal, datetime, date, time, timedelta)
+
+
+def is_primitive(value):
+    return isinstance(value, _primitive_types)
+
+
+def register_primitive(_type):
+    global _primitive_types
+    _primitive_types = tuple(set(_primitive_types + (_type,)))
