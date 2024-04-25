@@ -40,6 +40,7 @@ __all__ = [
     "function_type",
     "generator_types",
     "get_function_arguments",
+    "get_function_name",
     "get_ident",
     "HTMLParser",
     "input",

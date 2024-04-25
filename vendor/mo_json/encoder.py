@@ -283,6 +283,9 @@ def _pretty_json(value, scrub):
         elif is_data(value):
             try:
                 value = from_data(value)
+                if not is_data(value):
+                    # Data can hold primitives
+                    return _pretty_json(value, scrub)
                 items = sort_using_key(value.items(), lambda r: r[0])
                 values = [quote(k) + PRETTY_COLON + _pretty_json(v, scrub) for k, v in items if v != None]
                 if not values:

@@ -6,27 +6,15 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-
-
-
 from collections import OrderedDict
 from copy import deepcopy
-from datetime import date, datetime
-from decimal import Decimal
 
-from mo_future import (
-    binary_type,
-    generator_types,
-    get_function_arguments,
-    get_function_defaults,
-    text,
-    Mapping,
-)
+from mo_future import generator_types, get_function_arguments, get_function_defaults, Mapping
 from mo_imports import export, expect
 
-from mo_dots.datas import register_data, Data, _iadd, dict_to_data
+from mo_dots.datas import register_data, Data, _iadd, dict_to_data, is_primitive
 from mo_dots.lists import FlatList, list_to_data
-from mo_dots.nones import NullType, Null
+from mo_dots.nones import NullType, Null, is_null
 from mo_dots.utils import CLASS, SLOT, get_logger
 
 get_attr, set_attr, to_data, from_data, set_default = expect(
@@ -39,6 +27,8 @@ _set = object.__setattr__
 
 WRAPPED_CLASSES = set()
 known_types = {}  #  map from type to field names
+ignored_attributes = set(dir(object)) | set(dir(dict.values.__class__))
+
 
 class DataObject(Mapping):
     """
@@ -82,31 +72,7 @@ class DataObject(Mapping):
         return object_to_data(output)
 
     def keys(self):
-        obj = _get(self, SLOT)
-
-        try:
-            return obj.__dict__.keys()
-        except Exception:
-            pass
-
-        _type = obj.__class__
-        keys = known_types.get(_type)
-        if keys:
-            return keys
-
-        try:
-            keys = _type.__slots__
-            known_types[_type] = keys
-            return keys
-        except Exception:
-            pass
-
-        keys=known_types[_type]=tuple(
-            k
-            for k in dir(_type)
-            if getattr(_type, k).__class__.__name__ in ['member_descriptor', 'getset_descriptor']
-        )
-        return keys
+        return get_keys(self)
 
     def items(self):
         keys = self.keys()
@@ -144,16 +110,53 @@ class DataObject(Mapping):
 register_data(DataObject)
 
 
+def get_keys(obj):
+    """
+    RETURN keys OF obj, AS IF DATA
+    """
+    while isinstance(obj, (DataObject, Data)):
+        obj = _get(obj, SLOT)
+
+    if isinstance(obj, dict):
+        return obj.keys()
+
+    try:
+        return obj.__dict__.keys()
+    except Exception:
+        pass
+
+    _type = _get(obj, CLASS)
+    keys = known_types.get(_type)
+    if keys is not None:
+        return keys
+
+    try:
+        keys = known_types[_type] = _type.__slots__
+        return keys
+    except Exception:
+        pass
+
+    keys = known_types[_type] = tuple(
+        k
+        for k in dir(_type)
+        if k not in ignored_attributes
+        and getattr(_type, k).__class__.__name__ in ["member_descriptor", "getset_descriptor"]
+    )
+    return keys
+
+
 def object_to_data(v):
     try:
-        if v == None:
+        if is_null(v):
             return Null
     except Exception:
         pass
 
-    type_ = _get(v, CLASS)
+    if is_primitive(v):
+        return v
 
-    if type_ is (dict, OrderedDict):
+    type_ = _get(v, CLASS)
+    if type_ in (dict, OrderedDict):
         m = _new(Data)
         _set(m, SLOT, v)
         return m
@@ -162,8 +165,6 @@ def object_to_data(v):
     elif type_ is list:
         return list_to_data(v)
     elif type_ in (Data, DataObject, FlatList, NullType):
-        return v
-    elif type_ in (text, binary_type, int, float, Decimal, datetime, date):
         return v
     elif type_ in generator_types:
         return (to_data(vv) for vv in v)
@@ -212,3 +213,6 @@ def params_pack(params, *args):
 
 
 export("mo_dots.lists", object_to_data)
+export("mo_dots.datas", object_to_data)
+export("mo_dots.datas", DataObject)
+export("mo_dots.datas", get_keys)

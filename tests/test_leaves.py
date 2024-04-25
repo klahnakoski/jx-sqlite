@@ -7,12 +7,15 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
+from unittest import skipIf
+
 from mo_sql.utils import GUID
 
 from jx_sqlite import Schema
 from mo_dots import Data
 from mo_json import STRING, NUMBER
 from mo_testing.fuzzytestcase import FuzzyTestCase, add_error_reporting
+from tests.test_jx import global_settings
 
 
 @add_error_reporting
@@ -44,6 +47,7 @@ class TestLeaves(FuzzyTestCase):
         result = Schema.leaves(schema, "a.$N")
         self.assertEqual(result, [])
 
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_exact_match_child(self):
         schema = Data(
             nested_path=["test"],

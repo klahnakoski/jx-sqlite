@@ -20,7 +20,7 @@ from math import (
     floor as math_floor,
 )
 
-from mo_dots import Null, coalesce, is_container
+from mo_dots import Null, coalesce, is_container, exists
 from mo_future import round as math_round, text, __builtin__, binary_type
 from mo_imports import delay_import
 
@@ -281,9 +281,13 @@ def max(*values):
 
 
 def COUNT(values):
+    """
+    DECISIVE COUNT
+    :return: NUMBER OF NOT_MISSING VALUES
+    """
     count = 0
     for v in values:
-        if v != None:
+        if exists(v):
             count += 1
     return count
 

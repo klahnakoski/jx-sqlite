@@ -13,9 +13,10 @@
 
 from collections import deque
 from copy import copy
+from mo_dots import register_many
 
 
-class Queue(object):
+class Queue:
     """
     A SET WITH ADDED ORDER MAINTAINED
 
@@ -90,3 +91,6 @@ class Queue(object):
         output = self.list.popleft()
         self.set.remove(output)
         return output
+
+
+register_many(Queue)

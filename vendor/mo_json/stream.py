@@ -152,6 +152,7 @@ class Parser(object):
                         index = self._assign_token(index, c, child_expected)
                 elif query_path and query_path[0] == name:
                     for index in self._decode_token(index, c, child_path, query_path[1:], child_expected):
+                        did_yield = True
                         yield index
                 else:
                     index = self.jump_to_end(index, c)

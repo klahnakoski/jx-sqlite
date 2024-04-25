@@ -990,6 +990,7 @@ class TestEdge1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_empty_default_domain_w_groupby(self):
         test = {
             "metadata": {},

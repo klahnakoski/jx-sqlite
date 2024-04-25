@@ -10,7 +10,7 @@
 from dataclasses import dataclass
 from typing import Any, Dict
 
-from mo_dots import is_data, is_list, Null, coalesce
+from mo_dots import is_data, is_list, Null, coalesce, is_null
 from mo_future import is_text, extend
 from mo_imports import expect, export
 from mo_logs import strings
@@ -30,7 +30,7 @@ def jx_expression_to_function(expr):
     """
     RETURN FUNCTION THAT REQUIRES PARAMETERS (row, rownum=None, rows=None):
     """
-    if expr == None:
+    if is_null(expr):
         return Null
 
     if is_expression(expr):

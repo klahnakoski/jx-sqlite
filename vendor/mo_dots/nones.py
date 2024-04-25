@@ -8,13 +8,12 @@
 #
 
 
-
 from mo_future import none_type
 from mo_imports import expect, export
 
 from mo_dots.utils import CLASS, KEY, SLOT
 
-to_data, get_attr, is_sequence = expect("to_data", "get_attr", "is_sequence")
+to_data, get_attr, is_sequence, FlatList = expect("to_data", "get_attr", "is_sequence", "FlatList")
 
 _get = object.__getattribute__
 _set = object.__setattr__
@@ -88,7 +87,7 @@ class NullType(object):
         return None
 
     def __float__(self):
-        return float('nan')
+        return float("nan")
 
     def __div__(self, other):
         return Null
@@ -124,16 +123,23 @@ class NullType(object):
         return Null
 
     def __eq__(self, other):
-        class_ = _get(other, CLASS)
-        if class_ in null_types:
+        if is_sequence(other) and not other:
             return True
-        elif class_ is list and not other:
+
+        _class = _get(other, CLASS)
+        if _class in null_types:
             return True
         else:
-            return other == None
+            return Null
 
     def __ne__(self, other):
-        return other is not None and _get(other, CLASS) is not NullType and other != None
+        class_ = _get(other, CLASS)
+        if class_ in null_types:
+            return False
+        elif class_ is list and not other:
+            return False
+        else:
+            return Null
 
     def __or__(self, other):
         return other
@@ -186,10 +192,10 @@ class NullType(object):
 
         o = to_data(_get(self, SLOT))
         k = _get(self, KEY)
-        if o == None:
+        if is_null(o):
             return NullType(self, key)
         v = o.get(k)
-        if v == None:
+        if is_null(v):
             return NullType(self, key)
         try:
             return v.get(key)
@@ -268,8 +274,8 @@ def _assign_to_null(obj, path, value, force=True):
             return
 
         old_value = get_attr(obj, path0)
-        if old_value == None:
-            if value == None:
+        if is_null(old_value):
+            if is_null(value):
                 return
             else:
                 obj[path0] = old_value = {}
@@ -277,6 +283,25 @@ def _assign_to_null(obj, path, value, force=True):
         _assign_to_null(old_value, path[1:], value)
     except Exception as e:
         raise e
+
+
+def is_null(value):
+    # RETURN True IF EFFECTIVELY NOTHING
+    _class = _get(value, CLASS)
+    if _class in null_types:
+        return True
+    if _class is FlatList:
+        return not value
+    return False
+
+
+def is_not_null(value):
+    _class = _get(value, CLASS)
+    if _class in null_types:
+        return False
+    if _class is FlatList:
+        return bool(value)
+    return True
 
 
 def _split_field(field):
@@ -294,10 +319,12 @@ def _setdefault(obj, key, value):
     DO NOT USE __dict__.setdefault(obj, key, value), IT DOES NOT CHECK FOR obj[key] == None
     """
     v = obj.get(key)
-    if v == None:
+    if is_null(v):
         obj[key] = value
         return value
     return v
 
 
 null_types = (none_type, NullType)
+
+export("mo_dots.fields", is_null)

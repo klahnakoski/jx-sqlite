@@ -80,8 +80,8 @@ class Scrubber:
             if math.isnan(value) or math.isinf(value)
             else scrub_number(value),
             **{t: self.scrub_number for t in integer_types},
-            **{t: self._scrub_many for t in lists.many_types},
-            **{t: self._scrub_data for t in datas.data_types},
+            **{t: self._scrub_many for t in lists._many_types},
+            **{t: self._scrub_data for t in datas._data_types},
             bool: lambda value, is_done, stack: value,
             date: lambda value, is_done, stack: scrub_number(datetime2unix(value)),
             datetime: lambda value, is_done, stack: scrub_number(datetime2unix(value)),
@@ -93,7 +93,6 @@ class Scrubber:
             type: lambda value, is_done, stack: value.__name__,
         }
 
-
     def scrub(self, value):
         """
         REMOVE/REPLACE VALUES THAT CAN NOT BE JSON-IZED
@@ -101,7 +100,7 @@ class Scrubber:
         return self._scrub(value, set(), [])
 
     def _scrub(self, value, is_done, stack):
-        while isinstance(value, DataObject):
+        while isinstance(value, (DataObject, Data)):
             value = from_data(value)
 
         if FIND_LOOPS:

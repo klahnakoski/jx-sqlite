@@ -31,7 +31,7 @@ class TestExpressions(FuzzyTestCase):
     def test_value_not_a_variable(self):
         result = jx_expression({"eq": {"result.test": "/XMLHttpRequest/send-entity-body-document.htm"}}).vars()
         expected = {"result.test"}
-        self.assertEqual(result, expected, "expecting the one and only variable")
+        self.assertEqual(result, expected, msg="expecting the one and only variable")
 
     def test_in_map(self):
         where = {"in": {"a": [1, 2]}}
