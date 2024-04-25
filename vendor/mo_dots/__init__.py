@@ -114,7 +114,7 @@ def missing(value):
 
 
 def fromkeys(keys, value=None):
-    if value == None:
+    if is_null(value):
         return Data()
     return dict_to_data(dict.fromkeys(keys, value))
 
@@ -150,7 +150,7 @@ def _set_default(d, default, seen=None):
         else:
             existing_value = _get_attr(d, [k])
 
-        if existing_value == None:
+        if is_null(existing_value):
             if default_value != None:
                 if _get(default_value, CLASS) in datas._data_types:
                     df = seen.get(id(raw_value))
@@ -197,7 +197,7 @@ def _getdefault(obj, key):
         return [_getdefault(o, key) for o in obj]
 
     try:
-        if obj.__class__ is not dict:
+        if _get(obj, CLASS) is not dict:
             return getattr(obj, key)
     except Exception as f:
         pass
@@ -328,10 +328,10 @@ def _set_attr(obj_, path, value):
     try:
         old_value = _get_attr(obj, [attr_name])
         old_type = _get(old_value, CLASS)
-        if old_value == None or is_primitive(old_value):
+        if is_null(old_value) or is_primitive(old_value):
             old_value = None
             new_value = value
-        elif value == None:
+        elif is_null(value):
             new_value = None
         else:
             new_value = _get(old_value, CLASS)(value)  # TRY TO MAKE INSTANCE OF SAME CLASS
@@ -435,7 +435,7 @@ def listwrap(value):
             # do something
 
     """
-    if value == None:
+    if is_null(value):
         return FlatList()
     elif is_list(value):
         if isinstance(value, list):
@@ -467,37 +467,12 @@ def tuplewrap(value):
     """
     INTENDED TO TURN lists INTO tuples FOR USE AS KEYS
     """
-    if value == None:
+    if is_null(value):
         return tuple()
     elif is_many(value):
         return tuple(tuplewrap(v) if is_sequence(v) else v for v in value)
     else:
         return (from_data(value),)
-
-
-def is_null(t):
-    # RETURN True IF EFFECTIVELY NOTHING
-    class_ = t.__class__
-    if class_ in null_types:
-        return True
-    else:
-        try:
-            return t == None
-        except Exception:
-            return False
-
-
-def is_not_null(t):
-    # RETURN True IF EFFECTIVELY SOMETHING
-    class_ = t.__class__
-    if class_ in null_types:
-        return False
-    elif class_ in datas._data_types:
-        return True
-    elif class_ in finite_types and t:
-        return True
-    else:
-        return t != None
 
 
 datawrap = object_to_data

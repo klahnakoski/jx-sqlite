@@ -21,10 +21,10 @@ from mo_future import (
     OrderedDict,
     first,
 )
-from mo_imports import expect
+from mo_imports import expect, export
 
 from mo_dots.fields import split_field, literal_field, concat_field
-from mo_dots.nones import Null, NullType, null_types
+from mo_dots.nones import Null, NullType, null_types, is_null
 from mo_dots.utils import CLASS, SLOT
 from mo_dots.utils import get_logger
 
@@ -106,7 +106,7 @@ class Data(object):
             yield from d.__iter__()
 
     def __getitem__(self, key):
-        if key == None:
+        if is_null(key):
             return Null
         if key == ".":
             output = _get(self, SLOT)
@@ -132,14 +132,14 @@ class Data(object):
         else:
             o = d.get(key)
 
-        if o == None:
+        if is_null(o):
             return NullType(d, key)
         return to_data(o)
 
     def __setitem__(self, key, value):
         if key == "":
             get_logger().error("key is empty string.  Probably a bad idea")
-        if key == None:
+        if is_null(key):
             return Null
         if key == ".":
             # SOMETHING TERRIBLE HAPPENS WHEN value IS NOT A Mapping;
@@ -162,12 +162,12 @@ class Data(object):
             seq = _split_field(key)
             for k in seq[:-1]:
                 d = _getdefault(d, k)
-            if value == None:
+            if is_null(value):
                 try:
                     d.pop(seq[-1], None)
                 except Exception as _:
                     pass
-            elif d == None:
+            elif is_null(d):
                 d[literal_field(seq[-1])] = value
             elif is_sequence(d):
                 for dd in d:
@@ -248,11 +248,11 @@ class Data(object):
             return self
 
         for ok, ov in other.items():
-            if ov == None:
+            if is_null(ov):
                 continue
 
             sv = to_data(d.get(ok))
-            if sv == None:
+            if is_null(sv):
                 d[ok] = ov
             elif is_data(sv):
                 d[ok] = sv | ov
@@ -270,7 +270,7 @@ class Data(object):
         if _get(d, CLASS) is not dict:
             return d == other
 
-        if not d and other == None:
+        if not d and is_null(other):
             return False
 
         if _get(other, CLASS) not in _data_types:
@@ -311,7 +311,7 @@ class Data(object):
         return ((k, to_data(v)) for k, v in iteritems(d))
 
     def pop(self, key, default=Null):
-        if key == None:
+        if is_null(key):
             return Null
         if key == ".":
             raise NotImplemented()
@@ -331,7 +331,7 @@ class Data(object):
             key = seq[-1]
 
         o = d.get(key)
-        if o == None:
+        if is_null(o):
             if default is Null:
                 return NullType(d, key)
             return default
@@ -391,7 +391,7 @@ class Data(object):
 
     def setdefault(self, k, d=None):
         v = self[k]
-        if v == None:
+        if is_null(v):
             self[k] = d
             return d
         return v
@@ -423,16 +423,20 @@ def leaves(value, prefix=None):
     :return: Data, WHICH EACH KEY BEING A PATH INTO value TREE
     """
     if not prefix:
-        yield from _leaves(".", value)
+        yield from _leaves(".", value, tuple())
     else:
-        for k, v in _leaves(".", value):
+        for k, v in _leaves(".", value, tuple()):
             yield prefix + k, v
 
 
-def _leaves(parent, value):
-    value = from_data(value)
-    obj = object_to_data(value)
-    if obj is value or is_many(value):
+def _leaves(parent, value, path):
+    val = from_data(value)
+    _id = id(val)
+    if _id in path:
+        yield parent, value
+        return
+    obj = object_to_data(val)
+    if obj is val or is_many(val):
         yield parent, value
         return
 
@@ -443,7 +447,7 @@ def _leaves(parent, value):
                 continue
             kk = concat_field(parent, literal_field(k))
             vv = object_to_data(v)
-            yield from _leaves(kk, vv)
+            yield from _leaves(kk, vv, path + (_id,))
         except Exception as cause:
             get_logger().error("Do not know how to handle", cause=cause)
 
@@ -479,7 +483,7 @@ def _iadd(self, other):
     d = from_data(self)
     for ok, ov in other.items():
         sv = d.get(ok)
-        if sv == None:
+        if is_null(sv):
             d[ok] = from_data(deepcopy(ov))
         elif isinstance(ov, (Decimal, float, long, int)):
             if _get(sv, CLASS) in _data_types:
@@ -534,22 +538,23 @@ def is_data(d):
     :param d:
     :return: True IF d IS A TYPE THAT HOLDS DATA
     """
-    return d.__class__ in _data_types
+    return _get(d, CLASS) in _data_types
 
 
 def is_missing(t) -> bool:
     # RETURN True IF EFFECTIVELY NOTHING
-    class_ = t.__class__
-    if class_ in null_types:
+    _class = _get(t, CLASS)
+    if _class in null_types:
         return True
-    elif class_ in _data_types:
+    elif _class in _data_types:
         return False
-    elif class_ in finite_types and not t:
+    elif _class in finite_types and not t:
         return True
-    elif class_ is text and not t:
+    elif _class is text and not t:
         return True
-    else:
-        return t == None
+    elif _class in null_types:
+        return True
+    return False
 
 
 def exists(value) -> bool:
@@ -590,7 +595,7 @@ def _leaves_to_data(value):
     """
     RETURN UNWRAPPED STRUCTURES
     """
-    if value == None:
+    if is_null(value):
         return None
 
     if is_primitive(value):
@@ -622,7 +627,7 @@ def _leaves_to_data(value):
                     e = d[k] = {}
                 d = e
 
-            if value == None:
+            if is_null(value):
                 d.pop(seq[-1], None)
             else:
                 d[seq[-1]] = value
@@ -644,3 +649,6 @@ def is_primitive(value):
 def register_primitive(_type):
     global _primitive_types
     _primitive_types = tuple(set(_primitive_types + (_type,)))
+
+
+export("mo_dots.fields", is_missing)

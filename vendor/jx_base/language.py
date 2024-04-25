@@ -15,9 +15,12 @@ from datetime import datetime
 from decimal import Decimal
 from math import isnan
 
-from jx_base.utils import enlist
+import mo_dots
 from mo_dots import Data, startswith_field, null_types, is_data, datas
 from mo_dots.lists import list_types, is_many
+from mo_times import Date
+
+from jx_base.utils import enlist
 from mo_future import (
     boolean_type,
     long,
@@ -29,7 +32,6 @@ from mo_future import (
 )
 from mo_imports import delay_import
 from mo_logs import logger
-from mo_times import Date
 
 is_literal = delay_import("jx_base.expressions.literal.is_literal")
 

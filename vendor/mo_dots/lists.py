@@ -15,7 +15,7 @@ from mo_future import generator_types, first
 from mo_imports import expect, delay_import, export
 
 from mo_dots.datas import is_missing, hash_value
-from mo_dots.nones import Null
+from mo_dots.nones import Null, is_null
 from mo_dots.utils import CLASS, SLOT
 
 Log = delay_import("mo_logs.Log")
@@ -41,9 +41,9 @@ class FlatList(object):
     def __init__(self, vals=None):
         """ USE THE vals, NOT A COPY """
         # list.__init__(self)
-        if vals == None:
+        if is_null(vals):
             _set(self, SLOT, [])
-        elif vals.__class__ is FlatList:
+        elif _get(vals, CLASS) is FlatList:
             _set(self, SLOT, vals.list)
         else:
             _set(self, SLOT, vals)
@@ -197,7 +197,7 @@ class FlatList(object):
 
     def __eq__(self, other):
         lst = _get(self, SLOT)
-        if other == None:
+        if is_null(other):
             return len(lst) == 0
 
         try:
@@ -212,7 +212,7 @@ class FlatList(object):
 
     def __add__(self, other):
         output = list(_get(self, SLOT))
-        if other == None:
+        if is_null(other):
             return self
         elif is_many(other):
             output.extend(from_data(other))
@@ -224,7 +224,7 @@ class FlatList(object):
 
     def __radd__(self, other):
         output = list(_get(self, SLOT))
-        if other == None:
+        if is_null(other):
             return self
         elif is_many(other):
             output = list(from_data(other)) + output
@@ -233,7 +233,7 @@ class FlatList(object):
         return FlatList(vals=output)
 
     def __iadd__(self, other):
-        if other == None:
+        if is_null(other):
             return self
         elif is_many(other):
             self.extend(from_data(other))
@@ -245,7 +245,7 @@ class FlatList(object):
         """
         WITH SLICES BEING FLAT, WE NEED A SIMPLE WAY TO SLICE FROM THE RIGHT [-num:]
         """
-        if num == None:
+        if is_null(num):
             return self
         if num <= 0:
             return Null
@@ -256,7 +256,7 @@ class FlatList(object):
         """
         NOT REQUIRED, BUT EXISTS AS OPPOSITE OF right()
         """
-        if num == None:
+        if is_null(num):
             return self
         if num <= 0:
             return Null
@@ -330,22 +330,22 @@ not_many_names = ("str", "unicode", "binary", "NullType", "NoneType", "dict", "D
 
 def is_list(l):
     # ORDERED, AND CAN CHANGE CONTENTS
-    return l.__class__ in list_types
+    return _get(l, CLASS) in list_types
 
 
 def is_container(l):
     # CAN ADD AND REMOVE ELEMENTS
-    return l.__class__ in container_types
+    return _get(l, CLASS) in container_types
 
 
 def is_sequence(l):
     # HAS AN ORDER, INCLUDES GENERATORS
-    return l.__class__ in sequence_types
+    return _get(l, CLASS) in sequence_types
 
 
 def is_finite(l):
     # CAN PERFORM len(l); NOT A GENERATOR
-    return l.__class__ in finite_types
+    return _get(l, CLASS) in finite_types
 
 
 def is_many(value):
@@ -355,7 +355,7 @@ def is_many(value):
     # I WOULD LIKE TO POSITIVELY CATCH many_types, BUT MAYBE IT IS EASIER TO DETECT: Iterable, BUT NOT PRIMITIVE
     # UNTIL WE HAVE A COMPLETE SLOT, WE KEEP ALL THIS warning() CODE
     global _many_types
-    type_ = value.__class__
+    type_ = _get(value, CLASS)
     if type_ in _many_types:
         return True
 
@@ -388,3 +388,4 @@ export("mo_dots.datas", is_sequence)
 export("mo_dots.datas", is_many)
 
 export("mo_dots.nones", is_sequence)
+export("mo_dots.nones", FlatList)
