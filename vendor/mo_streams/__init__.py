@@ -7,8 +7,8 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from mo_dots import Data
-from mo_dots.lists import is_many, is_finite
+from mo_dots import Data, is_many
+from mo_dots.utils import is_finite
 from mo_files import File
 from mo_future import first
 from mo_imports import export

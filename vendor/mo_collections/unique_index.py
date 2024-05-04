@@ -8,8 +8,8 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from mo_dots import is_data, is_sequence, tuplewrap, from_data, to_data, list_to_data
-from mo_future import iteritems, Set, Mapping, Iterable, first
+from mo_dots import is_data, is_sequence, tuplewrap, from_data, to_data, list_to_data, register_list
+from mo_future import Set, Mapping, Iterable, first
 from mo_logs import Log
 from mo_logs.exceptions import suppress_exception
 
@@ -66,7 +66,7 @@ class UniqueIndex(Set, Mapping):
         return self._data.keys()
 
     def pop(self):
-        output = first(iteritems(self._data))[1]
+        output = first(self._data.items())[1]
         self.remove(output)
         return to_data(output)
 
@@ -164,6 +164,9 @@ class UniqueIndex(Set, Mapping):
 
     def intersect(self, other):
         return self.__and__(other)
+
+
+register_list(UniqueIndex)
 
 
 def value2key(keys, val):

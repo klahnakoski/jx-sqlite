@@ -9,8 +9,8 @@
 #
 import os
 
-from mo_testing.fuzzytestcase import FuzzyTestCase, assertAlmostEqual
+from mo_testing.fuzzytestcase import FuzzyTestCase, assertAlmostEqual, add_error_reporting
 
 IS_WINDOWS = os.name == "nt"
 
-__all__ = ["IS_WINDOWS", "FuzzyTestCase", "assertAlmostEqual"]
+__all__ = ["IS_WINDOWS", "FuzzyTestCase", "assertAlmostEqual", "add_error_reporting"]

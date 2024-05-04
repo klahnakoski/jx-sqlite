@@ -96,6 +96,6 @@ def get_ssm(ref, doc_path=None, location=None):
         return output
 
     if len(output) == 0:
-        logger.error("No ssm parameters found at {{path}}", path=ref.path)
+        logger.error("No ssm parameters found at {path}", path=ref.path)
     return output
 
