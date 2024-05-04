@@ -19,8 +19,8 @@
     "extras_require": {"tests": ["mo-testing>=8.591.24112"]},
     "include_package_data": true,
     "install_requires": [
-                         "hjson", "jx-python==4.625.24125",    "mo-sql==4.624.24125",
-        "mo-sqlite==2.625.24125",               "requests"
+                         "hjson", "jx-python==4.626.24125",    "mo-sql==4.624.24125",
+        "mo-sqlite==2.626.24125",               "requests"
     ],
     "license": "MPL 2.0",
     "long_description": {
