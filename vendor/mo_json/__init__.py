@@ -12,9 +12,11 @@ from mo_dots import (
     Null,
     to_data,
     leaves_to_data,
-    is_list
+    is_list, is_missing
 )
 from mo_imports import delay_import
+from mo_math import is_number, is_finite
+
 from mo_json.scrubber import Scrubber, _keep_whitespace, trim_whitespace
 from mo_json.types import *
 from mo_logs import Except, strings
@@ -64,6 +66,11 @@ def float2json(value):
     :param value: float, int, long, Decimal
     :return: unicode
     """
+    if is_missing(value):
+        return "null"
+    if not is_finite(value):
+        return "null"
+
     if value == 0:
         return "0"
     try:
@@ -81,7 +88,11 @@ def float2json(value):
             digits = ("0" * (-int_exp)) + digits
             return sign + (digits[:1] + "." + digits[1:].rstrip("0")).rstrip(".")
         else:
-            return sign + digits[0] + "." + (digits[1:].rstrip("0") or "0") + "e" + str(int_exp)
+            tail = digits[1:].rstrip("0")
+            if not tail:
+                return f"{sign}{digits[0]}e{int_exp}"
+            else:
+                return f"{sign}{digits[0]}.{tail}e{int_exp}"
     except Exception as e:
         logger.error("not expected", e)
 

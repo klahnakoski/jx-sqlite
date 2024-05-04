@@ -18,7 +18,7 @@ from mo_logs.strings import wordify
 class Configuration(Mapping):
     def __init__(self, config, path="."):
         if not isinstance(config, Mapping) and not is_data(config):
-            logger.error("Expecting data, not {{config}}", config=config)
+            logger.error("Expecting data, not {config}", config=config)
         self._path = path
         self._lookup = leaves_to_data({
             join_field(wordify(path)): value for path, value in Data(**config).leaves()

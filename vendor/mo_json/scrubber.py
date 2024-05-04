@@ -2,9 +2,7 @@ import json
 import math
 from datetime import timedelta, timezone
 
-from mo_dots import null_types, from_data, exists
-from mo_dots import datas, lists
-from mo_dots.objects import DataObject
+from mo_dots import null_types, from_data, exists, utils, DataObject
 from mo_future import integer_types, is_text
 from mo_imports import delay_import
 from mo_logs import Except
@@ -80,8 +78,8 @@ class Scrubber:
             if math.isnan(value) or math.isinf(value)
             else scrub_number(value),
             **{t: self.scrub_number for t in integer_types},
-            **{t: self._scrub_many for t in lists._many_types},
-            **{t: self._scrub_data for t in datas._data_types},
+            **{t: self._scrub_many for t in utils._many_types},
+            **{t: self._scrub_data for t in utils._data_types},
             bool: lambda value, is_done, stack: value,
             date: lambda value, is_done, stack: scrub_number(datetime2unix(value)),
             datetime: lambda value, is_done, stack: scrub_number(datetime2unix(value)),

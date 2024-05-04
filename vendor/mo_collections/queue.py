@@ -13,7 +13,8 @@
 
 from collections import deque
 from copy import copy
-from mo_dots import register_many
+
+from mo_dots import register_list
 
 
 class Queue:
@@ -93,4 +94,4 @@ class Queue:
         return output
 
 
-register_many(Queue)
+register_list(Queue)

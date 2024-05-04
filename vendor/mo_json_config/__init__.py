@@ -26,6 +26,7 @@ from mo_dots import (
 )
 from mo_files import File
 from mo_files.url import URL
+from mo_future import first
 from mo_json import json2value
 from mo_logs import Except, logger, get_stacktrace
 
@@ -33,6 +34,7 @@ from mo_json_config.configuration import Configuration
 from mo_json_config.convert import ini2value
 from mo_json_config.ssm import get_ssm as _get_ssm
 
+CAN_NOT_READ_FILE = "Can not read file {filename}"
 DEBUG = False
 
 
@@ -47,7 +49,7 @@ def get(url):
     """
     url = str(url)
     if "://" not in url:
-        logger.error("{{url}} must have a prototcol (eg http://) declared", url=url)
+        logger.error("{url} must have a prototcol (eg http://) declared", url=url)
     path = (dict_to_data({"$ref": url}), None)
 
     if url.startswith("file://") and url[7] != "/":
@@ -62,9 +64,13 @@ def get(url):
                 phase1 = _replace_ref(path, base)
                 break
             except Exception as cause:
-                causes.append(cause)
+                if CAN_NOT_READ_FILE in cause:
+                    # lower priority cause
+                    causes.append(cause)
+                else:
+                    causes.insert(0, cause)
         else:
-            logger.error("problem replacing ref in {{url}}", url=url, cause=causes)
+            logger.error("problem replacing ref in {url}", url=url, cause=first(causes))
     else:
         phase1 = _replace_ref(path, URL(""))  # BLANK URL ONLY WORKS IF url IS ABSOLUTE
 
@@ -72,7 +78,7 @@ def get(url):
         phase2 = _replace_locals((phase1,None), url)
         return to_data(phase2)
     except Exception as cause:
-        logger.error("problem replacing locals in\n{{phase1}}", phase1=phase1, cause=cause)
+        logger.error("problem replacing locals in\n{phase1}", phase1=phase1, cause=cause)
 
 
 def expand(doc, doc_url="param://", params=None):
@@ -88,7 +94,7 @@ def expand(doc, doc_url="param://", params=None):
     :return: EXPANDED JSON-SERIALIZABLE STRUCTURE
     """
     if "://" not in doc_url:
-        logger.error("{{url}} must have a protocol (eg https://) declared", url=doc_url)
+        logger.error("{url} must have a protocol (eg https://) declared", url=doc_url)
 
     url = URL(doc_url)
     url.query = set_default(url.query, params)
@@ -155,7 +161,7 @@ def _replace_ref(path, url):
 
             # FIND THE SCHEME AND LOAD IT
             if ref.scheme not in scheme_loaders:
-                raise logger.error("unknown protocol {{scheme}}", scheme=ref.scheme)
+                raise logger.error("unknown protocol {scheme}", scheme=ref.scheme)
             try:
                 new_value = scheme_loaders[ref.scheme](ref, (node, path), url)
                 ref_found = True
@@ -166,7 +172,7 @@ def _replace_ref(path, url):
             if ref.fragment:
                 new_value = get_attr(new_value, ref.fragment)
 
-            DEBUG and logger.note("Replace {{ref}} with {{new_value}}", ref=ref, new_value=new_value)
+            DEBUG and logger.note("Replace {ref} with {new_value}", ref=ref, new_value=new_value)
 
             if not output:
                 output = new_value
@@ -179,7 +185,7 @@ def _replace_ref(path, url):
             raise ref_error
         if ref_remain:
             output["$ref"] = unwraplist(ref_remain)
-        DEBUG and logger.note("Return {{output}}", output=output)
+        DEBUG and logger.note("Return {output}", output=output)
         return output
     elif is_list(node):
         output = [_replace_ref((n, path), url) for n in node]
@@ -279,11 +285,11 @@ def _get_file(ref, path, url):
     path = ref.path if os.sep != "\\" else ref.path[1::].replace("/", "\\")
 
     try:
-        DEBUG and logger.note("reading file {{path}}", path=path)
+        DEBUG and logger.note("reading file {path}", path=path)
         content = File(path).read()
     except Exception as e:
         content = None
-        logger.error("Could not read file {{filename}}", filename=File(path).os_path, cause=e)
+        logger.error(CAN_NOT_READ_FILE, filename=File(path).os_path, cause=e)
 
     try:
         new_value = json2value(content, params=ref.query, flexible=True, leaves=True)
@@ -292,7 +298,7 @@ def _get_file(ref, path, url):
         try:
             new_value = ini2value(content)
         except Exception:
-            raise logger.error("Can not read {{file}}", file=path, cause=e)
+            raise logger.error(CAN_NOT_READ_FILE, filename=path, cause=e)
     new_value = _replace_ref((new_value, path), ref)
     return new_value
 
@@ -310,7 +316,7 @@ def _get_env(ref, doc_path, url):
     ref = ref.host
     raw_value = os.environ.get(ref)
     if not raw_value:
-        logger.error("expecting environment variable with name {{env_var}}", env_var=ref)
+        logger.error("expecting environment variable with name {env_var}", env_var=ref)
 
     try:
         new_value = json2value(raw_value)
@@ -335,7 +341,7 @@ def _get_keyring(ref, doc_path, url):
     raw_value = keyring.get_password(service_name, username)
     if not raw_value:
         logger.error(
-            "expecting password in the keyring for service_name={{service_name}} and username={{username}}",
+            "expecting password in the keyring for service_name={service_name} and username={username}",
             service_name=service_name,
             username=username,
         )
