@@ -10,7 +10,7 @@
 
 
 
-from unittest import skip, skipIf
+from unittest import skipIf
 
 from mo_testing.fuzzytestcase import add_error_reporting
 from mo_times.dates import Date

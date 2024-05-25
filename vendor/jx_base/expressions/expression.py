@@ -36,7 +36,7 @@ class Expression(BaseExpression):
         # SOME BASIC VERIFICATION THAT THESE ARE REASONABLE PARAMETERS
         bad = [t for t in args if t != None and not is_expression(t)]
         if bad:
-            Log.error("Expecting an expression, not {{bad}}", bad=bad)
+            Log.error("Expecting an expression, not {bad}", bad=bad)
 
     @classmethod
     def get_id(cls):
