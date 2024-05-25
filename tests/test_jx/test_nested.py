@@ -9,7 +9,7 @@
 #
 from unittest import skipIf
 
-from mo_dots import list_to_data
+from mo_dots import list_to_data, concat_field
 from mo_testing.fuzzytestcase import add_error_reporting
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
@@ -41,7 +41,7 @@ class TestNestedQueries(BaseTestCase):
             "expecting_normalized": {
                 "select": [
                     {"from": TEST_TABLE},
-                    {"name": "b", "value": {"aggregate": [{"from": TEST_TABLE + ".a._b", "select": "b"}, "sum"]},},
+                    {"name": "b", "value": {"aggregate": [{"from": concat_field(TEST_TABLE, "a._b"), "select": "b"}, "sum"]},},
                 ],
             },
             "expecting_list": {"meta": {"format": "list"}, "data": [{"b": 22}],},
@@ -74,7 +74,7 @@ class TestNestedQueries(BaseTestCase):
                 "select": [
                     {"from": TEST_TABLE},
                     {"name": "v", "value": "v"},
-                    {"name": "b", "value": {"aggregate": [{"from": TEST_TABLE + ".a._b", "select": "b"}, "sum"]},},
+                    {"name": "b", "value": {"aggregate": [{"from": concat_field(TEST_TABLE, "a._b"), "select": "b"}, "sum"]},},
                 ],
             },
             "expecting_list": {"meta": {"format": "list"}, "data": [{"v": 0, "b": 22}],},
@@ -98,7 +98,7 @@ class TestNestedQueries(BaseTestCase):
                     {
                         "name": "x",
                         "value": [{
-                            "from": TEST_TABLE + ".a._b",
+                            "from": concat_field(TEST_TABLE, "a._b"),
                             "select": {"name": ".", "value": {"sum": ["v", "a._b.b"]}, "aggregate": "sum",},
                         }],
                     },
@@ -240,7 +240,7 @@ class TestNestedQueries(BaseTestCase):
                 {"v": 1, "a": [{"t": "x", "b": 1}, {"t": "x", "b": 2}, {"t": "y", "b": 3}, {"t": "z", "b": 4},],},
             ],
             "query": {
-                "from": TEST_TABLE + ".a",
+                "from": concat_field(TEST_TABLE, "a"),
                 "select": ["v", {"value": "a.b", "aggregate": "sum"},],
                 "edges": ["a.t"],
             },

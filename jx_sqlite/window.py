@@ -8,7 +8,6 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from mo_dots import coalesce
-from mo_future import text
 from mo_sql.utils import sql_aggs
 from mo_sqlite import SQL_ORDERBY, sql_iso, sql_list
 from mo_sqlite import quote_column

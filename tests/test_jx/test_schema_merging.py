@@ -10,6 +10,7 @@
 from unittest import skipIf
 
 from jx_base.expressions import NULL
+from mo_dots import concat_field
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 
@@ -313,7 +314,7 @@ class TestSchemaMerging(BaseTestCase):
                 {"k": 7, }
             ],
             "query": {
-                "from": TEST_TABLE + ".a",
+                "from": concat_field(TEST_TABLE, "a"),
                 "select": ["k"],
                 "where": {"eq": {"a.b": 1}}
             },
@@ -380,7 +381,7 @@ class TestSchemaMerging(BaseTestCase):
                 {"v": 7}
             ],
             "query": {
-                "from": TEST_TABLE + ".a",
+                "from": concat_field(TEST_TABLE, "a"),
                 "edges": [{"value": "b"}],
                 "select": {"value": "v", "aggregate": "sum"}
             },

@@ -13,8 +13,7 @@
 from unittest import skip, skipIf
 
 from jx_base.expressions import NULL
-from mo_dots import set_default, to_data
-from mo_future import text
+from mo_dots import set_default, to_data, concat_field
 from mo_testing.fuzzytestcase import add_error_reporting
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
@@ -464,7 +463,7 @@ class TestgroupBy1(BaseTestCase):
                 {"a": 6, "b": 6}
             ],
             "query": {
-                "from": TEST_TABLE + ".b",
+                "from": concat_field(TEST_TABLE, "b"),
                 "groupby": [{"name": "b", "value": "."}]
             },
             "expecting_list": {

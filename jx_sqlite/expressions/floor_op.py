@@ -11,7 +11,6 @@ from jx_base.expressions import FloorOp as _FloorOp, OrOp, SqlScript
 from mo_sqlite import SQLang
 from mo_sqlite import check
 from mo_sqlite.expressions.sql_script import SqlScript
-from mo_future import text
 from mo_json import JX_NUMBER
 from mo_sqlite import (
     sql_iso,

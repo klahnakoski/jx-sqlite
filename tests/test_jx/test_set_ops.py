@@ -15,7 +15,7 @@ from unittest import skipIf, skip
 import mo_math
 from jx_base.expressions import NULL
 from jx_base.expressions.query_op import DEFAULT_LIMIT, MAX_LIMIT
-from mo_dots import to_data, dict_to_data, list_to_data
+from mo_dots import to_data, dict_to_data, list_to_data, concat_field
 from mo_future import first
 from mo_sql.utils import SQL_STRING_KEY
 from mo_testing.fuzzytestcase import add_error_reporting
@@ -393,7 +393,7 @@ class TestSetOps(BaseTestCase):
                     "x": 11,
                 },
             ],
-            "query": {"from": TEST_TABLE + ".a.b", "select": ["...x", "c"]},
+            "query": {"from": concat_field(TEST_TABLE, "a.b"), "select": ["...x", "c"]},
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [

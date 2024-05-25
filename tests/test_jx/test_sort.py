@@ -13,7 +13,7 @@
 from unittest import skipIf, skip
 
 from jx_base.expressions import NULL
-from mo_dots import to_data, list_to_data
+from mo_dots import to_data, list_to_data, concat_field
 from mo_logs import Log
 from mo_logs.exceptions import get_stacktrace
 from mo_testing.fuzzytestcase import add_error_reporting
@@ -546,7 +546,7 @@ class TestSorting(BaseTestCase):
                 ]},
             ],
             "query": {
-                "from": TEST_TABLE+".b",
+                "from": concat_field(TEST_TABLE, "b"),
                 "sort": [{"a": "asc"}],
                 "limit": 100
             },
@@ -589,7 +589,7 @@ class TestSorting(BaseTestCase):
                 ]},
             ],
             "query": {
-                "from": TEST_TABLE+".b",
+                "from": concat_field(TEST_TABLE, "b"),
                 "sort": [{"a": "asc"}]
             },
             "expecting_list": {

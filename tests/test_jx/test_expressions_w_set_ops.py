@@ -11,7 +11,7 @@ import sys
 from unittest import skip, skipIf
 
 from jx_base.expressions import NULL
-from mo_dots import list_to_data
+from mo_dots import list_to_data, concat_field
 from mo_json import null
 from mo_testing.fuzzytestcase import add_error_reporting
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
@@ -391,7 +391,7 @@ class TestSetOps(BaseTestCase):
                 {},
             ]}}],
             "query": {
-                "from": TEST_TABLE + ".a._b",
+                "from": concat_field(TEST_TABLE, "a._b"),
                 "select": [
                     {"aggregate": "count"},
                     {
@@ -424,7 +424,7 @@ class TestSetOps(BaseTestCase):
         test = {
             "data": [{"a": {"_b": [{"a": 5}, {}]}}],
             "query": {
-                "from": TEST_TABLE + ".a._b",
+                "from": concat_field(TEST_TABLE, "a._b"),
                 "select": [{
                     "name": "t",
                     "value": {"add": ["a", "a"]},

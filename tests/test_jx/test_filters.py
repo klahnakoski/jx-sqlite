@@ -13,7 +13,7 @@
 from unittest import skipIf, skip
 
 from jx_base.expressions import NULL
-from mo_dots import list_to_data
+from mo_dots import list_to_data, concat_field
 from mo_sql.utils import SQL_STRING_KEY
 from mo_testing.fuzzytestcase import add_error_reporting
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
@@ -121,7 +121,7 @@ class TestFilters(BaseTestCase):
                 {"a": "b"}
             ]}],
             "query": {
-                "from": TEST_TABLE+"._a",
+                "from": concat_field(TEST_TABLE, "_a"),
                 "select": "*",
                 "where": {"regex": {"a": ".*b.*"}},
             },

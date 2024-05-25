@@ -9,7 +9,7 @@
 #
 from unittest import skip
 
-from mo_dots import list_to_data
+from mo_dots import list_to_data, concat_field
 from mo_testing.fuzzytestcase import add_error_reporting
 from tests.test_jx import BaseTestCase, TEST_TABLE
 
@@ -25,8 +25,8 @@ class TestJoins(BaseTestCase):
             "query": {
                 "select": {"name": ".", "value": "t"},
                 "from": [
-                    {"name": "t", "value": TEST_TABLE + ".a"},
-                    {"left_join": {"name": "u", "value": TEST_TABLE + ".a"}, "on": {"eq": ["t.v", "u.v"]}},
+                    {"name": "t", "value": concat_field(TEST_TABLE, "a")},
+                    {"left_join": {"name": "u", "value": concat_field(TEST_TABLE, "a")}, "on": {"eq": ["t.v", "u.v"]}},
                 ],
                 "where": {"missing": "u"},
             },
