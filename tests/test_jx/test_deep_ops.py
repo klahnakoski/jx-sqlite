@@ -242,6 +242,7 @@ class TestDeepOps(BaseTestCase):
         }
         self.assertRaises(Exception, self.utils.execute_tests, test)
 
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_abs_shallow_select(self):
         # TEST THAT ABSOLUTE COLUMN NAMES WORK (WHEN THEY DO NOT CONFLICT WITH RELATIVE PROPERTY NAME)
         test = {

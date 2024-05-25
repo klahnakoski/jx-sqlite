@@ -108,6 +108,8 @@ class Date(object):
                 "Can not format {value} with {format}", value=unix2datetime(self.unix), format=format, cause=e
             )
 
+    strftime = format
+
     @property
     def datetime(self):
         """

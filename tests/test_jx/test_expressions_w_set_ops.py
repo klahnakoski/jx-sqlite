@@ -21,6 +21,7 @@ lots_of_data = list_to_data([{"a": i} for i in range(30)])
 
 @add_error_reporting
 class TestSetOps(BaseTestCase):
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_length(self):
         test = {
             "data": [

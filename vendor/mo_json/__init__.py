@@ -227,7 +227,7 @@ def json2value(json_string, params=Null, flexible=False, leaves=False):
             json_string = _simple_expand(json_string, (params,))
 
         if flexible:
-            value = hjson2value(json_string)
+            value = to_data(hjson2value(json_string))
         else:
             value = to_data(json_decoder(str(json_string)))
 

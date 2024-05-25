@@ -359,6 +359,9 @@ def _get_param(ref, doc_path, url):
     new_value = param[ref.host]
     return new_value
 
+def _nothing(ref, doc_path, url):
+    return f"{{{ref}}}"
+
 
 scheme_loaders = {
     "http": get_http,
@@ -369,6 +372,7 @@ scheme_loaders = {
     "keyring": _get_keyring,
     "ssm": _get_ssm,
     "ref": _get_value_from_fragment,
+    "scheme": _nothing,
 }
 
 

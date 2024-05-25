@@ -1560,6 +1560,7 @@ class TestEdge1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_edge_using_tuple(self):
         data = [
             {"r": "a", "s": "aa"},

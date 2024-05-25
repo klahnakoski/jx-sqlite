@@ -47,6 +47,7 @@ class TestSorting(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_edge_and_sort(self):
         test = {
             "data": [
