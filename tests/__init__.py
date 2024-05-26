@@ -19,9 +19,9 @@ from jx_base.meta_columns import query_metadata
 from jx_python import jx
 from jx_sqlite import Container
 from jx_sqlite.query import Facts
-from mo_dots import coalesce, from_data, listwrap, Data, startswith_field, to_data, is_many, is_sequence, Null
+from mo_dots import coalesce, from_data, listwrap, Data, startswith_field, to_data, is_many, is_sequence, Null, is_data, \
+    tail_field, concat_field
 from mo_files import File
-from mo_future import text
 from mo_json import json2value
 from mo_kwargs import override
 from mo_logs import logger, Except, constants
@@ -87,13 +87,21 @@ class SQLiteUtils(object):
 
         frum = subtest.query["from"]
         if not frum:
+            # ASSUME QUERY IS FOR THE TEST_TABLE
             frum = subtest.query["from"] = self.table.name
-        elif isinstance(frum, text):
-            frum = subtest.query["from"] = frum.replace(TEST_TABLE, self.table.name)
         else:
-            logger.error("Do not know how to handle")
-
-        return to_data({"index": frum, "alias":frum})
+            # REPLACE ANY TEST_TABLE WITH THE REAL TABLE NAME
+            def replace(v):
+                if is_data(v):
+                    return {k: replace(v) for k, v in v.items()}
+                elif is_many(v):
+                    return [replace(v) for v in v]
+                elif isinstance(v, str) and startswith_field(v, TEST_TABLE):
+                    return concat_field(self.table.name, tail_field(v)[1])
+                else:
+                    return v
+            frum = subtest.query["from"] = replace(frum)
+        return Data(index=frum, alias=self.table.name)
 
     def send_queries(self, subtest):
         subtest = to_data(subtest)

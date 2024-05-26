@@ -17,8 +17,18 @@ lots_of_data = list_to_data([{"a": i} for i in range(30)])
 
 
 @add_error_reporting
-@skip("not ready")
 class TestJoins(BaseTestCase):
+    def test_left_join(self):
+        test = {
+            "data": [{"a": [{"v": 1}, {"v": 2}], "b": [{}, {"v": 1}]}],
+            "query": {"from": [
+                {"name": "t", "value": concat_field(TEST_TABLE, "a")},
+                {"left_join": {"name": "u", "value": concat_field(TEST_TABLE, "a")}, "on": {"eq": ["t.v", "u.v"]}},
+            ]},
+            "expecting_list": {"meta": {"format": "list"}, "data": [{"a": [{"v": 1}, {"v": 2}], "b": [{}, {"v": 1}]}]},
+        }
+        self.utils.execute_tests(test)
+
     def test_subtraction(self):
         test = {
             "data": [{"a": [{"v": 1}, {"v": 2}], "b": [{}, {"v": 1}]}],
