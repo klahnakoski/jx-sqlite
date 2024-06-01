@@ -37,6 +37,7 @@ from jx_sqlite.expressions.least_op import LeastOp
 from jx_sqlite.expressions.leaves_op import LeavesOp
 from jx_sqlite.expressions.left_op import LeftOp
 from jx_sqlite.expressions.length_op import LengthOp
+from jx_sqlite.expressions.limit_op import LimitOp
 from jx_sqlite.expressions.literal import Literal
 from jx_sqlite.expressions.lt_op import LtOp
 from jx_sqlite.expressions.lte_op import LteOp
@@ -76,4 +77,3 @@ from jx_sqlite.expressions.variable import Variable
 from jx_sqlite.expressions.when_op import WhenOp
 
 JxSql.register_ops(vars())
-

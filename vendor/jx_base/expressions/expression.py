@@ -16,11 +16,11 @@ from jx_base.expressions._utils import (
 )
 from jx_base.language import BaseExpression, ID, is_expression
 from jx_base.models.container import Container
-from mo_dots import is_data, is_container
+from mo_dots import is_data, is_container, is_not_null
 from mo_future import items as items_
 from mo_imports import expect
 from mo_json import BOOLEAN, value2json, JX_IS_NULL, JxType
-from mo_logs import Log
+from mo_logs import logger
 
 TRUE, FALSE, Literal, is_literal, MissingOp, NotOp, NULL, Variable, AndOp = expect(
     "TRUE", "FALSE", "Literal", "is_literal", "MissingOp", "NotOp", "NULL", "Variable", "AndOp",
@@ -30,13 +30,15 @@ TRUE, FALSE, Literal, is_literal, MissingOp, NotOp, NULL, Variable, AndOp = expe
 class Expression(BaseExpression):
     _jx_type: JxType = JX_IS_NULL
     has_simple_form = False
+    precedence = 0
 
     def __init__(self, *args):
         self.simplified = False
         # SOME BASIC VERIFICATION THAT THESE ARE REASONABLE PARAMETERS
-        bad = [t for t in args if t != None and not is_expression(t)]
+        bad = [t for t in args if is_not_null(t) and not is_expression(t)]
         if bad:
-            Log.error("Expecting an expression, not {bad}", bad=bad)
+            [t for t in args if is_not_null(t) and not is_expression(t)]
+            logger.error("Expecting an expression, not {bad}", bad=bad)
 
     @classmethod
     def get_id(cls):
@@ -64,7 +66,7 @@ class Expression(BaseExpression):
             else:
                 if not items:
                     return NULL
-                raise Log.error("{{operator|quote}} is not a known operator", operator=expr)
+                raise logger.error("{{operator|quote}} is not a known operator", operator=expr)
 
             if term == None:
                 return class_(**clauses)
@@ -81,7 +83,7 @@ class Expression(BaseExpression):
                         k, v = items[0]
                         return class_(Variable(k), Literal(v), **clauses)
                     else:
-                        Log.error("add define method to {{op}}}", op=class_.__name__)
+                        logger.error("add define method to {{op}}}", op=class_.__name__)
                 else:
                     return class_(_jx_expression(term, lang), **clauses)
             else:
@@ -90,17 +92,17 @@ class Expression(BaseExpression):
                 else:
                     return class_(_jx_expression(term, lang), **clauses)
         except Exception as cause:
-            Log.warning("programmer error expr = {{value|quote}}", value=expr, cause=cause)
-            Log.error("programmer error expr = {{value|quote}}", value=expr, cause=cause)
+            logger.warning("programmer error expr = {{value|quote}}", value=expr, cause=cause)
+            logger.error("programmer error expr = {{value|quote}}", value=expr, cause=cause)
 
     def __data__(self):
         raise NotImplementedError
 
     def vars(self):
-        raise Log.error("{{type}} has no `vars` method", type=self.__class__.__name__)
+        raise logger.error("{{type}} has no `vars` method", type=self.__class__.__name__)
 
     def map(self, map):
-        raise Log.error("{{type}} has no `map` method", type=self.__class__.__name__)
+        raise logger.error("{{type}} has no `map` method", type=self.__class__.__name__)
 
     def missing(self, lang):
         """
@@ -109,7 +111,7 @@ class Expression(BaseExpression):
         :return:
         """
         if self.jx_type == BOOLEAN:
-            Log.error("programmer error")
+            logger.error("programmer error")
         return lang.MissingOp(self)
 
     def exists(self):
@@ -148,13 +150,16 @@ class Expression(BaseExpression):
 
     def apply(self, container: Container):
         """
-        Apply this expression over the container of data
+        Apply this expression over the container
 
         q.apply(c) <=> c.query(q)
 
         :return: data, depending on the expression
         """
-        return container.query(self)
+        op = getattr(container.language, self.__class__.__name__)
+        if op.apply is Expression.apply:
+            logger.error("not supported yet (add jx_base.{query}.apply() function", query=self.op)
+        return container.language[self.__class__.__name__].apply(self, container)
 
     @property
     def jx_type(self) -> JxType:
@@ -166,7 +171,7 @@ class Expression(BaseExpression):
                 return False
         except Exception:
             return False
-        Log.note("this is slow on {{type}}", type=self.__class__.__name__)
+        logger.note("this is slow on {{type}}", type=self.__class__.__name__)
         return self.__data__() == other.__data__()
 
     def __contains__(self, item):
@@ -188,7 +193,7 @@ class Expression(BaseExpression):
     def __getattr__(self, item):
         if item == "__json__":
             raise AttributeError()
-        Log.error(
+        logger.error(
             """{{type}} object has no attribute {{item}}, did you .register_ops() for {{type}}?""",
             type=self.__class__.__name__,
             item=item,

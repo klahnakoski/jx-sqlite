@@ -15,6 +15,7 @@ import subprocess
 
 import mo_json_config
 from jx_base.expressions import QueryOp
+from jx_base.expressions.query_op import DEFAULT_LIMIT
 from jx_base.meta_columns import query_metadata
 from jx_python import jx
 from jx_sqlite import Container
@@ -37,7 +38,7 @@ logger.static_template = False
 NEW_DB_EACH_RUN = False
 
 
-class SQLiteUtils(object):
+class SQLiteUtils:
     @override
     def __init__(self, kwargs=None):
         self.container = None
@@ -125,7 +126,7 @@ class SQLiteUtils(object):
                 try:
                     result = self.execute_query(subtest.query)
                 except Exception as cause:
-                    cause = Except.wrap(cause)
+                    cause = Except(cause)
                     if format == "error":
                         if expected in cause:
                             return
@@ -155,13 +156,12 @@ class SQLiteUtils(object):
     def execute_query(self, query):
         try:
             if "limit" not in query:
-                query["limit"] = 10
-            if startswith_field(query["from"], self.table.name):
-                return self.table.query(query)
-            elif startswith_field(query["from"], "meta"):
+                query["limit"] = DEFAULT_LIMIT
+
+            if isinstance(query['from'], str) and startswith_field(query["from"], "meta"):
                 return query_metadata(self.table.container, query)
             else:
-                logger.error("Do not know how to handle")
+                return self.container.query(query)
         except Exception as cause:
             logger.warning("Failed query", cause)
             raise

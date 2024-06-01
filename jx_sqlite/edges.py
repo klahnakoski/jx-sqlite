@@ -10,21 +10,21 @@
 import mo_math
 from jx_base.expressions import (
     ToBooleanOp,
-                                 NULL,
-                                 Literal,
-                                 MinOp,
-                                 FALSE,
-                                 SelectOp,
-                                 WhenOp,
-                                 CaseOp,
-                                 CountOp,
-                                 PercentileOp,
-                                 CardinalityOp,
-                                 OrOp,
-                                 AndOp,
-                                 UnionOp,
-                                 ZERO,
-                                 )
+    NULL,
+    Literal,
+    MinOp,
+    FALSE,
+    SelectOp,
+    WhenOp,
+    CaseOp,
+    CountOp,
+    PercentileOp,
+    CardinalityOp,
+    OrOp,
+    AndOp,
+    UnionOp,
+    ZERO,
+)
 from jx_base.language import is_op
 from jx_base.utils import UID
 from jx_python import jx
@@ -44,7 +44,8 @@ from jx_sqlite.utils import (
 from jx_sqlite.window import _window_op
 from mo_dots import (
     startswith_field,
-    is_missing, Null,
+    is_missing,
+    Null,
 )
 from mo_future import extend
 from mo_json import NUMBER, JX_BOOLEAN, BOOLEAN, jx_type_to_json_type, JX_INTEGER
@@ -139,7 +140,9 @@ def _edges_op(self, query, schema):
                 join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
                 on_clause = SqlEqOp(
                     SqlVariable(edge_alias, domain_alias, jx_type=JX_INTEGER),
-                    CaseOp(*(WhenOp(p.where, then=Literal(p.dataIndex)) for p in query_edge_domain.partitions)).partial_eval(SQLang).to_sql(inner_schema)
+                    CaseOp(*(WhenOp(p.where, then=Literal(p.dataIndex)) for p in query_edge_domain.partitions))
+                    .partial_eval(SQLang)
+                    .to_sql(inner_schema),
                 )
             else:
                 raise Log.error("do not know what to do")
@@ -439,11 +442,13 @@ def _edges_op(self, query, schema):
             SQL_AS,
             quote_column("p"),
             SQL_ON,
-            SqlAndOp(*(
-                EqOp(SqlVariable("p", d), SqlVariable(e, d)).to_sql(schema).expr
-                for e, domain_aliases in zip(edge_names, all_domain_names)
-                for d in domain_aliases
-            ))
+            SqlAndOp(
+                *(
+                    EqOp(SqlVariable("p", d), SqlVariable(e, d)).to_sql(schema).expr
+                    for e, domain_aliases in zip(edge_names, all_domain_names)
+                    for d in domain_aliases
+                )
+            ),
         ))
         command = ConcatSQL(*clauses)
 
@@ -572,7 +577,7 @@ def aggregates(self, index_to_column, offset, outer_selects, query, schema):
                     type="number",
                 )
         else:  # STANDARD AGGREGATES
-            temp =s.value.partial_eval(SQLang)
+            temp = s.value.partial_eval(SQLang)
             sql = temp.to_sql(schema)
             sql = sql_call(sql_aggs[s.aggregate.op], sql)
             json_type = jx_type_to_json_type(s.aggregate.jx_type)

@@ -21,5 +21,4 @@ class LimitOp(LimitOp_):
         return SqlScript(data_type=frum.type, expr=ConcatSQL(frum, SQL_LIMIT, amount), frum=self, schema=schema)
 
     def apply(self, container):
-        amount = self.amount.partial_eval(SQLang)
-        return LimitOp(self.frum.apply(container), amount)
+        container.query(self.to_sql(container.schema))

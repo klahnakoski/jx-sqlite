@@ -12,7 +12,7 @@
 import operator
 
 from jx_base.language import is_expression, Language
-from jx_base.utils import enlist
+from jx_base.utils import enlist, delist
 from mo_dots import is_sequence, is_missing, is_data
 from mo_future import get_function_name, is_text, utf8_json_encoder
 from mo_imports import expect, export
@@ -94,7 +94,7 @@ def _jx_expression(json, lang):
                         # THIS LANGUAGE DOES NOT SUPPORT THIS OPERATOR, GOTO BASE LANGUAGE AND GET THE MACRO
                         class_ = JX.ops[full_op.get_id()]
 
-                    return class_.define({op: [sub_json] + enlist(rhs)})
+                    return class_.define({op: [sub_json, *enlist(rhs)]})
 
         for op, term in items:
             # ONE OF THESE IS THE OPERATOR
@@ -163,17 +163,34 @@ precedence = [
     "name",
     "default",
     "limit",
-    "skip",
+    # "skip",
     "percentile",
     "select",
-    "having",
+    # "having",
     "group",
     "filter",
     "where",
     "edges",
+    "left_join",
     "from",
     "value",
+    "literal",
 ]
+
+
+def symbiotic(op, frum, *args, **kwargs):
+    if frum.precedence > op.precedence:
+        return {
+            op.op: delist(args),
+            **frum.__data__(),
+            **kwargs
+        }
+    else:
+        return {
+            op.op: delist(args),
+            "from": frum.__data__(),
+            **kwargs
+        }
 
 
 export("jx_base.domains", jx_expression)

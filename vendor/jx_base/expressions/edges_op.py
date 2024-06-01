@@ -8,27 +8,28 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
+from jx_base.expressions._utils import symbiotic
 from jx_base.expressions.expression import Expression, MissingOp
 from mo_json import array_of
 
 
-class GroupOp(Expression):
+class EdgesOp(Expression):
     """
-    return a series of {"group": group, "part": list_of_rows_for_group}
+    return a series of {"edges": edges, "part": list_of_rows_for_edges}
     """
 
-    def __init__(self, frum, group):
-        Expression.__init__(self, frum, group)
-        self.frum, self.group = frum, group
+    def __init__(self, frum, edges):
+        Expression.__init__(self, frum, edges)
+        self.frum, self.edges = frum, edges
 
     def __data__(self):
-        return symbiotic(GroupOp, self.frum, self.group.__data__())
+        return symbiotic(EdgesOp, self.frum, self.edges.__data__())
 
     def vars(self):
-        return self.frum.vars() | self.group.vars()
+        return self.frum.vars() | self.edges.vars()
 
     def map(self, map_):
-        return GroupOp(self.frum.map(map_), self.group.map(map_))
+        return EdgesOp(self.frum.map(map_), self.edges.map(map_))
 
     @property
     def jx_type(self):

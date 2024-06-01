@@ -10,6 +10,7 @@ from jx_base.expressions import Expression, Variable, is_literal, GetOp, SqlScri
 from jx_base.language import is_op
 from jx_base.models.container import Container as _Container
 from jx_base.utils import UID, GUID
+from jx_sqlite.expressions import JxSql
 from jx_sqlite.expressions.sql_select_all_from_op import SqlSelectAllFromOp
 from mo_future import first, NEXT
 from mo_imports import expect
@@ -39,6 +40,8 @@ _config = None
 
 
 class Container(_Container):
+    language = JxSql
+
     @override
     def __init__(
         self,
@@ -95,6 +98,11 @@ class Container(_Container):
             return self.db.query(query.sql)
 
         if isinstance(query, Expression):
+            try:
+                return query.apply(self)
+            except Exception as cause:
+                pass
+
             if (
                 is_op(query, GetOp)
                 and isinstance(query.frum, Variable)
@@ -103,21 +111,6 @@ class Container(_Container):
                 and is_literal(query.offsets[0])
             ):
                 return SqlSelectAllFromOp(self.get_table(query.offsets[0].value))
-            if isinstance(query, Variable):
-                # SELECT IS A LAMBDA
-                # FROM <some_snowflake> IS REALLY A TREE (UNION) OF JOINED TABLES, EACH WITH SCHEMA
-                # CAN THE "JOINED TABLES" BE INCOMPLETE BY MENTIONING THE RELATION?  TO AVOID THE CYCLES
-
-                # AN "SEGMENT" IS A TABLE, PLUS ALL THE (UNREALIZED) RELATIONS
-
-                # BUILD FULL SELECT CLAUSE
-                # SELECT_ALL_FROM OPERATOR
-                # RETURN SCHEMA - MAYBE ONLY THE TOP LEVEL?
-                # TREE OF LEFT JOINS USING SELECT_ALL -> IF USING RELATIONS, THEN CYCLES
-                # MAP FROM COLUMN PATH TO COLUMN INDEX -> WHAT HAPPENS WHEN A CYCLE?
-                return SqlSelectAllFromOp(self.get_table(query.var))
-
-            logger.error(f"not supported yet (add jx_base.<op>.apply() function to {query.name}")
 
         # ASSUME Data MEANT AS QUERY
         normalized_query = jx_expression(query, SQLang)
@@ -209,7 +202,3 @@ class Container(_Container):
 
     def close(self):
         self.db.stop()
-
-    @property
-    def language(self):
-        return SQLang

@@ -279,8 +279,8 @@ class Log:
         cause = unwraplist([Except.wrap(c, stack_depth=2) for c in listwrap(cause or exc_info)])
         trace = exceptions.get_stacktrace(stack_depth + 1)
 
-        e = Except(severity=exceptions.ERROR, template=template, params=params, cause=cause, trace=trace,)
-        raise_from_none(e)
+        e = Except(severity=exceptions.ERROR, template=template, params=params, cause=cause, trace=trace)
+        raise e from None
 
     @classmethod
     def _annotate(cls, item, stack_depth, static_template):

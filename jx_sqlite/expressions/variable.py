@@ -11,12 +11,12 @@ from jx_base.expressions import NULL, Variable as Variable_, SelectOp, FALSE
 from jx_base.expressions._utils import simplified
 from jx_base.expressions.select_op import SelectOne
 from jx_sqlite.expressions._utils import SqlScript
+from jx_sqlite.expressions.sql_select_all_from_op import SqlSelectAllFromOp
 from jx_sqlite.utils import GUID
 from mo_dots import concat_field, tail_field, startswith_field
-from mo_json.types import JX_INTEGER, JxType, to_jx_type, STRING, union_type, JX_TEXT
+from mo_json.types import JX_INTEGER, to_jx_type, union_type, JX_TEXT
 from mo_logs import logger
 from mo_sqlite import check
-from mo_sqlite import json_type_to_sqlite_type
 from mo_sqlite.expressions import SqlVariable, SqlCoalesceOp
 
 
@@ -73,3 +73,6 @@ class Variable(Variable_):
                 concat_field(var_name, rel_name), SqlVariable(col.es_index, col.es_column, jx_type=to_jx_type(col.es_type))
             ))
         return SelectOp(schema, *select).to_sql(schema)
+
+    def apply(self, container):
+        return SqlSelectAllFromOp(container.get_table(self.var))

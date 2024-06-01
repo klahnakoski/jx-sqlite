@@ -9,7 +9,7 @@
 #
 
 
-from jx_base.expressions import SqlGroupByOp as _SqlGroupByOp, AddOp, SqlScript
+from jx_base.expressions import SqlGroupByOp as _SqlGroupByOp, AddOp
 from jx_base.language import LanguageElement
 from mo_json import JxType, ARRAY, base_type, JX_NUMBER
 from mo_logs import logger
