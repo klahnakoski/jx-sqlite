@@ -237,7 +237,9 @@ class File(object):
     def read_json(self, encoding="utf8", flexible=True, leaves=True):
         content = self.read(encoding=encoding)
         value = json2value(content, flexible=flexible)
-        return to_data(apply_functions(value))
+        if '"$concat"' in content:
+            return to_data(apply_functions(value))
+        return value
 
     def is_directory(self):
         return os.path.isdir(self._filename)

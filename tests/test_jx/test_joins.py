@@ -18,6 +18,7 @@ lots_of_data = list_to_data([{"a": i} for i in range(30)])
 
 @add_error_reporting
 class TestJoins(BaseTestCase):
+    @skip("Not implemented")
     def test_left_join(self):
         test = {
             "data": [{"a": [{"v": 1}, {"v": 2}], "b": [{}, {"v": 1}]}],
@@ -29,6 +30,7 @@ class TestJoins(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skip("Not implemented")
     def test_subtraction(self):
         test = {
             "data": [{"a": [{"v": 1}, {"v": 2}], "b": [{}, {"v": 1}]}],

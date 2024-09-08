@@ -16,7 +16,6 @@ from jx_base.expressions._utils import jx_expression
 from jx_base.expressions import TRUE
 from jx_base.expressions.variable import is_variable
 from jx_base.language import is_expression
-from jx_base.meta_columns import get_schema_from_jx_type
 from jx_base.models.container import Container
 from jx_base.models.namespace import Namespace
 from jx_base.models.schema import Schema
@@ -25,7 +24,6 @@ from jx_base.models.table import Table
 from jx_base.utils import delist, enlist
 from jx_python.convert import list2cube, list2table
 from jx_python.expressions import jx_expression_to_function
-from jx_python.expressions._utils import compile_expression, JXExpression
 from jx_python.lists.aggs import is_aggs, list_aggs
 from mo_collections import UniqueIndex
 from mo_dots import (
@@ -42,7 +40,7 @@ from mo_dots import (
 )
 from mo_future import first, sort_using_key
 from mo_imports import export, expect
-from mo_json import ARRAY, JX_IS_NULL, value_to_json_type, value_to_jx_type
+from mo_json import JX_IS_NULL, value_to_jx_type
 from mo_logs import Log
 from mo_threads import Lock
 
@@ -290,5 +288,6 @@ DUAL = ListContainer(
     name="dual", data=[{}], schema=Schema(["dual"], Snowflake(None, ["dual"], columns=UniqueIndex(keys=("name",))))
 )
 
+from jx_base.meta_columns import get_schema_from_jx_type
 
 export("jx_base.models.container", ListContainer)
