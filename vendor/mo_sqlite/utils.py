@@ -12,21 +12,21 @@ from collections import namedtuple
 
 from mo_dots import coalesce, listwrap, to_data, is_many, is_data
 from mo_future import Mapping
-from mo_logs import logger
+from mo_imports import expect
+from mo_logs import logger, strings
 from mo_logs.strings import quote
 from mo_math import is_number
-from mo_sql import *
 from mo_times import Date, Duration
 
+from jx_base import enlist
+from jx_base.expressions import Literal, SqlLiteral, SqlVariable
+from mo_sql import *
 
 TYPE_CHECK = True
-
 FORMAT_COMMAND = 'Running command from "{file}:{line}"\n{{command|limit(1000)|indent}}'
-
-
 CommandItem = namedtuple("CommandItem", ("command", "result", "is_done", "trace", "transaction"))
-
 _simple_word = re.compile(r"^[_a-zA-Z][_0-9a-zA-Z]*$", re.UNICODE)
+SQLang = expect("SQLang")
 
 
 def _simple_quote_column(name):
@@ -128,14 +128,7 @@ def sql_query(command):
     acc.append(quote_column(command["from"]))
     if command.where:
         acc.append(SQL_WHERE)
-        if command.where.eq:
-            acc.append(sql_eq(**command.where.eq))
-        else:
-            from mo_sqlite.expressions import SQLang
-            from jx_base import jx_expression
-
-            where = jx_expression(command.where).partial_eval(SQLang).to_sql[0].b
-            acc.append(where)
+        acc.append(to_sql(command.where))
 
     sort = coalesce(command.orderby, command.sort)
     if sort:
@@ -190,6 +183,41 @@ def sql_insert(table, records):
         SQL_VALUES,
         sql_list(sql_iso(sql_list([quote_value(r[k]) for k in keys])) for r in records),
     )
+
+
+def sql_delete(table, where=True):
+    return ConcatSQL(SQL_DELETE, SQL_FROM, quote_column(table), SQL_WHERE, to_sql(where))
+
+
+def to_sql(expr):
+    """
+    Convert a JX expression to a SQL expression.
+
+    """
+    if isinstance(expr, list):
+        temp = [to_sql(v) for v in expr]
+        if all(isinstance(v, Literal) for v in temp):
+            return SqlLiteral([v.value for v in temp])
+        logger.error("expecting all elements to be literals, not {temp}", temp=temp)
+    elif isinstance(expr, Mapping):
+        kvpairs = list(expr.items())
+        if len(kvpairs) > 1:
+            logger.error("expecting one key-value pair, not {kvpairs}", kvpairs=kvpairs)
+        op, params = kvpairs[0]
+        if op == "literal":
+            return quote_value(expr["literal"])
+        sql_op = getattr(SQLang, f"Sql{strings.capitalize(op)}Op")
+        if not sql_op:
+            logger.error("No SQL operator for {op}", op=op)
+        if isinstance(params, list):
+            return sql_op(*(to_sql(v) for v in enlist(params)))
+        if isinstance(params, Mapping):
+            return sql_op(*(w for k, v in params.items() for w in [SqlVariable(k), to_sql(v)]))
+        else:
+            return sql_op(to_sql(params))
+    else:
+        return SqlLiteral(expr)
+
 
 BEGIN = "BEGIN"
 COMMIT = "COMMIT"

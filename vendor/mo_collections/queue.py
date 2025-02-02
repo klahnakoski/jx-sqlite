@@ -34,6 +34,9 @@ class Queue:
         self.set = set()
         self.list = deque()
 
+    def __getitem__(self, item):
+        return self.list[item]
+
     def __nonzero__(self):
         return len(self.list) > 0
 

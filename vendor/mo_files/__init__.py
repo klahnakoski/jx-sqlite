@@ -82,7 +82,7 @@ class File(object):
 
     @property
     def timestamp(self):
-        output = os.path.getmtime(self.abs_path)
+        output = os.path.getmtime(self.os_path)
         return output
 
     @property

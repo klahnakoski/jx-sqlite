@@ -7,9 +7,6 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-
-
-
 from copy import copy
 
 from mo_dots import get_attr, is_data, is_sequence, tuplewrap, from_data, to_data

@@ -7,8 +7,10 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
+
 from jx_base.expressions.literal import Literal
+from mo_sql import SQL
 
 
-class SqlLiteral(Literal):
+class SqlLiteral(Literal, SQL):
     pass

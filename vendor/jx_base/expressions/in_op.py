@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-
+from jx_base.utils import enlist
 
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE

@@ -7,8 +7,10 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions.variable import Variable
+
 from mo_dots import concat_field, join_field
+
+from jx_base.expressions.variable import Variable
 from mo_json import JX_ANY, quote, to_jx_type
 
 
