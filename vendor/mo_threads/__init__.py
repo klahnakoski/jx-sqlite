@@ -3,7 +3,7 @@
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
-# You can obtain one at http://mozilla.org/MPL/2.0/.
+# You can obtain one at https://www.mozilla.org/en-US/MPL/2.0/.
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
@@ -16,12 +16,13 @@ from mo_threads import threads
 from mo_threads.commands import Command
 from mo_threads.futures import Future
 from mo_threads.lock import Lock
+from mo_threads.pools import ThreadPool
 from mo_threads.processes import Process
 from mo_threads.queues import Queue, ThreadedQueue
 from mo_threads.signals import Signal, DONE, NEVER
 from mo_threads.threads import (
     MainThread,
-    THREAD_STOP,
+    PLEASE_STOP,
     THREAD_TIMEOUT,
     Thread,
     stop_main_thread,
@@ -33,6 +34,7 @@ from mo_threads.threads import (
 )
 from mo_threads.till import Till
 
+THREAD_STOP = PLEASE_STOP
 export("mo_threads.signals", threads)
 del threads
 

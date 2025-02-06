@@ -3,7 +3,7 @@
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
-# You can obtain one at http://mozilla.org/MPL/2.0/.
+# You can obtain one at https://www.mozilla.org/en-US/MPL/2.0/.
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
@@ -26,7 +26,7 @@ class StructuredLogger_usingMulti(StructuredLogger):
                 e = Except.wrap(e)
                 bad.append(m)
                 _logger.warning(
-                    "Logger {{type|quote}} failed! It will be removed.", type=m.__class__.__name__, cause=e,
+                    "Logger {type|quote} failed! It will be removed.", type=m.__class__.__name__, cause=e,
                 )
         with suppress_exception:
             for b in bad:

@@ -2,7 +2,7 @@
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
-# You can obtain one at http://mozilla.org/MPL/2.0/.
+# You can obtain one at https://www.mozilla.org/en-US/MPL/2.0/.
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
@@ -15,7 +15,7 @@ from json import dumps as value2json, loads as json2value
 from mo_dots import to_data, from_data
 from mo_future import is_windows
 from mo_logs import Except, logger
-from mo_threads import Lock, Process, Signal, THREAD_STOP, Thread, DONE, python_worker
+from mo_threads import Lock, Process, Signal, PLEASE_STOP, Thread, DONE, python_worker
 
 DEBUG = False
 
@@ -48,12 +48,12 @@ class Python(object):
         )))
         while True:
             line = self.process.stdout.pop()
-            if line == THREAD_STOP:
+            if line == PLEASE_STOP:
                 logger.error("problem starting python process: STOP detected on stdout")
             if line == '{"out":"ok"}':
                 break
             logger.info("waiting to start python: {line}", line=line)
-        self.lock = Lock("wait for response from " + name)
+        self.lock = Lock(f"wait for response from {name}")
         self.stop_error = None
         self.done = DONE
         self.response = None
@@ -87,7 +87,7 @@ class Python(object):
         while not please_stop:
             line = self.process.stdout.pop(till=please_stop)
             DEBUG and logger.info("stdout got {line}", line=line)
-            if line == THREAD_STOP:
+            if line == PLEASE_STOP:
                 please_stop.go()
                 break
             elif not line:
@@ -117,7 +117,7 @@ class Python(object):
             try:
                 line = self.process.stderr.pop(till=please_stop)
                 DEBUG and logger.info("stderr got {line}", line=line)
-                if line is None or line == THREAD_STOP:
+                if line is None or line == PLEASE_STOP:
                     please_stop.go()
                     break
                 logger.info(

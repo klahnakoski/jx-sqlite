@@ -13,14 +13,15 @@
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
-        "Programming Language :: Python :: 3.12"
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13"
     ],
     "description": "JSON query expressions using SQLite",
-    "extras_require": {"tests": ["mo-testing>=8.591.24112"]},
+    "extras_require": {"tests": ["mo-testing>=8.623.24125"]},
     "include_package_data": true,
     "install_requires": [
-                         "hjson", "jx-python==4.626.24125",    "mo-sql==4.624.24125",
-        "mo-sqlite==2.626.24125",               "requests"
+                         "hjson", "jx-python==4.673.25037",    "mo-sql==4.672.25036",
+        "mo-sqlite==2.673.25037",               "requests"
     ],
     "license": "MPL 2.0",
     "long_description": {
@@ -160,5 +161,5 @@
     "package_dir": {},
     "packages": ["jx_sqlite", "jx_sqlite.models", "jx_sqlite.expressions"],
     "url": "https://github.com/klahnakoski/jx-sqlite",
-    "version": "5.626.24125"
+    "version": "5.673.25037"
 }

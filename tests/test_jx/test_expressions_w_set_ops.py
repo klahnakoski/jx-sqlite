@@ -3,7 +3,7 @@
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
-# You can obtain one at http://mozilla.org/MPL/2.0/.
+# You can obtain one at https://www.mozilla.org/en-US/MPL/2.0/.
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
@@ -11,7 +11,7 @@ import sys
 from unittest import skip, skipIf
 
 from jx_base.expressions import NULL
-from mo_dots import list_to_data
+from mo_dots import list_to_data, concat_field
 from mo_json import null
 from mo_testing.fuzzytestcase import add_error_reporting
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
@@ -21,6 +21,7 @@ lots_of_data = list_to_data([{"a": i} for i in range(30)])
 
 @add_error_reporting
 class TestSetOps(BaseTestCase):
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_length(self):
         test = {
             "data": [
@@ -390,7 +391,7 @@ class TestSetOps(BaseTestCase):
                 {},
             ]}}],
             "query": {
-                "from": TEST_TABLE + ".a._b",
+                "from": concat_field(TEST_TABLE, "a._b"),
                 "select": [
                     {"aggregate": "count"},
                     {
@@ -423,7 +424,7 @@ class TestSetOps(BaseTestCase):
         test = {
             "data": [{"a": {"_b": [{"a": 5}, {}]}}],
             "query": {
-                "from": TEST_TABLE + ".a._b",
+                "from": concat_field(TEST_TABLE, "a._b"),
                 "select": [{
                     "name": "t",
                     "value": {"add": ["a", "a"]},

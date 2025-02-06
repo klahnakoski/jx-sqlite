@@ -3,13 +3,14 @@
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
-# You can obtain one at http://mozilla.org/MPL/2.0/.
+# You can obtain one at https://www.mozilla.org/en-US/MPL/2.0/.
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from unittest import skipIf
 
 from jx_base.expressions import NULL
+from mo_dots import concat_field
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 
@@ -313,7 +314,7 @@ class TestSchemaMerging(BaseTestCase):
                 {"k": 7, }
             ],
             "query": {
-                "from": TEST_TABLE + ".a",
+                "from": concat_field(TEST_TABLE, "a"),
                 "select": ["k"],
                 "where": {"eq": {"a.b": 1}}
             },
@@ -380,7 +381,7 @@ class TestSchemaMerging(BaseTestCase):
                 {"v": 7}
             ],
             "query": {
-                "from": TEST_TABLE + ".a",
+                "from": concat_field(TEST_TABLE, "a"),
                 "edges": [{"value": "b"}],
                 "select": {"value": "v", "aggregate": "sum"}
             },

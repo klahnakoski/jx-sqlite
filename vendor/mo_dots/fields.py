@@ -43,7 +43,7 @@ def unliteral_field(field):
 
 def tail_field(field):
     """
-    RETURN THE FIRST STEP IN PATH, ALONG WITH THE REMAINING TAILf
+    RETURN THE FIRST STEP IN PATH, ALONG WITH THE REMAINING TAIL
     IN (first, rest) PAIR
     """
     if field == "." or is_missing(field):
@@ -105,13 +105,7 @@ def startswith_field(field, prefix):
     if prefix == None:
         return False
     if prefix.startswith("."):
-        return True
-        # f_back = len(field) - len(field.strip("."))
-        # p_back = len(prefix) - len(prefix.strip("."))
-        # if f_back > p_back:
-        #     return False
-        # else:
-        #     return True
+        return len(prefix) == 1
 
     if field.startswith(prefix):
         lp = len(prefix)

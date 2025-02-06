@@ -3,7 +3,7 @@
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
-# You can obtain one at http://mozilla.org/MPL/2.0/.
+# You can obtain one at https://www.mozilla.org/en-US/MPL/2.0/.
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
@@ -359,6 +359,9 @@ def _get_param(ref, doc_path, url):
     new_value = param[ref.host]
     return new_value
 
+def _nothing(ref, doc_path, url):
+    return f"{{{ref}}}"
+
 
 scheme_loaders = {
     "http": get_http,
@@ -369,6 +372,7 @@ scheme_loaders = {
     "keyring": _get_keyring,
     "ssm": _get_ssm,
     "ref": _get_value_from_fragment,
+    "scheme": _nothing,
 }
 
 

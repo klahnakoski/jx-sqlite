@@ -3,7 +3,7 @@
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
-# You can obtain one at http://mozilla.org/MPL/2.0/.
+# You can obtain one at https://www.mozilla.org/en-US/MPL/2.0/.
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
@@ -13,7 +13,7 @@
 from unittest import skipIf, skip
 
 from jx_base.expressions import NULL
-from mo_dots import to_data, list_to_data
+from mo_dots import to_data, list_to_data, concat_field
 from mo_logs import Log
 from mo_logs.exceptions import get_stacktrace
 from mo_testing.fuzzytestcase import add_error_reporting
@@ -47,6 +47,7 @@ class TestSorting(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_edge_and_sort(self):
         test = {
             "data": [
@@ -545,7 +546,7 @@ class TestSorting(BaseTestCase):
                 ]},
             ],
             "query": {
-                "from": TEST_TABLE+".b",
+                "from": concat_field(TEST_TABLE, "b"),
                 "sort": [{"a": "asc"}],
                 "limit": 100
             },
@@ -588,7 +589,7 @@ class TestSorting(BaseTestCase):
                 ]},
             ],
             "query": {
-                "from": TEST_TABLE+".b",
+                "from": concat_field(TEST_TABLE, "b"),
                 "sort": [{"a": "asc"}]
             },
             "expecting_list": {

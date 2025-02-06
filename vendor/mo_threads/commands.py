@@ -2,7 +2,7 @@
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
-# You can obtain one at http://mozilla.org/MPL/2.0/.
+# You can obtain one at https://www.mozilla.org/en-US/MPL/2.0/.
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
@@ -21,7 +21,7 @@ from mo_threads.lock import Lock
 from mo_threads.processes import os_path, Process
 from mo_threads.queues import Queue
 from mo_threads.signals import Signal
-from mo_threads.threads import THREAD_STOP, Thread
+from mo_threads.threads import PLEASE_STOP, Thread
 from mo_threads.till import Till
 
 DEBUG = False
@@ -75,8 +75,8 @@ class Command(object):
         if debug:
             name = f"{name} (using {process.name})"
         self.name = name
-        self.stdout = Queue("stdout for " + name, max=max_stdout)
-        self.stderr = Queue("stderr for " + name, max=max_stdout)
+        self.stdout = Queue(f"stdout for {name}", max=max_stdout)
+        self.stderr = Queue(f"stderr for {name}", max=max_stdout)
         self.stderr_thread = Thread.run(f"{name} stderr", _stderr_relay, process.stderr, self.stderr).release()
         # stdout_thread IS CONSIDERED THE LIFETIME OF THE COMMAND
         self.worker_thread = Thread.run(f"{name} worker", self._worker, process.stdout, self.stdout).release()
@@ -117,7 +117,7 @@ class Command(object):
                 value = source.pop(till=please_stop)
                 if value is None:
                     continue
-                elif value is THREAD_STOP:
+                elif value is PLEASE_STOP:
                     self.debug and logger.info("got thread stop")
                     return
                 elif line_count == 0 and "is not recognized as an internal or external command" in value:
@@ -135,8 +135,8 @@ class Command(object):
                     line_count += 1
                     destination.add(value)
         finally:
-            destination.add(THREAD_STOP)
-            # self.process.stderr.add(THREAD_STOP)
+            destination.add(PLEASE_STOP)
+            # self.process.stderr.add(PLEASE_STOP)
             self.stderr_thread.please_stop.go()
             self.stderr_thread.join()
             self.manager.return_process(self.process)
@@ -146,15 +146,15 @@ class Command(object):
 def _stderr_relay(source, destination, please_stop=None):
     while not please_stop:
         value = source.pop(till=please_stop)
-        if value is THREAD_STOP:
+        if value is PLEASE_STOP:
             break
         if value:
             destination.add(value)
     for value in source.pop_all():
-        if value and value is not THREAD_STOP:
+        if value and value is not PLEASE_STOP:
             destination.add(value)
 
-    destination.add(THREAD_STOP)
+    destination.add(PLEASE_STOP)
 
 
 class LifetimeManager:
@@ -211,12 +211,12 @@ class LifetimeManager:
 
         # WAIT FOR START
         try:
-            process.stdin.add("cd " + cmd_escape(cwd))
+            process.stdin.add(f"cd {cmd_escape(cwd)}")
             process.stdin.add(LAST_RETURN_CODE)
             start_timeout = Till(seconds=START_TIMEOUT)
             while not start_timeout:
                 value = process.stdout.pop(till=start_timeout)
-                if value == THREAD_STOP:
+                if value == PLEASE_STOP:
                     process.kill_once()
                     process.join()
                     logger.error("Could not start command, stdout closed early")

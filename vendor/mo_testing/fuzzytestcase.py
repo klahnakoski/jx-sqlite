@@ -3,7 +3,7 @@
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
-# You can obtain one at http://mozilla.org/MPL/2.0/.
+# You can obtain one at https://www.mozilla.org/en-US/MPL/2.0/.
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
@@ -14,8 +14,21 @@ import types
 from unittest import SkipTest, TestCase
 
 import mo_math
-from mo_dots import coalesce, is_list, literal_field, from_data, to_data, is_data, is_many, get_attr, is_missing, Null
-from mo_future import is_text, zip_longest, first, get_function_name
+from mo_dots import (
+    coalesce,
+    is_list,
+    literal_field,
+    from_data,
+    to_data,
+    is_data,
+    is_many,
+    get_attr,
+    is_missing,
+    Null,
+    is_null,
+    is_finite,
+)
+from mo_future import is_text, zip_longest, first, get_function_name, generator_types
 from mo_logs import Except, Log, suppress_exception
 from mo_logs.strings import expand_template, quote
 from mo_math import is_number, log10, COUNT
@@ -38,12 +51,7 @@ class FuzzyTestCase(TestCase):
             assertAlmostEqual(test_value, expected, msg=msg, digits=digits, places=places, delta=delta)
         else:
             assertAlmostEqual(
-                test_value,
-                expected,
-                msg=msg,
-                digits=digits,
-                places=coalesce(places, self.default_places),
-                delta=delta
+                test_value, expected, msg=msg, digits=digits, places=coalesce(places, self.default_places), delta=delta
             )
 
     def assertEqual(self, test_value, expected, msg=None, *, digits=None, places=None, delta=None):
@@ -111,11 +119,15 @@ def assertAlmostEqual(test, expected, *, digits=None, places=None, msg=None, del
     * delta (MAXIMUM ABSOLUTE DIFFERENCE FROM expected)
     """
     test = from_data(test)
+    if isinstance(test, generator_types):
+        Log.error("can not accept generators as test value")
     expected = from_data(expected)
     try:
-        if expected == None:
+        if test is expected:
             return
-        elif test is expected:
+        elif is_null(expected):
+            return
+        elif is_missing(expected) and is_missing(test):
             return
         elif is_text(expected):
             assertAlmostEqualValue(test, expected, msg=msg, digits=digits, places=places, delta=delta)
@@ -123,16 +135,54 @@ def assertAlmostEqual(test, expected, *, digits=None, places=None, msg=None, del
             if is_missing(test):
                 return
             Log.error(
-                "{test|json|limit(10000)} is expected to not exist",
+                "{test|json|limit(10000)} is expected to not exist", test=test, expected=expected,
+            )
+        elif is_list(expected) and len(expected) == 1:
+            return assertAlmostEqual(test, expected[0], msg=msg, digits=digits, places=places, delta=delta)
+    except Exception as cause:
+        Log.error(
+            "{test|json|limit(10000)} does not match expected {expected|json|limit(10000)}",
+            test=test,
+            expected=expected,
+            cause=cause,
+        )
+
+    first_cause = None
+    if is_list(test) and len(test) == 1 and is_many(test[0]) and is_many(expected):
+        try:
+            return assertAlmostEqual(test[0], expected, msg=msg, digits=digits, places=places, delta=delta)
+        except Exception as cause:
+            first_cause = cause
+
+    if is_many(test) and isinstance(expected, set):
+        test = set(to_data(t) for t in test)
+        if len(test) != len(expected):
+            Log.error(
+                "Sets do not match, element count different:\n{test|json|indent}\nexpecting{expectedtest|json|indent}",
                 test=test,
                 expected=expected,
             )
-        elif is_list(expected) and len(expected)==1 and not is_many(test):
-            return assertAlmostEqual(test, expected[0], msg=msg, digits=digits, places=places, delta=delta)
-        elif is_data(expected) and is_data(test):
+
+        try:
+            if len(test | expected) != len(test):
+                raise Exception()
+        except:
+            for e in expected:
+                for t in test:
+                    try:
+                        assertAlmostEqual(t, e, msg=msg, digits=digits, places=places, delta=delta)
+                        break
+                    except Exception as _:
+                        pass
+                else:
+                    Log.error("Sets do not match. {value|json} not found in {test|json}", value=e, test=test)
+        return  # ok
+
+    if is_data(expected) and is_data(test):
+        try:
             for k, e in from_data(expected).items():
                 if is_missing(k):
-                    k=Null
+                    k = Null
                 t = test.get(k)
                 try:
                     assertAlmostEqual(
@@ -145,7 +195,12 @@ def assertAlmostEqual(test, expected, *, digits=None, places=None, msg=None, del
                     )
                 except Exception as cause:
                     Log.error("key {k}={t} does not match expected {k}={e}", k=k, t=t, e=e, cause=cause)
-        elif is_data(expected):
+            return
+        except Exception as cause:
+            first_cause = first_cause or cause
+
+    if is_data(expected):
+        try:
             if is_many(test):
                 test = list(test)
                 if len(test) != 1:
@@ -157,33 +212,18 @@ def assertAlmostEqual(test, expected, *, digits=None, places=None, msg=None, del
                     assertAlmostEqual(t, e, msg=msg, digits=digits, places=places, delta=delta)
                 except Exception as cause:
                     Log.error("key {k}={t} does not match expected {k}={e}", k=k, t=t, e=e, cause=cause)
-        elif is_many(test) and isinstance(expected, set):
-            test = set(to_data(t) for t in test)
-            if len(test) != len(expected):
-                Log.error(
-                    "Sets do not match, element count"
-                    " different:\n{test|json|indent}\nexpecting{expectedtest|json|indent}",
-                    test=test,
-                    expected=expected,
-                )
+            return
+        except Exception as cause:
+            first_cause = first_cause or cause
 
-            try:
-                if len(test | expected) != len(test):
-                    raise Exception()
-            except:
-                for e in expected:
-                    for t in test:
-                        try:
-                            assertAlmostEqual(t, e, msg=msg, digits=digits, places=places, delta=delta)
-                            break
-                        except Exception as _:
-                            pass
-                    else:
-                        Log.error("Sets do not match. {value|json} not found in {test|json}", value=e, test=test)
-            return  # ok
-        elif isinstance(expected, types.FunctionType):
+    if isinstance(expected, types.FunctionType):
+        try:
             return expected(test)
-        elif hasattr(test, "__iter__") and hasattr(expected, "__iter__"):
+        except Exception as cause:
+            first_cause = first_cause or cause
+
+    if is_many(test) and is_many(expected):
+        try:
             if test.__class__.__name__ == "ndarray":  # numpy
                 test = test.tolist()
             elif test.__class__.__name__ == "DataFrame":  # pandas
@@ -197,15 +237,20 @@ def assertAlmostEqual(test, expected, *, digits=None, places=None, msg=None, del
                 expected = []  # REPRESENT NOTHING
             for t, e in zip_longest(test, expected):
                 assertAlmostEqual(t, e, msg=msg, digits=digits, places=places, delta=delta)
-        else:
-            assertAlmostEqualValue(test, expected, msg=msg, digits=digits, places=places, delta=delta)
+            return
+        except Exception as cause:
+            first_cause = first_cause or cause
+    try:
+        return assertAlmostEqualValue(test, expected, msg=msg, digits=digits, places=places, delta=delta)
     except Exception as cause:
-        Log.error(
-            "{test|json|limit(10000)} does not match expected {expected|json|limit(10000)}",
-            test=test,
-            expected=expected,
-            cause=cause,
-        )
+        first_cause = first_cause or cause
+
+    Log.error(
+        "{test|json|limit(10000)} does not match expected {expected|json|limit(10000)}",
+        test=test,
+        expected=expected,
+        cause=first_cause,
+    )
 
 
 def assertAlmostEqualValue(test, expected, digits=None, places=None, msg=None, delta=None):
@@ -218,8 +263,8 @@ def assertAlmostEqualValue(test, expected, digits=None, places=None, msg=None, d
         return assertAlmostEqualValue(
             dates.Date(test).unix, dates.Date(expected).unix, msg=msg, digits=digits, places=places, delta=delta
         )
-    if is_list(test) and len(test) == 1:
-        return assertAlmostEqual(test[0], expected, msg=msg, digits=digits, places=places, delta=delta)
+    if is_finite(test) and len(test) == 1:
+        return assertAlmostEqual(first(test), expected, msg=msg, digits=digits, places=places, delta=delta)
     if not is_number(expected):
         raise AssertionError(expand_template("{test|json} != {expected|json}", locals()))
 

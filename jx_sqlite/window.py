@@ -3,12 +3,11 @@
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
-# You can obtain one at http:# mozilla.org/MPL/2.0/.
+# You can obtain one at https://www.mozilla.org/en-US/MPL/2.0/.
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from mo_dots import coalesce
-from mo_future import text
 from mo_sql.utils import sql_aggs
 from mo_sqlite import SQL_ORDERBY, sql_iso, sql_list
 from mo_sqlite import quote_column

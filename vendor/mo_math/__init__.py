@@ -3,11 +3,10 @@
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
-# You can obtain one at http://mozilla.org/MPL/2.0/.
+# You can obtain one at https://www.mozilla.org/en-US/MPL/2.0/.
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-
 
 import base64
 from math import (
@@ -21,10 +20,13 @@ from math import (
 )
 
 from mo_dots import Null, coalesce, is_container, exists
-from mo_future import round as math_round, text, __builtin__, binary_type
+from mo_future import round as math_round, __builtin__, binary_type
 from mo_imports import delay_import
 
 logger = delay_import("mo_logs.Log")
+math_abs = __builtin__.abs
+INFINITY = float("+inf")
+LOG10_2 = math_log10(2)
 
 
 """
@@ -36,23 +38,16 @@ None.a == None
 func(None, *kwargs)) == None
 """
 
-math_abs = __builtin__.abs
-
-
-INFINITY = float("+inf")
-
 
 def bayesian_add(*args):
     a = args[0]
     if a >= 1 or a <= 0:
-
         logger.error("Only allowed values *between* zero and one")
 
     for b in args[1:]:
         if b == None:
             continue
         if b >= 1 or b <= 0:
-
             logger.error("Only allowed values *between* zero and one")
         a = a * b / (a * b + (1 - a) * (1 - b))
 
@@ -317,7 +312,6 @@ def MAX(values, *others):
     """
 
     if others:
-
         logger.warning("Calling wrong")
         return MAX([values] + list(others))
 
@@ -348,7 +342,6 @@ def SUM(values):
 
 def PRODUCT(values, *others):
     if len(others) > 0:
-
         logger.error("no longer accepting args, use a single list")
 
     output = Null
@@ -366,7 +359,6 @@ def PRODUCT(values, *others):
 
 def AND(values, *others):
     if len(others) > 0:
-
         logger.error("no longer accepting args, use a single list")
 
     for v in values:
@@ -379,7 +371,6 @@ def AND(values, *others):
 
 def OR(values, *others):
     if len(others) > 0:
-
         logger.error("no longer accepting args, use a single list")
 
     for v in values:
@@ -392,7 +383,6 @@ def OR(values, *others):
 
 def UNION(values, *others):
     if len(others) > 0:
-
         logger.error("no longer accepting args, use a single list")
 
     output = set()
@@ -420,7 +410,6 @@ def is_number(s):
 
 def INTERSECT(values, *others):
     if len(others) > 0:
-
         logger.error("no longer accepting args, use a single list")
 
     output = set(values[0])
@@ -439,15 +428,16 @@ def almost_equal(first, second, digits=None, places=None, delta=None):
         if delta is not None:
             if abs(first - second) <= delta:
                 return True
-        else:
-            places = coalesce(places, digits, 18)
-            diff = math_log10(abs(first - second))
-            if diff < ceiling(math_log10(first)) - places:
-                return True
+            return False
 
-        return False
+        if first == 0:
+            first, second = second, first
+
+        places = coalesce(places, digits, 18)
+        factor = ceiling(log10(abs(first)))
+        diff = log10(abs(first - second))
+        return diff < factor - places - LOG10_2
     except Exception as e:
-
         logger.error("problem comparing", cause=e)
 
 

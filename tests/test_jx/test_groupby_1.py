@@ -3,7 +3,7 @@
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
-# You can obtain one at http://mozilla.org/MPL/2.0/.
+# You can obtain one at https://www.mozilla.org/en-US/MPL/2.0/.
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
@@ -13,8 +13,7 @@
 from unittest import skip, skipIf
 
 from jx_base.expressions import NULL
-from mo_dots import set_default, to_data
-from mo_future import text
+from mo_dots import set_default, to_data, concat_field
 from mo_testing.fuzzytestcase import add_error_reporting
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
@@ -464,7 +463,7 @@ class TestgroupBy1(BaseTestCase):
                 {"a": 6, "b": 6}
             ],
             "query": {
-                "from": TEST_TABLE + ".b",
+                "from": concat_field(TEST_TABLE, "b"),
                 "groupby": [{"name": "b", "value": "."}]
             },
             "expecting_list": {

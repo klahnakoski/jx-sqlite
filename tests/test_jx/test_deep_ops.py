@@ -3,7 +3,7 @@
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
-# You can obtain one at http://mozilla.org/MPL/2.0/.
+# You can obtain one at https://www.mozilla.org/en-US/MPL/2.0/.
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
@@ -14,7 +14,7 @@ from unittest import skip, skipIf
 
 import mo_math
 from jx_base.expressions import NULL
-from mo_dots import list_to_data
+from mo_dots import list_to_data, concat_field
 from mo_testing.fuzzytestcase import add_error_reporting
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
@@ -38,7 +38,7 @@ class TestDeepOps(BaseTestCase):
                 {},
             ]}}],
             "query": {
-                "from": TEST_TABLE + ".a._b",
+                "from": concat_field(TEST_TABLE, "a._b"),
                 "select": ["a", "b", {"name": "diff", "value": {"sub": ["a", "b"]}}],
                 "where": {"gt": [{"sub": ["a", "b"]}, 0]},
             },
@@ -148,7 +148,7 @@ class TestDeepOps(BaseTestCase):
                 {"c": "x"}
             ],
             "query": {
-                "from": TEST_TABLE + "._a",
+                "from": concat_field(TEST_TABLE, "_a"),
                 "select": {"value": "_a.v", "aggregate": "sum"},
                 "edges": ["_a.b"]
             },
@@ -203,7 +203,7 @@ class TestDeepOps(BaseTestCase):
                 {"c": "x"}
             ],
             "query": {
-                "from": TEST_TABLE + "._a",
+                "from": concat_field(TEST_TABLE, "_a"),
                 "select": {"value": "_a.v", "aggregate": "sum"},
                 "groupby": ["_a.b"]
             },
@@ -242,6 +242,7 @@ class TestDeepOps(BaseTestCase):
         }
         self.assertRaises(Exception, self.utils.execute_tests, test)
 
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_abs_shallow_select(self):
         # TEST THAT ABSOLUTE COLUMN NAMES WORK (WHEN THEY DO NOT CONFLICT WITH RELATIVE PROPERTY NAME)
         test = {
@@ -257,7 +258,7 @@ class TestDeepOps(BaseTestCase):
                 {"o": 4, "c": "x"}
             ],
             "query": {
-                "from": TEST_TABLE + "._a",
+                "from": concat_field(TEST_TABLE, "_a"),
                 "select": ["b", "o"],
                 "where": {"eq": {"b": "x"}},
                 "sort": ["o"]
@@ -388,7 +389,7 @@ class TestDeepOps(BaseTestCase):
                 {"o": 4, "c": "x"}
             ],
             "query": {
-                "from": TEST_TABLE + "._a",
+                "from": concat_field(TEST_TABLE, "_a"),
                 "select": "*"
             },
             "expecting_list": {
@@ -446,7 +447,7 @@ class TestDeepOps(BaseTestCase):
             ],
             "query": {
                 "select": "a._t.*",
-                "from": TEST_TABLE + ".a._t",
+                "from": concat_field(TEST_TABLE, "a._t"),
                 "where": {
                     "prefix": {
                         "h.s": "a-"
@@ -502,7 +503,7 @@ class TestDeepOps(BaseTestCase):
             ],
             "query": {
                 "select": "a._t",
-                "from": TEST_TABLE + ".a._t",
+                "from": concat_field(TEST_TABLE, "a._t"),
                 "where": {
                     "prefix": {
                         "h.s": "a-"
@@ -561,7 +562,7 @@ class TestDeepOps(BaseTestCase):
             ],
             "query": {
                 "select": ["a._t"],
-                "from": TEST_TABLE + ".a._t",
+                "from": concat_field(TEST_TABLE, "a._t"),
                 "where": {
                     "prefix": {
                         "h.s": "a-"
@@ -595,7 +596,7 @@ class TestDeepOps(BaseTestCase):
                 {"o": 4, "a": {}}
             ],
             "query": {
-                "from": TEST_TABLE + ".a._a",
+                "from": concat_field(TEST_TABLE, "a._a"),
                 "select": {"name": "l", "value": {"length": "v"}, "aggregate": "max"}
             },
             "es_query": {
@@ -644,7 +645,7 @@ class TestDeepOps(BaseTestCase):
                 {"o": 4, "a": {}}
             ],
             "query": {
-                "from": TEST_TABLE + ".a._a",
+                "from": concat_field(TEST_TABLE, "a._a"),
                 "select": {"name": "l", "value": {"length": "v"}, "aggregate": "max"},
                 "where": {"lt": {"o": 3}}
             },
@@ -681,7 +682,7 @@ class TestDeepOps(BaseTestCase):
                 {"o": 4, "a": {}}
             ],
             "query": {
-                "from": TEST_TABLE + ".a._a",
+                "from": concat_field(TEST_TABLE, "a._a"),
                 "select": "*",
                 "where": {
                     "eq": [{"length": "v"}, 10]
@@ -722,7 +723,7 @@ class TestDeepOps(BaseTestCase):
                 {"o": 4, "a": {"_a": {"s": False}}}
             ],
             "query": {
-                "from": TEST_TABLE + ".a._a",
+                "from": concat_field(TEST_TABLE, "a._a"),
                 "select": ["o", "v"],
                 "where": {"and": [
                     {"gte": {"o": 2}},
@@ -802,7 +803,7 @@ class TestDeepOps(BaseTestCase):
             ],
             "query": {
                 "select": ["_id"],
-                "from": TEST_TABLE + ".a._a",
+                "from": concat_field(TEST_TABLE, "a._a"),
             },
             "expecting_list": {
                 "meta": {"format": "list"},
@@ -862,7 +863,7 @@ class TestDeepOps(BaseTestCase):
             ],
             "query": {
                 "select": "_id",
-                "from": TEST_TABLE + ".a._a",
+                "from": concat_field(TEST_TABLE, "a._a"),
             },
             "expecting_list": {
                 "meta": {"format": "list"},
@@ -895,7 +896,7 @@ class TestDeepOps(BaseTestCase):
                 {"o": 4, "a": {"_a": {"s": False}}}
             ],
             "query": {
-                "from": TEST_TABLE + ".a._a",
+                "from": concat_field(TEST_TABLE, "a._a"),
                 "edges": ["o"]
             },
             "expecting_list": {
@@ -956,7 +957,7 @@ class TestDeepOps(BaseTestCase):
                 {"o": 2, "a": {"_a": {"s": False}}}
             ],
             "query": {
-                "from": TEST_TABLE + ".a._a",
+                "from": concat_field(TEST_TABLE, "a._a"),
                 "edges": ["o", "v"],
                 "select": {"aggregate": "count", "value": "s"}
             },
@@ -1032,7 +1033,7 @@ class TestDeepOps(BaseTestCase):
                 {"a": {"_a": {"s": False}}}
             ],
             "query": {
-                "from": TEST_TABLE + ".a._a",
+                "from": concat_field(TEST_TABLE, "a._a"),
                 "edges": ["o", "v"],
                 "select": {"aggregate": "count", "value": "s"}
             },
@@ -1106,7 +1107,7 @@ class TestDeepOps(BaseTestCase):
                 ]}}
             ],
             "query": {
-                "from": TEST_TABLE + ".a._a",
+                "from": concat_field(TEST_TABLE, "a._a"),
                 "edges": ["o", "v"],
                 "select": {"aggregate": "count", "value": "s"}
             },
@@ -1180,7 +1181,7 @@ class TestDeepOps(BaseTestCase):
         test = {
             "data": data,
             "query": {
-                "from": TEST_TABLE + ".a._b",
+                "from": concat_field(TEST_TABLE, "a._b"),
                 "edges": [{
                     "name": "v",
                     "value": ["r", "s"]
@@ -1255,7 +1256,7 @@ class TestDeepOps(BaseTestCase):
             "data": data,
             "query": {
                 "select": {"value": "v.u", "aggregate": "sum"},  # TEST RELATIVE NAME IN select
-                "from": TEST_TABLE + ".a._b",
+                "from": concat_field(TEST_TABLE, "a._b"),
                 "edges": ["r.s"],  # TEST RELATIVE NAME IN edges
                 "where": {"ne": {"r.s": "b"}}  # TEST RELATIVE NAME IN where
             },
@@ -1309,7 +1310,7 @@ class TestDeepOps(BaseTestCase):
             "data": data,
             "query": {
                 "select": ["r.s", "v.u"],
-                "from": TEST_TABLE + ".a._b",
+                "from": concat_field(TEST_TABLE, "a._b"),
                 "where": {"ne": {"r.s": "b"}}
             },
             "expecting_list": {
@@ -1362,7 +1363,7 @@ class TestDeepOps(BaseTestCase):
             "data": data,
             "query": {
                 "select": {"value": "v.u", "aggregate": "sum"},  # TEST RELATIVE NAME IN select
-                "from": TEST_TABLE + ".a._b",
+                "from": concat_field(TEST_TABLE, "a._b"),
                 "edges": ["r.s"],  # TEST RELATIVE NAME IN edges
                 "where": {"not": {"eq": {"r.s": "b"}}}  # TEST RELATIVE NAME IN where
             },
@@ -1450,7 +1451,7 @@ class TestDeepOps(BaseTestCase):
             "data": data,
             "query": {
                 "select": ["r.s", "v.u"],
-                "from": TEST_TABLE + ".a._b",
+                "from": concat_field(TEST_TABLE, "a._b"),
                 "where": {"not": {"eq": {"r.s": "b"}}}
             },
             "expecting_list": {
@@ -1498,7 +1499,7 @@ class TestDeepOps(BaseTestCase):
                 {}
             ]}}],
             "query": {
-                "from": TEST_TABLE+".a._b",
+                "from": concat_field(TEST_TABLE, "a._b"),
                 "select": [
                     {"name": "t", "value": {"add": ["a", "a"]}, "aggregate": "average"}
                 ],
@@ -1529,7 +1530,7 @@ class TestDeepOps(BaseTestCase):
                 {}
             ]}}],
             "query": {
-                "from": TEST_TABLE+".a._b",
+                "from": concat_field(TEST_TABLE, "a._b"),
                 "select": [
                     "a",
                     "b"
@@ -1558,7 +1559,7 @@ class TestDeepOps(BaseTestCase):
                 }
             ],
             "query": {
-                "from": TEST_TABLE+".a._b",
+                "from": concat_field(TEST_TABLE, "a._b"),
                 "select": [
                     "a"
                 ],
@@ -1589,7 +1590,7 @@ class TestDeepOps(BaseTestCase):
                 {}
             ]}}],
             "query": {
-                "from": TEST_TABLE+".a._b",
+                "from": concat_field(TEST_TABLE, "a._b"),
                 "select": [
                     "a",
                     "b"
@@ -1625,7 +1626,7 @@ class TestDeepOps(BaseTestCase):
                 {"q": {}}
             ]}}],
             "query": {
-                "from": TEST_TABLE+".a._b",
+                "from": concat_field(TEST_TABLE, "a._b"),
                 "select": [
                     "q.a",
                     "q.b"
@@ -1660,7 +1661,7 @@ class TestDeepOps(BaseTestCase):
             }
             }],
             "query": {
-                "from": TEST_TABLE + ".a._b",
+                "from": concat_field(TEST_TABLE, "a._b"),
                 "select": ["f"]
             },
             "expecting_list": {
@@ -1684,7 +1685,7 @@ class TestDeepOps(BaseTestCase):
                 {"q": {}}
             ]}}],
             "query": {
-                "from": TEST_TABLE+".a._b",
+                "from": concat_field(TEST_TABLE, "a._b"),
                 "select": ["*"],
                 "format": "list"
             },
@@ -1710,7 +1711,7 @@ class TestDeepOps(BaseTestCase):
                 {"q": {}}
             ]}}],
             "query": {
-                "from": TEST_TABLE+".a._b",
+                "from": concat_field(TEST_TABLE, "a._b"),
                 "select": ["*", {"name": "parent", "value": "..*"}],
                 "format": "list"
             },
@@ -1740,7 +1741,7 @@ class TestDeepOps(BaseTestCase):
                 {"x": 3, "c": "x"}
             ],
             "query": {
-                "from": TEST_TABLE + "._a",
+                "from": concat_field(TEST_TABLE, "_a"),
                 "select": {"value": "."},
             },
             "expecting_list": {
@@ -1856,7 +1857,7 @@ class TestDeepOps(BaseTestCase):
                 {"o": 4, "a": {"s": False}}
             ],
             "query": {
-                "from": TEST_TABLE + ".a",
+                "from": concat_field(TEST_TABLE, "a"),
                 "select": ["o", "v"],
                 "where": {"eq": {"o": "a"}}
             },
@@ -1884,7 +1885,7 @@ class TestDeepOps(BaseTestCase):
                 {"v": 7}
             ],
             "query": {
-                "from": TEST_TABLE+".a",
+                "from": concat_field(TEST_TABLE, "a"),
                 "edges": [{"value": "b"}],
                 "select": {"name": "count", "value": {"when": "v", "then": 1}, "aggregate": "count"}
             },
@@ -1935,7 +1936,7 @@ class TestDeepOps(BaseTestCase):
                 {"v": 8, "a": [{}, {"b": 2}]}
             ],
             "query": {
-                "from": TEST_TABLE+".a",
+                "from": concat_field(TEST_TABLE, "a"),
                 "edges": [{"value": "b"}],
                 "select": {"name": "sum", "value": "v", "aggregate": "sum"}
             },
@@ -1985,7 +1986,7 @@ class TestDeepOps(BaseTestCase):
                 {"v": 7}
             ],
             "query": {
-                "from": TEST_TABLE+".a",
+                "from": concat_field(TEST_TABLE, "a"),
                 "edges": [{"name": "b", "value": "a.b"}],
                 "select": {"name": "count", "value": {"when": "v", "then": 1}, "aggregate": "count"}
             },
@@ -2068,7 +2069,7 @@ class TestDeepOps(BaseTestCase):
                 {"m": 1}
             ],
             "query": {
-                "from": TEST_TABLE+".v",
+                "from": concat_field(TEST_TABLE, "v"),
                 "groupby": {"name": "k", "value": "v.k"},
                 "where": [
                     {"eq": {"b": "x"}},

@@ -3,7 +3,7 @@
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
-# You can obtain one at http://mozilla.org/MPL/2.0/.
+# You can obtain one at https://www.mozilla.org/en-US/MPL/2.0/.
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
@@ -19,7 +19,7 @@ from collections import namedtuple
 from datetime import datetime, timedelta
 from time import sleep
 
-from mo_dots import unwraplist, Null
+from mo_dots import unwraplist, Null, exists
 from mo_future import (
     allocate_lock,
     get_function_name,
@@ -34,6 +34,12 @@ from mo_logs.strings import expand_template
 from mo_threads.signals import AndSignals, Signal
 from mo_threads.till import Till, TIMERS_NAME
 
+try:
+    # TODO: replace with simple import
+    from mo_logs import MO_LOGS_EXTRAS
+except:
+    MO_LOGS_EXTRAS = "mo-logs-extras"
+
 DEBUG = False
 KNOWN_DEBUGGERS = ["pydevd.py"]
 
@@ -41,7 +47,6 @@ PLEASE_STOP = "please_stop"  # REQUIRED thread PARAMETER TO SIGNAL STOP
 PARENT_THREAD = "parent_thread"  # OPTIONAL PARAMETER TO ASSIGN THREAD TO SOMETHING OTHER THAN CURRENT THREAD
 MAX_DATETIME = datetime(2286, 11, 20, 17, 46, 39)
 DEFAULT_WAIT_TIME = timedelta(minutes=10)
-THREAD_STOP = "stop"
 THREAD_TIMEOUT = "Thread {name} timeout"
 COVERAGE_COLLECTOR = None  # Detect Coverage.py
 
@@ -260,6 +265,7 @@ class Thread(BaseThread):
     """
 
     def __init__(self, name, target, *args, parent_thread=None, daemon=False, **kwargs):
+        name = str(name)
         threading_thread = threading.Thread(None, self._run, name, daemon=daemon)
         BaseThread.__init__(self, 0, threading_thread, name or f"thread_{object.__hash__(self)}")
         self.target = target
@@ -278,6 +284,17 @@ class Thread(BaseThread):
             parent_thread = current_thread()
         self.parent = parent_thread
         self.parent.add_child(self)
+
+        try:
+            # INHERIT LOGGING EXTRAS
+            if exists(parent_thread):
+                setattr(
+                    self.threading_thread,
+                    MO_LOGS_EXTRAS,
+                    [getattr(parent_thread.threading_thread, MO_LOGS_EXTRAS)[-1]]
+                )
+        except:
+            pass
 
     def __enter__(self):
         return self
@@ -418,7 +435,7 @@ class Thread(BaseThread):
             "{parent.name} ({parent.ident}) waiting on thread {child}", parent=current_thread(), child=self.name,
         )
         self.joiner_is_waiting.go()
-        (self.stopped | till).wait()
+        self.stopped.wait(till=till)
         if not self.stopped:
             raise Except(ERROR, template=THREAD_TIMEOUT, params={"name": self.name})
         DEBUG and logger.note(

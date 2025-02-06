@@ -3,7 +3,7 @@
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
-# You can obtain one at http:# mozilla.org/MPL/2.0/.
+# You can obtain one at https://www.mozilla.org/en-US/MPL/2.0/.
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
@@ -20,11 +20,10 @@ from jx_base.expressions.sql_not_op import SqlNotOp
 from jx_base.expressions.variable import is_variable
 from jx_base.language import is_op, Expression, Language
 from mo_future import extend
-from mo_imports import expect
+from mo_imports import expect, export
 from mo_json import JxType
 from mo_logs import Log, logger
-from mo_sql import SQL
-from mo_sql import SQL_CASE, SQL_END, SQL_NULL, SQL_THEN, SQL_WHEN, SQL_NOT, SQL_OP, SQL_CP
+from mo_sql import SQL, SQL_CASE, SQL_END, SQL_NULL, SQL_THEN, SQL_WHEN, SQL_NOT, SQL_OP, SQL_CP
 
 SqlCaseOp, SqlWhenOp = expect("SqlCaseOp", "SqlWhenOp")
 
@@ -163,3 +162,6 @@ class SqlScript(_SqlScript, SQL):
             return
 
         return self.expr == other.expr
+
+
+export("mo_sqlite.utils", SQLang)

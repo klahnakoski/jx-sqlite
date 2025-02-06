@@ -3,7 +3,7 @@
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
-# You can obtain one at http:# mozilla.org/MPL/2.0/.
+# You can obtain one at https://www.mozilla.org/en-US/MPL/2.0/.
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
@@ -36,7 +36,7 @@ class Expression(BaseExpression):
         # SOME BASIC VERIFICATION THAT THESE ARE REASONABLE PARAMETERS
         bad = [t for t in args if t != None and not is_expression(t)]
         if bad:
-            Log.error("Expecting an expression, not {{bad}}", bad=bad)
+            Log.error("Expecting an expression, not {bad}", bad=bad)
 
     @classmethod
     def get_id(cls):

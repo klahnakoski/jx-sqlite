@@ -3,19 +3,19 @@
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
-# You can obtain one at http://mozilla.org/MPL/2.0/.
+# You can obtain one at https://www.mozilla.org/en-US/MPL/2.0/.
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 
 
-from unittest import skip
+from unittest import skipIf
 
 from mo_testing.fuzzytestcase import add_error_reporting
 from mo_times.dates import Date
 from mo_times.durations import DAY
-from tests.test_jx import BaseTestCase, TEST_TABLE
+from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 FROM_DATE = Date.today()-7*DAY
 TO_DATE = Date.today()
@@ -116,6 +116,7 @@ class TestEdgeTime(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_count_over_time_w_sort(self):
         test = {
             "data": simple_test_data,

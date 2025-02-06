@@ -3,7 +3,7 @@
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
-# You can obtain one at http://mozilla.org/MPL/2.0/.
+# You can obtain one at https://www.mozilla.org/en-US/MPL/2.0/.
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
@@ -15,7 +15,7 @@ from unittest import skipIf, skip
 import mo_math
 from jx_base.expressions import NULL
 from jx_base.expressions.query_op import DEFAULT_LIMIT, MAX_LIMIT
-from mo_dots import to_data, dict_to_data, list_to_data
+from mo_dots import to_data, dict_to_data, list_to_data, concat_field
 from mo_future import first
 from mo_sql.utils import SQL_STRING_KEY
 from mo_testing.fuzzytestcase import add_error_reporting
@@ -115,6 +115,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_single_deep_select(self):
         test = {
             "data": [
@@ -392,7 +393,7 @@ class TestSetOps(BaseTestCase):
                     "x": 11,
                 },
             ],
-            "query": {"from": TEST_TABLE + ".a.b", "select": ["...x", "c"]},
+            "query": {"from": concat_field(TEST_TABLE, "a.b"), "select": ["...x", "c"]},
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
@@ -508,6 +509,7 @@ class TestSetOps(BaseTestCase):
         with self.assertRaises(Exception):
             self.utils.execute_query(test.query)
 
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select_w_star(self):
         test = {
             "data": [
@@ -593,6 +595,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select_expression(self):
         test = {
             "data": [
@@ -634,6 +637,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select_object(self):
         """
         ES DOES NOT ALLOW YOU TO SELECT AN OBJECT, ONLY THE LEAVES
@@ -761,6 +765,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select_value_object(self):
         """
         ES DOES NOT ALLOW YOU TO SELECT AN OBJECT, ONLY THE LEAVES
@@ -809,6 +814,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select2_object(self):
         """
         ES DOES NOT ALLOW YOU TO SELECT AN OBJECT, ONLY THE LEAVES

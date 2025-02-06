@@ -2,7 +2,7 @@
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
-# You can obtain one at http://mozilla.org/MPL/2.0/.
+# You can obtain one at https://www.mozilla.org/en-US/MPL/2.0/.
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
@@ -22,7 +22,7 @@ from mo_times import Timer, Date
 
 from mo_threads.queues import Queue
 from mo_threads.signals import Signal
-from mo_threads.threads import THREAD_STOP, Thread, EndOfThread, ALL_LOCK, ALL
+from mo_threads.threads import PLEASE_STOP, Thread, EndOfThread, ALL_LOCK, ALL
 from mo_threads.till import Till
 
 DEBUG = False
@@ -76,13 +76,13 @@ class Process(object):
 
         self.debug = debug or DEBUG
         self.name = f"{name} ({self.process_id})"
-        self.stopped = Signal("stopped signal for " + strings.quote(name))
-        self.please_stop = Signal("please stop for " + strings.quote(name))
+        self.stopped = Signal(f"stopped signal for {strings.quote(name)}")
+        self.please_stop = Signal(f"please stop for {strings.quote(name)}")
         self.second_last_stdin = None
         self.last_stdin = None
-        self.stdin = Queue("stdin for process " + strings.quote(name), silent=not self.debug)
-        self.stdout = Queue("stdout for process " + strings.quote(name), silent=not self.debug)
-        self.stderr = Queue("stderr for process " + strings.quote(name), silent=not self.debug)
+        self.stdin = Queue(f"stdin for process {strings.quote(name)}", silent=not self.debug)
+        self.stdout = Queue(f"stdout for process {strings.quote(name)}", silent=not self.debug)
+        self.stderr = Queue(f"stderr for process {strings.quote(name)}", silent=not self.debug)
         self.timeout = timeout
         self.monitor_period = 0.5
 
@@ -284,9 +284,9 @@ class Process(object):
     def _writer(self, pipe, send, please_stop):
         while not please_stop:
             line = send.pop(till=please_stop)
-            if line is THREAD_STOP:
+            if line is PLEASE_STOP:
                 please_stop.go()
-                self.debug and logger.info("got THREAD_STOP")
+                self.debug and logger.info("got PLEASE_STOP")
                 break
             elif line is None:
                 continue
