@@ -10,6 +10,7 @@
 
 
 import datetime
+import os
 import types
 from unittest import SkipTest, TestCase
 
@@ -33,6 +34,9 @@ from mo_logs import Except, Log, suppress_exception
 from mo_logs.strings import expand_template, quote
 from mo_math import is_number, log10, COUNT
 from mo_times import dates
+
+
+os.environ.setdefault("TESTING", "1")
 
 
 class FuzzyTestCase(TestCase):

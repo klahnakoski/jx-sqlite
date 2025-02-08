@@ -8,9 +8,8 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
+from mo_dots import is_data, join_field, leaves_to_data, concat_field, to_data, register_data, Data, from_data
 from mo_future import Mapping
-from mo_dots import is_data, join_field, leaves_to_data, concat_field
-from mo_dots.datas import register_data, Data
 from mo_logs import logger
 from mo_logs.strings import wordify
 
@@ -21,7 +20,8 @@ class Configuration(Mapping):
             logger.error("Expecting data, not {config}", config=config)
         self._path = path
         self._lookup = leaves_to_data({
-            join_field(wordify(path)): value for path, value in Data(**config).leaves()
+            join_field(wordify(path)): value
+            for path, value in Data(**config).leaves()
         })
 
     def __iter__(self):
@@ -29,6 +29,10 @@ class Configuration(Mapping):
 
     def __len__(self):
         return len(self._lookup)
+
+    def clear(self):
+        self._lookup = Data()
+        return self
 
     def prepend(self, other):
         """
@@ -68,7 +72,7 @@ class Configuration(Mapping):
         value = self._lookup[clean_path]
         if value == None:
             logger.error(
-                "Expecting configuration {{path|quote}}",
+                "Expecting configuration {path|quote}",
                 path=concat_field(self._path, clean_path),
                 stack_depth=1,
             )
@@ -78,5 +82,7 @@ class Configuration(Mapping):
 
     __getitem__ = __getattr__
 
+    def __repr__(self):
+        return f"Configuration({from_data(self._lookup)})"
 
 register_data(Configuration)
