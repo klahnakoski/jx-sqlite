@@ -211,7 +211,9 @@ class Language(object):
             else:
                 new_op.lookups = jx_op.lookups
                 for dd_method in double_dispatch_methods:
-                    set_at(jx_op.lookups[dd_method], self.id, _extract_method(new_op, dd_method))
+                    set_at(
+                        jx_op.lookups[dd_method], self.id, _extract_method(new_op, dd_method)
+                    )
 
                 # COPY OTHER DEFINED METHODS
                 others = list(vars(new_op).items())

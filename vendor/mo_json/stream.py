@@ -196,7 +196,7 @@ class Parser(object):
                 child_expected = needed("value", expected_vars)
                 index = self._assign_token(index, c, child_expected)
                 c, index = self.skip_whitespace(index)
-                DEBUG and not num_items % 1000 and Log.note("{{num}} items iterated", num=num_items)
+                DEBUG and not num_items % 1000 and Log.note("{num} items iterated", num=num_items)
                 yield index
                 num_items += 1
             elif c == b"}":
@@ -278,7 +278,7 @@ class Parser(object):
                 if i == -1:
                     return index  # FOUND THE MATCH!  RETURN
             elif c in b"]}":
-                Log.error("expecting {{symbol}}", symbol=stack[i])
+                Log.error("expecting {symbol}", symbol=stack[i])
 
     def simple_token(self, index, c):
         if c == b'"':
@@ -314,7 +314,7 @@ class Parser(object):
             try:
                 return float(text), index
             except Exception:
-                Log.error("Not a known JSON primitive: {{text|quote}}", text=text)
+                Log.error("Not a known JSON primitive: {text|quote}", text=text)
 
     def skip_whitespace(self, index):
         """

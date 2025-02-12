@@ -9,7 +9,6 @@
 #
 
 
-
 import math
 import sys
 from math import sqrt
@@ -47,9 +46,9 @@ def chisquare(f_obs, f_exp):
         from mo_testing.fuzzytestcase import assertAlmostEqualValue
 
         sp_result = scipy.stats.chisquare(np.frum(f_obs), f_exp=np.frum(f_exp))
-        if not assertAlmostEqualValue(
-            sp_result[0], py_result[0], digits=9
-        ) and assertAlmostEqualValue(sp_result[1], py_result[1], delta=1e-8):
+        if not assertAlmostEqualValue(sp_result[0], py_result[0], digits=9) and assertAlmostEqualValue(
+            sp_result[1], py_result[1], delta=1e-8
+        ):
             logger.error("problem with stats lib")
 
     return py_result
@@ -135,7 +134,8 @@ def ZeroMoment2Stats(z_moment):
                 assertAlmostEqualValue(v.S[i], Z[i], places=7)
         except Exception as e:
             logger.error(
-                "Conversion failed.  Programmer error:\nfrom={{from|indent}},\nresult stats={{stats|indent}},\nexpected param={{expected|indent}}",
+                "Conversion failed.  Programmer error:\nfrom={{from|indent}},\nresult"
+                " stats={{stats|indent}},\nexpected param={{expected|indent}}",
                 {"from": Z},
                 stats=stats,
                 expected=v.S,
@@ -186,25 +186,19 @@ class Stats(Data):
         elif "skew" not in kwargs:
             self.count = kwargs["count"]
             self.mean = kwargs["mean"]
-            self.variance = (
-                kwargs["variance"] if "variance" in kwargs else kwargs["std"] ** 2
-            )
+            self.variance = kwargs["variance"] if "variance" in kwargs else kwargs["std"] ** 2
             self.skew = None
             self.kurtosis = None
         elif "kurtosis" not in kwargs:
             self.count = kwargs["count"]
             self.mean = kwargs["mean"]
-            self.variance = (
-                kwargs["variance"] if "variance" in kwargs else kwargs["std"] ** 2
-            )
+            self.variance = kwargs["variance"] if "variance" in kwargs else kwargs["std"] ** 2
             self.skew = kwargs["skew"]
             self.kurtosis = None
         else:
             self.count = kwargs["count"]
             self.mean = kwargs["mean"]
-            self.variance = (
-                kwargs["variance"] if "variance" in kwargs else kwargs["std"] ** 2
-            )
+            self.variance = kwargs["variance"] if "variance" in kwargs else kwargs["std"] ** 2
             self.skew = kwargs["skew"]
             self.kurtosis = kwargs["kurtosis"]
 
@@ -235,17 +229,7 @@ class ZeroMoment(object):
             return self
         else:
             return ZeroMoment(
-                *array_add(
-                    self.S,
-                    (
-                        1,
-                        other,
-                        pow(other, 2),
-                        pow(other, 3),
-                        pow(other, 4),
-                        pow(other, 2),
-                    ),
-                )
+                *array_add(self.S, (1, other, pow(other, 2), pow(other, 3), pow(other, 4), pow(other, 2),),)
             )
 
     @property
@@ -341,13 +325,11 @@ def median(values, simple=True, mean_weight=0.0):
                 return (_median - 0.5) + (middle - start_index) / num_middle
         else:
             if num_middle == 1:
-                return (1 - mean_weight) * _median + mean_weight * (
-                    _sorted[middle - 1] + _sorted[middle + 1]
-                ) / 2
+                return (1 - mean_weight) * _median + mean_weight * (_sorted[middle - 1] + _sorted[middle + 1]) / 2
             else:
                 return (_median - 0.5) + (middle + 0.5 - start_index) / num_middle
     except Exception as e:
-        logger.error("problem with median of {{values}}", values=values, cause=e)
+        logger.error("problem with median of {values}", values=values, cause=e)
 
 
 def percentile(values, percent):

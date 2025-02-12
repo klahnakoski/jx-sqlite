@@ -175,7 +175,7 @@ def note(
             timestamp=timestamp,
         ),
         stack_depth + 1,
-        globals()['static_template'] if static_template is None else static_template,
+        globals()["static_template"] if static_template is None else static_template,
     )
 
 

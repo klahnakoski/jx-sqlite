@@ -74,6 +74,7 @@ else:
     def is_daemon(thread):
         return thread.isDaemon()
 
+
 IN_DEBUGGER = any(debugger in line.filename for line in traceback.extract_stack() for debugger in KNOWN_DEBUGGERS)
 
 
@@ -291,7 +292,7 @@ class Thread(BaseThread):
                 setattr(
                     self.threading_thread,
                     MO_LOGS_EXTRAS,
-                    [getattr(parent_thread.threading_thread, MO_LOGS_EXTRAS)[-1]]
+                    [getattr(parent_thread.threading_thread, MO_LOGS_EXTRAS)[-1]],
                 )
         except:
             pass
@@ -662,10 +663,10 @@ def _wait_for_interrupt(please_stop):
 
 
 def wait_for_shutdown_signal(
-        *,
-        please_stop=False,  # ASSIGN SIGNAL TO STOP EARLY
-        allow_exit=False,  # ALLOW "exit" COMMAND ON CONSOLE TO ALSO STOP THE APP
-        wait_forever=True,  # IGNORE CHILD THREADS, NEVER EXIT.  False => IF NO CHILD THREADS LEFT, THEN EXIT
+    *,
+    please_stop=False,  # ASSIGN SIGNAL TO STOP EARLY
+    allow_exit=False,  # ALLOW "exit" COMMAND ON CONSOLE TO ALSO STOP THE APP
+    wait_forever=True,  # IGNORE CHILD THREADS, NEVER EXIT.  False => IF NO CHILD THREADS LEFT, THEN EXIT
 ):
     """
     FOR USE BY PROCESSES THAT NEVER DIE UNLESS EXTERNAL SHUTDOWN IS REQUESTED
@@ -752,6 +753,7 @@ def start_main_thread():
 _signal.signal(_signal.SIGTERM, stop_main_thread)
 _signal.signal(_signal.SIGINT, stop_main_thread)
 if sys.version_info[:2] < (3, 9):
+
     def wait_for_join():
         global current_thread
 
@@ -760,7 +762,6 @@ if sys.version_info[:2] < (3, 9):
         # spoof the current_thread() to be MAIN_THREAD
         current_thread = lambda: MAIN_THREAD
         stop_main_thread()
-
 
     threading.Thread(None, wait_for_join, args=[], daemon=False).start()
 else:

@@ -75,7 +75,7 @@ class Sqlite(DB):
         self.trace = coalesce(trace, TRACE) or self.debug
 
         # SETUP DATABASE
-        self.debug and logger.note("Sqlite version {{version}}", version=sqlite3.sqlite_version)
+        self.debug and logger.note("Sqlite version {version}", version=sqlite3.sqlite_version)
         try:
             if not isinstance(db, sqlite3.Connection):
                 self.db = sqlite3.connect(
@@ -84,7 +84,7 @@ class Sqlite(DB):
             else:
                 self.db = db
         except Exception as e:
-            logger.error("could not open file {{filename}}", filename=self.filename, cause=e)
+            logger.error("could not open file {filename}", filename=self.filename, cause=e)
 
         self.locker = Lock()
         self.available_transactions = []  # LIST OF ALL THE TRANSACTIONS BEING MANAGED
@@ -329,7 +329,7 @@ class Sqlite(DB):
                 try:
                     self._process_command_item(command_item)
                 except Exception as cause:
-                    logger.warning("can not execute command {{command}}", command=command_item.command, cause=cause)
+                    logger.warning("can not execute command {command}", command=command_item.command, cause=cause)
         except Exception as e:
             e = Except.wrap(e)
             if not please_stop:
@@ -422,7 +422,7 @@ class Sqlite(DB):
                 result.data = curr.fetchall()
                 if self.debug and result.data:
                     csv = table2csv(list(result.data))
-                    logger.note("Result:\n{{data|limit(1000)|indent}}", data=csv)
+                    logger.note("Result:\n{data|limit(1000)|indent}", data=csv)
             except Exception as cause:
                 cause = Except.wrap(cause)
                 err = Except(

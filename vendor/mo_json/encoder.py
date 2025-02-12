@@ -128,7 +128,7 @@ class cPythonJSONEncoder(object):
             from mo_logs import Log
 
             cause = Except.wrap(cause)
-            Log.warning("problem serializing {{type}}", type=str(repr(value)), cause=cause)
+            Log.warning("problem serializing {type}", type=str(repr(value)), cause=cause)
             raise cause
 
 
@@ -272,6 +272,7 @@ def pretty_json(value):
     scrub = Scrubber().scrub
     return _pretty_json(value, scrub)
 
+
 def _pretty_json(value, scrub):
     try:
         if value is False:
@@ -333,10 +334,10 @@ def _pretty_json(value, scrub):
                             acc.append(c3)
                         except BaseException:
                             pass
-                            # Log.warning("odd character {{ord}} found in string.  Ignored.",  ord= ord(c)}, cause=g)
+                            # Log.warning("odd character {ord} found in string.  Ignored.",  ord= ord(c)}, cause=g)
                     acc.append(QUOTE)
                     output = "".join(acc)
-                    Log.note("return value of length {{length}}", length=len(output))
+                    Log.note("return value of length {length}", length=len(output))
                     return output
                 except BaseException as f:
                     Log.warning(
@@ -445,10 +446,10 @@ def problem_serializing(value, e=None):
         rep = None
 
     if rep == None:
-        Log.error("Problem turning value of type {{type}} to json", type=typename, cause=e)
+        Log.error("Problem turning value of type {type} to json", type=typename, cause=e)
     else:
         Log.error(
-            "Problem turning value ({{value}}) of type {{type}} to json", value=rep, type=typename, cause=e,
+            "Problem turning value ({value}) of type {type} to json", value=rep, type=typename, cause=e,
         )
 
 
@@ -497,7 +498,7 @@ def unicode_key(key):
     if not isinstance(key, (text, binary_type)):
         from mo_logs import Log
 
-        Log.error("{{key|quote}} is not a valid key", key=key)
+        Log.error("{key|quote} is not a valid key", key=key)
     return quote(str(key))
 
 

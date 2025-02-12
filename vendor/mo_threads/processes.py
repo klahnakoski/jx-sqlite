@@ -173,9 +173,7 @@ class Process(object):
         if self.returncode is None:
             self.kill()
             on_error(
-                "{process} TIMEOUT\n{stderr}",
-                process=self.name,
-                stderr=list(self.stderr),
+                "{process} TIMEOUT\n{stderr}", process=self.name, stderr=list(self.stderr),
             )
         if self.returncode != 0:
             on_error(

@@ -19,7 +19,6 @@ class SqlVariable(_SqlVariable, SQL):
 
     __new__ = object.__new__
 
-
     def to_sql(self, schema):
         return SqlScript(jx_type=self.jx_type, expr=self, frum=self, schema=schema,)
 

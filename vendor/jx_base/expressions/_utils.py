@@ -12,7 +12,7 @@
 import operator
 
 from jx_base.language import is_expression, Language
-from jx_base.utils import enlist
+from jx_base.utils import enlist, delist
 from mo_dots import is_sequence, is_missing, is_data
 from mo_future import get_function_name, is_text, utf8_json_encoder
 from mo_imports import expect, export
@@ -107,10 +107,10 @@ def _jx_expression(json, lang):
 
                 return class_.define(json)
         else:
-            raise Log.error("{{instruction|json}} is not known", instruction=json)
+            raise Log.error("{instruction|json} is not known", instruction=json)
 
     except Exception as cause:
-        Log.error("programmer error expr = {{value|quote}}", value=json, cause=cause)
+        Log.error("programmer error expr = {value|quote}", value=json, cause=cause)
 
 
 _json_encoder = utf8_json_encoder
@@ -122,7 +122,7 @@ def value2json(value):
         return str(_json_encoder(scrubbed))
     except Exception as e:
         e = Except.wrap(e)
-        Log.warning("problem serializing {{type}}", type=str(repr(value)), cause=e)
+        Log.warning("problem serializing {type}", type=str(repr(value)), cause=e)
         raise e
 
 
@@ -151,7 +151,7 @@ builtin_ops = {
     "min": lambda *v: min(*v),
     "most": lambda *v: max(*v),
     "least": lambda *v: min(*v),
-    "sql.concat": lambda *v: "".join(*v)
+    "sql.concat": lambda *v: "".join(*v),
 }
 
 operators = {}
@@ -166,14 +166,22 @@ precedence = [
     "skip",
     "percentile",
     "select",
-    "having",
+    # "having",
     "group",
     "filter",
     "where",
-    "edges",
+    # "edges",
     "from",
     "value",
+    "literal",
 ]
+
+
+def symbiotic(op, frum, *args, **kwargs):
+    if frum.precedence > op.precedence:
+        return {op.op: delist(args), **frum.__data__(), **kwargs}
+    else:
+        return {op.op: delist(args), "from": frum.__data__(), **kwargs}
 
 
 export("jx_base.domains", jx_expression)

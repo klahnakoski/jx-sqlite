@@ -17,8 +17,6 @@ from mo_imports import delay_import
 logger = delay_import("mo_logs.Log")
 
 
-
-
 class CipherMode:
     """Perform Cipher operation on a block and retain IV information for next operation"""
 
@@ -35,9 +33,7 @@ class CipherMode:
         self._iv = iv
 
     def encrypt_block(self, plaintext):
-        raise(NotImplementedError, "Abstract function")
+        raise (NotImplementedError, "Abstract function")
 
     def decrypt_block(self, ciphertext):
-        raise(NotImplementedError, "Abstract function")
-
-
+        raise (NotImplementedError, "Abstract function")

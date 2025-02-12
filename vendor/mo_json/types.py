@@ -11,7 +11,16 @@ from datetime import datetime, date
 from decimal import Decimal
 from math import isnan
 
-from mo_dots import Data, split_field, NullType, is_many, is_data, concat_field, is_sequence, FlatList
+from mo_dots import (
+    Data,
+    split_field,
+    NullType,
+    is_many,
+    is_data,
+    concat_field,
+    is_sequence,
+    FlatList,
+)
 from mo_times import Date
 
 from mo_future import text, none_type, items, first, POS_INF
@@ -271,7 +280,17 @@ PRIMITIVE = (EXISTS, BOOLEAN, INTEGER, NUMBER, TIME, INTERVAL, STRING)
 INTERNAL = (EXISTS, OBJECT, ARRAY)
 STRUCT = (OBJECT, ARRAY)
 
-BOOLEAN_KEY, INTEGER_KEY, NUMBER_KEY, TIME_KEY, DURATION_KEY, STRING_KEY, ARRAY_KEY, EXISTS_KEY, JSON_KEY = "~b~", "~i~", "~n~", "~t~", "~d~", "~s~", "~a~", "~e~", "~j~"
+(BOOLEAN_KEY, INTEGER_KEY, NUMBER_KEY, TIME_KEY, DURATION_KEY, STRING_KEY, ARRAY_KEY, EXISTS_KEY, JSON_KEY,) = (
+    "~b~",
+    "~i~",
+    "~n~",
+    "~t~",
+    "~d~",
+    "~s~",
+    "~a~",
+    "~e~",
+    "~j~",
+)
 IS_PRIMITIVE_KEY = re.compile(r"^~[bintds]~$")
 IS_TYPE_KEY = re.compile(r"^~[bintdsaje]~$")
 
@@ -302,7 +321,7 @@ JX_NUMBER_TYPES = _new(JxType)
 JX_NUMBER_TYPES.__dict__ = [
     (x, x.update(d))[0]
     for x in [{}]
-    for d in [JX_INTEGER.__dict__, JX_NUMBER.__dict__, JX_TIME.__dict__, JX_INTERVAL.__dict__]
+    for d in [JX_INTEGER.__dict__, JX_NUMBER.__dict__, JX_TIME.__dict__, JX_INTERVAL.__dict__,]
 ][0]
 
 _any_type_to_jx_type = {
@@ -420,6 +439,7 @@ _jx_type_to_json_type = {
 def jx_type_to_json_type(jx_type):
     basic_type = base_type(jx_type)
     return _jx_type_to_json_type.get(basic_type, OBJECT)
+
 
 _python_type_to_jx_type = {
     int: JX_INTEGER,

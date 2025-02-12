@@ -1,4 +1,4 @@
-from jx_base.expressions._utils import jx_expression, merge_types, operators, JX, _jx_expression
+from jx_base.expressions._utils import jx_expression, merge_types, operators, JX, _jx_expression, precedence
 from jx_base.expressions.abs_op import AbsOp
 from jx_base.expressions.add_op import AddOp
 from jx_base.expressions.aggregate_op import AggregateOp
@@ -132,9 +132,12 @@ from jx_base.expressions.true_op import TrueOp, TRUE
 from jx_base.expressions.tuple_op import TupleOp
 from jx_base.expressions.union_op import UnionOp
 from jx_base.expressions.unix_op import UnixOp
+from jx_base.expressions.value_op import ValueOp
 from jx_base.expressions.variable import Variable, IDENTITY
 from jx_base.expressions.when_op import WhenOp
 from mo_dots import set_default
+
+from mo_json import logger
 
 set_default(
     operators,
@@ -221,6 +224,7 @@ set_default(
         "rows": RowsOp,
         "script": ScriptOp,
         "select": SelectOp,
+        "skip": OffsetOp,
         "split": SplitOp,
         "sql.and": SqlAndOp,
         "sql.alias": SqlAliasOp,
@@ -247,6 +251,7 @@ set_default(
         "tuple": TupleOp,
         "union": UnionOp,
         "unix": UnixOp,
+        "value": ValueOp,
         "when": WhenOp,
         "where": FilterOp,
     },
@@ -260,7 +265,9 @@ register_literal(TrueOp)
 register_literal(DateOp)
 register_literal(Literal)
 
-
 for op, v in operators.items():
     if v.lang == None:
         logger.warning(f"Operator {op} has no language defined")
+
+for i, op in enumerate(precedence):
+    operators[op].precedence = i

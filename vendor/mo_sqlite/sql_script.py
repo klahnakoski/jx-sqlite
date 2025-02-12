@@ -71,16 +71,16 @@ class SqlStep:
         SQL TO PULL MINIMUM COLUMNS FOR LEFT JOINS
         """
         columns = [
-            *(SqlAliasOp( ov,f"o{self.id}_{oi}") for oi, ov in enumerate(self.order)),
-            *(SqlAliasOp( iv,f"i{self.id}_{ii}") for ii, iv, in enumerate(self.uids)),
+            *(SqlAliasOp(ov, f"o{self.id}_{oi}") for oi, ov in enumerate(self.order)),
+            *(SqlAliasOp(iv, f"i{self.id}_{ii}") for ii, iv, in enumerate(self.uids)),
         ]
         parent_end = self.parent.end if self.parent else 0
         start_of_values = self.start + len(self.order) + len(self.uids)
         return (
             [
-                *(SqlAliasOp( NULL,s) for s in all_selects[parent_end : self.start]),
-                *(SqlVariable( s) for s in all_selects[self.start: start_of_values]),
-                *(SqlAliasOp( NULL,s) for s in all_selects[start_of_values : self.end]),
+                *(SqlAliasOp(NULL, s) for s in all_selects[parent_end : self.start]),
+                *(SqlVariable(s) for s in all_selects[self.start : start_of_values]),
+                *(SqlAliasOp(NULL, s) for s in all_selects[start_of_values : self.end]),
             ],
             SqlAliasOp(SqlSelectOp(self.subquery, *columns), f"t{self.id}"),
         )
@@ -90,16 +90,16 @@ class SqlStep:
         SQL TO PULL ALL COLUMNS FOR LEAF
         """
         columns = [
-            *(SqlAliasOp( ov,f"o{self.id}_{oi}") for oi, ov in enumerate(self.order)),
-            *(SqlAliasOp( iv,f"i{self.id}_{ii}") for ii, iv, in enumerate(self.uids)),
+            *(SqlAliasOp(ov, f"o{self.id}_{oi}") for oi, ov in enumerate(self.order)),
+            *(SqlAliasOp(iv, f"i{self.id}_{ii}") for ii, iv, in enumerate(self.uids)),
             *(SqlAliasOp(cv.value, f"c{self.id}_{ci}") for ci, cv in enumerate(self.selects)),
         ]
         parent_end = self.parent.end if self.parent else 0
         return (
             [
-                *(SqlAliasOp( NULL,s) for s in all_selects[parent_end : self.start]),
-                *(SqlVariable( s) for s in all_selects[self.start: self.end]),
-                *(SqlAliasOp( NULL,s) for s in all_selects[self.end :]),
+                *(SqlAliasOp(NULL, s) for s in all_selects[parent_end : self.start]),
+                *(SqlVariable(s) for s in all_selects[self.start : self.end]),
+                *(SqlAliasOp(NULL, s) for s in all_selects[self.end :]),
             ],
             SqlAliasOp(SqlSelectOp(self.subquery, *columns), f"t{self.id}"),
         )
@@ -145,7 +145,7 @@ class SqlStep:
             leaf,
             SqlAndOp(
                 *(
-                    SqlEqOp(SqlVariable( f"i{self.id}_{i}"), SqlVariable( f"i{self.parent.id}_{i}"))
+                    SqlEqOp(SqlVariable(f"i{self.id}_{i}"), SqlVariable(f"i{self.parent.id}_{i}"))
                     for i, _ in enumerate(self.parent.uids)
                 )
             ),
@@ -177,4 +177,3 @@ class SqlTree:
             for n in done
         ))
         return ConcatSQL(JoinSQL(SQL_UNION_ALL, sql_queries), SQL_ORDERBY, JoinSQL(SQL_COMMA, ordering),)
-

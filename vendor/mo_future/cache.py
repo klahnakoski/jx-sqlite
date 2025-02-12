@@ -42,7 +42,7 @@ class cache(object):
 
     def __init__(self, duration=DAY, lock=False, ignore=None):
         self.timeout = duration
-        self.ignore=ignore
+        self.ignore = ignore
         if lock:
             self.locker = Lock()
         else:
@@ -53,7 +53,6 @@ class cache(object):
 
 
 class _SimpleCache(object):
-
     def __init__(self):
         self.timeout = Null
         self.locker = _FakeLock()
@@ -67,14 +66,7 @@ def wrap_function(cache_store, func_):
     if not get_function_defaults(func_):
         defaults = {}
     else:
-        defaults = {
-            k: v
-            for k, v in zip(reversed(params), reversed(get_function_defaults(func_)))
-        }
-
-
-
-
+        defaults = {k: v for k, v in zip(reversed(params), reversed(get_function_defaults(func_)))}
 
     func_args = get_function_arguments(func_)
     if len(func_args) > 0 and func_args[0] == "self":
@@ -138,11 +130,9 @@ def wrap_function(cache_store, func_):
 CacheElement = namedtuple("CacheElement", ("timeout", "key", "value", "exception"))
 
 
-class _FakeLock():
+class _FakeLock:
     def __enter__(self):
         pass
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
-
-

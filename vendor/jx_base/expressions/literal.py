@@ -22,6 +22,7 @@ class Literal(Expression):
     """
     A literal JSON document
     """
+
     simplified = True
 
     def __new__(cls, term):

@@ -8,6 +8,7 @@ def mockable(enable):
     :return:
     """
     if isinstance(enable, bool):
+
         def decorator(func):
             if enable:
                 return Mockable(func)
@@ -42,6 +43,7 @@ class Mocking:
     """
     REPLACE mockable WITH mock FOR THE DURATION OF THIS CONTEXT
     """
+
     def __init__(self, mockable, mock):
         if not isinstance(mockable, Mockable):
             logger.error("expecting Mockable, not {mockable}", mockable=mockable, stack_depth=1)

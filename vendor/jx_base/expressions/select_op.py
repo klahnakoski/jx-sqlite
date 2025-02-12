@@ -9,7 +9,7 @@
 #
 from typing import Tuple, Iterable, Dict
 
-from jx_base.expressions._utils import TYPE_CHECK, simplified
+from jx_base.expressions._utils import TYPE_CHECK, simplified, symbiotic
 from jx_base.expressions.aggregate_op import canonical_aggregates
 from jx_base.expressions.default_op import DefaultOp
 from jx_base.expressions.expression import jx_expression, Expression, _jx_expression
@@ -141,7 +141,7 @@ class SelectOp(Expression):
                 terms.extend(t.terms)
             elif is_text(t):
                 if not is_variable_name(t):
-                    Log.error("expecting {{value}} a simple dot-delimited path name", value=t)
+                    Log.error("expecting {value} a simple dot-delimited path name", value=t)
                 terms.append(SelectOne(t, _jx_expression(t, cls.lang)))
             elif t.aggregate:
                 # AGGREGATES ARE INSERTED INTO THE CALL CHAIN
@@ -154,7 +154,7 @@ class SelectOp(Expression):
                 if t.name == None:
                     if is_text(t.value):
                         if not is_variable_name(t.value):
-                            Log.error("expecting {{value}} a simple dot-delimited path name", value=t.value)
+                            Log.error("expecting {value} a simple dot-delimited path name", value=t.value)
                         else:
                             terms.append(SelectOne(t.value, agg))
                     else:
@@ -236,13 +236,16 @@ class SelectOp(Expression):
             yield term.name, term.value
 
     def __data__(self):
-        return {"select": [self.frum.__data__()] + [term.__data__() for term in self.terms]}
+        return symbiotic(SelectOp, self.frum, *(term.__data__() for term in self.terms))
 
     def vars(self):
         return set(v for term in self.terms for v in term.value.vars())
 
     def map(self, map_):
         return SelectOp(self.frum, *(SelectOne(name, value.map(map_)) for name, value in self))
+
+
+register_many(SelectOp)
 
 
 def normalize_one(frum, select, format):
@@ -332,7 +335,7 @@ def _normalize_selects(frum, selects, format) -> SelectOp:
     for s in terms:
         name = s.name
         if name in exists:
-            Log.error("{{name}} has already been defined", name=name)
+            Log.error("{name} has already been defined", name=name)
         exists.add(name)
 
     return SelectOp(frum, *terms)

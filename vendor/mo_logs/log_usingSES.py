@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from boto.ses import connect_to_region
+from boto3.ses import connect_to_region
 
 from mo_dots import Data, listwrap, literal_field, from_data
 from mo_kwargs import override

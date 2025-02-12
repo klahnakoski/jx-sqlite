@@ -252,11 +252,11 @@ class Cube(Container):
             # RETURN A VALUE CUBE
             if self.is_value:
                 if item != self.select.name:
-                    Log.error("{{name}} not found in cube", name=item)
+                    Log.error("{name} not found in cube", name=item)
                 return self
 
             if item not in self.select.name:
-                Log.error("{{name}} not found in cube", name=item)
+                Log.error("{name} not found in cube", name=item)
 
             output = Cube(
                 select=first(s for s in self.select if s.name == item), edges=self.edges, data={item: self.data[item]},

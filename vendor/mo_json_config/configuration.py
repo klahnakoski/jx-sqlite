@@ -19,10 +19,7 @@ class Configuration(Mapping):
         if not isinstance(config, Mapping) and not is_data(config):
             logger.error("Expecting data, not {config}", config=config)
         self._path = path
-        self._lookup = leaves_to_data({
-            join_field(wordify(path)): value
-            for path, value in Data(**config).leaves()
-        })
+        self._lookup = leaves_to_data({join_field(wordify(path)): value for path, value in Data(**config).leaves()})
 
     def __iter__(self):
         return (k for k, _ in self._lookup.leaves())
@@ -72,9 +69,7 @@ class Configuration(Mapping):
         value = self._lookup[clean_path]
         if value == None:
             logger.error(
-                "Expecting configuration {path|quote}",
-                path=concat_field(self._path, clean_path),
-                stack_depth=1,
+                "Expecting configuration {path|quote}", path=concat_field(self._path, clean_path), stack_depth=1,
             )
         if is_data(value):
             return Configuration(value, concat_field(self._path, clean_path))
@@ -84,5 +79,6 @@ class Configuration(Mapping):
 
     def __repr__(self):
         return f"Configuration({from_data(self._lookup)})"
+
 
 register_data(Configuration)

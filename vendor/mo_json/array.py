@@ -7,14 +7,14 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
+
 class Array:
     """
     JX IS UNABLE TO DISTINGUISH BETWEEN A SINGLE OBJECT AND AN ARRAY WITH A SINGLE OBJECT; THEY ARE BOTH A SINGLE OBJECT
     THIS CLASS IS USED TO TALK ABOUT SINGLETON ARRAYS, FOR USE BY OTHER LANGUAGES
     """
 
-    __slots__ = ['value']
+    __slots__ = ["value"]
 
     def __init__(self, value):
         self.value = value
-

@@ -8,12 +8,7 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from mo_dots import (
-    Null,
-    to_data,
-    leaves_to_data,
-    is_list, is_missing
-)
+from mo_dots import Null, to_data, leaves_to_data, is_list, is_missing
 from mo_imports import delay_import
 from mo_math import is_number, is_finite
 
@@ -141,7 +136,7 @@ def value2json(obj, pretty=False, sort_keys=False, keep_whitespace=True):
             return json
         except Exception:
             pass
-        logger.error("Can not encode into JSON: {{value}}", value=str(repr(obj)), cause=e)
+        logger.error("Can not encode into JSON: {value}", value=str(repr(obj)), cause=e)
 
 
 def remove_line_comment(line):

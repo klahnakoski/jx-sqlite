@@ -12,7 +12,13 @@ from mo_dots import is_many, is_data, exists, is_missing
 from mo_dots.datas import register_data
 from mo_logs import logger
 
-from mo_json import python_type_to_jx_type_key, IS_PRIMITIVE_KEY, ARRAY_KEY, EXISTS_KEY, NUMBER_KEY
+from mo_json import (
+    python_type_to_jx_type_key,
+    IS_PRIMITIVE_KEY,
+    ARRAY_KEY,
+    EXISTS_KEY,
+    NUMBER_KEY,
+)
 
 
 def entype(value):
@@ -115,7 +121,10 @@ class TypedObject(OrderedDict):
                 *((k, TypedObject(v)) for k, v in self._attachments.items()),
             ]
         type_key = python_type_to_jx_type_key.get(type(value))
-        return [(type_key, value), *((k, TypedObject(v)) for k, v in self._attachments.items())]
+        return [
+            (type_key, value),
+            *((k, TypedObject(v)) for k, v in self._attachments.items()),
+        ]
 
     def __str__(self):
         return f"{self._boxed_value} ({self._attachments})"

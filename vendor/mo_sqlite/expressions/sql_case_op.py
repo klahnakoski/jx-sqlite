@@ -42,8 +42,9 @@ class CaseOp(_CaseOp, SQL):
 
         for w in self._whens:
             if not is_op(w, WhenOp) or w.els_ is not NULL:
-                logger.error("case expression does not allow `else` clause in `when` sub-clause {case}", case=self.__data__())
-
+                logger.error(
+                    "case expression does not allow `else` clause in `when` sub-clause {case}", case=self.__data__()
+                )
 
     def __iter__(self):
         yield from SQL_CASE

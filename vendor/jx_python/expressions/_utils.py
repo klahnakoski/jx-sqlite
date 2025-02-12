@@ -45,7 +45,7 @@ def jx_expression_to_function(expr):
         return expr
 
     expr = jx_expression(expr)
-    func = compile_expression((expr).to_python())
+    func = compile_expression(expr.to_python())
     return JXExpression(func, expr)
 
 

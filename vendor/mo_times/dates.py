@@ -172,7 +172,7 @@ class Date(object):
             else:
                 return _unix2Date(self.unix + other.seconds)
         else:
-            logger.error("can not subtract {{type}} from Date", type=other.__class__.__name__)
+            logger.error("can not subtract {type} from Date", type=other.__class__.__name__)
 
     @staticmethod
     def now():
@@ -206,7 +206,7 @@ class Date(object):
         return self.format()
 
     def __repr__(self):
-        return f"Date(\"{self.format()}\")"
+        return f'Date("{self.format()}")'
 
     def __sub__(self, other):
         if other == None:
@@ -524,7 +524,7 @@ def unicode2Date(value, format=None):
                 value += ".000"
             return _unix2Date(datetime2unix(datetime.strptime(value, format)))
         except Exception as e:
-            logger.error("Can not format {{value}} with {{format}}", value=value, format=format, cause=e)
+            logger.error("Can not format {value} with {format}", value=value, format=format, cause=e)
 
     value = value.strip()
     if value.lower() == "now":
@@ -547,7 +547,7 @@ def unicode2Date(value, format=None):
             except Exception:
                 pass
         else:
-            logger.error("Can not interpret {{value}} as a datetime", value=value)
+            logger.error("Can not interpret {value} as a datetime", value=value)
 
 
 def datetime2unix(value):
@@ -564,9 +564,9 @@ def datetime2unix(value):
             diff = value - DATE_EPOCH
             return diff.total_seconds()
         else:
-            logger.error("Can not convert {{value}} of type {{type}}", value=value, type=value.__class__)
+            logger.error("Can not convert {value} of type {type}", value=value, type=value.__class__)
     except Exception as e:
-        logger.error("Can not convert {{value}}", value=value, cause=e)
+        logger.error("Can not convert {value}", value=value, cause=e)
 
 
 def unix2datetime(unix):
@@ -575,7 +575,7 @@ def unix2datetime(unix):
     try:
         return utcfromtimestamp(unix)
     except Exception as e:
-        logger.error("Can not convert {{value}} to datetime", value=unix, cause=e)
+        logger.error("Can not convert {value} to datetime", value=unix, cause=e)
 
 
 def unix2Date(unix):

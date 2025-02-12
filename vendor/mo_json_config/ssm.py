@@ -43,6 +43,7 @@ def _retry(func):
                     continue
                 logger.error("failure with {func}", func=func_name, cause=cause)
         logger.error("timeout with {func}", func=func_name, cause=cause)
+
     return output
 
 
@@ -66,11 +67,7 @@ def get_ssm(ref, doc_path=None, location=None):
         describe_parameters = _retry(ssm.describe_parameters)
         get_parameter = _retry(ssm.get_parameter)
 
-        filters = [{
-            'Key': 'Name',
-            'Option': 'BeginsWith',
-            'Values': [ref.path.rstrip('/')]
-        }]
+        filters = [{"Key": "Name", "Option": "BeginsWith", "Values": [ref.path.rstrip("/")]}]
 
         result = describe_parameters(MaxResults=10, ParameterFilters=filters)
         prefix = re.compile("^" + re.escape(ref.path.rstrip("/")) + "(?:/|$)")
@@ -98,4 +95,3 @@ def get_ssm(ref, doc_path=None, location=None):
     if len(output) == 0:
         logger.error("No ssm parameters found at {path}", path=ref.path)
     return output
-

@@ -21,7 +21,7 @@ from jx_base.expressions.max_op import MaxOp
 from jx_base.expressions.min_op import MinOp
 from jx_base.expressions.null_op import NULL
 from jx_base.expressions.strict_substring_op import StrictSubstringOp
-from jx_base.expressions.variable import Variable
+from jx_base.expressions.variable import Variable, is_variable
 from jx_base.expressions.when_op import WhenOp
 from mo_dots import is_data, is_sequence, to_data, coalesce
 from mo_json.types import JX_TEXT

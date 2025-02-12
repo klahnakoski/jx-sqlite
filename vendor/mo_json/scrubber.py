@@ -63,7 +63,7 @@ def datetime2unix(value):
                 "Can not convert {{value}} of type {{type}}", value=value, type=value.__class__,
             )
     except Exception as e:
-        logger.error("Can not convert {{value}}", value=value, cause=e)
+        logger.error("Can not convert {value}", value=value, cause=e)
 
 
 class Scrubber:
@@ -124,7 +124,12 @@ class Scrubber:
             return self.scrub_number(value, is_done, stack)
         elif value.__class__.__name__ == "bool_":
             return False if value == False else True
-        elif hasattr(value, "co_code") and getattr(value, "co_code") or hasattr(value, "f_locals") and getattr(value, "f_locals"):
+        elif (
+            hasattr(value, "co_code")
+            and getattr(value, "co_code")
+            or hasattr(value, "f_locals")
+            and getattr(value, "f_locals")
+        ):
             return None
         elif hasattr(value, "__call__"):
             return str(repr(value))

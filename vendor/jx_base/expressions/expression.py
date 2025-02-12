@@ -16,7 +16,7 @@ from jx_base.expressions._utils import (
 )
 from jx_base.language import BaseExpression, ID, is_expression
 from jx_base.models.container import Container
-from mo_dots import is_data, is_container
+from mo_dots import is_data, is_container, is_not_null
 from mo_future import items as items_
 from mo_imports import expect
 from mo_json import BOOLEAN, value2json, JX_IS_NULL, JxType
@@ -30,12 +30,14 @@ TRUE, FALSE, Literal, is_literal, MissingOp, NotOp, NULL, Variable, AndOp = expe
 class Expression(BaseExpression):
     _jx_type: JxType = JX_IS_NULL
     has_simple_form = False
+    precedence = 0
 
     def __init__(self, *args):
         self.simplified = False
         # SOME BASIC VERIFICATION THAT THESE ARE REASONABLE PARAMETERS
-        bad = [t for t in args if t != None and not is_expression(t)]
+        bad = [t for t in args if is_not_null(t) and not is_expression(t)]
         if bad:
+            [t for t in args if is_not_null(t) and not is_expression(t)]
             Log.error("Expecting an expression, not {bad}", bad=bad)
 
     @classmethod
@@ -64,7 +66,7 @@ class Expression(BaseExpression):
             else:
                 if not items:
                     return NULL
-                raise Log.error("{{operator|quote}} is not a known operator", operator=expr)
+                raise Log.error("{operator|quote} is not a known operator", operator=expr)
 
             if term == None:
                 return class_(**clauses)
@@ -81,7 +83,7 @@ class Expression(BaseExpression):
                         k, v = items[0]
                         return class_(Variable(k), Literal(v), **clauses)
                     else:
-                        Log.error("add define method to {{op}}}", op=class_.__name__)
+                        Log.error("add define method to {op}", op=class_.__name__)
                 else:
                     return class_(_jx_expression(term, lang), **clauses)
             else:
@@ -90,17 +92,17 @@ class Expression(BaseExpression):
                 else:
                     return class_(_jx_expression(term, lang), **clauses)
         except Exception as cause:
-            Log.warning("programmer error expr = {{value|quote}}", value=expr, cause=cause)
-            Log.error("programmer error expr = {{value|quote}}", value=expr, cause=cause)
+            Log.warning("programmer error expr = {value|quote}", value=expr, cause=cause)
+            Log.error("programmer error expr = {value|quote}", value=expr, cause=cause)
 
     def __data__(self):
         raise NotImplementedError
 
     def vars(self):
-        raise Log.error("{{type}} has no `vars` method", type=self.__class__.__name__)
+        raise Log.error("{type} has no `vars` method", type=self.__class__.__name__)
 
     def map(self, map):
-        raise Log.error("{{type}} has no `map` method", type=self.__class__.__name__)
+        raise Log.error("{type} has no `map` method", type=self.__class__.__name__)
 
     def missing(self, lang):
         """
@@ -166,7 +168,7 @@ class Expression(BaseExpression):
                 return False
         except Exception:
             return False
-        Log.note("this is slow on {{type}}", type=self.__class__.__name__)
+        Log.note("this is slow on {type}", type=self.__class__.__name__)
         return self.__data__() == other.__data__()
 
     def __contains__(self, item):

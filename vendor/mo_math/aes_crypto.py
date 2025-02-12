@@ -7,7 +7,6 @@
 #
 
 
-
 from mo_dots import Data, get_module
 from mo_future import binary_type
 from mo_future import is_text, is_binary
@@ -77,9 +76,7 @@ def decrypt(data, _key):
 
         logger.error("Expecting a key")
 
-    _input = get_module("mo_json").json2value(
-        data.decode("utf8"), leaves=False, flexible=False
-    )
+    _input = get_module("mo_json").json2value(data.decode("utf8"), leaves=False, flexible=False)
 
     # Initialize encryption using key and iv
     key_expander_256 = key_expander.KeyExpander(256)

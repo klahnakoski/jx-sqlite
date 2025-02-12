@@ -9,8 +9,6 @@
 #
 
 
-
-
 class Multiset(object):
     """
     Multiset IS ONE MEMBER IN A FAMILY OF USEFUL CONTAINERS
@@ -86,7 +84,7 @@ class _Multiset(Multiset):
         if value not in self.dic:
             from mo_logs import Log
 
-            Log.error("{{value}} is not in multiset", value=value)
+            Log.error("{value} is not in multiset", value=value)
         self._remove(value)
 
     def copy(self):

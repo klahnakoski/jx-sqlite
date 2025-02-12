@@ -131,10 +131,7 @@ class SqlScript(_SqlScript, SQL):
             return self._expr
 
         try:
-            return SqlCaseOp(SqlWhenOp(
-                SqlNotOp(self.miss.to_sql(self.schema).expr),
-                self._expr
-            ))
+            return SqlCaseOp(SqlWhenOp(SqlNotOp(self.miss.to_sql(self.schema).expr), self._expr))
         except Exception as cause:
             Log.error("not expected", cause=cause)
 

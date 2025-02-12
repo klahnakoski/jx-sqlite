@@ -60,7 +60,10 @@ def untyped_column(column_name):
     if SQL_KEY_PREFIX in column_name:
         path = split_field(column_name)
         if path[-1] in SQL_KEYS:
-            return join_field([p for p in path[:-1] if p != SQL_ARRAY_KEY]), sql_type_key_to_json_type.get(path[-1])
+            return (
+                join_field([p for p in path[:-1] if p != SQL_ARRAY_KEY]),
+                sql_type_key_to_json_type.get(path[-1]),
+            )
         else:
             return join_field([p for p in path if p != SQL_ARRAY_KEY]), None
     elif column_name in [GUID]:
@@ -124,7 +127,7 @@ SQL_KEYS = [
     SQL_INTERVAL_KEY,
     SQL_STRING_KEY,
     SQL_OBJECT_KEY,
-    SQL_ARRAY_KEY
+    SQL_ARRAY_KEY,
 ]
 
 
@@ -172,14 +175,8 @@ ColumnMapping = DataClass(
             "name": "is_edge",
             "default": False,
         },
-        {  # TRACK NUMBER OF TABLE COLUMNS THIS column REPRESENTS
-            "name": "num_push_columns",
-            "nulls": True,
-        },
-        {  # NAME OF THE PROPERTY (USED BY LIST FORMAT ONLY)
-            "name": "push_list_name",
-            "nulls": True,
-        },
+        {"name": "num_push_columns", "nulls": True,},  # TRACK NUMBER OF TABLE COLUMNS THIS column REPRESENTS
+        {"name": "push_list_name", "nulls": True,},  # NAME OF THE PROPERTY (USED BY LIST FORMAT ONLY)
         {  # PATH INTO COLUMN WHERE VALUE IS STORED ("." MEANS COLUMN HOLDS PRIMITIVE VALUE)
             "name": "push_column_child",
             "nulls": True,
@@ -190,15 +187,9 @@ ColumnMapping = DataClass(
             "nulls": True,
         },
         {"name": "pull", "nulls": True},  # A FUNCTION THAT WILL RETURN A VALUE
-        {  # A LIST OF MULTI-SQL REQUIRED TO GET THE VALUE FROM THE DATABASE
-            "name": "sql",
-        },
+        {"name": "sql",},  # A LIST OF MULTI-SQL REQUIRED TO GET THE VALUE FROM THE DATABASE
         "type",  # THE NAME OF THE JSON DATA TYPE EXPECTED
-        {  # A LIST OF PATHS EACH INDICATING AN ARRAY
-            "name": "nested_path",
-            "type": list,
-            "default": ["."],
-        },
+        {"name": "nested_path", "type": list, "default": ["."],},  # A LIST OF PATHS EACH INDICATING AN ARRAY
         "column_alias",
     ],
     constraint={"and": [

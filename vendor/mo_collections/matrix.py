@@ -18,12 +18,13 @@ class Matrix(object):
     """
     SIMPLE n-DIMENSIONAL ARRAY OF OBJECTS
     """
+
     ZERO = None
 
     def __init__(self, dims=[], list=None, value=None, zeros=None, kwargs=None):
         if list:
             self.num = 1
-            self.dims = (len(list), )
+            self.dims = (len(list),)
             self.cube = list
             return
 
@@ -44,7 +45,7 @@ class Matrix(object):
             else:
                 self.cube = _zeros(dims, zero=zeros)
         else:
-            if self.num == 0 or any(d == 0 for d in dims):  #NO DIMS, OR HAS A ZERO DIM, THEN IT IS A NULL CUBE
+            if self.num == 0 or any(d == 0 for d in dims):  # NO DIMS, OR HAS A ZERO DIM, THEN IT IS A NULL CUBE
                 self.cube = Null
             else:
                 self.cube = _zeros(dims, zero=Null)
@@ -52,7 +53,7 @@ class Matrix(object):
     @staticmethod
     def wrap(array):
         output = Matrix(dims=(1,))
-        output.dims = (len(array), )
+        output.dims = (len(array),)
         output.cube = array
         return output
 
@@ -62,7 +63,7 @@ class Matrix(object):
                 sub = self.cube[index]
                 output = Matrix()
                 output.num = 1
-                output.dims = (len(sub), )
+                output.dims = (len(sub),)
                 output.cube = sub
                 return output
             else:
@@ -86,7 +87,7 @@ class Matrix(object):
         try:
             if self.num == 1:
                 if isinstance(key, int):
-                    key = key,
+                    key = (key,)
                 elif len(key) != 1:
                     Log.error("Expecting coordinates to match the number of dimensions")
             elif len(key) != self.num:
@@ -211,7 +212,7 @@ class Matrix(object):
     def aggregate(self, type):
         func = aggregates[type]
         if not type:
-            Log.error("Aggregate of type {{type}} is not supported yet",  type= type)
+            Log.error("Aggregate of type {type} is not supported yet", type=type)
 
         return func(self.num, self.cube)
 
@@ -241,7 +242,7 @@ class Matrix(object):
         if not combos:
             return
 
-        calc = [(coalesce(_product(self.dims[i+1:]), 1), mm) for i, mm in enumerate(self.dims)]
+        calc = [(coalesce(_product(self.dims[i + 1 :]), 1), mm) for i, mm in enumerate(self.dims)]
 
         for c in xrange(combos):
             yield tuple(int(c / dd) % mm for dd, mm in calc)
@@ -274,18 +275,14 @@ def _min(depth, cube):
         return _MIN(_min(depth - 1, c) for c in cube)
 
 
-aggregates = Data(
-    max=_max,
-    maximum=_max,
-    min=_min,
-    minimum=_min
-)
+aggregates = Data(max=_max, maximum=_max, min=_min, minimum=_min)
 
 
 def _iter(cube, depth):
     if depth == 1:
         return cube.__iter__()
     else:
+
         def iterator():
             for c in cube:
                 for b in _iter(c, depth - 1):
@@ -317,20 +314,17 @@ def _groupby(cube, depth, intervals, offset, output, group, new_coord):
 
     if interval:
         for i, c in enumerate(cube):
-            _groupby(c, depth + 1, intervals, offset + i * interval, output, group + (i, ), new_coord)
+            _groupby(c, depth + 1, intervals, offset + i * interval, output, group + (i,), new_coord)
     else:
         for i, c in enumerate(cube):
-            _groupby(c, depth + 1, intervals, offset, output, group + (-1, ), new_coord + [i])
-
-
-
+            _groupby(c, depth + 1, intervals, offset, output, group + (-1,), new_coord + [i])
 
 
 def _getitem(c, i):
-    if len(i)==1:
+    if len(i) == 1:
         select = i[0]
         if select == None:
-            return (len(c), ), c
+            return (len(c),), c
         elif isinstance(select, slice):
             sub = c[select]
             dims, cube = transpose(*[_getitem(cc, i[1::]) for cc in sub])
@@ -344,11 +338,11 @@ def _getitem(c, i):
             return _getitem(c[select], i[1::])
         elif select == None:
             dims, cube = transpose(*[_getitem(cc, i[1::]) for cc in c])
-            return (len(cube),)+dims[0], cube
+            return (len(cube),) + dims[0], cube
         elif isinstance(select, slice):
             sub = c[select]
             dims, cube = transpose(*[_getitem(cc, i[1::]) for cc in sub])
-            return (len(cube),)+dims[0], cube
+            return (len(cube),) + dims[0], cube
         else:
             return _getitem(c[select], i[1::])
 
@@ -387,17 +381,9 @@ def index_to_coordinate(dims):
         coords.append("c" + str(i))
     output = None
     if num_dims == 1:
-        code = (
-            "def output(index):\n" +
-            "\n".join(commands) + "\n" +
-            "\treturn " + coords[0] + ","
-        )
+        code = "def output(index):\n" + "\n".join(commands) + "\n" + "\treturn " + coords[0] + ","
     else:
-        code = (
-            "def output(index):\n" +
-            "\n".join(commands) + "\n" +
-            "\treturn " + ", ".join(coords)
-        )
+        code = "def output(index):\n" + "\n".join(commands) + "\n" + "\treturn " + ", ".join(coords)
 
     fake_locals = {}
     exec(code, globals(), fake_locals)

@@ -94,7 +94,7 @@ def run(query, container=Null):
         container = query["from"]
         container = run(QueryOp.wrap(query, container, container.namespace), container)
     else:
-        Log.error("Do not know how to handle {{type}}", type=container.__class__.__name__)
+        Log.error("Do not know how to handle {type}", type=container.__class__.__name__)
 
     if is_aggs(query_op):
         container = list_aggs(container, query_op)
@@ -394,7 +394,7 @@ def _select_deep(v, field, depth, record):
         else:
             record[field.name] = v.get(f)
     except Exception as e:
-        Log.error("{{value}} does not have {{field}} property", value=v, field=f, cause=e)
+        Log.error("{value} does not have {field} property", value=v, field=f, cause=e)
     return 0, None
 
 
@@ -518,11 +518,11 @@ def _deeper_iterator(columns, nested_path, path, data):
                 if leaf.startswith(nested_path[0] + ".") or leaf == nested_path[0] or not nested_path[0]:
                     nested_path[0] = leaf
                 else:
-                    Log.error("nested path conflict: {{leaf}} vs {{nested}}", leaf=leaf, nested=nested_path[0])
+                    Log.error("nested path conflict: {leaf} vs {nested}", leaf=leaf, nested=nested_path[0])
 
             if is_list(v) and v:
                 if deep_leaf:
-                    Log.error("nested path conflict: {{leaf}} vs {{nested}}", leaf=leaf, nested=deep_leaf)
+                    Log.error("nested path conflict: {leaf} vs {nested}", leaf=leaf, nested=deep_leaf)
                 deep_leaf = leaf
                 deep_v = v
             elif is_data(v):
@@ -580,7 +580,7 @@ def sort(data, fieldnames=None, already_normalized=False):
 
         return output
     except Exception as e:
-        Log.error("Problem sorting\n{{data}}", data=data, cause=e)
+        Log.error("Problem sorting\n{data}", data=data, cause=e)
 
 
 def count(values):
@@ -650,7 +650,7 @@ def filter(data, where):
         dd = to_data(data)
         return list_to_data([from_data(d) for i, d in enumerate(data) if temp(to_data(d), i, dd)])
     else:
-        Log.error("Do not know how to handle type {{type}}", type=data.__class__.__name__)
+        Log.error("Do not know how to handle type {type}", type=data.__class__.__name__)
 
     try:
         return drill_filter(where, data)
@@ -707,7 +707,7 @@ def drill_filter(esfilter, data):
             try:
                 d = d[c]
             except Exception as e:
-                Log.error("{{name}} does not exist", name=fieldname)
+                Log.error("{name} does not exist", name=fieldname)
             if is_list(d) and len(col) > 1:
                 if len(primary_column) <= depth + i:
                     primary_nested.append(True)
@@ -892,7 +892,7 @@ def drill_filter(esfilter, data):
             else:
                 return {"exists": rest}
         else:
-            Log.error("Can not interpret esfilter: {{esfilter}}", {"esfilter": filter})
+            Log.error("Can not interpret esfilter: {esfilter}", {"esfilter": filter})
 
     output = []  # A LIST OF OBJECTS MAKING THROUGH THE FILTER
 
@@ -920,7 +920,7 @@ def drill_filter(esfilter, data):
         if is_data(d):
             main([], esfilter, to_data(d), 0)
         else:
-            Log.error("filter is expecting a dict, not {{type}}", type=d.__class__)
+            Log.error("filter is expecting a dict, not {type}", type=d.__class__)
 
     # AT THIS POINT THE primary_column[] IS DETERMINED
     # USE IT TO EXPAND output TO ALL NESTED OBJECTS

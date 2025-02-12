@@ -9,7 +9,6 @@
 #
 
 
-
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.hashes import SHA256, Hash
 

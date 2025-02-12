@@ -149,7 +149,7 @@ class QueryOp(Expression):
         query = to_data(query)
 
         frum = query["from"]
-        frum = container.container.get_table(frum)
+        frum = container.get_table(frum)
         schema = frum.schema
 
         output = QueryOp(frum=frum, format=query.format, chunk_size=query.chunk_size, destination=query.destination,)
@@ -193,7 +193,6 @@ class QueryOp(Expression):
         output.sort = _normalize_sort(query.sort)
 
         return output
-
 
     def __data__(self):
         return {
@@ -396,7 +395,7 @@ def _normalize_edge(edge, dim_index, limit, schema=None):
     else:
         edge = to_data(edge)
         if not edge.name and not is_text(edge.value):
-            Log.error("You must name compound and complex edges: {{edge}}", edge=edge)
+            Log.error("You must name compound and complex edges: {edge}", edge=edge)
 
         if is_container(edge.value) and not edge.domain:
             # COMPLEX EDGE IS SHORT HAND
@@ -472,7 +471,7 @@ def _normalize_group(edge, dim_index, limit, schema=None):
             Log.error("groupby does not accept complicated domains")
 
         if not edge.name and not is_text(edge.value):
-            Log.error("You must name compound edges: {{edge}}", edge=edge)
+            Log.error("You must name compound edges: {edge}", edge=edge)
 
         return list_to_data([{
             "name": coalesce(edge.name, edge.value),
@@ -568,7 +567,7 @@ def _map_term_using_schema(master, path, term, schema_edges):
                 if AND(is_variable_name(f) for f in dimension.fields):
                     # EXPECTING A TUPLE
                     if not isinstance(v, tuple):
-                        Log.error("expecing {{name}}={{value}} to be a tuple", name=k, value=v)
+                        Log.error("expecing {name}={value} to be a tuple", name=k, value=v)
                     for i, f in enumerate(dimension.fields):
                         vv = v[i]
                         if vv == None:

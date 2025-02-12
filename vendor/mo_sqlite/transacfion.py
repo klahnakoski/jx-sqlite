@@ -69,7 +69,7 @@ class Transaction(object):
                 self.parent.do_all()
             # GET THE REMAINING COMMANDS
             with self.locker:
-                todo = self.todo[self.complete:]
+                todo = self.todo[self.complete :]
                 self.complete = len(self.todo)
 
             # RUN THEM
@@ -104,11 +104,13 @@ class Transaction(object):
             if not result.header:
                 return result
             # REMOVE TYPING
-            clean_header, jx_type = zip(*(
-                (name, name+to_jx_type(json_type) if name not in (GUID, UID) else None)
-                for h in result.header
-                for name, json_type in [untype_field(h)]
-            ))
+            clean_header, jx_type = zip(
+                *(
+                    (name, name + to_jx_type(json_type) if name not in (GUID, UID) else None)
+                    for h in result.header
+                    for name, json_type in [untype_field(h)]
+                )
+            )
             jx_type = union_type(*(t for t in jx_type if t))
             if format == "list":
                 clean_data = []
@@ -116,20 +118,16 @@ class Transaction(object):
                     clean_row = Data()
                     for h, c in zip(clean_header, row):
                         if h not in (GUID, UID):
-                            clean_row |= leaves_to_data({h:c})
+                            clean_row |= leaves_to_data({h: c})
                     clean_data.append(from_data(clean_row))
-                return dict_to_data({
-                    "meta": {"format": "list"},
-                    "type": jx_type,
-                    "data": clean_data
-                })
+                return dict_to_data({"meta": {"format": "list"}, "type": jx_type, "data": clean_data})
             else:
                 # RETURN TABLE
                 return dict_to_data({
                     "meta": result.meta,
                     "type": jx_type,
                     "header": clean_header,
-                    "data": result.data
+                    "data": result.data,
                 })
         else:
             result.header = [untype_field(h)[0] for h in result.header]

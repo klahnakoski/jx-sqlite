@@ -7,7 +7,6 @@
 #
 
 
-
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -27,9 +26,7 @@ BACKEND = default_backend()
 
 
 def generate_key(bits=512):
-    private_key = rsa.generate_private_key(
-        public_exponent=65537, key_size=bits, backend=BACKEND
-    )
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=bits, backend=BACKEND)
     nums = private_key.public_key().public_numbers()
     public_key = Data(e=nums.e, n=int2base64(nums.n))
     return public_key, private_key

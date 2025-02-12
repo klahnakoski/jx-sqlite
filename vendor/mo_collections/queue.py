@@ -1,4 +1,3 @@
-
 # encoding: utf-8
 #
 #
@@ -8,7 +7,6 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-
 
 
 from collections import deque
@@ -30,6 +28,7 @@ class Queue:
     |     No     |   No    | Multiset |
     +------------+---------+----------+
     """
+
     def __init__(self):
         self.set = set()
         self.list = deque()

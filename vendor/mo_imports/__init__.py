@@ -15,7 +15,7 @@ from time import time
 from mo_future import allocate_lock
 
 DEBUG = False
-WAIT_FOR_EXPORT = 10  # SECONDS TO WAIT FROM MOST RECENT expect() TO LAST export()
+WAIT_FOR_EXPORT = 10000  # SECONDS TO WAIT FROM MOST RECENT expect() TO LAST export()
 
 _locker = allocate_lock()
 _expectations = []
@@ -293,6 +293,7 @@ class DelayedValue(object):
     """
     can be used on module-level variables to delay creation
     """
+
     __slots__ = ["builder"]
 
     def __init__(self, builder):

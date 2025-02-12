@@ -9,7 +9,6 @@
 #
 
 
-
 from mo_logs import Log
 
 
@@ -62,7 +61,6 @@ class Relation_usingList(object):
         RETURN AN ARRAY OF OBJECTS THAT key MAPS TO
         """
         return [v for k, v in self.all if k == key]
-
 
 
 class Relation(object):

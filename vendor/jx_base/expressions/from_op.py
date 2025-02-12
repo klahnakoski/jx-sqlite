@@ -37,12 +37,10 @@ class FromOp(Expression):
             if "left_join" not in join:
                 logger.error("Expecting a left join, not {join}", join=join)
             joins.append(SqlJoinOne(
-                _jx_expression(join['left_join'], cls.lang),
-                _jx_expression(coalesce(join.get('on'), True), cls.lang)
+                _jx_expression(join["left_join"], cls.lang), _jx_expression(coalesce(join.get("on"), True), cls.lang)
             ))
 
         return SqlLeftJoinsOp(_jx_expression(root, cls.lang), *joins)
-
 
     def apply(self, container: Container):
         return container.query(self.frum)

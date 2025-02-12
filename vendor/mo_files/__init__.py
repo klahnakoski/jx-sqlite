@@ -48,7 +48,7 @@ class File(object):
         if isinstance(filename, File):
             return
         elif not is_text(filename):
-            logger.error("Expecting str, not {{type}}", type=type(filename).__name__)
+            logger.error("Expecting str, not {type}", type=type(filename).__name__)
 
         self.key = base642bytearray(key)
         self._mime_type = mime_type
@@ -157,6 +157,7 @@ class File(object):
         :param pattern: REGULAR EXPRESSION TO MATCH NAME (NOT INCLUDING PATH)
         :return: LIST OF File OBJECTS THAT HAVE MATCHING NAME
         """
+
         def _find(dir):
             if re.match(pattern, dir._filename.split("/")[-1]):
                 yield dir
@@ -254,7 +255,7 @@ class File(object):
                 else:
                     return f.read()
         except Exception as e:
-            logger.error("Problem reading file {{filename}}", filename=self.abs_path, cause=e)
+            logger.error("Problem reading file {filename}", filename=self.abs_path, cause=e)
 
     def write_bytes(self, content):
         if not self.parent.exists:
@@ -314,7 +315,7 @@ class File(object):
             for key, value in keys.items():
                 config.set(section, key, value)
 
-        with open(self.os_path, 'w') as configfile:
+        with open(self.os_path, "w") as configfile:
             config.write(configfile)
 
     def __iter__(self):
@@ -628,7 +629,7 @@ def delete_daemon(file, caller_stack, please_stop):
             e = Except.wrap(e)
             e.trace = e.trace[0:2] + caller_stack
             if num_attempts:
-                logger.warning("problem deleting file {{file}}", file=file.abs_path, cause=e)
+                logger.warning("problem deleting file {file}", file=file.abs_path, cause=e)
             (Till(seconds=10) | please_stop).wait()
         num_attempts += 1
 

@@ -58,7 +58,7 @@ def get(url):
 
     if url.startswith("file://") and url[7] != "/":
         causes = []
-        candidates = [os.path.dirname(os.path.abspath(get_stacktrace(start=LOOKBACK)[0]['file'])), os.getcwd()]
+        candidates = [os.path.dirname(os.path.abspath(get_stacktrace(start=LOOKBACK)[0]["file"])), os.getcwd()]
         for candidate in candidates:
             if os.sep == "\\":
                 base = URL("file:///" + candidate.replace(os.sep, "/").rstrip("/") + "/.")
@@ -79,7 +79,7 @@ def get(url):
         phase1 = _replace_ref(path, URL(""))  # BLANK URL ONLY WORKS IF url IS ABSOLUTE
 
     try:
-        phase2 = _replace_locals((phase1,None), url)
+        phase2 = _replace_locals((phase1, None), url)
         return to_data(phase2)
     except Exception as cause:
         logger.error("problem replacing locals in\n{phase1}", phase1=phase1, cause=cause)
@@ -103,7 +103,7 @@ def expand(doc, doc_url="param://", params=None):
     url = URL(doc_url)
     url.query = set_default(url.query, params)
     phase1 = _replace_ref((doc, None), url)  # BLANK URL ONLY WORKS IF url IS ABSOLUTE
-    phase2 = _replace_locals((phase1,None), url)
+    phase2 = _replace_locals((phase1, None), url)
     return to_data(phase2)
 
 
@@ -114,7 +114,7 @@ def _replace_str(text, path, url):
     acc = []
     end = 0
     for found in is_url.finditer(text):
-        acc.append(text[end: found.start()])
+        acc.append(text[end : found.start()])
         try:
             ref = URL(found.group(1))
             if ref.scheme not in scheme_loaders:
@@ -218,7 +218,7 @@ def _replace_locals(path, url):
         for k, v in node.items():
             if k == "$ref":
                 ref = URL(_replace_str(str(v), path, url))
-            elif k=="$default":
+            elif k == "$default":
                 defaults = _replace_locals((v, path), url)
             elif k == "$concat":
                 if not is_sequence(v):

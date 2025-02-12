@@ -98,7 +98,7 @@ class Dimension(object):
                 "where": self.where,
                 "limit": self.limit,
             })
-            Log.note("{{name}} has {{num}} parts", name=self.name, num=len(parts))
+            Log.note("{name} has {num} parts", name=self.name, num=len(parts))
 
         d = parts.edges[0].domain
 
