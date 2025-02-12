@@ -229,7 +229,7 @@ SQL_DOT = SQL(".")
 
 class DB:
     """
-    Quoting, or escaping, database entitiy names (columns, tables, etc) is database specific
+    Quoting, or escaping, database entity names (columns, tables, etc) is database specific
     """
 
     def quote_column(self, *path):

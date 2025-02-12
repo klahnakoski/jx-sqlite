@@ -16,6 +16,7 @@ from mo_imports import expect
 from mo_logs import logger, strings
 from mo_logs.strings import quote
 from mo_math import is_number
+from mo_sql.utils import  GUID, UID, ORDER, PARENT
 from mo_times import Date, Duration
 
 from jx_base import enlist
@@ -27,6 +28,9 @@ FORMAT_COMMAND = 'Running command from "{file}:{line}"\n{{command|limit(1000)|in
 CommandItem = namedtuple("CommandItem", ("command", "result", "is_done", "trace", "transaction"))
 _simple_word = re.compile(r"^[_a-zA-Z][_0-9a-zA-Z]*$", re.UNICODE)
 SQLang = expect("SQLang")
+BEGIN = "BEGIN"
+COMMIT = "COMMIT"
+ROLLBACK = "ROLLBACK"
 
 
 def _simple_quote_column(name):
@@ -218,7 +222,11 @@ def to_sql(expr):
     else:
         return SqlLiteral(expr)
 
+quoted_GUID = quote_column(GUID)
+quoted_UID = quote_column(UID)
+quoted_ORDER = quote_column(ORDER)
+quoted_PARENT = quote_column(PARENT)
 
-BEGIN = "BEGIN"
-COMMIT = "COMMIT"
-ROLLBACK = "ROLLBACK"
+
+
+

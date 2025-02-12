@@ -8,7 +8,7 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from jx_base.expressions import IsNumberOp as IsNumberOp_, NULL, SqlScript
-from mo_sqlite import check
+from jx_sqlite.expressions._utils import check
 from mo_json.types import JX_NUMBER
 
 

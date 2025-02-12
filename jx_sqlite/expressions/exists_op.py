@@ -9,7 +9,7 @@
 #
 from jx_base.expressions import ExistsOp as ExistsOp_, FALSE, SqlScript
 from mo_sqlite import SQLang
-from mo_sqlite import check
+from jx_sqlite.expressions._utils import check
 from jx_sqlite.expressions._utils import SqlScript
 from mo_json import JX_BOOLEAN
 

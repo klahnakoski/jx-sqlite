@@ -8,13 +8,8 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-__all__ = ["Container", "Namespace", "Schema", "Column", "Facts", "JxSql"]
+__all__ = ["JxSql"]
 
-from jx_base import Column
-from jx_sqlite.models.container import Container
-from jx_sqlite.models.facts import Facts
-from jx_sqlite.models.namespace import Namespace
-from jx_sqlite.models.schema import Schema
-from jx_sqlite.models.table import Table
+from mo_sqlite import *
 from jx_sqlite import edges, group, insert, query, setop, format
 from jx_sqlite.expressions import JxSql

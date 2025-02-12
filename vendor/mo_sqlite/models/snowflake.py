@@ -8,16 +8,6 @@
 
 
 import jx_base
-from jx_sqlite.models.schema import Schema
-from jx_sqlite.utils import (
-    quoted_ORDER,
-    quoted_PARENT,
-    quoted_UID,
-    UID,
-    GUID,
-    PARENT,
-    ORDER,
-)
 from mo_dots import (
     concat_field,
     to_data,
@@ -28,8 +18,7 @@ from mo_future import first
 from mo_imports import expect, export
 from mo_json import ARRAY, OBJECT, EXISTS, INTEGER
 from mo_logs import Log, Except
-from mo_sql.utils import SQL_ARRAY_KEY, untype_field
-from mo_sqlite import (
+from mo_sql import (
     SQL_FROM,
     SQL_SELECT,
     SQL_ZERO,
@@ -44,8 +33,11 @@ from mo_sqlite import (
     SQL_RENAME_TO,
     SQL_TO,
     TextSQL,
-    SQL_INSERT, )
-from mo_sqlite import quote_column
+    SQL_INSERT)
+from mo_sql.utils import SQL_ARRAY_KEY, untype_field
+from mo_sqlite.utils import quote_column
+from mo_sqlite.models.schema import Schema
+from mo_sqlite.utils import GUID
 from mo_times import Date
 
 Table = expect("Table")
@@ -373,4 +365,4 @@ class Snowflake(jx_base.Snowflake):
         )
 
 
-export("jx_sqlite.models.container", Snowflake)
+export("mo_sqlite.models.container", Snowflake)

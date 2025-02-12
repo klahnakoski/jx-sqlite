@@ -10,7 +10,7 @@
 from jx_base.expressions import TupleOp as _TupleOp, SelectOp, SqlScript
 from jx_base.expressions.select_op import SelectOne
 from mo_sqlite import SQLang
-from mo_sqlite import check
+from jx_sqlite.expressions._utils import check
 from mo_dots import Null
 
 

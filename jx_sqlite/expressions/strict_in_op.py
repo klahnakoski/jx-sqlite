@@ -18,7 +18,7 @@ from jx_base.expressions import ( SqlScript,
 from jx_base.expressions.variable import is_variable
 from jx_base.language import is_op
 from mo_sqlite import SQLang
-from mo_sqlite import check
+from jx_sqlite.expressions._utils import check
 from jx_sqlite.expressions._utils import value2boolean
 from mo_sqlite.expressions.sql_script import SqlScript
 from mo_json.types import JX_BOOLEAN

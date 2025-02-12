@@ -11,9 +11,9 @@ from copy import copy
 
 import jx_base
 from jx_base import Facts
-from jx_sqlite.meta_columns import ColumnList
-from jx_sqlite.models.schema import Schema
-from jx_sqlite.models.snowflake import Snowflake
+from mo_sqlite.meta_columns import ColumnList
+from mo_sqlite.models.schema import Schema
+from mo_sqlite.models.snowflake import Snowflake
 from mo_imports import export
 
 
@@ -68,4 +68,4 @@ class Namespace(jx_base.Namespace):
         self.columns.add(column)
 
 
-export("jx_sqlite.models.container", Namespace)
+export("mo_sqlite.models.container", Namespace)

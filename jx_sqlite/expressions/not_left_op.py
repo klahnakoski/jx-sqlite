@@ -17,7 +17,7 @@ from jx_base.expressions import (SqlScript,
     ONE,
 )
 from mo_sqlite import SQLang
-from mo_sqlite import check
+from jx_sqlite.expressions._utils import check
 from jx_sqlite.expressions._utils import SqlScript, OrOp
 from mo_json import JX_TEXT
 from mo_sqlite import sql_call

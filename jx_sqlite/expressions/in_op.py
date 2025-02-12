@@ -15,7 +15,8 @@ from jx_sqlite.expressions.literal import Literal
 from jx_sqlite.expressions.sql_select_all_from_op import SqlSelectAllFromOp
 from mo_json import JX_BOOLEAN
 from mo_logs import Log
-from mo_sqlite import SQLang, check, SqlScript
+from jx_sqlite.expressions._utils import check
+from mo_sqlite import SQLang, SqlScript
 from mo_sqlite.expressions import SqlInOp, SqlAliasOp, SqlCoalesceOp
 
 

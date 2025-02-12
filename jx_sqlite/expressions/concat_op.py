@@ -14,7 +14,7 @@ from jx_sqlite.expressions.length_op import LengthOp
 from mo_json import JX_TEXT
 from mo_sqlite import SQL_EMPTY_STRING
 from mo_sqlite import SQLang
-from mo_sqlite import check
+from jx_sqlite.expressions._utils import check
 from mo_sqlite.expressions import SqlCoalesceOp, SqlConcatOp, SqlSubstrOp, SqlCaseOp, SqlWhenOp, SqlScript
 
 

@@ -14,7 +14,7 @@ from jx_base.expressions import (SqlScript,
     ToNumberOp,
 )
 from mo_sqlite import SQLang
-from mo_sqlite import check
+from jx_sqlite.expressions._utils import check
 from jx_sqlite.expressions._utils import SqlScript
 from mo_json import JX_NUMBER
 from mo_sqlite import sql_iso, ConcatSQL, SQL_DIV

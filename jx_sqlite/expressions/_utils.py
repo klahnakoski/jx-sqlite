@@ -7,21 +7,45 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
+from mo_sqlite import TYPE_CHECK
+from mo_sqlite.expressions.sql_script import SQLang
+
 from jx_base.expressions import FalseOp, FALSE, ZERO, ONE, SqlScript
 from jx_base.expressions.and_op import AndOp
 from jx_base.expressions.null_op import NULL, NullOp
 from jx_base.expressions.true_op import TrueOp, TRUE
 from jx_base.language import Language
-from mo_future import extend
+from mo_future import extend, decorate
 from mo_imports import expect
 from mo_json.types import JX_IS_NULL, JX_BOOLEAN, JX_NUMBER, JX_INTEGER
 from mo_sql import *
 from mo_sqlite.expressions import SqlCoalesceOp, SqlScript, SqlGtOp, SqlGteOp, SqlLteOp, SqlLtOp
-from mo_sqlite import check, SQLang
 
 ToNumberOp, OrOp = expect("ToNumberOp", "OrOp")
 
 JxSql = Language("JxSql")
+
+
+def check(func):
+    """
+    TEMPORARY TYPE CHECKING TO ENSURE to_sql() IS OUTPUTTING THE CORRECT FORMAT
+    """
+    if not TYPE_CHECK:
+        return func
+
+    @decorate(func)
+    def to_sql(self, schema) -> SqlScript:
+        try:
+            output = func(self, schema)
+        except Exception as e:
+            output = func(self, schema)
+            raise Log.error("not expected", cause=e)
+        if not isinstance(output, SqlScript):
+            output = func(self, schema)
+            Log.error("expecting SqlScript")
+        return output
+
+    return to_sql
 
 
 @extend(NullOp)

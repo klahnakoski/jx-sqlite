@@ -10,7 +10,8 @@
 from jx_base.expressions import NotOp as _NotOp, StrictNotOp
 from jx_base.language import is_op, JX
 from mo_json import JX_BOOLEAN
-from mo_sqlite import SQLang, check, SqlScript
+from jx_sqlite.expressions._utils import check
+from mo_sqlite import SQLang, SqlScript
 
 
 class NotOp(_NotOp):

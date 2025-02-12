@@ -13,7 +13,7 @@ from uuid import uuid4
 
 from jx_base import Column
 from jx_base.expressions import jx_expression, TRUE, SqlScript
-from jx_sqlite import Facts
+from mo_sqlite import Facts
 from jx_sqlite.utils import (
     GUID,
     ORDER,
@@ -21,7 +21,7 @@ from jx_sqlite.utils import (
     UID,
     typed_column,
 )
-from jx_sqlite.utils import untyped_column
+from mo_sql.utils import untyped_column
 from mo_dots import (
     Data,
     concat_field,

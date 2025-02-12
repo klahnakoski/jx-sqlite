@@ -11,7 +11,7 @@ from jx_base.expressions import IsTextOp as IsTextOp_, NULL, SqlScript, SqlSelec
 from jx_base.expressions.select_op import SelectOp
 from jx_base.expressions.variable import is_variable
 from jx_base.language import is_op
-from mo_sqlite import check
+from jx_sqlite.expressions._utils import check
 from mo_json.types import JX_TEXT
 from mo_logs import logger
 

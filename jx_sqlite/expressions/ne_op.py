@@ -9,7 +9,7 @@
 #
 from jx_base.expressions import NeOp as _NeOp, SqlScript
 from mo_sqlite import SQLang
-from mo_sqlite import check
+from jx_sqlite.expressions._utils import check
 from jx_sqlite.expressions.eq_op import EqOp
 from jx_sqlite.expressions.not_op import NotOp
 

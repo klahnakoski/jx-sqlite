@@ -16,7 +16,8 @@ from mo_future import first
 from mo_json import to_jx_type, JX_ANY
 from mo_logs import Log
 from mo_sqlite.expressions import SqlVariable, SqlSelectOp, SqlAliasOp, SqlCoalesceOp
-from mo_sqlite import SQLang, check
+from jx_sqlite.expressions._utils import check
+from mo_sqlite import SQLang
 
 
 class GetOp(_GetOp):

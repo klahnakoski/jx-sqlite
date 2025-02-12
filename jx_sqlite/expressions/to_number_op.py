@@ -9,7 +9,7 @@
 #
 from jx_base.expressions import ToNumberOp as _ToNumberOp, SqlScript
 from mo_sqlite import SQLang
-from mo_sqlite import check
+from jx_sqlite.expressions._utils import check
 from jx_sqlite.expressions._utils import SqlScript
 from mo_imports import export
 from mo_json import JX_NUMBER, base_type, NUMBER

@@ -9,7 +9,7 @@
 #
 from jx_base.expressions import StrictBooleanOp as _StrictBooleanOp, SqlScript, SqlScript
 from mo_sqlite import SQLang
-from mo_sqlite import check
+from jx_sqlite.expressions._utils import check
 
 
 class StrictBooleanOp(_StrictBooleanOp):

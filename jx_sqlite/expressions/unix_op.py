@@ -8,7 +8,7 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from jx_base.expressions import UnixOp as _UnixOp, SqlScript
-from mo_sqlite import check
+from jx_sqlite.expressions._utils import check
 from mo_dots import wrap
 from mo_sqlite import sql_iso
 

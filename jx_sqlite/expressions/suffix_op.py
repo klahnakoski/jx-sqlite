@@ -11,7 +11,8 @@ from jx_base.expressions import SuffixOp as SuffixOp_, FALSE, TRUE, SqlScript
 from jx_sqlite.expressions.eq_op import EqOp
 from jx_sqlite.expressions.length_op import LengthOp
 from jx_sqlite.expressions.right_op import RightOp
-from mo_sqlite import SQLang, check
+from jx_sqlite.expressions._utils import check
+from mo_sqlite import SQLang
 
 
 class SuffixOp(SuffixOp_):

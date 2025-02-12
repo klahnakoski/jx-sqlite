@@ -11,7 +11,8 @@ from jx_base import NULL
 from jx_base.expressions import ToTextOp as ToTextOp_, SelectOp, CoalesceOp, SqlScript, Literal
 from jx_base.language import is_op
 from mo_json import JX_TEXT, JX_BOOLEAN, JX_NUMBER_TYPES, split_field, base_type
-from mo_sqlite import SQLang, check, SqlScript
+from jx_sqlite.expressions._utils import check
+from mo_sqlite import SQLang, SqlScript
 from mo_sqlite import quote_value, sql_call
 from mo_sqlite import (
     sql_cast,

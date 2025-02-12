@@ -10,7 +10,7 @@
 
 
 from jx_base.expressions import SqlSelectAllFromOp as _SqlSelectAllFrom
-from mo_sqlite import SQL_SELECT, SQL_FROM, SQL_STAR
+from mo_sql import SQL_SELECT, SQL_STAR, SQL_FROM
 
 
 class SqlSelectAllFromOp(_SqlSelectAllFrom):

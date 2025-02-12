@@ -18,15 +18,15 @@ from jx_base.meta_columns import (
     META_TABLES_NAME,
 )
 from jx_python import jx, ListContainer
-from jx_sqlite.models.table import Table
-from jx_sqlite.utils import untyped_column, untype_field
 from mo_dots import Data, Null, coalesce, is_data, is_list, startswith_field, unwraplist, list_to_data, to_data
 from mo_future import first
 from mo_json import STRUCT, IS_NULL
 from mo_json.typed_encoder import detype
 from mo_logs import Log, logger
 from mo_sql.utils import sql_type_key_to_json_type, SQL_ARRAY_KEY
-from mo_threads import Queue, Lock
+from mo_sql.utils import untyped_column, untype_field
+from mo_sqlite.models.table import Table
+from mo_threads import Lock
 from mo_times.dates import Date
 
 DEBUG = False
@@ -440,7 +440,7 @@ class ColumnList(Table, Container):
         if not self._schema:
             with self.locker:
                 self._update_meta()
-                self._schema = Schema(".", [c for cs in self.data[META_COLUMNS_NAME].values() for c in cs])
+                self._schema = Schema("../../jx_sqlite", [c for cs in self.data[META_COLUMNS_NAME].values() for c in cs])
         return self._schema
 
     @property

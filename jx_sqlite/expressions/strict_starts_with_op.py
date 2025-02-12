@@ -10,7 +10,8 @@
 from jx_base.expressions import StrictStartsWithOp as _StrictStartsWithOp, is_literal, FALSE
 from mo_json.types import JX_BOOLEAN
 from mo_sqlite import ConcatSQL, SQL_LIKE, SQL_ESCAPE, SQL_ONE
-from mo_sqlite import SQLang, check, quote_value, SqlScript
+from jx_sqlite.expressions._utils import check
+from mo_sqlite import SQLang, quote_value, SqlScript
 from mo_sqlite.expressions._utils import SQL
 from mo_sqlite.expressions.sql_eq_op import SqlEqOp
 from mo_sqlite.expressions.sql_instr_op import SqlInstrOp

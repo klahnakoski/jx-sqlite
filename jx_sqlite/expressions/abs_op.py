@@ -8,8 +8,9 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from jx_base.expressions import AbsOp as _AbsOp, TRUE, IsNumberOp
+from jx_sqlite.expressions._utils import check
 from mo_json import JX_IS_NULL, JX_NUMBER
-from mo_sqlite import SQL_NULL, sql_call, SQLang, check
+from mo_sqlite import SQL_NULL, sql_call, SQLang
 from mo_sqlite.expressions import SqlScript
 
 

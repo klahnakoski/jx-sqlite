@@ -15,7 +15,6 @@ from jx_base.expressions import NULL, ZERO, SqlScript
 from jx_base.expressions.sql_is_null_op import SqlIsNullOp
 from jx_base.expressions.sql_order_by_op import OneOrder
 from jx_base.utils import GUID
-from jx_sqlite import Facts
 from jx_sqlite.expressions.leaves_op import LeavesOp
 from jx_sqlite.expressions.to_boolean_op import ToBooleanOp
 from jx_sqlite.format import format_deep
@@ -28,7 +27,6 @@ from jx_sqlite.utils import (
     UID,
     PARENT,
     table_alias,
-    untype_field,
 )
 from mo_dots import (
     Data,
@@ -45,11 +43,12 @@ from mo_future import extend
 from mo_json.types import OBJECT, jx_type_to_json_type, JX_ANY, STRING, INTEGER, JX_TEXT, JX_INTEGER
 from mo_logs import Log
 from mo_sql import SQL_DESC, SQL_ASC, NO_SQL
+from mo_sql.utils import untype_field
+from mo_sqlite import Facts
 from mo_sqlite import (
     SQL_AND,
     SQL_FROM,
     SQL_LEFT_JOIN,
-    SQL_NULL,
     SQL_ON,
     SQL_SELECT,
     SQL_UNION_ALL,
@@ -60,9 +59,9 @@ from mo_sqlite import (
     SQL_ZERO,
     SQL_GT,
 )
+from mo_sqlite import SQLang
 from mo_sqlite import quote_column, sql_alias
 from mo_sqlite.expressions import SqlVariable, SqlOrderByOp, SqlEqOp, SqlAliasOp, SqlLimitOp, SqlGtOp
-from mo_sqlite import SQLang
 from mo_sqlite.expressions.sql_and_op import SqlAndOp
 from mo_sqlite.expressions.sql_script import SqlScript
 from mo_times import Date

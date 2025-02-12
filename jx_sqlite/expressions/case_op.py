@@ -9,8 +9,9 @@
 #
 from jx_base import JX
 from jx_base.expressions import CaseOp as _CaseOp, SqlScript
+from jx_sqlite.expressions._utils import check
 from mo_json import union_type
-from mo_sqlite import SQLang, check
+from mo_sqlite import SQLang
 from mo_sqlite.expressions import SqlWhenOp, SqlCaseOp, SqlScript
 
 

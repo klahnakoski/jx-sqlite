@@ -8,7 +8,7 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from jx_base.expressions import MinOp as _MinOp, SqlScript
-from mo_sqlite import check
+from jx_sqlite.expressions._utils import check
 from mo_sqlite.expressions.sql_script import SqlScript
 from mo_json import JX_NUMBER
 from mo_sqlite import sql_call

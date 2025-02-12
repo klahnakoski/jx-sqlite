@@ -12,7 +12,8 @@ from jx_base.expressions import OrOp as OrOp_, SqlScript
 from jx_base.expressions.false_op import FALSE
 from mo_imports import export
 from mo_json import JX_BOOLEAN
-from mo_sqlite import SQLang, check
+from jx_sqlite.expressions._utils import check
+from mo_sqlite import SQLang
 from mo_sqlite import SqlScript
 from mo_sqlite.expressions import SqlOrOp
 

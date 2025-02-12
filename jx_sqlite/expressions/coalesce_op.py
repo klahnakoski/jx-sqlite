@@ -7,7 +7,8 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from mo_sqlite import SQLang, check, SqlScript
+from jx_sqlite.expressions._utils import check
+from mo_sqlite import SQLang, SqlScript
 from mo_sqlite.expressions import SqlCoalesceOp as _CoalesceOp
 from mo_json import union_type, base_type
 

@@ -12,7 +12,8 @@ from jx_base.expressions import EqOp as _EqOp, FALSE, TRUE, is_literal,NotOp
 from jx_sqlite.expressions._utils import value2boolean
 from mo_json import JX_ARRAY, ARRAY, JX_BOOLEAN
 from mo_logs import logger
-from mo_sqlite import SQLang, check, SqlScript
+from jx_sqlite.expressions._utils import check
+from mo_sqlite import SQLang, SqlScript
 from mo_sqlite.expressions import SqlEqOp, SqlCaseOp, SqlWhenOp, SqlInOp, SqlNotOp, SqlAndOp, SqlOrOp
 
 

@@ -9,9 +9,10 @@
 #
 from jx_base import is_op, TRUE
 from jx_base.expressions import AndOp as _AndOp, ToBooleanOp, CoalesceOp, SqlScript
+from jx_sqlite.expressions._utils import check
 from mo_json.types import JX_BOOLEAN
 from mo_sqlite.expressions import SqlAndOp, SqlScript, SqlCoalesceOp
-from mo_sqlite import SQLang, check
+from mo_sqlite import SQLang
 
 
 class AndOp(_AndOp):

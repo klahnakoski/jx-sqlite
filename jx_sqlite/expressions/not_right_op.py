@@ -14,7 +14,7 @@ from jx_base.expressions import (SqlScript,
     SubOp,
     ZERO,
 )
-from mo_sqlite import check
+from jx_sqlite.expressions._utils import check
 from jx_sqlite.expressions._utils import OrOp, SQLang
 from mo_sqlite.expressions.sql_script import SqlScript
 from mo_json import JX_TEXT

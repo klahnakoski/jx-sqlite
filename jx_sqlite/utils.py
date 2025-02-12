@@ -103,26 +103,6 @@ def typed_column(name, sql_key):
     return concat_field(name, sql_key)
 
 
-def untyped_column(column_name):
-    """
-    :param column_name:  DATABASE COLUMN NAME
-    :return: (NAME, TYPE) PAIR
-    """
-    if SQL_KEY_PREFIX in column_name:
-        path = split_field(column_name)
-        if path[-1] in SQL_KEYS:
-            return join_field(p for p in path[:-1] if p != SQL_ARRAY_KEY), path[-1]
-        else:
-            return join_field(p for p in path if p not in SQL_KEYS), None
-    elif column_name in [GUID]:
-        return column_name, SQL_NUMBER_KEY
-    else:
-        return column_name, None
-
-
-untype_field = untyped_column
-
-
 def _make_column_name(number):
     return COLUMN + str(number)
 
@@ -138,11 +118,6 @@ STATS = {
     "var": "(1-1.0/COUNT({{value}}))*VARIANCE({{value}})",
     "avg": "AVG({{value}})",
 }
-
-quoted_GUID = quote_column(GUID)
-quoted_UID = quote_column(UID)
-quoted_ORDER = quote_column(ORDER)
-quoted_PARENT = quote_column(PARENT)
 
 
 def sql_text_array_to_set(column):

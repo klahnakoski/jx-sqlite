@@ -9,7 +9,7 @@
 #
 from jx_base.expressions import StrictEqOp as StrictEqOp_, FALSE, is_literal, SqlScript
 from mo_sqlite import SQLang
-from mo_sqlite import check
+from jx_sqlite.expressions._utils import check
 from jx_sqlite.expressions._utils import value2boolean
 from jx_sqlite.expressions.not_op import NotOp
 from mo_sqlite.expressions.sql_script import SqlScript

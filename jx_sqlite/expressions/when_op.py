@@ -12,7 +12,8 @@ from jx_sqlite.expressions.and_op import AndOp
 from jx_sqlite.expressions.not_op import NotOp
 from jx_sqlite.expressions.or_op import OrOp
 from jx_sqlite.expressions.to_boolean_op import ToBooleanOp
-from mo_sqlite import SQLang, check, SqlScript
+from jx_sqlite.expressions._utils import check
+from mo_sqlite import SQLang, SqlScript
 from mo_sqlite.expressions import SqlCaseOp, SqlWhenOp
 
 class WhenOp(_WhenOp):

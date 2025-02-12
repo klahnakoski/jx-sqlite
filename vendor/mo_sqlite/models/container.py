@@ -5,30 +5,30 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at https://www.mozilla.org/en-US/MPL/2.0/.
 #
+from mo_sqlite.types import json_type_to_sqlite_type
+
+from mo_sqlite.utils import quote_column, sql_eq, sql_create, sql_insert
+
+from mo_sqlite.database import Sqlite
+
 from jx_base import jx_expression, Column
 from jx_base.expressions import Expression, Variable, is_literal, GetOp, SqlScript
 from jx_base.language import is_op
 from jx_base.models.container import Container as _Container
 from jx_base.utils import UID, GUID
-from jx_sqlite.expressions.sql_select_all_from_op import SqlSelectAllFromOp
+from mo_sqlite.expressions.sql_select_all_from_op import SqlSelectAllFromOp
 from mo_future import first, NEXT
 from mo_imports import expect
 from mo_json import STRING
 from mo_kwargs import override
 from mo_logs import logger
 from mo_sql.utils import ABOUT_TABLE, DIGITS_TABLE
-from mo_sqlite import (
+from mo_sql import (
     SQL_SELECT,
     SQL_FROM,
     SQL_UPDATE,
     SQL_SET,
     ConcatSQL,
-    Sqlite,
-    quote_column,
-    sql_eq,
-    sql_create,
-    sql_insert,
-    json_type_to_sqlite_type,
 )
 from mo_sqlite import SQLang
 from mo_threads.lock import locked

@@ -11,7 +11,7 @@ from jx_base.expressions import SelectOp, CountOp, DefaultOp, SqlScript, SqlSele
 from jx_base.expressions.variable import is_variable
 from jx_base.language import is_op
 from jx_python import jx
-from jx_sqlite import Facts
+from mo_sqlite import Facts
 from mo_sqlite import SQLang
 from jx_sqlite.utils import (
     ColumnMapping,

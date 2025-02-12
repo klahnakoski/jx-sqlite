@@ -15,7 +15,7 @@ from jx_sqlite.utils import GUID
 from mo_dots import concat_field, tail_field, startswith_field
 from mo_json.types import JX_INTEGER, JxType, to_jx_type, STRING, union_type, JX_TEXT
 from mo_logs import logger
-from mo_sqlite import check
+from jx_sqlite.expressions._utils import check
 from mo_sqlite import json_type_to_sqlite_type
 from mo_sqlite.expressions import SqlVariable, SqlCoalesceOp
 

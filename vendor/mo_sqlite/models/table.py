@@ -6,9 +6,9 @@
 # You can obtain one at https://www.mozilla.org/en-US/MPL/2.0/.
 #
 import jx_base
-from jx_sqlite.models.facts import Facts
-from jx_sqlite.models.schema import Schema
-from jx_sqlite.models.snowflake import Snowflake
+from mo_sqlite.models.facts import Facts
+from mo_sqlite.models.schema import Schema
+from mo_sqlite.models.snowflake import Snowflake
 from mo_imports import export
 from mo_logs import Log
 
@@ -38,5 +38,5 @@ class Table(jx_base.Table):
         return Schema(self.nested_path, Snowflake(self.nested_path[-1], self.container.namespace))
 
 
-export("jx_sqlite.models.snowflake", Table)
-export("jx_sqlite.models.container", Table)
+export("mo_sqlite.models.snowflake", Table)
+export("mo_sqlite.models.container", Table)

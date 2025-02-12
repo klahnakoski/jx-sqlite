@@ -10,7 +10,7 @@
 from jx_base.expressions import StrictNotOp as _StrictNotOp, FALSE, SqlScript
 from mo_json.types import JX_BOOLEAN
 from mo_sqlite import SQLang
-from mo_sqlite import check
+from jx_sqlite.expressions._utils import check
 from mo_sqlite.expressions import SqlNotOp, SqlScript
 
 

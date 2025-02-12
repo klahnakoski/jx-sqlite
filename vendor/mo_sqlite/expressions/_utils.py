@@ -15,29 +15,7 @@ from mo_sqlite.expressions.sql_script import SqlScript, SQLang, SQL
 from mo_sqlite.utils import SQL_NULL, SQL_TRUE, SQL_FALSE, TYPE_CHECK
 
 
-__all__ = ["check", "SQLang", "SqlScript", "SQL"]
-
-
-def check(func):
-    """
-    TEMPORARY TYPE CHECKING TO ENSURE to_sql() IS OUTPUTTING THE CORRECT FORMAT
-    """
-    if not TYPE_CHECK:
-        return func
-
-    @decorate(func)
-    def to_sql(self, schema) -> SqlScript:
-        try:
-            output = func(self, schema)
-        except Exception as e:
-            output = func(self, schema)
-            raise Log.error("not expected", cause=e)
-        if not isinstance(output, SqlScript):
-            output = func(self, schema)
-            Log.error("expecting SqlScript")
-        return output
-
-    return to_sql
+__all__ = ["SQLang", "SqlScript", "SQL"]
 
 
 @extend(NullOp)

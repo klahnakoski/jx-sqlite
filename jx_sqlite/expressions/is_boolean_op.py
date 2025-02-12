@@ -9,7 +9,7 @@
 #
 from jx_base.expressions import IsBooleanOp as ToBooleanOp_, FALSE, TRUE, is_literal, SqlScript
 from mo_sqlite import SQLang
-from mo_sqlite import check
+from jx_sqlite.expressions._utils import check
 from mo_json.types import JX_BOOLEAN
 
 

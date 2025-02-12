@@ -11,7 +11,8 @@ from jx_base.expressions import MissingOp as MissingOp_, FALSE, SqlScript
 from jx_base.language import is_op
 from mo_json.types import JX_BOOLEAN, JX_TEXT
 from mo_sql import SQL_EMPTY_STRING
-from mo_sqlite import SQLang, check
+from jx_sqlite.expressions._utils import check
+from mo_sqlite import SQLang
 from mo_sqlite.expressions import SqlOrOp, SqlIsNullOp, SqlEqOp, SqlScript
 
 

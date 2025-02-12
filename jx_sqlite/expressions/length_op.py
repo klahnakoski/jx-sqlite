@@ -13,7 +13,7 @@ from jx_base.expressions import (SqlScript,
     IsTextOp,
 )
 from mo_sqlite import SQLang
-from mo_sqlite import check
+from jx_sqlite.expressions._utils import check
 from jx_sqlite.expressions._utils import SqlScript
 from mo_json import JX_INTEGER
 from mo_sqlite import quote_value, sql_call, SQL_NULL

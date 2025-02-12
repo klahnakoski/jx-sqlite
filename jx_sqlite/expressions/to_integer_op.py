@@ -11,7 +11,7 @@ from jx_base.expressions import ToIntegerOp as IntegerOp_
 from mo_json import base_type, JX_TEXT, JX_INTEGER
 from mo_sqlite import sql_cast
 from mo_sqlite.expressions import SqlScript
-from mo_sqlite import check
+from jx_sqlite.expressions._utils import check
 
 
 class ToIntegerOp(IntegerOp_):

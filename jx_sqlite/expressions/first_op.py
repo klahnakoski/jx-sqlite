@@ -10,7 +10,7 @@
 from jx_base import is_op
 from jx_base.expressions import FirstOp as _FirstOp, SqlScript
 from mo_sqlite import SQLang
-from mo_sqlite import check
+from jx_sqlite.expressions._utils import check
 from jx_sqlite.expressions._utils import SqlScript
 from mo_json import base_type, JX_ARRAY
 from mo_logs import Log

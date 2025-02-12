@@ -8,7 +8,7 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from jx_base.expressions import StrictIndexOfOp as _StrictIndexOfOp, FALSE, SqlScript
-from mo_sqlite import check
+from jx_sqlite.expressions._utils import check
 from jx_sqlite.expressions._utils import SqlScript
 from jx_sqlite.expressions.literal import Literal
 from mo_json.types import JX_NUMBER, JX_INTEGER

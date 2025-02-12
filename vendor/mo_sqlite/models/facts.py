@@ -23,5 +23,5 @@ class Facts(_Facts):
 # TODO: use dependency injection
 type2container["sqlite"] = Facts
 
-export("jx_sqlite.models.container", Facts)
+export("mo_sqlite.models.container", Facts)
 

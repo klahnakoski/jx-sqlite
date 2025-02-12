@@ -7,23 +7,19 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-import mo_json
-from jx_base import Column, JX
-from jx_base.expressions import jx_expression, QueryOp, NULL, SqlScript
+from jx_base.expressions import jx_expression, QueryOp, NULL
 from mo_sqlite import SQLang
-from jx_sqlite.format import format_metadata, format_flat
-from jx_sqlite.models.facts import Facts
-from jx_sqlite.utils import GUID, untyped_column, unique_name
+from jx_sqlite.format import format_flat
+from mo_sqlite.models.facts import Facts
+from jx_sqlite.utils import unique_name
 from mo_dots import (
-    concat_field,
     listwrap,
     relative_field,
     startswith_field,
-    unwraplist,
     list_to_data,
 )
 from mo_future import is_text, extend
-from mo_json import STRING, STRUCT
+from mo_json import STRUCT
 from mo_logs import Log
 from mo_sql import SQL_CREATE, SQL_AS, SQL_STAR
 from mo_sqlite import (

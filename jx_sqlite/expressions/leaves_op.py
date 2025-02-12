@@ -12,7 +12,7 @@ from jx_base.expressions.select_op import SelectOp, SelectOne
 from jx_base.expressions.variable import is_variable
 from mo_json import to_jx_type
 from mo_sqlite import SQLang
-from mo_sqlite import check
+from jx_sqlite.expressions._utils import check
 from mo_dots import Null, literal_field
 from mo_logs import Log
 from mo_sqlite.expressions import SqlVariable

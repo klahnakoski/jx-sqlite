@@ -11,7 +11,8 @@ from jx_base.expressions import StrictSubstringOp as StrictSubstringOp_, FALSE, 
 from jx_sqlite.expressions.add_op import AddOp
 from jx_sqlite.expressions.sub_op import SubOp
 from mo_json import JX_TEXT
-from mo_sqlite import SQLang, check, SqlScript
+from jx_sqlite.expressions._utils import check
+from mo_sqlite import SQLang, SqlScript
 from mo_sqlite.expressions import SqlSubstrOp
 
 

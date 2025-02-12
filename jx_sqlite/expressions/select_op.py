@@ -11,7 +11,7 @@ from jx_base import FALSE
 from jx_base.expressions import SelectOp as SelectOp_, LeavesOp, NULL, SqlScript
 from jx_base.expressions.variable import is_variable
 from jx_base.language import is_op
-from mo_sqlite import check
+from jx_sqlite.expressions._utils import check
 from mo_sqlite.expressions.sql_script import SqlScript
 from mo_dots import concat_field, literal_field, startswith_field, tail_field
 from mo_json.types import JX_IS_NULL, to_jx_type

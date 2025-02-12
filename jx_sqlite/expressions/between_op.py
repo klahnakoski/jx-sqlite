@@ -9,7 +9,7 @@
 #
 from jx_base.expressions import BetweenOp as BetweenOp_, SqlScript, SqlScript
 from mo_sqlite import SQLang
-from mo_sqlite import check
+from jx_sqlite.expressions._utils import check
 
 
 class BetweenOp(BetweenOp_):

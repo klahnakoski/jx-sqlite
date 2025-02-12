@@ -14,7 +14,8 @@ from jx_sqlite.expressions._utils import with_var, JxSql
 from jx_sqlite.expressions.not_left_op import NotLeftOp
 from jx_sqlite.expressions.or_op import OrOp
 from mo_json import JX_INTEGER
-from mo_sqlite import SQLang, check
+from jx_sqlite.expressions._utils import check
+from mo_sqlite import SQLang
 from mo_sqlite.expressions import SqlInstrOp, SqlWhenOp, SqlCaseOp, SqlVariable, SqlScript, SqlAddOp
 
 
