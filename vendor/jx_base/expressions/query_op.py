@@ -149,7 +149,7 @@ class QueryOp(Expression):
         query = to_data(query)
 
         frum = query["from"]
-        frum = container.get_table(frum)
+        frum = container.container.get_table(frum)
         schema = frum.schema
 
         output = QueryOp(frum=frum, format=query.format, chunk_size=query.chunk_size, destination=query.destination,)
