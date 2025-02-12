@@ -8,35 +8,13 @@
 
 
 import jx_base
-from mo_dots import (
-    concat_field,
-    to_data,
-    startswith_field,
-    relative_field,
-)
-from mo_future import first
-from mo_imports import expect, export
+from mo_dots import concat_field, startswith_field, relative_field
+from mo_imports import export
 from mo_json import ARRAY, OBJECT, EXISTS, INTEGER
-from mo_logs import Log, Except
-from mo_sql import (
-    SQL_FROM,
-    SQL_SELECT,
-    SQL_ZERO,
-    sql_iso,
-    sql_list,
-    SQL_CREATE,
-    SQL_AS,
-    ConcatSQL,
-    SQL_ALTER_TABLE,
-    SQL_ADD_COLUMN,
-    SQL_RENAME_COLUMN,
-    SQL_RENAME_TO,
-    SQL_TO,
-    TextSQL,
-    SQL_INSERT)
+from mo_logs import Except
 from mo_sql.utils import SQL_ARRAY_KEY, untype_field
-from mo_sqlite.utils import quote_column
 from mo_sqlite.models.schema import Schema
+from mo_sqlite.utils import *
 from mo_sqlite.utils import GUID
 from mo_times import Date
 
