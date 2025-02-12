@@ -32,41 +32,29 @@ class GetOp(_GetOp):
         if len(leaves) == 1:
             rr, c = leaves[0]
             term = SqlVariable(c.es_index, c.es_column, jx_type=to_jx_type(c.es_type))
-            return SqlScript(
-                jx_type=term.jx_type,
-                expr=term,
-                frum=self,
-                schema=schema
-            )
+            return SqlScript(jx_type=term.jx_type, expr=term, frum=self, schema=schema)
 
         if not unique:
-            return SqlScript(
-                jx_type=JX_ANY,
-                expr=NULL,
-                frum=self,
-                miss=TRUE,
-                schema=schema
-            )
+            return SqlScript(jx_type=JX_ANY, expr=NULL, frum=self, miss=TRUE, schema=schema)
         if len(unique) == 1:
             r = first(unique)
-            term = SqlCoalesceOp(*(
-                SqlVariable(c.es_index, c.es_column, jx_type=to_jx_type(c.es_type))
-                for rr, c in leaves
-                if rr == r
-            )).partial_eval(SQLang)
-            return SqlScript(
-                jx_type=term.jx_type,
-                expr=term,
-                frum=self,
-                schema=schema
-            )
+            term = SqlCoalesceOp(
+                *(SqlVariable(c.es_index, c.es_column, jx_type=to_jx_type(c.es_type)) for rr, c in leaves if rr == r)
+            ).partial_eval(SQLang)
+            return SqlScript(jx_type=term.jx_type, expr=term, frum=self, schema=schema)
 
         flat = SqlSelectOp(
             SqlVariable(schema.table),
             *(
                 SqlAliasOp(
-                    SqlCoalesceOp(*(SqlVariable(c.es_index, c.es_column, jx_type=to_jx_type(c.es_type)) for rr, c in leaves if rr == r)).partial_eval(SQLang),
-                    concat_field(var_name, r)
+                    SqlCoalesceOp(
+                        *(
+                            SqlVariable(c.es_index, c.es_column, jx_type=to_jx_type(c.es_type))
+                            for rr, c in leaves
+                            if rr == r
+                        )
+                    ).partial_eval(SQLang),
+                    concat_field(var_name, r),
                 )
                 for r in unique
             )

@@ -8,7 +8,7 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from jx_base import is_op
-from jx_base.expressions import OrOp as OrOp_, SqlScript
+from jx_base.expressions import OrOp as _OrOp, SqlScript
 from jx_base.expressions.false_op import FALSE
 from mo_imports import export
 from mo_json import JX_BOOLEAN
@@ -18,7 +18,7 @@ from mo_sqlite import SqlScript
 from mo_sqlite.expressions import SqlOrOp
 
 
-class OrOp(OrOp_):
+class OrOp(_OrOp):
     @check
     def to_sql(self, schema) -> SqlScript:
         this = self.partial_eval(SQLang)

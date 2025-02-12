@@ -9,8 +9,8 @@
 #
 
 
-from jx_base.expressions import FilterOp as FilterOp_, SqlScript
+from jx_base.expressions import FilterOp as _FilterOp, SqlScript
 
 
-class FilterOp(FilterOp_):
+class FilterOp(_FilterOp):
     pass

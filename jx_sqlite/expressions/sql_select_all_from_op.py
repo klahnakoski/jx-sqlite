@@ -9,7 +9,8 @@
 #
 
 
-from jx_base.expressions import (SqlScript,
+from jx_base.expressions import (
+    SqlScript,
     Variable,
     SqlSelectAllFromOp as _SqlSelectAllFrom,
     SelectOp,
@@ -47,7 +48,11 @@ class SqlSelectAllFromOp(_SqlSelectAllFrom):
             cols = self.table.schema.get_columns(name)
             if cols:
                 return SelectOp(
-                    self, tuple(SelectOne(name, SqlVariable(col.es_index, col.es_column, jx_type=to_jx_type(col.es_type))) for col in cols),
+                    self,
+                    tuple(
+                        SelectOne(name, SqlVariable(col.es_index, col.es_column, jx_type=to_jx_type(col.es_type)))
+                        for col in cols
+                    ),
                 )
 
             alt_origin = mo_dots_relative_field(self.table.name, self.table.schema.snowflake.fact_name)
@@ -57,7 +62,10 @@ class SqlSelectAllFromOp(_SqlSelectAllFrom):
                 if cols:
                     return SelectOp(
                         self,
-                        tuple(SelectOne(name, Variable(col.es_index, col.es_column, jx_type=to_jx_type(col.es_type))) for col in cols),
+                        tuple(
+                            SelectOne(name, Variable(col.es_index, col.es_column, jx_type=to_jx_type(col.es_type)))
+                            for col in cols
+                        ),
                     )
 
             relative_field, many_relations = self.table.schema.get_many_relations(name)

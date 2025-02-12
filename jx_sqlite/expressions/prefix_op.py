@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import PrefixOp as PrefixOp_, SqlScript
+from jx_base.expressions import PrefixOp as _PrefixOp, SqlScript
 from mo_sqlite import SQLang
 from jx_sqlite.expressions._utils import check
 from mo_dots import wrap
@@ -15,7 +15,7 @@ from mo_sqlite import SQL_TRUE, ConcatSQL, SQL_EQ, SQL_ONE
 from mo_sqlite import sql_call
 
 
-class PrefixOp(PrefixOp_):
+class PrefixOp(_PrefixOp):
     @check
     def to_sql(self, schema) -> SqlScript:
         if not self.expr:

@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import SuffixOp as SuffixOp_, FALSE, TRUE, SqlScript
+from jx_base.expressions import SuffixOp as _SuffixOp, FALSE, TRUE, SqlScript
 from jx_sqlite.expressions.eq_op import EqOp
 from jx_sqlite.expressions.length_op import LengthOp
 from jx_sqlite.expressions.right_op import RightOp
@@ -15,7 +15,7 @@ from jx_sqlite.expressions._utils import check
 from mo_sqlite import SQLang
 
 
-class SuffixOp(SuffixOp_):
+class SuffixOp(_SuffixOp):
     @check
     def to_sql(self, schema) -> SqlScript:
         if not self.expr:

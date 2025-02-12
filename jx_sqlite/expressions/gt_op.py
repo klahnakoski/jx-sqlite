@@ -7,9 +7,9 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import GtOp as GtOp_, SqlScript
+from jx_base.expressions import GtOp as _GtOp, SqlScript
 from jx_sqlite.expressions._utils import _inequality_to_sql
 
 
-class GtOp(GtOp_):
+class GtOp(_GtOp):
     to_sql = _inequality_to_sql

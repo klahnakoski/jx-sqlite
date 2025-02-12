@@ -7,14 +7,14 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import ExistsOp as ExistsOp_, FALSE, SqlScript
+from jx_base.expressions import ExistsOp as _ExistsOp, FALSE, SqlScript
 from mo_sqlite import SQLang
 from jx_sqlite.expressions._utils import check
 from jx_sqlite.expressions._utils import SqlScript
 from mo_json import JX_BOOLEAN
 
 
-class ExistsOp(ExistsOp_):
+class ExistsOp(_ExistsOp):
     @check
     def to_sql(self, schema) -> SqlScript:
         sql = self.expr.partial_eval(SQLang).to_sql(schema)

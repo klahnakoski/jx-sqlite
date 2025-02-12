@@ -16,6 +16,7 @@ from jx_sqlite.expressions._utils import check
 from mo_sqlite import SQLang, SqlScript
 from mo_sqlite.expressions import SqlCaseOp, SqlWhenOp
 
+
 class WhenOp(_WhenOp):
     @check
     def to_sql(self, schema) -> SqlScript:
@@ -25,17 +26,30 @@ class WhenOp(_WhenOp):
 
         if then.missing(SQLang) is TRUE:
             return SqlScript(
-                jx_type=_else.jx_type, frum=self, expr=_else.to_sql(schema).expr, miss=OrOp(when, _else.missing(SQLang)), schema=schema,
+                jx_type=_else.jx_type,
+                frum=self,
+                expr=_else.to_sql(schema).expr,
+                miss=OrOp(when, _else.missing(SQLang)),
+                schema=schema,
             )
         elif _else.missing(SQLang) is TRUE:
             return SqlScript(
-                jx_type=then.jx_type, frum=self, expr=then.to_sql(schema).expr, miss=OrOp(NotOp(when), then.missing(SQLang)), schema=schema,
+                jx_type=then.jx_type,
+                frum=self,
+                expr=then.to_sql(schema).expr,
+                miss=OrOp(NotOp(when), then.missing(SQLang)),
+                schema=schema,
             )
 
         return SqlScript(
             jx_type=then.jx_type | _else.jx_type,
             frum=self,
-            expr=SqlCaseOp(SqlWhenOp(when.to_sql(schema).expr, then.to_sql(schema).expr), _else=_else.to_sql(schema).expr),
-            miss=OrOp(AndOp(when, then.missing(SQLang)), AndOp(OrOp(when.missing(SQLang), NotOp(when)), _else.missing(SQLang))),
+            expr=SqlCaseOp(
+                SqlWhenOp(when.to_sql(schema).expr, then.to_sql(schema).expr), _else=_else.to_sql(schema).expr
+            ),
+            miss=OrOp(
+                AndOp(when, then.missing(SQLang)),
+                AndOp(OrOp(when.missing(SQLang), NotOp(when)), _else.missing(SQLang)),
+            ),
             schema=schema,
         )

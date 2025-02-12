@@ -227,7 +227,7 @@ ColumnMapping = DataClass(
 )
 
 
-class BasicSnowflake(Snowflake):
+class StrictSnowflake(Snowflake):
     def __init__(self, query_paths, columns):
         self._query_paths = query_paths
         self._columns = columns

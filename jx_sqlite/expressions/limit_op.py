@@ -8,13 +8,13 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from jx_base.expressions import LimitOp as LimitOp_, SqlScript
+from jx_base.expressions import LimitOp as _LimitOp, SqlScript
 from mo_sqlite import SQLang, SqlScript
 
 from mo_sql import SQL_LIMIT, ConcatSQL
 
 
-class LimitOp(LimitOp_):
+class LimitOp(_LimitOp):
     def to_sql(self, schema) -> SqlScript:
         frum = self.frum.partial_eval(SQLang).to_sql(schema)
         amount = self.amount.partial_eval(SQLang).to_sql(schema)

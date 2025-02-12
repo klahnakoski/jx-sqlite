@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import MissingOp as MissingOp_, FALSE, SqlScript
+from jx_base.expressions import MissingOp as _MissingOp, FALSE, SqlScript
 from jx_base.language import is_op
 from mo_json.types import JX_BOOLEAN, JX_TEXT
 from mo_sql import SQL_EMPTY_STRING
@@ -16,7 +16,7 @@ from mo_sqlite import SQLang
 from mo_sqlite.expressions import SqlOrOp, SqlIsNullOp, SqlEqOp, SqlScript
 
 
-class MissingOp(MissingOp_):
+class MissingOp(_MissingOp):
     @check
     def to_sql(self, schema) -> SqlScript:
         sql = self.expr.partial_eval(SQLang).to_sql(schema)
@@ -31,9 +31,7 @@ class MissingOp(MissingOp_):
                     schema=schema,
                 )
 
-            return SqlScript(
-                jx_type=JX_BOOLEAN, miss=FALSE, expr=SqlIsNullOp(sql.expr), frum=self, schema=schema
-            )
+            return SqlScript(jx_type=JX_BOOLEAN, miss=FALSE, expr=SqlIsNullOp(sql.expr), frum=self, schema=schema)
 
         expr = sql.miss.to_sql(schema).expr
         return SqlScript(jx_type=JX_BOOLEAN, miss=FALSE, expr=expr, frum=sql.miss, schema=schema)

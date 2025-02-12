@@ -7,8 +7,9 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import (SqlScript,
-    LengthOp as LengthOp_,
+from jx_base.expressions import (
+    SqlScript,
+    LengthOp as _LengthOp,
     is_literal,
     IsTextOp,
 )
@@ -19,7 +20,7 @@ from mo_json import JX_INTEGER
 from mo_sqlite import quote_value, sql_call, SQL_NULL
 
 
-class LengthOp(LengthOp_):
+class LengthOp(_LengthOp):
     @check
     def to_sql(self, schema) -> SqlScript:
         term = self.term.partial_eval(SQLang)

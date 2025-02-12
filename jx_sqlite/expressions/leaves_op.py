@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import LeavesOp as LeavesOp_, CoalesceOp, SqlScript
+from jx_base.expressions import LeavesOp as _LeavesOp, CoalesceOp, SqlScript
 from jx_base.expressions.select_op import SelectOp, SelectOne
 from jx_base.expressions.variable import is_variable
 from mo_json import to_jx_type
@@ -18,7 +18,7 @@ from mo_logs import Log
 from mo_sqlite.expressions import SqlVariable
 
 
-class LeavesOp(LeavesOp_):
+class LeavesOp(_LeavesOp):
     @check
     def to_sql(self, schema) -> SqlScript:
         if not is_variable(self.term):
@@ -32,7 +32,13 @@ class LeavesOp(LeavesOp_):
             *(
                 SelectOne(
                     literal_field(r),
-                    CoalesceOp(*(SqlVariable(c.es_index, c.es_column, jx_type=to_jx_type(c.es_type)) for rr, c in leaves if rr == r)).partial_eval(SQLang),
+                    CoalesceOp(
+                        *(
+                            SqlVariable(c.es_index, c.es_column, jx_type=to_jx_type(c.es_type))
+                            for rr, c in leaves
+                            if rr == r
+                        )
+                    ).partial_eval(SQLang),
                 )
                 for r in unique
             )

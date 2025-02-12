@@ -7,8 +7,9 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import (SqlScript,
-    NotLeftOp as NotLeftOp_,
+from jx_base.expressions import (
+    SqlScript,
+    NotLeftOp as _NotLeftOp,
     GteOp,
     LengthOp,
     AddOp,
@@ -23,7 +24,7 @@ from mo_json import JX_TEXT
 from mo_sqlite import sql_call
 
 
-class NotLeftOp(NotLeftOp_):
+class NotLeftOp(_NotLeftOp):
     @check
     def to_sql(self, schema) -> SqlScript:
         v = self.value.to_sql(schema)

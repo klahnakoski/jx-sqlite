@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import IsTextOp as IsTextOp_, NULL, SqlScript, SqlSelectOp
+from jx_base.expressions import IsTextOp as _IsTextOp, NULL, SqlScript, SqlSelectOp
 from jx_base.expressions.select_op import SelectOp
 from jx_base.expressions.variable import is_variable
 from jx_base.language import is_op
@@ -16,7 +16,7 @@ from mo_json.types import JX_TEXT
 from mo_logs import logger
 
 
-class IsTextOp(IsTextOp_):
+class IsTextOp(_IsTextOp):
     @check
     def to_sql(self, schema) -> SqlScript:
         if is_variable(self.term):

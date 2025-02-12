@@ -18,6 +18,4 @@ class StrictNotOp(_StrictNotOp):
     @check
     def to_sql(self, schema) -> SqlScript:
         term = self.term.partial_eval(SQLang).to_sql(schema)
-        return SqlScript(
-            jx_type=JX_BOOLEAN, miss=FALSE, expr=SqlNotOp(term.expr), frum=self, schema=schema,
-        )
+        return SqlScript(jx_type=JX_BOOLEAN, miss=FALSE, expr=SqlNotOp(term.expr), frum=self, schema=schema,)

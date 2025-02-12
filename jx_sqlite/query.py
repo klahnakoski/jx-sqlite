@@ -148,8 +148,6 @@ def get_table(self, table_name):
     Log.error("programmer error")
 
 
-
-
 @extend(Facts)
 def transaction(self):
     """

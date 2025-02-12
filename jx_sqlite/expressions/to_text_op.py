@@ -8,27 +8,28 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from jx_base import NULL
-from jx_base.expressions import ToTextOp as ToTextOp_, SelectOp, CoalesceOp, SqlScript, Literal
+from jx_base.expressions import ToTextOp as _ToTextOp, SelectOp, CoalesceOp, SqlScript, Literal
 from jx_base.language import is_op
 from mo_json import JX_TEXT, JX_BOOLEAN, JX_NUMBER_TYPES, split_field, base_type
 from jx_sqlite.expressions._utils import check
 from mo_sqlite import SQLang, SqlScript
 from mo_sqlite import quote_value, sql_call
-from mo_sqlite import (
-    sql_cast,
-)
+from mo_sqlite import sql_cast
 from mo_sqlite.expressions import SqlCaseOp, SqlWhenOp
 from mo_sqlite.expressions.sql_cast_op import SqlCastOp
 
 
-class ToTextOp(ToTextOp_):
+class ToTextOp(_ToTextOp):
     @check
     def to_sql(self, schema) -> SqlScript:
         sql_script = self.term.to_sql(schema)
         if is_op(sql_script.expr, CoalesceOp):
             return SqlScript(
                 jx_type=JX_TEXT,
-                expr=CoalesceOp(*(ToTextOp(t) for t in sql_script.expr.terms)).partial_eval(SQLang).to_sql(schema).expr,
+                expr=CoalesceOp(*(ToTextOp(t) for t in sql_script.expr.terms))
+                .partial_eval(SQLang)
+                .to_sql(schema)
+                .expr,
                 frum=self,
                 schema=schema,
             )
@@ -49,7 +50,9 @@ class ToTextOp(ToTextOp_):
             return SqlScript(
                 jx_type=JX_TEXT,
                 expr=sql_call(
-                    "RTRIM", sql_call("RTRIM", SqlCastOp(sql_script.expr, "TEXT"), quote_value("0"),), quote_value("."),
+                    "RTRIM",
+                    sql_call("RTRIM", SqlCastOp(sql_script.expr, "TEXT"), quote_value("0"),),
+                    quote_value("."),
                 ),
                 frum=self,
                 schema=schema,

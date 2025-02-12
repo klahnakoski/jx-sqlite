@@ -7,8 +7,8 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import ScriptOp as ScriptOp_, SqlScript
+from jx_base.expressions import ScriptOp as _ScriptOp, SqlScript
 
 
-class ScriptOp(ScriptOp_):
+class ScriptOp(_ScriptOp):
     pass

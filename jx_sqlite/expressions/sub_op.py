@@ -7,7 +7,8 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import (SqlScript,
+from jx_base.expressions import (
+    SqlScript,
     SubOp as _SubOp,
     TRUE,
     OrOp,

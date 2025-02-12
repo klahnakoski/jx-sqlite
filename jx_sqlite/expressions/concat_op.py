@@ -8,7 +8,7 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from jx_base import TRUE, FALSE
-from jx_base.expressions import SqlScript, ConcatOp as ConcatOp_, ToTextOp, AddOp, AndOp, MissingOp, ONE
+from jx_base.expressions import SqlScript, ConcatOp as _ConcatOp, ToTextOp, AddOp, AndOp, MissingOp, ONE
 from jx_base.expressions.null_op import NULL
 from jx_sqlite.expressions.length_op import LengthOp
 from mo_json import JX_TEXT
@@ -18,7 +18,7 @@ from jx_sqlite.expressions._utils import check
 from mo_sqlite.expressions import SqlCoalesceOp, SqlConcatOp, SqlSubstrOp, SqlCaseOp, SqlWhenOp, SqlScript
 
 
-class ConcatOp(ConcatOp_):
+class ConcatOp(_ConcatOp):
     @check
     def to_sql(self, schema) -> SqlScript:
         if len(self.terms) == 0:

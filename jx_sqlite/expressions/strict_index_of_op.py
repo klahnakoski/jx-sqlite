@@ -43,15 +43,7 @@ class StrictIndexOfOp(_StrictIndexOfOp):
             return SqlScript(expr=expr, miss=FALSE, frum=self)
         else:
             start_index = start.to_sql(schema)
-            found = sql_call(
-                "INSTR",
-                sql_call(
-                    "SUBSTR",
-                    value,
-                    ConcatSQL(start_index, SQL_PLUS, SQL_ONE)
-                ),
-                find
-            )
+            found = sql_call("INSTR", sql_call("SUBSTR", value, ConcatSQL(start_index, SQL_PLUS, SQL_ONE)), find)
             return SqlScript(
                 JX_INTEGER,
                 ConcatSQL(

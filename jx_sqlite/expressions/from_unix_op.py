@@ -7,13 +7,13 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import FromUnixOp as FromUnixOp_, SqlScript
+from jx_base.expressions import FromUnixOp as _FromUnixOp, SqlScript
 from jx_sqlite.expressions._utils import check
 from mo_dots import wrap
 from mo_sqlite import sql_iso
 
 
-class FromUnixOp(FromUnixOp_):
+class FromUnixOp(_FromUnixOp):
     @check
     def to_sql(self, schema) -> SqlScript:
         v = self.value.to_sql(schema)[0].sql

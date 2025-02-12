@@ -7,8 +7,9 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import (SqlScript,
-    NotRightOp as NotRightOp_,
+from jx_base.expressions import (
+    SqlScript,
+    NotRightOp as _NotRightOp,
     LengthOp,
     MaxOp,
     SubOp,
@@ -22,7 +23,7 @@ from mo_sqlite import SQL_ONE
 from mo_sqlite import sql_call
 
 
-class NotRightOp(NotRightOp_):
+class NotRightOp(_NotRightOp):
     @check
     def to_sql(self, schema) -> SqlScript:
         v = self.value.to_sql(schema)

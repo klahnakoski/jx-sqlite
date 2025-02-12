@@ -190,7 +190,7 @@ def format_flat(result, query, index_to_columns):
 
             output = Data(meta={"format": "list"}, data=data)
     else:
-        Log.error("unknown format {{format}}", format=query.format)
+        Log.error("unknown format {format}", format=query.format)
 
     return output
 

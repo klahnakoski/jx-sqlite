@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import RegExpOp as RegExpOp_, SqlScript
+from jx_base.expressions import RegExpOp as _RegExpOp, SqlScript
 from mo_sqlite import SQLang
 from jx_sqlite.expressions._utils import check
 from jx_sqlite.expressions._utils import SqlScript, OrOp
@@ -15,7 +15,7 @@ from mo_json import JX_BOOLEAN
 from mo_sqlite import TextSQL, ConcatSQL
 
 
-class RegExpOp(RegExpOp_):
+class RegExpOp(_RegExpOp):
     @check
     def to_sql(self, schema) -> SqlScript:
         pattern = self.pattern.partial_eval(SQLang).to_sql(schema)

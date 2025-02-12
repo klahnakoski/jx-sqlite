@@ -7,12 +7,12 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import IsNumberOp as IsNumberOp_, NULL, SqlScript
+from jx_base.expressions import IsNumberOp as _IsNumberOp, NULL, SqlScript
 from jx_sqlite.expressions._utils import check
 from mo_json.types import JX_NUMBER
 
 
-class IsNumberOp(IsNumberOp_):
+class IsNumberOp(_IsNumberOp):
     @check
     def to_sql(self, schema) -> SqlScript:
         value = self.term.to_sql(schema)

@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import StrictSubstringOp as StrictSubstringOp_, FALSE, SqlScript, ONE
+from jx_base.expressions import StrictSubstringOp as _StrictSubstringOp, FALSE, SqlScript, ONE
 from jx_sqlite.expressions.add_op import AddOp
 from jx_sqlite.expressions.sub_op import SubOp
 from mo_json import JX_TEXT
@@ -16,7 +16,7 @@ from mo_sqlite import SQLang, SqlScript
 from mo_sqlite.expressions import SqlSubstrOp
 
 
-class StrictSubstringOp(StrictSubstringOp_):
+class StrictSubstringOp(_StrictSubstringOp):
     @check
     def to_sql(self, schema) -> SqlScript:
         value = self.value.partial_eval(SQLang).to_sql(schema)

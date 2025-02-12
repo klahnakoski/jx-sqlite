@@ -76,4 +76,3 @@ from jx_sqlite.expressions.variable import Variable
 from jx_sqlite.expressions.when_op import WhenOp
 
 JxSql.register_ops(vars())
-

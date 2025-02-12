@@ -30,7 +30,9 @@ class InOp(_InOp):
         if is_op(superset, Literal):
             if value.jx_type == JX_BOOLEAN:
                 superset = SqlLiteral([value2boolean(v) for v in superset.value])
-                return SqlScript(jx_type=JX_BOOLEAN, expr=SqlInOp(value, superset), frum=self, miss=FALSE, schema=schema)
+                return SqlScript(
+                    jx_type=JX_BOOLEAN, expr=SqlInOp(value, superset), frum=self, miss=FALSE, schema=schema
+                )
             sql = SqlCoalesceOp(SqlInOp(value, superset), FALSE)
             return SqlScript(jx_type=JX_BOOLEAN, expr=sql, frum=self, miss=FALSE, schema=schema)
 
@@ -42,5 +44,5 @@ class InOp(_InOp):
             expr=SqlInOp(value, SqlSelectAllFromOp(superset.to_sql())),
             frum=self,
             miss=FALSE,
-            schema=schema
+            schema=schema,
         )

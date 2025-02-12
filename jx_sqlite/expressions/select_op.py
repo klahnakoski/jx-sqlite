@@ -8,7 +8,7 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from jx_base import FALSE
-from jx_base.expressions import SelectOp as SelectOp_, LeavesOp, NULL, SqlScript
+from jx_base.expressions import SelectOp as _SelectOp, LeavesOp, NULL, SqlScript
 from jx_base.expressions.variable import is_variable
 from jx_base.language import is_op
 from jx_sqlite.expressions._utils import check
@@ -18,7 +18,7 @@ from mo_json.types import JX_IS_NULL, to_jx_type
 from mo_sqlite.expressions import SqlVariable, SqlSelectOp, SqlAliasOp
 
 
-class SelectOp(SelectOp_):
+class SelectOp(_SelectOp):
     @check
     def to_sql(self, schema) -> SqlScript:
         jx_type = JX_IS_NULL
@@ -39,13 +39,17 @@ class SelectOp(SelectOp_):
                         # WHEN WE REQUEST AN ES_COLUMN DIRECTLY, BREAK THE RECURSIVE LOOP
                         full_name = concat_field(name, rel_name0)
                         jx_type |= full_name + to_jx_type(col0.json_type)
-                        sql_terms.append(SqlAliasOp(SqlVariable(None, expr.var, jx_type= to_jx_type(col0.json_type)), full_name))
+                        sql_terms.append(SqlAliasOp(
+                            SqlVariable(None, expr.var, jx_type=to_jx_type(col0.json_type)), full_name
+                        ))
                         continue
 
                 for rel_name, col in cols:
                     full_name = concat_field(name, rel_name)
                     jx_type |= full_name + to_jx_type(col.json_type)
-                    sql_terms.append(SqlAliasOp(SqlVariable(col.es_index, col.es_column, jx_type=to_jx_type(col.json_type)), full_name))
+                    sql_terms.append(SqlAliasOp(
+                        SqlVariable(col.es_index, col.es_column, jx_type=to_jx_type(col.json_type)), full_name
+                    ))
             elif is_op(expr, LeavesOp):
                 var_names = expr.vars()
                 for var_name in var_names:
@@ -53,7 +57,9 @@ class SelectOp(SelectOp_):
                     for rel_name, col in cols:
                         full_name = concat_field(name, literal_field(rel_name))
                         jx_type |= full_name + to_jx_type(col.json_type)
-                        sql_terms.append(SqlAliasOp(SqlVariable(col.es_index, col.es_column, jx_type=to_jx_type(col.json_type)), full_name))
+                        sql_terms.append(SqlAliasOp(
+                            SqlVariable(col.es_index, col.es_column, jx_type=to_jx_type(col.json_type)), full_name
+                        ))
             else:
                 sql_script = expr.to_sql(schema)
                 jx_type |= name + to_jx_type(sql_script.jx_type)
@@ -66,5 +72,3 @@ class SelectOp(SelectOp_):
             frum=self,
             schema=schema,
         )
-
-

@@ -7,9 +7,9 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import StrictAddOp as StrictAddOp_
+from jx_base.expressions import StrictAddOp as _StrictAddOp
 from jx_sqlite.expressions._utils import strict_multiop_to_sql
 
 
-class StrictAddOp(StrictAddOp_):
+class StrictAddOp(_StrictAddOp):
     to_sql = strict_multiop_to_sql

@@ -31,7 +31,8 @@ from mo_dots import (
     is_many,
     is_data,
     to_data,
-    relative_field, exists,
+    relative_field,
+    exists,
 )
 from mo_future import text, first, extend
 from mo_json import STRUCT, ARRAY, OBJECT, value_to_json_type, get_if_type, jx_type_to_json_type, base_type
@@ -258,7 +259,7 @@ def update(self, command):
                     and c.json_type != ARRAY
                     and len(c.nested_path) == 1
                 )
-            )
+            ),
         ]),
         SQL_WHERE,
         where_sql,
@@ -287,7 +288,7 @@ def flatten_many(self, docs):
 
     facts_insertion = Insertion()
     doc_collection: Dict[str, Insertion] = {self.name: facts_insertion}
-    doc_actions = {"delete":[], "insert": doc_collection}
+    doc_actions = {"delete": [], "insert": doc_collection}
     # KEEP TRACK OF WHAT TABLE WILL BE MADE (SHORTLY)
     required_changes = []
     snowflake = self.container.get_or_create_facts(self.name).snowflake
@@ -431,7 +432,7 @@ def flatten_many(self, docs):
                     insertion.active_columns.append(curr_column)
                 row[curr_column.es_column] = v
 
-    guids = doc_actions['delete']
+    guids = doc_actions["delete"]
     for doc in docs:
         if is_dataclass(doc):
             doc = {k: v for k, v in doc.__dict__.items() if exists(v)}
@@ -463,10 +464,10 @@ def flatten_many(self, docs):
 def _insert(self, doc_actions):
     with self.container.db.transaction() as t:
 
-        if doc_actions['delete']:
-            self.delete({"in": {GUID: doc_actions['delete']}})
+        if doc_actions["delete"]:
+            self.delete({"in": {GUID: doc_actions["delete"]}})
 
-        collection = doc_actions['insert']
+        collection = doc_actions["insert"]
         for nested_path, insertion in collection.items():
             column_names = [c.es_column for c in insertion.active_columns if c.json_type != ARRAY]
             rows = insertion.rows

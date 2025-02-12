@@ -8,7 +8,7 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from jx_base import builtin_ops, simplified
-from jx_base.expressions import EqOp as _EqOp, FALSE, TRUE, is_literal,NotOp
+from jx_base.expressions import EqOp as _EqOp, FALSE, TRUE, is_literal, NotOp
 from jx_sqlite.expressions._utils import value2boolean
 from mo_json import JX_ARRAY, ARRAY, JX_BOOLEAN
 from mo_logs import logger
@@ -30,11 +30,7 @@ class EqOp(_EqOp):
             lhs_exists = NotOp(lhs.missing(SQLang)).to_sql(schema).expr
             if rhs is True:
                 return SqlScript(
-                    jx_type=JX_BOOLEAN,
-                    expr=SqlAndOp(lhs_exists, lhs.expr),
-                    frum=self,
-                    miss=FALSE,
-                    schema=schema
+                    jx_type=JX_BOOLEAN, expr=SqlAndOp(lhs_exists, lhs.expr), frum=self, miss=FALSE, schema=schema
                 )
             elif rhs is False:
                 return SqlScript(
@@ -42,7 +38,7 @@ class EqOp(_EqOp):
                     expr=SqlAndOp(lhs_exists, SqlNotOp(lhs.expr)),
                     frum=self,
                     miss=FALSE,
-                    schema=schema
+                    schema=schema,
                 )
             else:
                 logger.error("not expected")
@@ -51,7 +47,7 @@ class EqOp(_EqOp):
         output = SqlCaseOp(
             SqlWhenOp(self.lhs.missing(SQLang).to_sql(schema).expr, then=m_rhs),
             SqlWhenOp(m_rhs, then=FALSE),
-            _else=SqlEqOp(self.lhs.to_sql(schema).expr, self.rhs.to_sql(schema).expr)
+            _else=SqlEqOp(self.lhs.to_sql(schema).expr, self.rhs.to_sql(schema).expr),
         ).partial_eval(SQLang)
         return SqlScript(jx_type=JX_BOOLEAN, expr=output, frum=self, miss=FALSE, schema=schema)
 

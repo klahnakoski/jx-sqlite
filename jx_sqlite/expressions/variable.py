@@ -58,18 +58,18 @@ class Variable(Variable_):
             )
         elif len(set(n for n, _ in cols)) == 1:
             return SqlScript(
-                jx_type = union_type(*(to_jx_type(c.es_type) for _, c in cols)),
-                expr = SqlCoalesceOp(*(
-                    SqlVariable(c.es_index, c.es_column, jx_type=to_jx_type(c.es_type))
-                    for _, c in cols
-                )),
-                frum = self,
-                schema = schema,
+                jx_type=union_type(*(to_jx_type(c.es_type) for _, c in cols)),
+                expr=SqlCoalesceOp(
+                    *(SqlVariable(c.es_index, c.es_column, jx_type=to_jx_type(c.es_type)) for _, c in cols)
+                ),
+                frum=self,
+                schema=schema,
             )
 
         logger.warning("not expected")
         for rel_name, col in cols:
             select.append(SelectOne(
-                concat_field(var_name, rel_name), SqlVariable(col.es_index, col.es_column, jx_type=to_jx_type(col.es_type))
+                concat_field(var_name, rel_name),
+                SqlVariable(col.es_index, col.es_column, jx_type=to_jx_type(col.es_type)),
             ))
         return SelectOp(schema, *select).to_sql(schema)

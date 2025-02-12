@@ -7,12 +7,12 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import IsIntegerOp as IsIntegerOp_, NULL, SqlScript
+from jx_base.expressions import IsIntegerOp as _IsIntegerOp, NULL, SqlScript
 from jx_sqlite.expressions._utils import check
 from mo_json.types import JX_INTEGER
 
 
-class IsIntegerOp(IsIntegerOp_):
+class IsIntegerOp(_IsIntegerOp):
     @check
     def to_sql(self, schema) -> SqlScript:
         value = self.term.to_sql(schema)
