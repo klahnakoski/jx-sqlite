@@ -7,8 +7,8 @@
 #
 
 
-import jx_base
+from jx_base import Relation as _Relation
 
 
-class Relation(jx_base.Relation):
+class Relation(_Relation):
     pass

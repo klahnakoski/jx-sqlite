@@ -23,8 +23,7 @@ from mo_json import json2value
 from mo_kwargs import override
 from mo_logs import logger, Except, constants
 from mo_logs.exceptions import get_stacktrace
-from jx_sqlite import Container, Facts
-from mo_sqlite import SQLang
+from mo_sqlite import SQLang, Container, Facts
 from mo_testing.fuzzytestcase import assertAlmostEqual
 from tests import test_jx
 from tests.test_jx import TEST_TABLE

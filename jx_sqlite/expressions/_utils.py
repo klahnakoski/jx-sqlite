@@ -7,9 +7,6 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from mo_sqlite import TYPE_CHECK
-from mo_sqlite.expressions.sql_script import SQLang
-
 from jx_base.expressions import FalseOp, FALSE, ZERO, ONE, SqlScript
 from jx_base.expressions.and_op import AndOp
 from jx_base.expressions.null_op import NULL, NullOp
@@ -20,6 +17,8 @@ from mo_imports import expect
 from mo_json.types import JX_IS_NULL, JX_BOOLEAN, JX_NUMBER, JX_INTEGER
 from mo_sql import *
 from mo_sqlite.expressions import SqlCoalesceOp, SqlScript, SqlGtOp, SqlGteOp, SqlLteOp, SqlLtOp
+from mo_sqlite.expressions.sql_script import SQLang
+from mo_sqlite.utils import TYPE_CHECK
 
 ToNumberOp, OrOp = expect("ToNumberOp", "OrOp")
 

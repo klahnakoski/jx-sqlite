@@ -12,6 +12,7 @@ import math
 import time
 from datetime import date, datetime, timedelta
 from decimal import Decimal
+from json.encoder import ESCAPE_DCT
 from math import floor
 
 from mo_dots import Data, FlatList, NullType, SLOT, is_data, is_list, from_data
@@ -32,7 +33,7 @@ from mo_times import Timer
 from mo_times.dates import Date
 from mo_times.durations import Duration
 
-from mo_json import ESCAPE_DCT, float2json, quote
+from mo_json.utils import float2json
 from mo_json.scrubber import Scrubber
 
 json_decoder = json.JSONDecoder().decode
@@ -107,7 +108,7 @@ def pypy_json_encode(value, pretty=False):
             _dealing_with_problem = False
 
 
-class cPythonJSONEncoder(object):
+class cPythonJSONEncoder:
     def __init__(self, sort_keys=True):
         object.__init__(self)
 

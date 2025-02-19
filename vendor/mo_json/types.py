@@ -36,7 +36,7 @@ def to_jx_type(value):
         return JX_ANY
 
 
-class JxType(object):
+class JxType:
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
             if k == "..":

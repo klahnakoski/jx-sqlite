@@ -18,7 +18,6 @@ from mo_dots import (
     to_data,
     coalesce,
     unwraplist,
-    wrap,
     from_data,
     literal_field,
 )
@@ -94,7 +93,7 @@ def format_flat(result, query, index_to_columns):
             elif e.domain.type == "range":
                 domain = e.domain
             elif e.domain.type == "time":
-                domain = wrap(mo_json.scrub(e.domain))
+                domain = to_data(mo_json.scrub(e.domain))
             elif e.domain.type == "duration":
                 domain = to_data(mo_json.scrub(e.domain))
             elif is_op(e.value, TupleOp):
@@ -114,7 +113,7 @@ def format_flat(result, query, index_to_columns):
                 parts -= {None}
 
                 if query.sort[i].sort == -1:
-                    domain = SimpleSetDomain(partitions=wrap(sorted(parts, reverse=True)))
+                    domain = SimpleSetDomain(partitions=to_data(sorted(parts, reverse=True)))
                 else:
                     domain = SimpleSetDomain(partitions=jx.sort(parts))
 

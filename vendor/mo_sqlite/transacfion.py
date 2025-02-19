@@ -20,7 +20,7 @@ from mo_sqlite.utils import CommandItem, FORMAT_COMMAND, ROLLBACK, COMMIT, quote
 from mo_threads import Lock
 
 
-class Transaction(object):
+class Transaction:
     def __init__(self, db, parent, thread):
         self.db = db
         self.locker = Lock(f"transaction {id(self)} todo lock")

@@ -111,7 +111,7 @@ class Sqlite(DB):
 
         con = self.db.create_function("regex", 2, regex)
 
-        class Percentile(object):
+        class Percentile:
             def __init__(self, percentile):
                 self.percentile = percentile
                 self.acc = []

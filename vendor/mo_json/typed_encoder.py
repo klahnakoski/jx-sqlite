@@ -9,6 +9,7 @@
 #
 from datetime import date, datetime, timedelta
 from decimal import Decimal
+from json.encoder import ESCAPE_DCT
 
 from mo_dots import (
     CLASS,
@@ -35,17 +36,14 @@ from mo_logs import Log
 from mo_logs.strings import quote
 from mo_times import Date, Duration
 
-from mo_json import (
+from mo_json.types import (
     BOOLEAN,
-    ESCAPE_DCT,
     EXISTS,
     INTEGER,
     ARRAY,
     NUMBER,
     STRING,
-    float2json,
     python_type_to_jx_type,
-    quote,
     python_type_to_jx_type_key,
 )
 from mo_json.encoder import (

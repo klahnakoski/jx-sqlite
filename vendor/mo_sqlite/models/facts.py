@@ -7,10 +7,10 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.models.container import type2container
-from jx_base.models.facts import Facts as _Facts
-
 from mo_imports import export
+
+from jx_base.models.facts import Facts as _Facts
+from mo_json import entype
 
 
 class Facts(_Facts):
@@ -19,9 +19,10 @@ class Facts(_Facts):
     def nested_path(self):
         return self.container.get_table(self.name).nested_path
 
+    def add(self, documents):
+        documents = entype(documents)
+        self.container.add(self.name, documents)
 
-# TODO: use dependency injection
-type2container["sqlite"] = Facts
 
 export("mo_sqlite.models.container", Facts)
 

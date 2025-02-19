@@ -9,7 +9,7 @@
 from mo_math import randoms
 
 from jx_base import DataClass
-from mo_dots import is_list, join_field
+from mo_dots import is_list, join_field, concat_field, split_field, is_data
 from mo_json import *
 from mo_logs import Log
 from mo_times import Date

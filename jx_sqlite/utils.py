@@ -97,12 +97,6 @@ def get_document_value(document, column):
     return get_if_type(v, column.jx_type)
 
 
-def typed_column(name, sql_key):
-    if sql_key not in SQL_KEYS:
-        Log.error("not expected")
-    return concat_field(name, sql_key)
-
-
 def _make_column_name(number):
     return COLUMN + str(number)
 

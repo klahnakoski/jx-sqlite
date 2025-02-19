@@ -7,17 +7,12 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import (
-    SqlScript,
-    LengthOp as _LengthOp,
-    is_literal,
-    IsTextOp,
-)
-from mo_sqlite import SQLang
-from jx_sqlite.expressions._utils import check
+from jx_base.expressions import LengthOp as _LengthOp, is_literal, IsTextOp
 from jx_sqlite.expressions._utils import SqlScript
+from jx_sqlite.expressions._utils import check
 from mo_json import JX_INTEGER
-from mo_sqlite import quote_value, sql_call, SQL_NULL
+from mo_sql import sql_call, SQL_NULL
+from mo_sqlite import SQLang, quote_value
 
 
 class LengthOp(_LengthOp):
@@ -26,7 +21,7 @@ class LengthOp(_LengthOp):
         term = self.term.partial_eval(SQLang)
         if is_literal(term):
             val = term.value
-            if isinstance(val, text):
+            if isinstance(val, str):
                 if not val:
                     sql = SQL_NULL
                 else:

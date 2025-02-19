@@ -8,8 +8,8 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-__all__ = ["JxSql"]
+__all__ = ["JxSql", "Container", "Namespace", "Schema", "Column", "Facts", "Table", "Snowflake"]
 
-from mo_sqlite import *
-from jx_sqlite import edges, group, insert, query, setop, format
+from jx_sqlite import edges, group, query, setop, format
 from jx_sqlite.expressions import JxSql
+from mo_sqlite import *

@@ -11,17 +11,12 @@ from dataclasses import is_dataclass
 from typing import Dict, List
 from uuid import uuid4
 
+from mo_sqlite.utils import quote_column, sql_alias, quote_value
+
+from mo_sqlite.types import json_type_to_sqlite_type
+
 from jx_base import Column
-from jx_base.expressions import jx_expression, TRUE, SqlScript
-from mo_sqlite import Facts
-from jx_sqlite.utils import (
-    GUID,
-    ORDER,
-    PARENT,
-    UID,
-    typed_column,
-)
-from mo_sql.utils import untyped_column
+from jx_base.expressions import jx_expression, TRUE
 from mo_dots import (
     Data,
     concat_field,
@@ -34,11 +29,12 @@ from mo_dots import (
     relative_field,
     exists,
 )
-from mo_future import text, first, extend
-from mo_json import STRUCT, ARRAY, OBJECT, value_to_json_type, get_if_type, jx_type_to_json_type, base_type
+from mo_future import first, extend
+from mo_json import STRUCT, ARRAY, OBJECT, value_to_json_type, jx_type_to_json_type
 from mo_logs import logger
-from mo_sql.utils import json_type_to_sql_type_key
-from mo_sqlite import (
+from mo_sql.utils import json_type_to_sql_type_key, typed_column, UID, PARENT, ORDER, GUID, untyped_column
+from mo_sqlite.models.facts import Facts
+from mo_sql import (
     SQL_AND,
     SQL_FROM,
     SQL_INNER_JOIN,
@@ -59,12 +55,6 @@ from mo_sqlite import (
     SQL_DELETE,
     SQL_ON,
     SQL_COMMA,
-)
-from mo_sqlite import (
-    json_type_to_sqlite_type,
-    quote_column,
-    quote_value,
-    sql_alias,
 )
 from mo_times import Date
 
@@ -451,7 +441,7 @@ def flatten_many(self, docs):
         row = {GUID: guid, UID: uid}
         facts_insertion.rows.append(row)
         _flatten(
-            doc=doc, doc_path=".", nested_path=[self.name], row=row, row_num=0, row_id=uid, parent_id=0,
+            doc=doc, doc_path="../../../jx_sqlite", nested_path=[self.name], row=row, row_num=0, row_id=uid, parent_id=0,
         )
         if required_changes:
             snowflake.change_schema(required_changes)

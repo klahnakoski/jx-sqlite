@@ -120,8 +120,6 @@ class ColumnList(Table, Container):
         :param about: the db.about() result, if you have it
         :param known_tables: the db.get_tables() result, if you have it
         """
-
-
         """
         IN THE EVENT SOMETHING ELSE MADE THE TABLE
         """

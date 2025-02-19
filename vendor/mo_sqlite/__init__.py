@@ -9,7 +9,7 @@
 #
 
 __all__ = ["Container", "Namespace", "Schema", "Column", "Facts", "Table", "Snowflake", "SQLang", "quote_column",
-           "TYPE_CHECK", "sql_alias", "sql_list", "sql_iso",]
+           "TYPE_CHECK", "sql_alias", "sql_list", "sql_iso", "quote_value"]
 
 from jx_base import Column
 from mo_sqlite.database import Sqlite
@@ -19,3 +19,4 @@ from mo_sqlite.models import *
 from mo_sqlite.types import json_type_to_sqlite_type
 from mo_sql import *
 from mo_sqlite.utils import *
+from mo_sqlite.models import insert

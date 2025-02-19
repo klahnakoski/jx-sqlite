@@ -33,7 +33,7 @@ NO_VARS = set()
 json_decoder = json.JSONDecoder().decode
 
 
-class Parser(object):
+class Parser:
     def __init__(self, json, query_path, expected_vars=NO_VARS):
 
         if hasattr(json, "read"):
@@ -378,7 +378,7 @@ def needed(name, required):
     return [relative_field(r, name) if r and startswith_field(r, name) else None for r in required]
 
 
-class List_usingStream(object):
+class List_usingStream:
     """
     EXPECTING A FUNCTION
     """
