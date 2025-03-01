@@ -7,12 +7,23 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-
+import itertools
 
 import mo_dots
 import mo_math
-from jx_base import JX, jx_expression
-from jx_python.lists.aggs import is_aggs, list_aggs
+from jx_base import jx_expression
+from jx_base.expressions import FALSE, TRUE
+from jx_base.expressions.query_op import _normalize_sort
+from jx_base.expressions.select_op import _normalize_selects
+from jx_base.language import value_compare
+from jx_base.models.container import Container
+from jx_base.utils import enlist
+from jx_python import expressions as _expressions, flat_list, group_by
+from jx_python.containers.cube import Cube
+from jx_python.expressions import jx_expression_to_function as get
+from jx_python.flat_list import PartFlatList
+from jx_python.streams.expression_compiler import compile_expression
+from jx_python.utils import wrap_function as _wrap_function
 from mo_collections.index import Index
 from mo_collections.unique_index import UniqueIndex
 from mo_dots import (
@@ -30,31 +41,13 @@ from mo_dots import (
     to_data,
     dict_to_data,
     list_to_data,
-    from_data, is_missing,
-)
+    from_data, )
 from mo_dots import _getdefault
 from mo_dots.objects import DataObject
-from mo_kwargs import override
-from mo_math import MIN, UNION
-
-from jx_base.expressions import FALSE, TRUE
-from jx_base.expressions import QueryOp
-from jx_base.expressions.query_op import _normalize_sort
-from jx_base.expressions.select_op import _normalize_selects
-from jx_base.language import is_op, value_compare
-from jx_base.models.container import Container
-from jx_base.utils import enlist
-from jx_python import expressions as _expressions, flat_list, group_by
-from jx_python.containers.cube import Cube
-from jx_python.containers.list import ListContainer
-from jx_python.convert import list2table, list2cube
-from jx_python.cubes.aggs import cube_aggs
-from jx_python.expressions import jx_expression_to_function as get
-from jx_python.flat_list import PartFlatList
-from jx_python.streams.expression_compiler import compile_expression
-from jx_python.utils import wrap_function as _wrap_function
 from mo_future import is_text, sort_using_cmp
+from mo_kwargs import override
 from mo_logs import Log
+from mo_math import MIN, UNION
 
 # A COLLECTION OF DATABASE OPERATORS (RELATIONAL ALGEBRA OPERATORS)
 # JSON QUERY EXPRESSION DOCUMENTATION: https://github.com/klahnakoski/jx/tree/master/docs
@@ -77,61 +70,6 @@ def run(frum=None, query=None):
     del query['query']
     query = jx_expression(query)
     return query()
-
-
-    container = to_data(query)["from"]
-    if is_missing(container):
-        from jx_python.containers.list import DUAL
-        query_op = QueryOp.wrap(query, container=DUAL, lang=JX)
-        return DUAL.query(query_op)
-
-    if isinstance(container, Container):
-        query_op = QueryOp.wrap(query, container=container, lang=JX)
-    elif isinstance(container, Cube):
-        query_op = QueryOp.wrap(query, container=container, lang=JX)
-        if is_aggs(query_op):
-            return cube_aggs(container, query_op)
-    elif is_op(container, QueryOp):
-        container = run(container)
-        query_op = QueryOp.wrap(query, container=container, lang=JX)
-    elif is_many(container):
-        container = ListContainer(name=None, data=container)
-        query_op = QueryOp.wrap(query, container=container, lang=JX)
-    elif is_data(container):
-        container = run(container)
-        query_op = QueryOp.wrap(query, container=container, lang=JX)
-    else:
-        Log.error("Do not know how to handle {type}", type=container.__class__.__name__)
-
-    if is_aggs(query_op):
-        container = list_aggs(container, query_op)
-    else:  # SETOP
-        if query_op.where is not TRUE:
-            container = filter(container, query_op.where)
-
-        if query_op.sort:
-            container = sort(container, query_op.sort, already_normalized=True)
-
-        if query_op.select:
-            container = select(container, query_op.select)
-
-    if query_op.window:
-        if isinstance(container, Cube):
-            container = list(container.values())
-
-        for param in query_op.window:
-            window(container, param)
-
-    # AT THIS POINT frum IS IN LIST FORMAT, NOW PACKAGE RESULT
-    if query_op.format == "cube":
-        container = list2cube(container)
-    elif query_op.format == "table":
-        container = list2table(container)
-        container.meta.format = "table"
-    else:
-        container = dict_to_data({"meta": {"format": "list"}, "data": container})
-
-    return container
 
 
 groupby = group_by.groupby
@@ -976,44 +914,40 @@ def wrap_function(func):
     return _wrap_function(func)
 
 
-def window(data, param):
+def group(frum, func):
+    yield from itertools.groupby(sorted(frum, key=func), func)
+
+
+@override(kwargs="query")
+def window(frum, *, name=None, edges=None, where=None, sort=None, value=None, aggregate=None, range=None, query=None):
     """
     MAYBE WE CAN DO THIS WITH NUMPY (no, the edges of windows are not graceful with numpy)
     data - list of records
     """
-    name = param.name  # column to assign window function result
-    edges = param.edges  # columns to gourp by
-    where = param.where  # DO NOT CONSIDER THESE VALUES
-    sortColumns = param.sort  # columns to sort by
-    calc_value = get(param.value)  # function that takes a record and returns a value (for aggregation)
-    aggregate = param.aggregate  # WindowFunction to apply
-    _range = param.range  # of form {"min":-10, "max":0} to specify the size and relative position of window
-
-    data = filter(data, where)
+    frum = filter(frum, where)
 
     if not aggregate and not edges:
-        if sortColumns:
-            data = sort(data, sortColumns, already_normalized=True)
+        if sort:
+            frum = sort(frum, sort, already_normalized=True)
         # SIMPLE CALCULATED VALUE
-        for rownum, r in enumerate(data):
+        for rownum, r in enumerate(frum):
             try:
-                r[name] = calc_value(r, rownum, data)
+                r[name] = value(r, rownum, frum)
             except Exception as e:
                 raise e
         return
 
-    try:
-        edge_values = [e.value.var for e in edges]
-    except Exception as e:
-        raise Log.error("can only support simple variable edges", cause=e)
+    for g, rows in group(frum, jx_expression(edges)):
+        sorted_rows = sort(rows, sort, already_normalized=True)
+
 
     if not aggregate or aggregate == "none":
-        for _, values in groupby(data, edge_values):
+        for _, values in groupby(frum, edge_values):
             if not values:
                 continue  # CAN DO NOTHING WITH THIS ZERO-SAMPLE
 
-            if sortColumns:
-                sequence = sort(values, sortColumns, already_normalized=True)
+            if sort:
+                sequence = sort(values, sort, already_normalized=True)
             else:
                 sequence = values
 
@@ -1021,7 +955,7 @@ def window(data, param):
                 r[name] = calc_value(r, rownum, sequence)
         return
 
-    for keys, values in groupby(data, edge_values):
+    for keys, values in groupby(frum, edge_values):
         if not values:
             continue  # CAN DO NOTHING WITH THIS ZERO-SAMPLE
 
@@ -1044,7 +978,7 @@ def window(data, param):
             total.add(sequence[i + head].__temp__)
             total.sub(sequence[i + tail].__temp__)
 
-    for r in data:
+    for r in frum:
         r["__temp__"] = None  # CLEANUP
 
 

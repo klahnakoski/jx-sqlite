@@ -30,8 +30,8 @@ from mo_math import MAX, OR
 from jx_base.expressions.edges_op import _normalize_edge
 from jx_base.models.container import Container
 from jx_base.utils import enlist
-from jx_python.cubes.aggs import cube_aggs
-from jx_python.lists.aggs import is_aggs
+from jx_python.containers.cubes.aggs import cube_aggs
+from jx_python.containers.lists.aggs import is_aggs
 
 
 class Cube(Container):
@@ -131,7 +131,7 @@ class Cube(Container):
         columns = dot.dict_to_data({s.name: s for s in self.select + self.edges})
 
         # DEFER TO ListContainer
-        from jx_python.containers.list import ListContainer
+        from jx_python.containers.list_container import ListContainer
 
         frum = ListContainer(name="", data=frum.values(), schema=columns)
         return frum.query(q)

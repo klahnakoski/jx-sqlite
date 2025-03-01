@@ -28,3 +28,7 @@ class WindowOp(Expression):
             query['select'] = {'name': name, 'value': value}
             frum = WindowOp(frum, jx_expression({"from": frum, **query}))
         return frum
+
+    def __call__(self, row=None, rownum=None, rows=None):
+        data = self.frum(row, rownum, rows)
+        jx.window(data, self.query)
