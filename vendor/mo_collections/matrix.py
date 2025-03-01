@@ -14,7 +14,7 @@ from mo_future import text, transpose, xrange
 from mo_logs import Log
 
 
-class Matrix(object):
+class Matrix:
     """
     SIMPLE n-DIMENSIONAL ARRAY OF OBJECTS
     """

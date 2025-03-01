@@ -13,7 +13,7 @@ from mo_future import is_text
 from mo_logs import Log
 
 
-class Facts(object):
+class Facts:
     """
     REPRESENT A HIERARCHICAL DATASTORE: MULTIPLE TABLES IN A DATABASE ALONG
     WITH THE RELATIONS THAT CONNECT THEM ALL, BUT LIMITED TO A TREE

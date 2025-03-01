@@ -34,7 +34,7 @@ logger.static_template = False
 NEW_DB_EACH_RUN = False
 
 
-class SQLiteUtils(object):
+class SQLiteUtils:
     @override
     def __init__(self, kwargs=None):
         self.container = None

@@ -239,7 +239,7 @@ class StrictSnowflake(Snowflake):
         return ColumnLocator(self._columns)
 
 
-class ColumnLocator(object):
+class ColumnLocator:
     def __init__(self, columns):
         self.columns = columns
 

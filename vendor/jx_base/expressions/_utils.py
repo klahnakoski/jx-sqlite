@@ -18,7 +18,7 @@ from mo_future import get_function_name, is_text, utf8_json_encoder
 from mo_imports import expect, export
 from mo_json import BOOLEAN, INTEGER, IS_NULL, NUMBER, STRING, scrub
 from mo_json.types import union_type
-from mo_logs import Except, Log
+from mo_logs import Except, logger
 from mo_math import is_number
 from mo_times import Date
 
@@ -87,14 +87,14 @@ def _jx_expression(json, lang):
             for op in precedence:
                 rhs = json.get(op)
                 if rhs:
-                    sub_json = {o: v for o, v in json.items() if o != op}
+                    lhs = {o: v for o, v in json.items() if o != op}
                     full_op = operators.get(op)
                     class_ = lang.ops[full_op.get_id()]
                     if not class_:
                         # THIS LANGUAGE DOES NOT SUPPORT THIS OPERATOR, GOTO BASE LANGUAGE AND GET THE MACRO
                         class_ = JX.ops[full_op.get_id()]
 
-                    return class_.define({op: [sub_json] + enlist(rhs)})
+                    return class_.define({op: [lhs, *enlist(rhs)]})
 
         for op, term in items:
             # ONE OF THESE IS THE OPERATOR
@@ -107,10 +107,10 @@ def _jx_expression(json, lang):
 
                 return class_.define(json)
         else:
-            raise Log.error("{instruction|json} is not known", instruction=json)
+            logger.error("{instruction|json} is not known", instruction=json)
 
     except Exception as cause:
-        Log.error("programmer error expr = {value|quote}", value=json, cause=cause)
+        logger.error("programmer error expr = {value|quote}", value=json, cause=cause)
 
 
 _json_encoder = utf8_json_encoder
@@ -122,7 +122,7 @@ def value2json(value):
         return str(_json_encoder(scrubbed))
     except Exception as e:
         e = Except.wrap(e)
-        Log.warning("problem serializing {type}", type=str(repr(value)), cause=e)
+        logger.warning("problem serializing {type}", type=str(repr(value)), cause=e)
         raise e
 
 
@@ -164,13 +164,15 @@ precedence = [
     "default",
     "limit",
     "skip",
+    "sort",
+    "window",
     "percentile",
     "select",
     # "having",
     "group",
     "filter",
     "where",
-    # "edges",
+    "edges",
     "from",
     "value",
     "literal",

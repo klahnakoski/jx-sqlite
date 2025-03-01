@@ -21,6 +21,7 @@ from jx_base.expressions.count_op import CountOp
 from jx_base.expressions.date_op import DateOp
 from jx_base.expressions.default_op import DefaultOp
 from jx_base.expressions.div_op import DivOp
+from jx_base.expressions.edges_op import EdgesOp
 from jx_base.expressions.eq_op import EqOp
 from jx_base.expressions.es_script import EsScript
 from jx_base.expressions.es_select_op import ESSelectOp
@@ -82,6 +83,7 @@ from jx_base.expressions.right_op import RightOp
 from jx_base.expressions.rows_op import RowsOp
 from jx_base.expressions.script_op import ScriptOp
 from jx_base.expressions.select_op import SelectOp, SelectOne
+from jx_base.expressions.sort_op import SortOp
 from jx_base.expressions.split_op import SplitOp
 from jx_base.expressions.sql_alias_op import SqlAliasOp
 from jx_base.expressions.sql_and_op import SqlAndOp
@@ -135,6 +137,7 @@ from jx_base.expressions.unix_op import UnixOp
 from jx_base.expressions.value_op import ValueOp
 from jx_base.expressions.variable import Variable, IDENTITY
 from jx_base.expressions.when_op import WhenOp
+from jx_base.expressions.window_op import WindowOp
 from mo_dots import set_default
 
 from mo_json import logger
@@ -163,6 +166,7 @@ set_default(
         "default": DefaultOp,
         "div": DivOp,
         "divide": DivOp,
+        "edges": EdgesOp,
         "eq": EqOp,
         "exists": ExistsOp,
         "exp": ExpOp,
@@ -225,6 +229,8 @@ set_default(
         "script": ScriptOp,
         "select": SelectOp,
         "skip": OffsetOp,
+        "sort": SortOp,
+        "orderby": SortOp,
         "split": SplitOp,
         "sql.and": SqlAndOp,
         "sql.alias": SqlAliasOp,
@@ -254,6 +260,7 @@ set_default(
         "value": ValueOp,
         "when": WhenOp,
         "where": FilterOp,
+        "window": WindowOp,
     },
 )
 

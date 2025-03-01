@@ -26,7 +26,7 @@ from mo_logs.exceptions import get_stacktrace
 from mo_math import randoms
 
 
-class File(object):
+class File:
     """
     ASSUMES ALL FILE CONTENT IS UTF8 ENCODED STRINGS
     """

@@ -33,7 +33,7 @@ from mo_future import transpose
 DEFAULT_QUERY_LIMIT = 20
 
 
-class Dimension(object):
+class Dimension:
     __slots__ = [
         "name",
         "full_name",

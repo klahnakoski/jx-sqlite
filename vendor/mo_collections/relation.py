@@ -12,7 +12,7 @@
 from mo_logs import Log
 
 
-class Relation_usingList(object):
+class Relation_usingList:
     def __init__(self):
         self.all = set()
 
@@ -63,7 +63,7 @@ class Relation_usingList(object):
         return [v for k, v in self.all if k == key]
 
 
-class Relation(object):
+class Relation:
     def __init__(self):
         self.map = dict()
 

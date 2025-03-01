@@ -42,6 +42,10 @@ __all__ = [
     "JX_INTERVAL",
     "JX_ARRAY",
     "JX_TEXT", "INTEGER", "JX_INTEGER", "python_type_to_jx_type", "jx_type_to_json_type",
+    "value_to_jx_type",
+    "EXISTS",
+    "python_type_to_json_type",
+    "ARRAY_KEY",
 ]
 
 logger = delay_import("mo_logs.logger")

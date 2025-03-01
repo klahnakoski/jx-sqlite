@@ -220,7 +220,7 @@ utf8_json_encoder = (
 function_type = (lambda: None).__class__
 
 
-class decorate(object):
+class decorate:
     def __init__(self, func):
         self.func = func
 

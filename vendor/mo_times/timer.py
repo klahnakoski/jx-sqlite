@@ -19,7 +19,7 @@ logger = delay_import("mo_logs.logger")
 START = time()
 
 
-class Timer(object):
+class Timer:
     """
     USAGE:
     with Timer("doing hard time"):

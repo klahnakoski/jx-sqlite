@@ -136,7 +136,7 @@ class TestExpressions(FuzzyTestCase):
             row.multi = None
 
 
-class S(object):
+class S:
     def values(self, name, exclude=None):
         return []
 

@@ -178,7 +178,7 @@ class TestMetadata(BaseTestCase):
         self.utils.send_queries(test)
 
     def test_assign(self):
-        class TestClass(object):
+        class TestClass:
             def __init__(self, value):
                 self.value=value
 

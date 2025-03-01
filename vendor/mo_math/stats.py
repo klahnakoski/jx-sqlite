@@ -207,7 +207,7 @@ class Stats(Data):
         return sqrt(self.variance)
 
 
-class ZeroMoment(object):
+class ZeroMoment:
     """
     ZERO-CENTERED MOMENTS
     """

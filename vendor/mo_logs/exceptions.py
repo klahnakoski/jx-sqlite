@@ -9,7 +9,7 @@
 #
 import sys
 
-from mo_dots import Null, is_data, listwrap, unwraplist, to_data, dict_to_data
+from mo_dots import Null, is_data, listwrap, unwraplist, to_data, dict_to_data, Data
 from mo_future import is_text, utcnow
 import traceback
 
@@ -27,7 +27,7 @@ TOO_DEEP = 50  # MAXIMUM DEPTH OF CAUSAL CHAIN
 SHORT_STACKS = sys.version_info >= (3, 12)
 
 
-class LogItem(object):
+class LogItem:
     def __init__(self, severity, template, params, timestamp):
         self.severity = severity
         self.template = template
@@ -183,7 +183,7 @@ def format_trace(tbs, start=0):
     return "".join(expand_template('File ""{file}"", line {line}, in {method}\n', d) for d in tbs[start::])
 
 
-class Suppress(object):
+class Suppress:
     """
     IGNORE EXCEPTIONS
     """
@@ -202,7 +202,7 @@ class Suppress(object):
 suppress_exception = Suppress(Exception)
 
 
-class Explanation(object):
+class Explanation:
     """
     EXPLAIN THE ACTION BEING TAKEN
     IF THERE IS AN EXCEPTION WRAP IT WITH THE EXPLANATION
@@ -231,7 +231,7 @@ class Explanation(object):
             return True
 
 
-class WarnOnException(object):
+class WarnOnException:
     """
     EXPLAIN THE ACTION BEING TAKEN
     IF THERE IS AN EXCEPTION WRAP ISSUE A WARNING
@@ -262,7 +262,7 @@ class WarnOnException(object):
             return True
 
 
-class AssertNoException(object):
+class AssertNoException:
     """
     EXPECT NO EXCEPTION IN THIS BLOCK
     """

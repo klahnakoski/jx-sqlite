@@ -78,7 +78,7 @@ else:
 IN_DEBUGGER = any(debugger in line.filename for line in traceback.extract_stack() for debugger in KNOWN_DEBUGGERS)
 
 
-class BaseThread(object):
+class BaseThread:
     __slots__ = [
         "_ident",
         "threading_thread",
@@ -499,7 +499,7 @@ class Thread(BaseThread):
         return f"Thread({self.name})"
 
 
-class RegisterThread(object):
+class RegisterThread:
     """
     A context manager to handle threads spawned by other libs
     This will ensure the thread has unregistered, or

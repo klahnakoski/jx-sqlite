@@ -16,7 +16,7 @@ from mo_json.typed_encoder import untype_path
 from mo_logs import Log
 
 
-class Schema(object):
+class Schema:
     """
     A Schema MAPS COLUMN NAMES OF A SINGLE TABLE TO COLUMN INSTANCES THAT MATCH
     """

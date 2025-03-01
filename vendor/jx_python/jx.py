@@ -11,6 +11,8 @@
 
 import mo_dots
 import mo_math
+from jx_base import JX, jx_expression
+from jx_python.lists.aggs import is_aggs, list_aggs
 from mo_collections.index import Index
 from mo_collections.unique_index import UniqueIndex
 from mo_dots import (
@@ -28,10 +30,11 @@ from mo_dots import (
     to_data,
     dict_to_data,
     list_to_data,
-    from_data,
+    from_data, is_missing,
 )
 from mo_dots import _getdefault
 from mo_dots.objects import DataObject
+from mo_kwargs import override
 from mo_math import MIN, UNION
 
 from jx_base.expressions import FALSE, TRUE
@@ -65,34 +68,38 @@ _merge_type = None
 _ = _expressions
 
 
-def run(query, container=Null):
+@override(kwargs="query")
+def run(frum=None, query=None):
     """
     THIS FUNCTION IS SIMPLY SWITCHING BASED ON THE query["from"] CONTAINER,
     BUT IT IS ALSO PROCESSING A list CONTAINER; SEPARATE TO A ListContainer
     """
-    if container == None:
-        container = to_data(query)["from"]
-        query_op = QueryOp.wrap(query, container=container, namespace=container.schema)
-    else:
-        query_op = QueryOp.wrap(query, container=container, namespace=container.namespace)
+    del query['query']
+    query = jx_expression(query)
+    return query()
 
-    if container == None:
+
+    container = to_data(query)["from"]
+    if is_missing(container):
         from jx_python.containers.list import DUAL
-
+        query_op = QueryOp.wrap(query, container=DUAL, lang=JX)
         return DUAL.query(query_op)
-    elif isinstance(container, Container):
-        return container.query(query_op)
-    elif is_many(container):
-        container = ListContainer(name=None, data=list(container))
+
+    if isinstance(container, Container):
+        query_op = QueryOp.wrap(query, container=container, lang=JX)
     elif isinstance(container, Cube):
+        query_op = QueryOp.wrap(query, container=container, lang=JX)
         if is_aggs(query_op):
             return cube_aggs(container, query_op)
     elif is_op(container, QueryOp):
         container = run(container)
+        query_op = QueryOp.wrap(query, container=container, lang=JX)
+    elif is_many(container):
+        container = ListContainer(name=None, data=container)
+        query_op = QueryOp.wrap(query, container=container, lang=JX)
     elif is_data(container):
-        query = container
-        container = query["from"]
-        container = run(QueryOp.wrap(query, container, container.namespace), container)
+        container = run(container)
+        query_op = QueryOp.wrap(query, container=container, lang=JX)
     else:
         Log.error("Do not know how to handle {type}", type=container.__class__.__name__)
 
@@ -140,8 +147,8 @@ def index(data, keys=None):
             # QUICK PATH
             names = list(data.data.keys())
             for d in (
-                set_default(mo_dots.zip(names, r), {keys[0]: p})
-                for r, p in zip(zip(*data.data.values()), data.edges[0].domain.partitions.value)
+                    set_default(mo_dots.zip(names, r), {keys[0]: p})
+                    for r, p in zip(zip(*data.data.values()), data.edges[0].domain.partitions.value)
             ):
                 o.add(d)
             return o
@@ -280,7 +287,7 @@ def _tuple_deep(v, field, depth, record):
     if hasattr(field.value, "__call__"):
         return 0, None, record + (field.value(v),)
 
-    for i, f in enumerate(field.value[depth : len(field.value) - 1 :]):
+    for i, f in enumerate(field.value[depth: len(field.value) - 1:]):
         v = v.get(f)
         if is_list(v):
             return depth + i + 1, v, record
@@ -380,7 +387,7 @@ def _select_deep(v, field, depth, record):
             record[field.name] = None
         return 0, None
 
-    for i, f in enumerate(field.value[depth : len(field.value) - 1 :]):
+    for i, f in enumerate(field.value[depth: len(field.value) - 1:]):
         v = v.get(f)
         if v is None:
             return 0, None
@@ -421,7 +428,7 @@ def _select_deep_meta(field, depth):
 
             return assign
 
-    prefix = field.value[depth : len(field.value) - 1 :]
+    prefix = field.value[depth: len(field.value) - 1:]
     if prefix:
 
         def assign(source, destination):
@@ -720,7 +727,7 @@ def drill_filter(esfilter, data):
                     primary_column[depth + i] = c
                     primary_branch[depth + i] = d
 
-                return c, join_field(col[i + 1 :])
+                return c, join_field(col[i + 1:])
             else:
                 if len(primary_column) <= depth + i:
                     primary_nested.append(False)

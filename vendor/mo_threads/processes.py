@@ -36,7 +36,7 @@ class Status:
     last_read: float
 
 
-class Process(object):
+class Process:
     def __init__(
         self,
         name,

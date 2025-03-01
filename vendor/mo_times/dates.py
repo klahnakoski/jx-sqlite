@@ -35,7 +35,7 @@ except Exception:
     pass
 
 
-class Date(object):
+class Date:
     __slots__ = ["unix"]
 
     MIN = None
@@ -72,7 +72,7 @@ class Date(object):
         return True
 
     def __float__(self):
-        return self.unix
+        return float(self.unix)
 
     def __int__(self):
         return int(self.unix)

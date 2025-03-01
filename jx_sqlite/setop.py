@@ -68,7 +68,7 @@ from mo_times import Date
 
 
 @dataclass
-class DocumentDetails(object):
+class DocumentDetails:
     sub_table: str
     alias: str
     id_coord: int

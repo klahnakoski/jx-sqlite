@@ -102,7 +102,7 @@ class StructuredLogger_usingSES(StructuredLogger):
             self.next_send = Date.now() + self.settings.average_interval * (2 * randoms.float())
 
 
-class Emailer(object):
+class Emailer:
     def __init__(self, settings):
         self.resource = connect_to_region(
             settings.region,

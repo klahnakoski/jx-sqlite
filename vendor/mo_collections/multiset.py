@@ -9,7 +9,7 @@
 #
 
 
-class Multiset(object):
+class Multiset:
     """
     Multiset IS ONE MEMBER IN A FAMILY OF USEFUL CONTAINERS
 

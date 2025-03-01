@@ -27,7 +27,7 @@ from mo_imports import export
 from mo_logs import Log
 from mo_math import MAX, OR
 
-from jx_base.expressions.query_op import _normalize_edge
+from jx_base.expressions.edges_op import _normalize_edge
 from jx_base.models.container import Container
 from jx_base.utils import enlist
 from jx_python.cubes.aggs import cube_aggs

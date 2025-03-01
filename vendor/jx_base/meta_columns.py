@@ -9,15 +9,12 @@
 #
 
 
-import datetime
 from dataclasses import dataclass
+from datetime import datetime
 from typing import List, Optional
 
-from jx_base.expressions.variable import QueryOp
-from mo_dots.datas import register_data
-
 from jx_base.expressions._utils import JX, _jx_expression as jx_expression
-from jx_base.models.namespace import Namespace
+from jx_base.expressions.variable import QueryOp
 from jx_base.models.schema import Schema
 from jx_base.models.snowflake import Snowflake
 from mo_collections import UniqueIndex
@@ -35,7 +32,8 @@ from mo_dots import (
     join_field,
     split_field,
 )
-from mo_future import Mapping, first
+from mo_dots.datas import register_data
+from mo_future import Mapping
 from mo_future import binary_type, items, long, none_type, text
 from mo_imports import export
 from mo_json import (
@@ -104,7 +102,7 @@ column_constraint = {"and": [
         {"first": "nested_path"},
         {"literal": "testdata"},
     ]}},  # USED BY THE TEST GENERATOR.  IF THIS EXISTS IN A CONTAINER THEN IT FAILED
-    {"ne": [{"last": "nested_path"}, {"literal": "."}]},  # NESTED PATHS MUST BE REAL TABLE NAMES INSIDE Namespace
+    # {"ne": [{"last": "nested_path"}, {"literal": "."}]},  # NESTED PATHS MUST BE REAL TABLE NAMES INSIDE Namespace
     {
         "when": {"eq": [{"literal": f".{ARRAY_KEY}"}, {"right": {"es_column": 4}}]},
         "then": {"or": [
@@ -540,5 +538,6 @@ def query_metadata(container, query):
 
 
 export("jx_base.expressions.query_op", Column)
-export("jx_python.containers.list", Column)
-export("jx_python.containers.list", get_schema_from_list)
+export("jx_base.expressions.edges_op", Column)
+
+export("jx_base.expressions.literal", get_schema_from_list)

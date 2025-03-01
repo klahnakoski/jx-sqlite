@@ -11,29 +11,11 @@
 
 import itertools
 
-from mo_collections import UniqueIndex
-from mo_dots import (
-    Data,
-    Null,
-    is_data,
-    is_list,
-    from_data,
-    to_data,
-    coalesce,
-    dict_to_data,
-    last,
-    startswith_field,
-)
-from mo_future import first, sort_using_key
-from mo_imports import export, expect
-from mo_logs import Log
-from mo_threads import Lock
-
 from jx_base.expressions import TRUE
 from jx_base.expressions._utils import jx_expression
 from jx_base.expressions.variable import is_variable
 from jx_base.language import is_expression
-from jx_base.meta_columns import get_schema_from_jx_type
+from jx_base.meta_columns import get_schema_from_jx_type, get_schema_from_list
 from jx_base.models.container import Container
 from jx_base.models.namespace import Namespace
 from jx_base.models.schema import Schema
@@ -43,9 +25,25 @@ from jx_base.utils import delist, enlist
 from jx_python.convert import list2cube, list2table
 from jx_python.expressions import jx_expression_to_function
 from jx_python.lists.aggs import is_aggs, list_aggs
+from mo_collections import UniqueIndex
+from mo_dots import (
+    Data,
+    Null,
+    is_data,
+    is_list,
+    from_data,
+    to_data,
+    dict_to_data,
+    last,
+    startswith_field, is_missing, coalesce,
+)
+from mo_future import first, sort_using_key
+from mo_imports import export, expect
 from mo_json import JX_IS_NULL, value_to_jx_type
+from mo_logs import Log, logger
+from mo_threads import Lock
 
-jx, get_schema_from_list, Column = expect("jx", "get_schema_from_list", "Column")
+jx = expect("jx")
 
 
 class ListContainer(Container, Namespace, Table):

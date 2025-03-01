@@ -30,7 +30,7 @@ type2container = Data()
 config = Data()  # config.default IS EXPECTED TO BE SET BEFORE CALLS ARE MADE
 
 
-class Container(object):
+class Container:
     """
     CONTAINERS HOLD MULTIPLE INDICES AND CAN HANDLE
     GENERAL JSON QUERY EXPRESSIONS ON ITS CONTENTS

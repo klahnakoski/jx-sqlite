@@ -226,11 +226,11 @@ def warning(
         cause = default_params
         default_params = {}
 
-    params = to_data(dict(default_params, **more_params))
+    params = {**default_params, **more_params}
     cause = unwraplist([Except.wrap(c, stack_depth=2) for c in listwrap(cause or exc_info)])
     trace = exceptions.get_stacktrace(stack_depth + 1)
 
-    e = Except(severity=log_severity, template=template, params=params, cause=cause, trace=trace,)
+    e = Except(severity=log_severity, template=template, params=params, cause=cause, trace=trace)
     _annotate(
         e, stack_depth + 1, globals()["static_template"] if static_template is None else static_template,
     )
@@ -268,11 +268,11 @@ def error(
         cause = default_params
         default_params = {}
 
-    params = to_data(dict(default_params, **more_params))
+    params = dict(default_params, **more_params)
     cause = unwraplist([Except.wrap(c, stack_depth=2) for c in listwrap(cause or exc_info)])
     trace = exceptions.get_stacktrace(stack_depth + 1)
 
-    e = Except(severity=exceptions.ERROR, template=template, params=params, cause=cause, trace=trace,)
+    e = Except(severity=exceptions.ERROR, template=template, params=params, cause=cause, trace=trace)
     raise_from_none(e)
 
 

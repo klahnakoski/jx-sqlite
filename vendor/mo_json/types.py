@@ -381,9 +381,9 @@ for k, v in items(_python_type_to_jx_type):
 
 def value_to_jx_type(value):
     if is_many(value):
-        return _primitive(ARRAY_KEY, union_type(*(value_to_json_type(v) for v in value)))
+        return _primitive(ARRAY_KEY, union_type(*(value_to_jx_type(v) for v in value)))
     elif is_data(value):
-        return JxType(**{k: value_to_json_type(v) for k, v in value.items()})
+        return JxType(**{k: value_to_jx_type(v) for k, v in value.items()})
     else:
         return _python_type_to_jx_type[value.__class__]
 

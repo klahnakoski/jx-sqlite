@@ -21,7 +21,7 @@ from mo_future import is_text, text, unichr, urlparse, is_binary
 from mo_logs import Log
 
 
-class URL(object):
+class URL:
     """
     JUST LIKE urllib.parse() [1], BUT CAN HANDLE JSON query PARAMETERS
 

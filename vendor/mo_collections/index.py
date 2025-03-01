@@ -13,7 +13,7 @@ from mo_dots import get_attr, is_data, is_sequence, tuplewrap, from_data, to_dat
 from mo_logs import Log
 
 
-class Index(object):
+class Index:
     """
     USING DATABASE TERMINOLOGY, THIS IS A NON-UNIQUE INDEX
     KEYS CAN BE DOT-DELIMITED PATHS TO DEEP INNER OBJECTS

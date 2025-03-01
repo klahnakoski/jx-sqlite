@@ -70,7 +70,7 @@ def expect(*names):
         return output
 
 
-class Expecting(object):
+class Expecting:
     """
     CLASS TO USE AS A MODULE EXPORT PLACEHOLDER UNTIL AN ACTUAL VALUE IS INSERTED
     """
@@ -220,7 +220,7 @@ def delay_import(module):
     return DelayedImport(caller_name, module)
 
 
-class DelayedImport(object):
+class DelayedImport:
     __slots__ = ["caller", "module"]
 
     def __init__(self, caller, module):
@@ -289,7 +289,7 @@ class DelayedImport(object):
         return setattr(m, item, value)
 
 
-class DelayedValue(object):
+class DelayedValue:
     """
     can be used on module-level variables to delay creation
     """

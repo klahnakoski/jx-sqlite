@@ -23,7 +23,7 @@ from mo_times.dates import Date
 from mo_times.durations import DAY
 
 
-class cache(object):
+class cache:
 
     """
     :param func: ASSUME FIRST PARAMETER OF `func` IS `self`
@@ -52,7 +52,7 @@ class cache(object):
         return wrap_function(self, func)
 
 
-class _SimpleCache(object):
+class _SimpleCache:
     def __init__(self):
         self.timeout = Null
         self.locker = _FakeLock()

@@ -92,7 +92,6 @@ class Expression(BaseExpression):
                 else:
                     return class_(_jx_expression(term, lang), **clauses)
         except Exception as cause:
-            Log.warning("programmer error expr = {value|quote}", value=expr, cause=cause)
             Log.error("programmer error expr = {value|quote}", value=expr, cause=cause)
 
     def __data__(self):
@@ -191,7 +190,7 @@ class Expression(BaseExpression):
         if item == "__json__":
             raise AttributeError()
         Log.error(
-            """{{type}} object has no attribute {{item}}, did you .register_ops() for {{type}}?""",
+            """{type} object has no attribute {item}, did you .register_ops() for {type}?""",
             type=self.__class__.__name__,
             item=item,
         )

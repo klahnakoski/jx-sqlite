@@ -49,7 +49,7 @@ def jx_expression_to_function(expr):
     return JXExpression(func, expr)
 
 
-class JXExpression(object):
+class JXExpression:
     def __init__(self, func, expr):
         self.func = func
         self.expr = expr

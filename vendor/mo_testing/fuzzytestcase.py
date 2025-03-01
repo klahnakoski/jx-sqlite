@@ -71,7 +71,7 @@ class FuzzyTestCase(TestCase):
             function(*args, **kwargs)
 
 
-class RaiseContext(object):
+class RaiseContext:
     def __init__(self, testcase, problem=Exception):
         self.testcase = testcase
         self.problem = problem
@@ -352,7 +352,7 @@ def add_error_reporting(suite):
     return suite
 
 
-class StructuredLogger_usingList(object):
+class StructuredLogger_usingList:
     def __init__(self):
         self.lines = []
 

@@ -42,6 +42,10 @@ class FromOp(Expression):
 
         return SqlLeftJoinsOp(_jx_expression(root, cls.lang), *joins)
 
+    @property
+    def schema(self):
+        return self.frum.schema
+
     def apply(self, container: Container):
         return container.query(self.frum)
 

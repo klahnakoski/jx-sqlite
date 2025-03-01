@@ -20,7 +20,7 @@ Date = delay_import("mo_times.Date")
 logger = delay_import("mo_logs.logger")
 
 
-class Duration(object):
+class Duration:
     __slots__ = ["_milli", "month"]
 
     def __new__(cls, value=None, **kwargs):

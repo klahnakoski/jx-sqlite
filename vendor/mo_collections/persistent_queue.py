@@ -21,7 +21,7 @@ from mo_threads import Lock, Signal, THREAD_STOP
 DEBUG = False
 
 
-class PersistentQueue(object):
+class PersistentQueue:
     """
     THREAD-SAFE, PERSISTENT QUEUE
 
