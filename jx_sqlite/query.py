@@ -103,16 +103,16 @@ def query(self, query=None):
     :param query:  JSON Query Expression, SET `format="container"` TO MAKE NEW TABLE OF RESULT
     :return:
     """
-    if not query:
-        query = {}
+    query = query or {}
 
-    if not query.get("from"):
-        query["from"] = self.name
+    # SIMPLISITC INSERTION OF FACTS INTO QUERY
+    frum = query.get("from", self.name)
+    if is_text(frum):
+        if not startswith_field(frum, self.name):
+            Log.error("Expecting table, or some nested table")
+        query.frum = self
 
-    if is_text(query["from"]) and not startswith_field(query["from"], self.name):
-        Log.error("Expecting table, or some nested table")
-    normalized_query = QueryOp.wrap(query, self, SQLang)
-
+    normalized_query = QueryOp.define(query)
     if normalized_query.groupby and normalized_query.format != "cube":
         command, index_to_columns = self._groupby_op(normalized_query, self.schema)
     elif normalized_query.groupby:

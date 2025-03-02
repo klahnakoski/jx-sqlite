@@ -189,8 +189,20 @@ class Expression(BaseExpression):
     def __getattr__(self, item):
         if item == "__json__":
             raise AttributeError()
-        Log.error(
-            """{type} object has no attribute {item}, did you .register_ops() for {type}?""",
-            type=self.__class__.__name__,
-            item=item,
-        )
+
+        op = operators.get(item)
+        if not op or not hasattr(self, "precedence"):
+            Log.error(
+                """{type} object has no attribute {item}, did you .register_ops() for {type}?""",
+                type=self.__class__.__name__,
+                item=item,
+            )
+
+        if op.precedence > self.precedence:
+            # SYMBIOTIC FUNCTION
+            return getattr(self.frum, item)
+        elif self.op == item:
+            return self
+        else:
+            return None
+

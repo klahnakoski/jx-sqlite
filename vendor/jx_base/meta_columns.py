@@ -533,7 +533,7 @@ def _merge_python_type(A, B):
 
 def query_metadata(container, query):
     container = container.namespace.columns.denormalized()
-    normalized = QueryOp.wrap(query, container, JX)
+    normalized = QueryOp.wrap(query)
     return container.query(normalized)
 
 

@@ -58,9 +58,7 @@ class QueryOp(Expression):
 
     @classmethod
     def define(cls, expr):
-        query = jx_expression(expr, cls.lang)
-        expr = to_data(expr)
-        return QueryOp(frum=query, chunk_size=expr.chunk_size, destination=expr.destination, )
+        return jx_expression(expr, cls.lang)
 
     def __data__(self):
         return self.frum.__data__()
