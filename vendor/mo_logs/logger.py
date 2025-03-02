@@ -226,7 +226,7 @@ def warning(
         cause = default_params
         default_params = {}
 
-    params = {**default_params, **more_params}
+    params = to_data(dict(default_params, **more_params))
     cause = unwraplist([Except.wrap(c, stack_depth=2) for c in listwrap(cause or exc_info)])
     trace = exceptions.get_stacktrace(stack_depth + 1)
 
@@ -268,7 +268,7 @@ def error(
         cause = default_params
         default_params = {}
 
-    params = dict(default_params, **more_params)
+    params = to_data(dict(default_params, **more_params))
     cause = unwraplist([Except.wrap(c, stack_depth=2) for c in listwrap(cause or exc_info)])
     trace = exceptions.get_stacktrace(stack_depth + 1)
 

@@ -35,7 +35,7 @@ from mo_dots import (
     to_data,
     dict_to_data,
     last,
-    startswith_field, coalesce,
+    startswith_field, coalesce, register_many,
 )
 from mo_future import first, sort_using_key
 from mo_imports import export, expect
@@ -303,5 +303,6 @@ DUAL = ListContainer(
     name="dual", data=[{}], schema=Schema(["dual"], Snowflake(None, ["dual"], columns=UniqueIndex(keys=("name",))))
 )
 
+register_many(ListContainer)
 
 export("jx_base.models.container", ListContainer)
