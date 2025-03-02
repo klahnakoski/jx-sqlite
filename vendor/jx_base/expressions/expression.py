@@ -35,7 +35,7 @@ class Expression(BaseExpression):
     def __init__(self, *args):
         self.simplified = False
         # SOME BASIC VERIFICATION THAT THESE ARE REASONABLE PARAMETERS
-        bad = [t for t in args if is_not_null(t) and not is_expression(t)]
+        bad = [t for t in args if is_not_null(t) and not is_expression(t) and not isinstance(t, Container)]
         if bad:
             [t for t in args if is_not_null(t) and not is_expression(t)]
             Log.error("Expecting an expression, not {bad}", bad=bad)

@@ -7,19 +7,21 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-import itertools
+from functools import cmp_to_key
 
 import mo_dots
 import mo_math
-from jx_base import jx_expression
+from jx_base import jx_expression, Snowflake, Schema, get_schema_from_list
 from jx_base.expressions import FALSE, TRUE
-from jx_base.expressions.query_op import _normalize_sort
-from jx_base.expressions.select_op import _normalize_selects
+from jx_base.expressions.query_op import _normalize_sort, Column
+from jx_base.expressions.select_op import _normalize_selects, SelectOne
+from jx_base.expressions.sort_op import SortOne
 from jx_base.language import value_compare
 from jx_base.models.container import Container
 from jx_base.utils import enlist
 from jx_python import expressions as _expressions, flat_list, group_by
 from jx_python.containers.cube import Cube
+from jx_python.containers.list_container import ListContainer
 from jx_python.expressions import jx_expression_to_function as get
 from jx_python.flat_list import PartFlatList
 from jx_python.streams.expression_compiler import compile_expression
@@ -41,13 +43,17 @@ from mo_dots import (
     to_data,
     dict_to_data,
     list_to_data,
-    from_data, )
+    from_data,
+    concat_field,
+)
 from mo_dots import _getdefault
 from mo_dots.objects import DataObject
 from mo_future import is_text, sort_using_cmp
+from mo_json import ARRAY, array_of
 from mo_kwargs import override
 from mo_logs import Log
 from mo_math import MIN, UNION
+from mo_times import Date
 
 # A COLLECTION OF DATABASE OPERATORS (RELATIONAL ALGEBRA OPERATORS)
 # JSON QUERY EXPRESSION DOCUMENTATION: https://github.com/klahnakoski/jx/tree/master/docs
@@ -67,7 +73,7 @@ def run(frum=None, query=None):
     THIS FUNCTION IS SIMPLY SWITCHING BASED ON THE query["from"] CONTAINER,
     BUT IT IS ALSO PROCESSING A list CONTAINER; SEPARATE TO A ListContainer
     """
-    del query['query']
+    del query["query"]
     query = jx_expression(query)
     return query()
 
@@ -85,8 +91,8 @@ def index(data, keys=None):
             # QUICK PATH
             names = list(data.data.keys())
             for d in (
-                    set_default(mo_dots.zip(names, r), {keys[0]: p})
-                    for r, p in zip(zip(*data.data.values()), data.edges[0].domain.partitions.value)
+                set_default(mo_dots.zip(names, r), {keys[0]: p})
+                for r, p in zip(zip(*data.data.values()), data.edges[0].domain.partitions.value)
             ):
                 o.add(d)
             return o
@@ -225,7 +231,7 @@ def _tuple_deep(v, field, depth, record):
     if hasattr(field.value, "__call__"):
         return 0, None, record + (field.value(v),)
 
-    for i, f in enumerate(field.value[depth: len(field.value) - 1:]):
+    for i, f in enumerate(field.value[depth : len(field.value) - 1 :]):
         v = v.get(f)
         if is_list(v):
             return depth + i + 1, v, record
@@ -234,43 +240,27 @@ def _tuple_deep(v, field, depth, record):
     return 0, None, record + (v.get(f),)
 
 
-def select(data, field_name):
+def select(frum, *selects):
     """
     return list with values from field_name
     """
-    if isinstance(data, Cube):
-        return data._select(_normalize_selects(data, field_name, "list"))
 
-    if isinstance(data, PartFlatList):
-        return data.select(field_name)
+    if not isinstance(frum, Container):
+        frum = Container.create(frum)
+    if not all(isinstance(s, SelectOne) for s in selects):
+        selects = jx_expression({"from": frum, "select": selects}).terms
 
-    if isinstance(data, UniqueIndex):
-        data = data._data.values()  # THE SELECT ROUTINE REQUIRES dicts, NOT Data WHILE ITERATING
+    return _selects(frum, *selects)
 
-    if is_data(field_name):
-        field_name = to_data(field_name)
-        if field_name.value in ["*", "."]:
-            return data
 
-        if field_name.value:
-            # SIMPLIFY {"value":value} AS STRING
-            field_name = field_name.value
-
-    # SIMPLE PYTHON ITERABLE ASSUMED
-    if is_text(field_name):
-        path = split_field(field_name)
-        if len(path) == 1:
-            return FlatList([d[field_name] for d in data])
-        else:
-            output = FlatList()
-            flat_list._select1(data, path, 0, output)
-            return output
-    elif is_list(field_name):
-        keys = [_select_a_field(to_data(f)) for f in field_name]
-        return _select(Data(), from_data(data), keys, 0)
-    else:
-        keys = [_select_a_field(field_name)]
-        return _select(Data(), from_data(data), keys, 0)
+def _select(frum, *selects):
+    output = []
+    for rownum, row in enumerate(frum):
+        record = {}
+        for s in selects:
+            record[s.name] = s.value(row, rownum, frum)
+        output.append(record)
+    return ListContainer(".", data=output, schema=get_schema_from_list(".", output))
 
 
 def _select_a_field(field):
@@ -283,7 +273,7 @@ def _select_a_field(field):
         return dict_to_data({"name": field.name, "value": field.value})
 
 
-def _select(template, data, fields, depth):
+def _select_(template, data, fields, depth):
     output = FlatList()
     deep_path = []
     deep_fields = UniqueIndex(["name"])
@@ -325,7 +315,7 @@ def _select_deep(v, field, depth, record):
             record[field.name] = None
         return 0, None
 
-    for i, f in enumerate(field.value[depth: len(field.value) - 1:]):
+    for i, f in enumerate(field.value[depth : len(field.value) - 1 :]):
         v = v.get(f)
         if v is None:
             return 0, None
@@ -366,7 +356,7 @@ def _select_deep_meta(field, depth):
 
             return assign
 
-    prefix = field.value[depth: len(field.value) - 1:]
+    prefix = field.value[depth : len(field.value) - 1 :]
     if prefix:
 
         def assign(source, destination):
@@ -486,46 +476,34 @@ def _deeper_iterator(columns, nested_path, path, data):
 """
 
 
-def sort(data, fieldnames=None, already_normalized=False):
+def sort(frum, *sorts):
     """
-    :param data: THE DATA TO SORT
+    :param frum: THE DATA TO SORT
     :param fieldnames: A FIELDNAME, LIST OF FIELD NAMES
     :param already_normalized: True IF fieldnames IS SORT STRUCTURE:  {"field":field_name, "sort":direction}
     :return: A NEW LIST OF DATA, BUT SORTED
     """
+    if not isinstance(frum, Container):
+        frum = Container.create(frum)
+    if not all(isinstance(s, SortOne) for s in sorts):
+        sorts = jx_expression({"from": frum, "sort": sorts}).sorts
 
-    try:
-        if data == None:
-            return Null
+    funcs = [(f.expr, f.direction) for f in sorts]
 
-        if isinstance(fieldnames, int):
-            funcs = [(lambda t: t[fieldnames], 1)]
-        else:
-            if not fieldnames:
-                return to_data(sort_using_cmp(data, value_compare))
-            formal = fieldnames if already_normalized else _normalize_sort(fieldnames)
-            funcs = [(get(f.value), f.sort) for f in formal]
+    def comparer(left, right):
+        for func, sort_ in funcs:
+            try:
+                result = value_compare(func(left), func(right), sort_)
+                if result != 0:
+                    return result
+            except Exception as cause:
+                Log.error("problem with compare", cause)
+        return 0
 
-        def comparer(left, right):
-            for func, sort_ in funcs:
-                try:
-                    result = value_compare(func(left), func(right), sort_)
-                    if result != 0:
-                        return result
-                except Exception as cause:
-                    Log.error("problem with compare", cause)
-            return 0
-
-        if is_text(data):
-            raise Log.error("Do not know how to handle")
-        elif is_many(data):
-            output = list_to_data([d for d in sort_using_cmp((from_data(d) for d in data), cmp=comparer)])
-        else:
-            raise Log.error("Do not know how to handle")
-
-        return output
-    except Exception as e:
-        Log.error("Problem sorting\n{data}", data=data, cause=e)
+    sorted_data = list(sorted((from_data(d) for d in frum), key=cmp_to_key(comparer)))
+    return ListContainer(
+        ".", data=sorted_data, schema=frum.schema
+    )
 
 
 def count(values):
@@ -665,7 +643,7 @@ def drill_filter(esfilter, data):
                     primary_column[depth + i] = c
                     primary_branch[depth + i] = d
 
-                return c, join_field(col[i + 1:])
+                return c, join_field(col[i + 1 :])
             else:
                 if len(primary_column) <= depth + i:
                     primary_nested.append(False)
@@ -914,72 +892,94 @@ def wrap_function(func):
     return _wrap_function(func)
 
 
-def group(frum, func):
-    yield from itertools.groupby(sorted(frum, key=func), func)
+def group(frum, edges):
+    def func(row, rownum, rows):
+        return to_data({e.name: e.value(row, rownum, rows) for e in edges})
+
+    output = {}
+    for rownum, row in enumerate(frum):
+        key = func(row, rownum, frum)
+        output.setdefault(key, []).append(row)
+
+    group_schema = get_schema_from_list(".", list(output.keys()))
+
+    columns = [
+        *(
+            Column(
+                name=col,
+                es_column=concat_field("group", col.es_column),
+                es_index=col.es_index,
+                es_type=array_of("group" + col.es_type),
+                json_type=ARRAY,
+                last_updated=Date.now(),
+                nested_path=["."],
+                multi=len(output),
+                cardinality=0,
+            )
+            for col in group_schema.columns
+        ),
+        *(
+            Column(
+                name=col,
+                es_column=concat_field("rows", col.es_column),
+                es_index=col.es_index,
+                es_type=array_of("row" + array_of(col.es_type)),
+                json_type=ARRAY,
+                last_updated=Date.now(),
+                nested_path=[concat_field("rows", col.nested_path[0]), *col.nested_path],
+                multi=len(output),
+                cardinality=0,
+            )
+            for col in frum.schema.columns
+        ),
+    ]
+
+    columns = UniqueIndex(keys=("es_column",), data=columns)
+    snowflake = Snowflake(None, ["."], columns)
+    snowflake.namespace = snowflake
+    return ListContainer(
+        ".", [{"group": from_data(k), "rows": v} for k, v in output.items()], schema=Schema(["."], snowflake)
+    )
+
+
+internal_sort = sort
 
 
 @override(kwargs="query")
-def window(frum, *, name=None, edges=None, where=None, sort=None, value=None, aggregate=None, range=None, query=None):
+def window(
+    frum,
+    *,
+    window=None,
+    name=None,
+    edges=None,
+    where=None,
+    sort=None,
+    value=None,
+    aggregate=None,
+    range=None,
+    query=None
+):
     """
     MAYBE WE CAN DO THIS WITH NUMPY (no, the edges of windows are not graceful with numpy)
     data - list of records
     """
-    frum = filter(frum, where)
+    if not window:
+        # assemble parameters into window_op
+        window = jx_expression({
+            "from": Container.create(frum),
+            "window": {k: v for k, v in query.items() if k not in ["from", "window", "query"]},
+        }).window
 
-    if not aggregate and not edges:
-        if sort:
-            frum = sort(frum, sort, already_normalized=True)
-        # SIMPLE CALCULATED VALUE
-        for rownum, r in enumerate(frum):
-            try:
-                r[name] = value(r, rownum, frum)
-            except Exception as e:
-                raise e
-        return
+    frum = filter(frum, window.where)
 
-    for g, rows in group(frum, jx_expression(edges)):
-        sorted_rows = sort(rows, sort, already_normalized=True)
+    new_rows = []
+    for group_row in group(frum, window.edges):
+        rows = ListContainer(".", group_row.rows, schema=frum.schema)
+        sorted_rows = internal_sort(rows, *window.sort)
+        result = _select(sorted_rows, *window.select)
+        new_rows.extend([{**a, **b} for a, b in zip(sorted_rows, result)])
 
-
-    if not aggregate or aggregate == "none":
-        for _, values in groupby(frum, edge_values):
-            if not values:
-                continue  # CAN DO NOTHING WITH THIS ZERO-SAMPLE
-
-            if sort:
-                sequence = sort(values, sort, already_normalized=True)
-            else:
-                sequence = values
-
-            for rownum, r in enumerate(sequence):
-                r[name] = calc_value(r, rownum, sequence)
-        return
-
-    for keys, values in groupby(frum, edge_values):
-        if not values:
-            continue  # CAN DO NOTHING WITH THIS ZERO-SAMPLE
-
-        sequence = sort(values, sortColumns)
-
-        for rownum, r in enumerate(sequence):
-            r["__temp__"] = calc_value(r, rownum, sequence)
-
-        head = coalesce(_range.max, _range.stop)
-        tail = coalesce(_range.min, _range.start)
-
-        # PRELOAD total
-        total = aggregate()
-        for i in range(tail, head):
-            total.add(sequence[i].__temp__)
-
-        # WINDOW FUNCTION APPLICATION
-        for i, r in enumerate(sequence):
-            r[name] = total.end()
-            total.add(sequence[i + head].__temp__)
-            total.sub(sequence[i + tail].__temp__)
-
-    for r in frum:
-        r["__temp__"] = None  # CLEANUP
+    return ListContainer(".", new_rows)
 
 
 def intervals(_min, _max=None, size=1):

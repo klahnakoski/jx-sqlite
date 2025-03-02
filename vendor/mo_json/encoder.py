@@ -15,7 +15,7 @@ from decimal import Decimal
 from json.encoder import ESCAPE_DCT
 from math import floor
 
-from mo_dots import Data, FlatList, NullType, SLOT, is_data, is_list, from_data
+from mo_dots import Data, FlatList, NullType, SLOT, is_data, is_list, from_data, exists
 from mo_future import (
     PYPY,
     binary_type,
@@ -29,6 +29,7 @@ from mo_future import (
     StringIO,
 )
 from mo_logs import Except
+from mo_logs.strings import quote
 from mo_times import Timer
 from mo_times.dates import Date
 from mo_times.durations import Duration
@@ -289,7 +290,7 @@ def _pretty_json(value, scrub):
                     # Data can hold primitives
                     return _pretty_json(value, scrub)
                 items = sort_using_key(value.items(), lambda r: r[0])
-                values = [quote(k) + PRETTY_COLON + _pretty_json(v, scrub) for k, v in items if v != None]
+                values = [quote(k) + PRETTY_COLON + _pretty_json(v, scrub) for k, v in items if exists(v)]
                 if not values:
                     return "{}"
                 elif len(values) == 1:

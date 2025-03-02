@@ -14,7 +14,7 @@ import itertools
 from jx_base.expressions import TRUE
 from jx_base.expressions._utils import jx_expression
 from jx_base.expressions.variable import is_variable
-from jx_base.language import is_expression
+from jx_base.language import is_expression, ID
 from jx_base.meta_columns import get_schema_from_jx_type, get_schema_from_list
 from jx_base.models.container import Container
 from jx_base.models.namespace import Namespace
@@ -22,9 +22,9 @@ from jx_base.models.schema import Schema
 from jx_base.models.snowflake import Snowflake
 from jx_base.models.table import Table
 from jx_base.utils import delist, enlist
+from jx_python.containers.lists.aggs import is_aggs, list_aggs
 from jx_python.convert import list2cube, list2table
 from jx_python.expressions import jx_expression_to_function
-from jx_python.containers.lists.aggs import is_aggs, list_aggs
 from mo_collections import UniqueIndex
 from mo_dots import (
     Data,
@@ -39,7 +39,7 @@ from mo_dots import (
 )
 from mo_future import first, sort_using_key
 from mo_imports import export, expect
-from mo_json import JX_IS_NULL, value_to_jx_type
+from mo_json import JX_IS_NULL, value_to_jx_type, JxType, to_jx_type, union_type, array_of
 from mo_logs import logger
 from mo_threads import Lock
 
@@ -60,10 +60,21 @@ class ListContainer(Container, Namespace, Table):
         self.container = self
         self.schema = schema or get_schema_from_list(name, data)
         self.locker = Lock()  # JUST IN CASE YOU WANT TO DO MORE THAN ONE THING
+        setattr(self, ID, -1)
 
     @property
     def nested_path(self):
         return [self.name]
+
+    @property
+    def jx_type(self):
+        return self.name + array_of(union_type(*(
+            col.name + to_jx_type(col.json_type)
+            for col in self.schema.columns
+        )))
+
+    def __call__(self, row=None, rownum=None, rows=None):
+        return self
 
     def get_facts(self, fact_name):
         return self

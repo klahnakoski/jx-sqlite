@@ -16,5 +16,6 @@ from jx_python.streams import stream
 from mo_imports import export
 
 export("jx_python.containers.list_container", jx)
+export("jx_base.expressions.window_op", jx)
 
 __all__ = ["ListContainer", "Cube", "jx", "stream", "Python"]

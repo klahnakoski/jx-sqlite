@@ -12,6 +12,7 @@
 import operator
 
 from jx_base.language import is_expression, Language
+from jx_base.models.container import Container
 from jx_base.utils import enlist, delist
 from mo_dots import is_sequence, is_missing, is_data
 from mo_future import get_function_name, is_text, utf8_json_encoder
@@ -63,6 +64,8 @@ def _jx_expression(json, lang):
             return JX[json.get_id()].partial_eval(lang)
         return json
         # return new_op(expr.args)  # THIS CAN BE DONE, BUT IT NEEDS MORE CODING, AND I WOULD EXPECT IT TO BE SLOW
+    if isinstance(json, Container):
+        return json
 
     if json is True:
         return TRUE

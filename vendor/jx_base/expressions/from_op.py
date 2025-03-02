@@ -12,7 +12,7 @@
 from jx_base.expressions.expression import Expression, _jx_expression
 from jx_base.expressions.sql_inner_join_op import SqlJoinOne
 from jx_base.expressions.sql_left_joins_op import SqlLeftJoinsOp
-from jx_base.language import is_op
+from jx_base.language import is_op, is_expression
 from jx_base.models.container import Container
 from mo_dots import to_data
 
@@ -41,6 +41,11 @@ class FromOp(Expression):
             ))
 
         return SqlLeftJoinsOp(_jx_expression(root, cls.lang), *joins)
+
+    def __call__(self, row=None, rownum=None, rows=None):
+        if is_expression(self.frum):
+            return self.frum(row, rownum, rows)
+        return self.frum
 
     @property
     def schema(self):
