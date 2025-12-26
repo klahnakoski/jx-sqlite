@@ -16,7 +16,7 @@ from mo_dots import (
     listwrap,
     relative_field,
     startswith_field,
-    list_to_data,
+    list_to_data, to_data,
 )
 from mo_future import is_text, extend
 from mo_json import STRUCT
@@ -103,7 +103,7 @@ def query(self, query=None):
     :param query:  JSON Query Expression, SET `format="container"` TO MAKE NEW TABLE OF RESULT
     :return:
     """
-    query = query or {}
+    query = to_data(query or {})
 
     # SIMPLISITC INSERTION OF FACTS INTO QUERY
     frum = query.get("from", self.name)
