@@ -6,13 +6,13 @@
 # You can obtain one at https://www.mozilla.org/en-US/MPL/2.0/.
 #
 
+from mo_dots import is_list, join_field, concat_field, split_field, is_data
+from mo_logs import Log
 from mo_math import randoms
+from mo_times import Date
 
 from jx_base import DataClass
-from mo_dots import is_list, join_field, concat_field, split_field, is_data
 from mo_json import *
-from mo_logs import Log
-from mo_times import Date
 
 DIGITS_TABLE = "__digits__"
 ABOUT_TABLE = "meta.about"

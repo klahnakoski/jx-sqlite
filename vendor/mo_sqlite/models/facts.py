@@ -9,8 +9,8 @@
 #
 from mo_imports import export
 
+from jx_base import enlist
 from jx_base.models.facts import Facts as _Facts
-from mo_json import entype
 
 
 class Facts(_Facts):
@@ -20,8 +20,7 @@ class Facts(_Facts):
         return self.container.get_table(self.name).nested_path
 
     def add(self, documents):
-        documents = entype(documents)
-        self.container.add(self.name, documents)
+        self.insert(enlist(documents))
 
 
 export("mo_sqlite.models.container", Facts)

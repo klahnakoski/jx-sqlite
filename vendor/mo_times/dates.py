@@ -29,10 +29,8 @@ RFC1123 = "%a, %d %b %Y %H:%M:%S GMT"
 DATETIME_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 DATE_EPOCH = date(1970, 1, 1)
 
-try:
-    import pytz
-except Exception:
-    pass
+
+pytz = None
 
 
 class Date:
@@ -306,9 +304,12 @@ register_primitive(Date)
 
 class DateAndTimezone:
     def __init__(self, date, timezone):
-        self.date = date
+        global pytz
 
+        self.date = date
         if isinstance(timezone, str):
+            if pytz is None:
+                import pytz
             timezone = pytz.timezone(timezone)
         self.timezone = timezone
 

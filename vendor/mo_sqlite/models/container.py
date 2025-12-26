@@ -125,10 +125,6 @@ class Container(_Container):
         output = self.db.query(command)
         return output
 
-    def add(self, facts, documents):
-        with self.db.transaction() as t:
-            t.execute(sql_insert(facts, documents))
-
     def create_or_replace_facts(self, fact_name, uid=UID):
         """
         MAKE NEW TABLE, REPLACE OLD ONE IF EXISTS

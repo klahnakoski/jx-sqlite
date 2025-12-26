@@ -38,7 +38,7 @@ class SqlSelectOp(_SqlSelectOp, SQL):
 
     @property
     def jx_type(self):
-        self._jx_type = union_type(*(t.name + t.value.jx_type for t in terms))
+        self._jx_type = union_type(*(t.name + t.value.jx_type for t in self.terms))
 
     def __iter__(self):
         yield from SQL_SELECT

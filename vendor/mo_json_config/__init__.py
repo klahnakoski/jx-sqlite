@@ -8,7 +8,8 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from mo_json_config.configuration import Configuration
-from mo_json_config.expander import get, get_file, expand, is_url
+from mo_json_config.expander import get, get_file, expand
+from mo_json_config.expand_locals import is_url
 
 __all__ = ["get", "get_file", "expand", "configuration", "Configuration", "is_url"]
 

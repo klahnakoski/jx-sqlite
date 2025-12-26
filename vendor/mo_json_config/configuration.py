@@ -8,7 +8,7 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from mo_dots import is_data, join_field, leaves_to_data, concat_field, to_data, register_data, Data, from_data
+from mo_dots import is_data, join_field, leaves_to_data, concat_field, register_data, Data, from_data
 from mo_future import Mapping
 from mo_logs import logger
 from mo_logs.strings import wordify

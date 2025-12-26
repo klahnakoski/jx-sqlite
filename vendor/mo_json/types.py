@@ -19,7 +19,7 @@ from mo_dots import (
     is_data,
     concat_field,
     is_sequence,
-    FlatList,
+    FlatList
 )
 from mo_times import Date
 
@@ -289,7 +289,7 @@ STRUCT = (OBJECT, ARRAY)
     "~s~",
     "~a~",
     "~e~",
-    "~j~",
+    "~j~"
 )
 IS_PRIMITIVE_KEY = re.compile(r"^~[bintds]~$")
 IS_TYPE_KEY = re.compile(r"^~[bintdsaje]~$")
@@ -321,7 +321,7 @@ JX_NUMBER_TYPES = _new(JxType)
 JX_NUMBER_TYPES.__dict__ = [
     (x, x.update(d))[0]
     for x in [{}]
-    for d in [JX_INTEGER.__dict__, JX_NUMBER.__dict__, JX_TIME.__dict__, JX_INTERVAL.__dict__,]
+    for d in [JX_INTEGER.__dict__, JX_NUMBER.__dict__, JX_TIME.__dict__, JX_INTERVAL.__dict__]
 ][0]
 
 _any_type_to_jx_type = {

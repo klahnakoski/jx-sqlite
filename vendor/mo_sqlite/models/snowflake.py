@@ -8,6 +8,7 @@
 
 
 import jx_base
+from jx_base import Snowflake as _Snowflake
 from mo_dots import concat_field, startswith_field, relative_field
 from mo_imports import export
 from mo_json import ARRAY, OBJECT, EXISTS, INTEGER
@@ -21,7 +22,7 @@ from mo_times import Date
 Table = expect("Table")
 
 
-class Snowflake(jx_base.Snowflake):
+class Snowflake(_Snowflake):
     """
     MANAGE SINGLE HIERARCHY IN SQLITE DATABASE
     """

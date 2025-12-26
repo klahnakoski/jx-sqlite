@@ -441,7 +441,7 @@ def flatten_many(self, docs):
         row = {GUID: guid, UID: uid}
         facts_insertion.rows.append(row)
         _flatten(
-            doc=doc, doc_path="../../../jx_sqlite", nested_path=[self.name], row=row, row_num=0, row_id=uid, parent_id=0,
+            doc=doc, doc_path=".", nested_path=[self.name], row=row, row_num=0, row_id=uid, parent_id=0,
         )
         if required_changes:
             snowflake.change_schema(required_changes)

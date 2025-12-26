@@ -96,6 +96,40 @@ class URL:
         output.path = path
         return output
 
+    def set_scheme(self, new_scheme):
+        output = self.__copy__()
+        output.scheme = new_scheme
+        return output
+
+    def set_host(self, new_host):
+        output = self.__copy__()
+        output.host = new_host
+        return output
+
+    def set_port(self, new_port):
+        output = self.__copy__()
+        output.port = new_port
+        return output
+
+    def set_path(self, new_path):
+        output = self.__copy__()
+        output.path = new_path
+        return output
+
+    def set_query(self, new_query):
+        if not is_data(new_query):
+            Log.error("can only set query to data")
+        output = self.__copy__()
+        output.query = to_data(new_query)
+        return output
+
+    def set_fragment(self, new_fragment):
+        if not is_data(new_fragment):
+            Log.error("can only set fragment to data")
+        output = self.__copy__()
+        output.fragment = to_data(new_fragment)
+        return output
+
     def __add__(self, other):
         if not is_data(other):
             Log.error("can only add data for query parameters")
@@ -327,7 +361,7 @@ def from_paths(value):
                     d[p] = []
             elif is_text(q) == is_list(d[p]):
                 Log.error(
-                    "can not index {{type}} with {{key}}", type=type(d[p]).__name__, key=q,
+                    "can not index {type} with {key}", type=type(d[p]).__name__, key=q,
                 )
 
             d = d[p]

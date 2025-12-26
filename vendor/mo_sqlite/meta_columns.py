@@ -438,7 +438,7 @@ class ColumnList(Table, Container):
         if not self._schema:
             with self.locker:
                 self._update_meta()
-                self._schema = Schema("../../jx_sqlite", [c for cs in self.data[META_COLUMNS_NAME].values() for c in cs])
+                self._schema = Schema(".", [c for cs in self.data[META_COLUMNS_NAME].values() for c in cs])
         return self._schema
 
     @property

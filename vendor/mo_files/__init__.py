@@ -17,13 +17,17 @@ from mimetypes import MimeTypes
 from tempfile import NamedTemporaryFile, mkdtemp
 
 from mo_dots import Null, coalesce, get_module, is_list, to_data, is_sequence, is_data, is_missing, from_data
-from mo_files import mimetype
-from mo_files.url import URL
 from mo_future import text, is_text, ConfigParser, StringIO
 from mo_json import json2value
 from mo_logs import Except, logger
 from mo_logs.exceptions import get_stacktrace
 from mo_math import randoms
+
+from mo_files import mimetype
+from mo_files.url import URL
+
+windows_drive = re.compile(r"^/[a-zA-Z]:[/\\]")
+is_windows = os.sep == "\\"
 
 
 class File:
@@ -53,15 +57,17 @@ class File:
         self.key = base642bytearray(key)
         self._mime_type = mime_type
 
-        if filename == ".":
-            self._filename = ""
-        elif filename.startswith("~"):
-            home_path = os.path.expanduser("~")
-            if os.sep == "\\":
-                home_path = home_path.replace(os.sep, "/")
-            home_path = home_path.rstrip("/")
-            filename = home_path + "/" + filename[1::].lstrip("/")
-        self._filename = filename.replace(os.sep, "/")  # USE UNIX STANDARD
+        if filename in (".", "/", ""):
+            self._filename = filename or "."
+        elif is_windows and windows_drive.match(filename):
+            self._filename = filename[1:]
+        else:
+            if filename.startswith("~"):
+                home_path = os.path.expanduser("~").replace(os.sep, "/").rstrip("/")
+                rel_path = filename[1::].replace(os.sep, "/").lstrip("/")
+                self._filename = f"{home_path}/{rel_path}".rstrip("/")
+            else:
+                self._filename = filename.replace(os.sep, "/").rstrip("/")
 
         while self._filename.find(".../") >= 0:
             # LET ... REFER TO GRANDPARENT, .... REFER TO GREAT-GRAND-PARENT, etc...
@@ -91,28 +97,17 @@ class File:
 
     @property
     def abs_path(self):
-        if self._filename.startswith("~"):
-            home_path = os.path.expanduser("~")
-            if os.sep == "\\":
-                home_path = home_path.replace(os.sep, "/")
-            if home_path.endswith("/"):
-                home_path = home_path[:-1]
-
-            return home_path + self._filename[1::]
+        if is_windows:
+            return "/" + os.path.abspath(self._filename).replace(os.sep, "/")
         else:
-            if os.sep == "\\":
-                return "/" + os.path.abspath(self._filename).replace(os.sep, "/")
-            else:
-                return os.path.abspath(self._filename)
+            return os.path.abspath(self._filename)
 
     @property
     def os_path(self):
         """
         :return: OS-specific path
         """
-        if os.sep == "/":
-            return self.abs_path
-        return str(self.abs_path).lstrip("/")
+        return os.path.abspath(self._filename)
 
     def add_suffix(self, suffix):
         """
@@ -122,7 +117,7 @@ class File:
 
     @property
     def extension(self):
-        parts = self._filename.split("/")[-1].split(".")
+        parts = self.name.split(".")
         if len(parts) == 1:
             return ""
         else:
@@ -130,11 +125,15 @@ class File:
 
     @property
     def stem(self):
-        parts = self.abs_path.split("/")[-1].split(".")
+        parts = self.name.split(".")
         if len(parts) == 1:
             return parts[0]
         else:
             return ".".join(parts[0:-1])
+
+    @property
+    def name(self):
+        return self._filename.split("/")[-1]
 
     @property
     def mime_type(self):
@@ -175,6 +174,8 @@ class File:
         parts = path[-1].split(".")
         if len(parts) == 1:
             parts.append(ext)
+        elif is_missing(ext):
+            parts.pop()
         else:
             parts[-1] = ext
 
@@ -203,7 +204,7 @@ class File:
         """
         RETURN A FILENAME THAT CAN SERVE AS A BACKUP FOR THIS FILE
         """
-        suffix = datetime2string(coalesce(timestamp, datetime.now()), "%Y%m%d_%H%M%S")
+        suffix = datetime2string(coalesce(timestamp, datetime.utcnow()), "%Y%m%d_%H%M%S")
         return add_suffix(self._filename, suffix)
 
     def read(self, encoding="utf8") -> str:
@@ -334,7 +335,7 @@ class File:
                         yield line.decode("utf8").rstrip()
             except Exception as e:
                 logger.error(
-                    "Can not read line from {{filename}}", filename=self._filename, cause=e,
+                    "Can not read line from {filename}", filename=self._filename, cause=e,
                 )
 
         return output()
@@ -387,18 +388,17 @@ class File:
                 return
             logger.error("Could not remove file", cause)
 
-    def backup(self):
+    def backup(self, format=" %Y%m%d %H%M%S"):
         path = self._filename.split("/")
         names = path[-1].split(".")
+        backup_name = f"backup{datetime.utcnow().strftime(format)}"
         if len(names) == 1 or names[0] == "":
-            backup = File(self._filename + ".backup " + datetime.utcnow().strftime("%Y%m%d %H%M%S"))
+            names.append(backup_name)
         else:
-            backup = File.new_instance(
-                "/".join(path[:-1]),
-                ".".join(names[:-1]) + ".backup " + datetime.now().strftime("%Y%m%d %H%M%S") + "." + names[-1],
-            )
-        File.copy(self, backup)
-        return backup
+            names.insert(-1, backup_name)
+        backup_file = File.new_instance("/".join(path[:-1]), ".".join(names))
+        File.copy(self, backup_file)
+        return backup_file
 
     def create(self):
         try:
@@ -407,7 +407,7 @@ class File:
             pass
         except Exception as e:
             logger.error(
-                "Could not make directory {{dir_name}}", dir_name=self._filename, cause=e,
+                "Could not make directory {dir_name}", dir_name=self._filename, cause=e,
             )
 
     @property
@@ -418,21 +418,18 @@ class File:
             return []
 
     @property
-    def decendants(self):
+    def descendants(self):
         yield self
         if self.is_directory():
             for c in os.listdir(self.os_path):
-                child = File(self._filename + "/" + c)
-                for cc in child.decendants:
-                    yield cc
+                yield from File(self._filename + "/" + c).descendants
 
     @property
     def leaves(self):
         for c in os.listdir(self.os_path):
             child = File(self._filename + "/" + c)
             if child.is_directory():
-                for l in child.leaves:
-                    yield l
+                yield from child.leaves
             else:
                 yield child
 
@@ -445,14 +442,11 @@ class File:
         else:
             return File("/".join(self._filename.split("/")[:-1]))
 
-    @property
-    def exists(self):
-        if self._filename in ["", "."]:
-            return True
-        try:
-            return os.path.exists(self._filename)
-        except Exception:
-            return False
+    def __bool__(self):
+        return os.path.exists(self._filename)
+
+    __nonzero__ = __bool__
+    exists = property(__bool__)
 
     @property
     def length(self):
@@ -460,19 +454,6 @@ class File:
 
     size = length
 
-    def __bool__(self):
-        return self.__nonzero__()
-
-    def __nonzero__(self):
-        """
-        USED FOR FILE EXISTENCE TESTING
-        """
-        if self._filename in ["", "."]:
-            return True
-        try:
-            return os.path.exists(self._filename)
-        except Exception as e:
-            return False
 
     @classmethod
     def copy(cls, from_, to_):
@@ -557,7 +538,7 @@ def datetime2string(value, format="%Y-%m-%d %H:%M:%S"):
         return value.strftime(format)
     except Exception as e:
         logger.error(
-            "Can not format {{value}} with {{format}}", value=value, format=format, cause=e,
+            "Can not format {value} with {format}", value=value, format=format, cause=e,
         )
 
 
@@ -578,7 +559,7 @@ def join_path(*path):
         if path[0][0] == "/":
             abs_prefix = "/"
             path[0] = path[0][1:]
-        elif os.sep == "\\" and path[0][1:].startswith(":/"):
+        elif is_windows and windows_drive.match(path[0]):
             # If windows, then look for the "c:/" prefix
             abs_prefix = path[0][0:3]
             path[0] = path[0][3:]
