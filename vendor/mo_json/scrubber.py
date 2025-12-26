@@ -12,6 +12,7 @@ from mo_times import Duration
 from mo_json.types import *
 
 FIND_LOOPS = True  # FIND LOOPS IN DATA STRUCTURES
+MAX_DEPTH = 1000 # MAX DEPTH OF RECURSION
 DATETIME_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 DATE_EPOCH = date(1970, 1, 1)
 
@@ -105,6 +106,8 @@ class Scrubber:
             _id = id(value)
             if _id in stack and type(_id).__name__ not in ["int"]:
                 logger.error("loop in JSON")
+            if len(stack) > MAX_DEPTH:
+                logger.error("too deep recursion in JSON")
             stack = stack + [_id]
 
         type_ = value.__class__
