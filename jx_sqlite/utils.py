@@ -20,6 +20,7 @@ from mo_dots import (
     is_list,
     join_field,
     split_field,
+    startswith_field,
     is_sequence,
     is_missing,
 )
@@ -29,6 +30,7 @@ from mo_json.typed_encoder import untype_path
 from mo_logs import Log
 from mo_math import randoms
 from mo_sql.utils import SQL_KEYS, SQL_ARRAY_KEY, SQL_KEY_PREFIX, SQL_NUMBER_KEY, UID, GUID, ORDER, PARENT, COLUMN
+from mo_sqlite import ConcatSQL, SQL_EQ, SQL_LEFT_JOIN, SQL_ON, sql_alias
 from mo_sqlite.utils import quote_column
 from mo_times import Date
 
@@ -83,6 +85,33 @@ def table_alias(i):
     :return:
     """
     return "__t" + str(i) + "__"
+
+
+def sql_join_chain(snowflake, origin_path):
+    """
+    THE P2 JOIN-CHAIN (docs/INTERSECTION_SURVEY.md): LEFT JOIN EVERY TABLE ON THE PATH
+    FROM THE FACT TABLE DOWN TO THE QUERY ORIGIN, ON child.__parent__ = parent.__id__
+    :param snowflake: PROVIDES query_paths
+    :param origin_path: THE QUERY'S PERSPECTIVE (schema.nested_path[0])
+    :return: (nest_to_alias, from_sql) - ALIAS FOR EVERY QUERY PATH, FROM-CLAUSE FRAGMENTS
+    """
+    nest_to_alias = {sub_table: table_alias(i) for i, sub_table in enumerate(snowflake.query_paths)}
+    chain = sorted(
+        ((nest, alias) for nest, alias in nest_to_alias.items() if startswith_field(origin_path, nest)),
+        key=lambda nest_alias: len(nest_alias[0]),
+    )
+    nest, alias = chain[0]
+    from_sql = [sql_alias(quote_column(nest), alias)]
+    for (_, parent_alias), (nest, alias) in zip(chain, chain[1:]):
+        from_sql.append(ConcatSQL(
+            SQL_LEFT_JOIN,
+            sql_alias(quote_column(nest), alias),
+            SQL_ON,
+            quote_column(alias, PARENT),
+            SQL_EQ,
+            quote_column(parent_alias, UID),
+        ))
+    return nest_to_alias, from_sql
 
 
 def get_document_value(document, column):
