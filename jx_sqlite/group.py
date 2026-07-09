@@ -10,19 +10,16 @@
 from jx_base.expressions import SelectOp, CountOp, DefaultOp, SqlScript, SqlSelectOp
 from jx_base.expressions.variable import is_variable
 from jx_base.language import is_op
-from jx_python import jx
 from mo_sqlite import Facts
 from mo_sqlite import SQLang
 from jx_sqlite.utils import (
     ColumnMapping,
     _make_column_name,
     get_column,
-    PARENT,
-    UID,
-    table_alias,
+    sql_join_chain,
 )
 from jx_sqlite.window import _window_op
-from mo_dots import split_field, startswith_field, relative_field, unliteral_field, tail_field
+from mo_dots import relative_field, unliteral_field, tail_field
 from mo_future import extend
 from mo_json import jx_type_to_json_type, JX_INTEGER
 from mo_sql.utils import sql_aggs
@@ -30,8 +27,6 @@ from mo_sqlite import (
     SQL_FROM,
     SQL_GROUPBY,
     SQL_IS_NULL,
-    SQL_LEFT_JOIN,
-    SQL_ON,
     SQL_ONE,
     SQL_ORDERBY,
     SQL_SELECT,
@@ -39,40 +34,20 @@ from mo_sqlite import (
     sql_count,
     sql_iso,
     sql_list,
-    SQL_EQ,
     sql_coalesce,
     ConcatSQL,
     SQL_ASC,
     SQL_DESC,
     SQL_COMMA,
 )
-from mo_sqlite import quote_column, sql_alias, sql_call
+from mo_sqlite import sql_alias, sql_call
 
 
 @extend(Facts)
 def _groupby_op(self, query, schema):
-    path = schema.nested_path[0]
     index_to_column = {}
-    nest_to_alias = {nested_path: table_alias(i) for i, nested_path in enumerate(self.schema.snowflake.query_paths)}
+    nest_to_alias, from_sql = sql_join_chain(self.schema.snowflake, schema.nested_path[0])
     inner_schema = schema.rename_tables(nest_to_alias)
-    tables = []
-    for n, a in nest_to_alias.items():
-        if startswith_field(path, n):
-            tables.append({"nest": n, "alias": a})
-    tables = jx.sort(tables, {"value": {"length": "nest"}})
-
-    from_sql = [sql_alias(quote_column(*split_field(tables[0].nest)), tables[0].alias)]
-    previous = tables[0]
-    for t in tables[1::]:
-        from_sql.append(ConcatSQL(
-            SQL_LEFT_JOIN,
-            quote_column(*split_field(t.nest)),
-            t.alias,
-            SQL_ON,
-            quote_column(t.alias, PARENT),
-            SQL_EQ,
-            quote_column(previous.alias, UID),
-        ))
 
     selects = []
     groupby = []

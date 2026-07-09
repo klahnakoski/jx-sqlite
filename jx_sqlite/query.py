@@ -16,7 +16,7 @@ from mo_dots import (
     listwrap,
     relative_field,
     startswith_field,
-    list_to_data, to_data,
+    list_to_data,
 )
 from mo_future import is_text, extend
 from mo_json import STRUCT
@@ -103,16 +103,16 @@ def query(self, query=None):
     :param query:  JSON Query Expression, SET `format="container"` TO MAKE NEW TABLE OF RESULT
     :return:
     """
-    query = to_data(query or {})
+    if not query:
+        query = {}
 
-    # SIMPLISITC INSERTION OF FACTS INTO QUERY
-    frum = query.get("from", self.name)
-    if is_text(frum):
-        if not startswith_field(frum, self.name):
-            Log.error("Expecting table, or some nested table")
-        query.frum = self
+    if not query.get("from"):
+        query["from"] = self.name
 
-    normalized_query = QueryOp.define(query)
+    if is_text(query["from"]) and not startswith_field(query["from"], self.name):
+        Log.error("Expecting table, or some nested table")
+    normalized_query = QueryOp.wrap(query, self, SQLang)
+
     if normalized_query.groupby and normalized_query.format != "cube":
         command, index_to_columns = self._groupby_op(normalized_query, self.schema)
     elif normalized_query.groupby:

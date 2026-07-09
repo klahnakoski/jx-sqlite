@@ -26,8 +26,6 @@ from jx_base.expressions import (
     ZERO,
 )
 from jx_base.language import is_op
-from jx_base.utils import UID
-from jx_python import jx
 from jx_sqlite.expressions import EqOp
 from jx_sqlite.expressions.tuple_op import TupleOp
 from jx_sqlite.expressions.variable import Variable
@@ -36,18 +34,17 @@ from jx_sqlite.utils import (
     STATS,
     _make_column_name,
     get_column,
+    sql_join_chain,
     sql_text_array_to_set,
-    table_alias,
 )
 from jx_sqlite.window import _window_op
 from mo_dots import (
-    startswith_field,
     is_missing,
     Null, coalesce,
 )
 from mo_future import extend
 from mo_json import NUMBER, JX_BOOLEAN, BOOLEAN, jx_type_to_json_type, JX_INTEGER
-from mo_sql.utils import sql_type_key_to_json_type, sql_aggs, DIGITS_TABLE, PARENT, untyped_column
+from mo_sql.utils import sql_type_key_to_json_type, sql_aggs, DIGITS_TABLE, untyped_column
 from mo_sql import *
 from mo_sqlite import *
 from mo_sqlite import quote_value
@@ -61,26 +58,8 @@ def _edges_op(self, query, schema):
     query = query.copy()  # WE WILL BE MARKING UP THE QUERY
     index_to_column = {}  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
     outer_selects = []  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE)
-    base_table, path = schema.snowflake.fact_name, schema.nested_path
-    nest_to_alias = {sub_table: table_alias(i) for i, sub_table in enumerate(self.snowflake.query_paths)}
+    nest_to_alias, from_sql = sql_join_chain(self.snowflake, schema.nested_path[0])
     inner_schema = schema.rename_tables(nest_to_alias)
-
-    tables = []
-    for n, a in nest_to_alias.items():
-        if startswith_field(path[0], n):
-            tables.append({"nest": n, "alias": a})
-    tables = jx.sort(tables, {"value": {"length": "nest"}})
-
-    from_sql = [sql_alias(quote_column(tables[0].nest), tables[0].alias)]
-    for previous, t in zip(tables, tables[1::]):
-        from_sql.append(ConcatSQL(
-            SQL_LEFT_JOIN,
-            sql_alias(quote_column(t.nest), t.alias),
-            SQL_ON,
-            quote_column(t.alias, PARENT),
-            SQL_EQ,
-            quote_column(previous.alias, UID),
-        ))
 
     main_filter = ToBooleanOp(query.where).partial_eval(SQLang).to_sql(inner_schema).expr
 

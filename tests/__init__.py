@@ -154,7 +154,7 @@ class SQLiteUtils:
             if "limit" not in query:
                 query["limit"] = 10
             if startswith_field(query["from"], self.table.name):
-                return self.container.query(query)
+                return self.table.query(query)
             elif startswith_field(query["from"], "meta"):
                 return query_metadata(self.table.container, query)
             else:
@@ -198,7 +198,7 @@ def compare_to_expected(query, result, expect):
         if query["from"].startswith("meta."):
             pass
         else:
-            query = QueryOp.wrap(query)
+            query = QueryOp.wrap(query, Null, SQLang)
 
         if not query.sort:
             try:
