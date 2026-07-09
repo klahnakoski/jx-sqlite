@@ -11,21 +11,23 @@ import base64
 import io
 import os
 import re
+import secrets
 import shutil
+import datetime as datetime_module
 from datetime import datetime
 from mimetypes import MimeTypes
 from tempfile import NamedTemporaryFile, mkdtemp
 
-from mo_dots import Null, coalesce, get_module, is_list, to_data, is_sequence, is_data, is_missing, from_data
+from mo_dots import Null, coalesce, is_list, to_data, is_sequence, is_data, is_missing, from_data
 from mo_future import text, is_text, ConfigParser, StringIO
 from mo_json import json2value
 from mo_logs import Except, logger
 from mo_logs.exceptions import get_stacktrace
-from mo_math import randoms
 
 from mo_files import mimetype
 from mo_files.url import URL
 
+URLSAFE_B64_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 windows_drive = re.compile(r"^/[a-zA-Z]:[/\\]")
 is_windows = os.sep == "\\"
 
@@ -35,7 +37,7 @@ class File:
     ASSUMES ALL FILE CONTENT IS UTF8 ENCODED STRINGS
     """
 
-    def __new__(cls, filename, key=None, buffering=2 ** 14, suffix=None):
+    def __new__(cls, filename, buffering=2 ** 14, suffix=None):
         if filename == None:
             return Null
         elif isinstance(filename, File):
@@ -43,7 +45,7 @@ class File:
         else:
             return object.__new__(cls)
 
-    def __init__(self, filename, key=None, suffix=None, mime_type=None):
+    def __init__(self, filename, suffix=None, mime_type=None):
         """
         :param filename: STRING
         :param key: BASE64 AES KEY USED ON ENCRYPTED FILES
@@ -54,7 +56,6 @@ class File:
         elif not is_text(filename):
             logger.error("Expecting str, not {type}", type=type(filename).__name__)
 
-        self.key = base642bytearray(key)
         self._mime_type = mime_type
 
         if filename in (".", "/", ""):
@@ -204,7 +205,7 @@ class File:
         """
         RETURN A FILENAME THAT CAN SERVE AS A BACKUP FOR THIS FILE
         """
-        suffix = datetime2string(coalesce(timestamp, datetime.utcnow()), "%Y%m%d_%H%M%S")
+        suffix = datetime2string(coalesce(timestamp, datetime.now(datetime_module.timezone.utc)), "%Y%m%d_%H%M%S")
         return add_suffix(self._filename, suffix)
 
     def read(self, encoding="utf8") -> str:
@@ -213,11 +214,8 @@ class File:
         :return:
         """
         with open(self._filename, "rb") as f:
-            if self.key:
-                return get_module("mo_math.crypto").decrypt(f.read(), self.key)
-            else:
-                content = f.read().decode(encoding)
-                return content
+            content = f.read().decode(encoding)
+            return content
 
     def read_zipfile(self, encoding="utf8"):
         """
@@ -251,10 +249,7 @@ class File:
             if not self.parent.exists:
                 self.parent.create()
             with open(self._filename, "rb") as f:
-                if self.key:
-                    return get_module("mo_math.crypto").decrypt(f.read(), self.key)
-                else:
-                    return f.read()
+                return f.read()
         except Exception as e:
             logger.error("Problem reading file {filename}", filename=self.abs_path, cause=e)
 
@@ -262,10 +257,7 @@ class File:
         if not self.parent.exists:
             self.parent.create()
         with open(self._filename, "wb") as f:
-            if self.key:
-                f.write(get_module("mo_math.crypto").encrypt(content, self.key))
-            else:
-                f.write(content)
+            f.write(content)
 
     def write(self, content):
         """
@@ -288,12 +280,7 @@ class File:
             for d in content:
                 if not is_text(d):
                     logger.error("Expecting unicode data only")
-                if self.key:
-                    from mo_math.aes_crypto import encrypt
-
-                    f.write(encrypt(d, self.key).encode("utf8"))
-                else:
-                    f.write(d.encode("utf8"))
+                f.write(d.encode("utf8"))
 
     def read_ini(self, encoding="utf8"):
         buff = StringIO(self.read(encoding))
@@ -391,7 +378,7 @@ class File:
     def backup(self, format=" %Y%m%d %H%M%S"):
         path = self._filename.split("/")
         names = path[-1].split(".")
-        backup_name = f"backup{datetime.utcnow().strftime(format)}"
+        backup_name = f"backup{datetime.now(datetime_module.timezone.utc).strftime(format)}"
         if len(names) == 1 or names[0] == "":
             names.append(backup_name)
         else:
@@ -454,7 +441,6 @@ class File:
 
     size = length
 
-
     @classmethod
     def copy(cls, from_, to_):
         _copy(File(from_), File(to_))
@@ -505,7 +491,10 @@ class TempFile(File):
     def __init__(self, filename=None):
         if isinstance(filename, File):
             return
-        self.temp = NamedTemporaryFile(prefix=randoms.filename(), delete=False)
+        # Use a 20-character URL-safe base64 prefix for the temp filename (inline)
+        self.temp = NamedTemporaryFile(
+            prefix="".join(secrets.choice(URLSAFE_B64_ALPHABET) for _ in range(20)), delete=False,
+        )
         self.temp.close()
         File.__init__(self, self.temp.name)
 
@@ -619,10 +608,14 @@ def add_suffix(filename, suffix):
     """
     ADD .suffix TO THE filename (NOT INCLUDING THE FILE EXTENSION)
     """
+    suffix = str(suffix).strip(".")
     path = filename.split("/")
     parts = path[-1].split(".")
-    i = max(len(parts) - 2, 0)
-    parts[i] = parts[i] + "." + str(suffix).strip(".")
+    if len(parts) == 1 or len(parts) == 2 and not parts[0]:
+        # HANDLE CASE OF HIDDEN FILES WITH NO EXTENSION (e.g. .gitignore)
+        parts.append(suffix)
+    else:
+        parts.insert(-1, suffix)
     path[-1] = ".".join(parts)
     return File("/".join(path))
 
