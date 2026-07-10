@@ -74,11 +74,11 @@ class TestBasic(FuzzyTestCase):
         table.insert([])
         self.assertEqual(table.query({}), {"meta": {"format": "list"}, "data": []})
 
-    def test_no_add(self):
+    def test_add_empty_object(self):
         container = Container(Sqlite())
         table = container.create_or_replace_facts("my_table")
-        with self.assertRaises(Exception):
-            table.add({})
+        table.add({})
+        self.assertEqual(table.query({}), {"meta": {"format": "list"}, "data": [{}]})
 
     def test_simplest_query(self):
         table = Container(Sqlite()).get_or_create_facts("my_table")
