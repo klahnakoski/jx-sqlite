@@ -32,6 +32,24 @@ past the `is_text` branch into the `{field: direction}` branch and failed. **Fix
 upstream: `_normalize_sort` over Data-wrapped fieldname, plain fieldname, list, `{field:
 direction}`, `{"field":…, "sort":…}` forms.
 
+## 5. Bare-string select never reached `.*`/`*` wildcard handling; `.*` branch had a NameError; `is_variable` unimported (FIXED in jx-sqlite vendored copy — needs upstream + tests)
+
+`select_op.normalize_one` handled `value.endswith(".*")` / `endswith("*")` (leaf-expansion into
+a `LeavesOp`) **only when the value arrived as text** — but a bare-string select (`"a.*"`, as
+opposed to `{"value": "a.*"}`) was eagerly converted via `select = SelectOne(select,
+jx_expression(select))` at the top of the text branch, so `value` was already a `GetOp` and
+`is_text(value)` was False. The wildcard branches were therefore dead for the common
+`select: ["a.*"]` form and the query returned all nulls (`schema.leaves("a.*")` is empty →
+`NULL`). Two further defects hid behind that dead code: the `.*` branch read
+`jx_expression(root_nam)` (NameError typo for `root_name`), and `is_variable` (used in both
+wildcard branches) was never imported. **Fix applied (2026-07-10):** text branch now keeps the
+raw text as `{"value": select}` (name unset) so the value flows through `is_text(value)`
+handling; fixed `root_nam` → `root_name`; imported `is_variable`. Verified by jx-sqlite
+`test_set_ops` `test_select_leaves` (`a.*`), `test_select_leaves2` (`a*` → literal dotted keys),
+`test_select_w_star`, `test_select_object`/`value_object`/`2_object`/`3_object`. Coverage to
+add upstream: `normalize_one` over bare `"a.*"`, `"a*"`, `"*"`, and plain `"a"` (name defaults
+and produced `LeavesOp`/`prefix`).
+
 ## 4. `"mult"`/`"mul"`/`"multiply"` mapped to ProductOp — forced decisive, `nulls` clause crashes (FIXED in jx-sqlite vendored copy — needs upstream + tests)
 
 `operators["mult"]` pointed at `ProductOp`, whose `__new__` returns `MulOp(*terms, nulls=True)`

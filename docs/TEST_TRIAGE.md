@@ -106,25 +106,33 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 - [ ] test_exists_in_where_clause — "fix me"
 - [ ] test_select_into_children — "Too complicated"
 
-## 2. Selecting objects / stars / leaves (setop formatting, ~12 tests)
+## 2. Selecting objects / stars / leaves (setop formatting) — CLEARED 2026-07-10 (8 fixed, 3 reclustered)
 
 Shallow queries whose select clause is an object, `*`, leaves, or an array value.
-Likely `jx_sqlite/setop.py` + `format.py` (result-shaping, not SQL generation).
-Known symptom (comment in test_set_ops.py:1013): `timestamp.~s~` results in
-`{"":{"":{"":{"":"..."}}}}` — untyping of column names during formatting.
+`jx_sqlite/format.py` (result-shaping) + jx_base select normalization. Two real bugs fixed:
+(1) `format_deep` alphabetically **sorted** the table/cube header (`jx.sort(set(push_column_name))`),
+discarding select-clause order — now ordered by `push_column_index` (see `_deep_header`).
+(2) jx_base `select_op.normalize_one`: bare-string selects never reached the `.*`/`*` wildcard
+branches (value was eagerly parsed to a GetOp before `is_text(value)`), the `.*` branch had a
+`root_nam` NameError, and `is_variable` was unimported — so `a.*`/`a*` returned all nulls.
+Fixed + `jx_sqlite/expressions/select_op.py` LeavesOp branch now honors `expr.prefix` so
+`a*` flattens to literal dotted keys `a.b`/`a.v` (vendor/jx_base/BUGS.md #5).
 
 ### test_set_ops.py
-- [ ] test_select_w_star
-- [ ] test_select_expression
-- [ ] test_select_object
-- [ ] test_select_leaves
-- [ ] test_select_leaves2
-- [ ] test_select_value_object
-- [ ] test_select2_object
-- [ ] test_select3_object
-- [ ] test_select_array_as_value
-- [ ] test_union_columns
-- [ ] test_select_id_and_source
+- [x] test_select_w_star
+- [x] test_select_expression — header ordering (format_deep)
+- [x] test_select_object
+- [x] test_select_leaves — `a.*` wildcard expansion
+- [x] test_select_leaves2 — `a*` flatten-to-dotted-keys (LeavesOp prefix)
+- [x] test_select_value_object
+- [x] test_select2_object
+- [x] test_select3_object
+- [-] test_select_array_as_value — MISFILED: nested array as value leaks hidden cols
+      (`__id__`/`__order__`/`__parent__`) → cluster 1 join assembly; re-skipped
+- [-] test_union_columns — MISFILED: UnionOp not registered in JxSql (no `.to_sql`) →
+      missing operator, see cluster 6 test_union; re-skipped
+- [-] test_select_id_and_source — MISFILED: `select "."` (_source) over doc with nested
+      array leaks hidden cols → cluster 1 join assembly; re-skipped
 
 ## 3. `between` op broken (~6 tests)
 

@@ -509,7 +509,6 @@ class TestSetOps(BaseTestCase):
         with self.assertRaises(Exception):
             self.utils.execute_query(test.query)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select_w_star(self):
         test = {
             "data": [
@@ -595,7 +594,6 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select_expression(self):
         test = {
             "data": [
@@ -637,7 +635,6 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select_object(self):
         """
         ES DOES NOT ALLOW YOU TO SELECT AN OBJECT, ONLY THE LEAVES
@@ -686,7 +683,6 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select_leaves(self):
         """
         ES DOES NOT ALLOW YOU TO SELECT AN OBJECT, ONLY THE LEAVES
@@ -730,7 +726,6 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select_leaves2(self):
         test = {
             "data": [
@@ -765,7 +760,6 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select_value_object(self):
         """
         ES DOES NOT ALLOW YOU TO SELECT AN OBJECT, ONLY THE LEAVES
@@ -814,7 +808,6 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select2_object(self):
         """
         ES DOES NOT ALLOW YOU TO SELECT AN OBJECT, ONLY THE LEAVES
@@ -866,7 +859,6 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select3_object(self):
         """
         ES DOES NOT ALLOW YOU TO SELECT AN OBJECT, ONLY THE LEAVES
@@ -918,7 +910,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
+    @skipIf(global_settings.use == "sqlite", "nested array as value leaks hidden cols (__id__/__order__/__parent__); cluster 1 join assembly")
     def test_select_array_as_value(self):
         test = {
             "data": [
@@ -1018,7 +1010,7 @@ class TestSetOps(BaseTestCase):
         # 	"where":{"exists":"timestamp.~s~"}
         # }
 
-    @skipIf(global_settings.use == "sqlite", "broken")
+    @skipIf(global_settings.use == "sqlite", "UnionOp not registered in JxSql (no .to_sql); missing operator, see cluster 6 test_union")
     def test_union_columns(self):
         test = {
             "data": [
@@ -1059,7 +1051,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
+    @skipIf(global_settings.use == "sqlite", "select . (_source) over doc with nested array leaks hidden cols; cluster 1 join assembly")
     def test_select_id_and_source(self):
         test = {
             "data": [{"_id": "test_id", "v": 4, "a": [{"b": 1}, {"b": 2}, {"b": 2}]},],

@@ -51,11 +51,13 @@ class SelectOp(_SelectOp):
                         SqlVariable(col.es_index, col.es_column, jx_type=to_jx_type(col.json_type)), full_name
                     ))
             elif is_op(expr, LeavesOp):
+                # `a*` CARRIES A PREFIX ("a.") THAT FLATTENS LEAVES INTO LITERAL DOTTED KEYS
+                prefix = "" if expr.prefix is NULL else expr.prefix.value
                 var_names = expr.vars()
                 for var_name in var_names:
                     cols = schema.leaves(var_name)
                     for rel_name, col in cols:
-                        full_name = concat_field(name, literal_field(rel_name))
+                        full_name = concat_field(name, literal_field(prefix + rel_name))
                         jx_type |= full_name + to_jx_type(col.json_type)
                         sql_terms.append(SqlAliasOp(
                             SqlVariable(col.es_index, col.es_column, jx_type=to_jx_type(col.json_type)), full_name
