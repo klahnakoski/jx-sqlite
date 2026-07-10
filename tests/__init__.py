@@ -23,6 +23,7 @@ from mo_json import json2value
 from mo_kwargs import override
 from mo_logs import logger, Except, constants
 from mo_logs.exceptions import get_stacktrace
+import jx_sqlite  # ATTACH query() AND FRIENDS TO Facts (@extend), SO SINGLE-TEST RUNS WORK
 from mo_sqlite import SQLang, Container, Facts
 from mo_testing.fuzzytestcase import assertAlmostEqual
 from tests import test_jx
@@ -215,13 +216,14 @@ def compare_to_expected(query, result, expect):
 
             if is_sequence(expect.data):
                 try:
-                    expect.data = jx.sort(expect.data, sort_order.name)
+                    # jx.sort RETURNS A ListContainer; UNWRAP TO A PLAIN LIST OF ROWS
+                    expect.data = list(jx.sort(expect.data, sort_order.name))
                 except Exception:
                     pass
 
             if is_many(result.data):
                 try:
-                    result.data = jx.sort(result.data, sort_order.name)
+                    result.data = list(jx.sort(result.data, sort_order.name))
                 except Exception as cause:
                     logger.warning("sorting failed", cause=cause)
 

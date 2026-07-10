@@ -109,8 +109,12 @@ def _set_op(self, query):
                 value = pull(row)
                 if is_missing(value):
                     continue
-                doc = doc or Data()
-                doc[rel_field] = value
+                if rel_field == ".":
+                    # WHOLE-VALUE SELECT; doc["."] = value WOULD WRAP A SCALAR IN Data
+                    doc = value
+                else:
+                    doc = doc or Data()
+                    doc[rel_field] = value
 
             for child_details in nested_doc_details.children:
                 # EACH NESTED TABLE MUST BE ASSEMBLED INTO A LIST OF OBJECTS
