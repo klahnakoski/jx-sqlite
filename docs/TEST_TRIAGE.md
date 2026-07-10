@@ -18,8 +18,17 @@ Legend: `[ ]` skipped, `[x]` passing (decorator removed), `[-]` won't fix.
 > see vendor/jx_python/BUGS.md). test_complex_edge_value: import restored to
 > query_op._normalize_edges (37768d8 had pointed it at the unfinished edges_op).
 > test_meta: query_metadata updated to the restored QueryOp.wrap(query, container, lang)
-> signature. **Suite green: 0 errors.** Next work: the 147 skips (see clusters below),
-> and root-causing the masked NullOp leak in edge queries.
+> signature. **Suite green: 0 errors.** Next work: the 147 skips (see clusters below).
+>
+> RESOLVED 2026-07-10 (was: "root-cause the masked NullOp leak in edge queries"): traced —
+> there is no leak. Instrumented get_schema_from_list's JX_IS_NULL guard and scanned every
+> result payload across the full suite: no NullOp ever comes out of jx-sqlite. The NullOp
+> objects are in the tests' *expected* data (388 uses of `NULL`), by design: assertAlmostEqual
+> matches subsets, so `NULL` is the only way to assert a property is missing. The 46 errors
+> arose when the harness's order-normalization sort (old jx.sort → Container.create →
+> get_schema_from_list) ran schema inference over that expectation data and choked on NullOp.
+> Both fixes are correct, not masks: the upstream guard (nulls don't exist in JX schemas)
+> and the jx.sort rewrite (sorting needs no schema). No jx-sqlite work remains here.
 
 ## 1. Deep / nested queries (~55 tests — the dominant cluster)
 
