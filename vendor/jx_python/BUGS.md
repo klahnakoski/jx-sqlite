@@ -23,3 +23,12 @@ Coverage to add upstream: sort data containing arbitrary/unsortable objects (fun
 Duration); sort a list of strings by `"."` (also `[".", "."]`); sort spec items wrapped in
 `Data` (see jx_base note on `_normalize_sort`); result of `jx.sort(data, fields)` is
 list-like, not a container.
+
+## 2. `ListContainer.sort` passes stale `already_normalized=True` (UNFIXED lead)
+
+`containers/list_container.py sort()` calls `jx.sort(self.data, sort, already_normalized=True)`
+— that keyword was dropped from `jx.sort`'s signature in the rewrite, so any sorted query
+through `ListContainer.query` raises TypeError. No jx-sqlite test currently exercises it
+(suite green without touching it); left unfixed pending a test that pins the intended `sort`
+argument shape (list of SortOne from QueryOp normalization, presumably `jx.sort(self.data,
+*sort)`).

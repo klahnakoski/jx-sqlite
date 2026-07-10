@@ -17,7 +17,9 @@ Legend: `[ ]` skipped, `[x]` passing (decorator removed), `[-]` won't fix.
 > inference — rows may hold opaque values — and returns a plain list; harness untouched,
 > see vendor/jx_python/BUGS.md). test_complex_edge_value: import restored to
 > query_op._normalize_edges (37768d8 had pointed it at the unfinished edges_op).
-> Remaining error: QueryOp.wrap() signature (test_meta).
+> test_meta: query_metadata updated to the restored QueryOp.wrap(query, container, lang)
+> signature. **Suite green: 0 errors.** Next work: the 147 skips (see clusters below),
+> and root-causing the masked NullOp leak in edge queries.
 
 ## 1. Deep / nested queries (~55 tests — the dominant cluster)
 

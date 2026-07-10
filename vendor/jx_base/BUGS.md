@@ -17,7 +17,14 @@ Coverage to add upstream: `is_expression` over a FlatList / list / Data / op ins
 class; `jx_expression({"eq": [field, [literal, literal]]})` and the `in` form produce working
 expressions.
 
-## 2. `sort_op._normalize_sort` rejects Data-wrapped sort items (FIXED in jx-sqlite vendored copy — needs upstream + tests)
+## 2. `query_metadata` still used the old 1-arg `QueryOp.wrap` (FIXED in jx-sqlite vendored copy — needs upstream + tests)
+
+`meta_columns.py query_metadata` called `QueryOp.wrap(query)`; the restored signature is
+`wrap(query, container, lang)`. Now passes the denormalized columns ListContainer and `JX`
+(the `lang` parameter is currently unused in `wrap`'s body). Verified by jx-sqlite
+`test_metadata.test_meta` (meta.columns queries in all three formats).
+
+## 3. `sort_op._normalize_sort` rejects Data-wrapped sort items (FIXED in jx-sqlite vendored copy — needs upstream + tests)
 
 A sort item arriving as `Data('.')` (Data may hold a primitive; must be unwrapped asap) fell
 past the `is_text` branch into the `{field: direction}` branch and failed. **Fix applied
