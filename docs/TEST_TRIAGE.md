@@ -13,8 +13,9 @@ Legend: `[ ]` skipped, `[x]` passing (decorator removed), `[-]` won't fix.
 > missing — the jx-sqlite edge-query leak is masked, not root-caused. Fixed today:
 > tuple-of-literals eq/in (jx_base `is_expression` fooled by FlatList); test_left/test_string
 > (setop wrapped whole-value scalars in Data); test_id_select ×2, test_time_expression,
-> test_empty_default_domain (harness sort now tolerates unsortable predicate/Duration cells
-> and upstream jx.sort's ListContainer return). Remaining errors: QueryOp.wrap() signature
+> test_empty_default_domain (jx.sort rewritten: sorts without Container.create/schema
+> inference — rows may hold opaque values — and returns a plain list; harness untouched,
+> see vendor/jx_python/BUGS.md). Remaining errors: QueryOp.wrap() signature
 > (test_meta); 'dict' has no 'schema' (test_complex_edge_value); expected error not raised
 > (test_no_add).
 

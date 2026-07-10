@@ -16,3 +16,11 @@ the raw literal list unconverted, `EqOp.rhs` became a FlatList, and
 Coverage to add upstream: `is_expression` over a FlatList / list / Data / op instance / op
 class; `jx_expression({"eq": [field, [literal, literal]]})` and the `in` form produce working
 expressions.
+
+## 2. `sort_op._normalize_sort` rejects Data-wrapped sort items (FIXED in jx-sqlite vendored copy — needs upstream + tests)
+
+A sort item arriving as `Data('.')` (Data may hold a primitive; must be unwrapped asap) fell
+past the `is_text` branch into the `{field: direction}` branch and failed. **Fix applied
+(2026-07-10):** `s = from_data(s)` at the top of the normalization loop. Coverage to add
+upstream: `_normalize_sort` over Data-wrapped fieldname, plain fieldname, list, `{field:
+direction}`, `{"field":…, "sort":…}` forms.

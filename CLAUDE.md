@@ -71,6 +71,10 @@ Or install the locked dependency set first:
 python.exe -m pip install --no-deps -r tests\requirements.lock
 ```
 
+Do not change tests (including the harness in `tests/__init__.py`) to make them pass — they
+are more likely correct than the code they test. A failing test indicts the code; catching or
+working around the failure in the harness hides the defect.
+
 ## Status
 
 Jan 2024: 118 of 334 tests ignored due to library breakage. Core simple-case functionality works.

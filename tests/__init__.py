@@ -193,15 +193,8 @@ def compare_to_expected(query, result, expect):
             result.data = zip(*[columns[m] for m in mapping])
 
         if not query.sort:
-            # ROWS MAY HOLD UNSORTABLE VALUES (PREDICATE FUNCTIONS, Duration);
-            # IF EITHER SIDE CAN NOT SORT, COMPARE BOTH IN GIVEN ORDER
-            original = result.data = list(result.data)  # MATERIALIZE; MAY BE A LAZY zip
-            try:
-                sort_table(result)
-                sort_table(expect)
-            except Exception as cause:
-                result.data = original
-                logger.warning("sorting failed; comparing in given order", cause=cause)
+            sort_table(result)
+            sort_table(expect)
     elif result.meta.format == "list":
         if query["from"].startswith("meta."):
             pass
@@ -223,14 +216,13 @@ def compare_to_expected(query, result, expect):
 
             if is_sequence(expect.data):
                 try:
-                    # jx.sort RETURNS A ListContainer; UNWRAP TO A PLAIN LIST OF ROWS
-                    expect.data = list(jx.sort(expect.data, sort_order.name))
+                    expect.data = jx.sort(expect.data, sort_order.name)
                 except Exception:
                     pass
 
             if is_many(result.data):
                 try:
-                    result.data = list(jx.sort(result.data, sort_order.name))
+                    result.data = jx.sort(result.data, sort_order.name)
                 except Exception as cause:
                     logger.warning("sorting failed", cause=cause)
 
@@ -240,17 +232,13 @@ def compare_to_expected(query, result, expect):
         and result.edges[0].name == "rownum"
         and not query.sort
     ):
-        try:
-            result_data, result_header = cube2list(result.data)
-            result_data = from_data(jx.sort(result_data, result_header))
+        result_data, result_header = cube2list(result.data)
+        result_data = from_data(jx.sort(result_data, result_header))
+        result.data = list2cube(result_data, result_header)
 
-            expect_data, expect_header = cube2list(expect.data)
-            expect_data = jx.sort(expect_data, expect_header)
-
-            result.data = list2cube(result_data, result_header)
-            expect.data = list2cube(expect_data, expect_header)
-        except Exception as cause:
-            logger.warning("sorting failed; comparing in given order", cause=cause)
+        expect_data, expect_header = cube2list(expect.data)
+        expect_data = jx.sort(expect_data, expect_header)
+        expect.data = list2cube(expect_data, expect_header)
 
     # CONFIRM MATCH
     assertAlmostEqual(result, expect, places=6)
