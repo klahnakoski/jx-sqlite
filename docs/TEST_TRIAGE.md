@@ -7,6 +7,15 @@ are un-skipped or reasons are refined.
 
 Legend: `[ ]` skipped, `[x]` passing (decorator removed), `[-]` won't fix.
 
+> BASELINE 2026-07-10 (after svn sync of upstream jx_python/jx_base/mo_json fixes):
+> 351 tests, 193 pass, 11 errors, 147 skipped. The former 46-error NullOp cluster passes
+> because upstream `get_schema_from_list` now treats a leaked jx NULL as missing — the
+> jx-sqlite edge-query leak is masked, not root-caused. Remaining errors: result order
+> (test_left, test_string); tuple-of-literals eq/in; "not expected function"
+> (test_id_select, test_id_and_value_select); QueryOp.wrap() signature (test_meta);
+> 'dict' has no 'schema' (test_complex_edge_value); "not expected Duration"
+> (test_time_expression); test_empty_default_domain; test_no_add.
+
 ## 1. Deep / nested queries (~55 tests — the dominant cluster)
 
 Queries that reach across tables of the snowflake: deep selects, deep wheres, aggs on
