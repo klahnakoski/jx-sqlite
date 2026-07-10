@@ -31,7 +31,7 @@ from mo_times import Timer
 from mo_times.dates import Date
 from mo_times.durations import Duration
 
-from mo_json.scrubber import Scrubber
+from mo_json.scrubber import Scrubber, datetime2unix
 from mo_json.utils import float2json, quote
 
 json_decoder = json.JSONDecoder().decode
@@ -166,9 +166,9 @@ def _value2json(value, _buffer):
         elif type in (set, list, tuple, FlatList):
             _list2json(value, _buffer)
         elif type is date:
-            append(_buffer, float2json(time.mktime(value.timetuple())))
+            append(_buffer, float2json(datetime2unix(value)))
         elif type is datetime:
-            append(_buffer, float2json(time.mktime(value.timetuple())))
+            append(_buffer, float2json(datetime2unix(value)))
         elif type is Date:
             append(_buffer, float2json(value.unix))
         elif type is timedelta:

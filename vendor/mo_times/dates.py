@@ -529,11 +529,12 @@ def unicode2Date(value, format=None):
 
     value = value.strip()
     if value.lower() == "now":
-        return _unix2Date(datetime2unix(_utcnow()))
+        # delegate to Date.now so unix_now() is the single (mockable) clock
+        return Date.now()
     elif value.lower() == "today":
-        return _unix2Date(math.floor(datetime2unix(_utcnow()) / 86400) * 86400)
+        return Date.today()
     elif value.lower() in ["eod", "tomorrow"]:
-        return _unix2Date(math.floor(datetime2unix(_utcnow()) / 86400) * 86400 + 86400)
+        return Date.eod()
 
     if any(n in value.lower() for n in ["now", "today", "eod", "tomorrow"] + list(MILLI_VALUES.keys())):
         return parse_time_expression(value)

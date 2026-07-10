@@ -43,3 +43,33 @@ Full spec: `C:\Users\kyle\code\ActiveData\docs\jx_decisive_operators.md`.
 - (query, namespace, language) combination — commits 7aafd1d/37768d8 note the namespace is
   missing from the pipeline. Where should QueryOp acquire its namespace: at parse
   (`jx_expression`), at `QueryOp.wrap`, or at `to_sql`?
+
+- **schema-specific JX as an intermediary (not built, maybe not needed).** High-level JX is
+  schema-agnostic: the typed keys are invisible, so a nameless value list `[1, 2, 3]`
+  (typed `{"~a~": [{"~i~": 1}, ...]}`) has `nested_path=["."]`. Only `es_column` carries the
+  typing (e.g. `.~n~`; see `tests/test_various.py::test_column`). If the schema is known, one
+  could split a JX query into schema-specific variants whose nested paths are concrete — the
+  same value list would then be `nested_path=["~a~", "."]`. Kyle has **not** built this
+  JX → schema-specific-JX → SQL step; it is not used anywhere in this code. Open question
+  whether that intermediary is worth introducing, or whether `to_sql` should keep resolving
+  schema variation directly.
+
+  Because the Python target is **dynamically typed**, this code deliberately keeps
+  `es_column="."` for a nameless primitive list (`[1, 2, 3]`) instead of materializing
+  `~i~`/`~s~`/`~a~`: it leans on `to_data`/`from_data`/`enlist`/`delist` (with `isinstance`
+  once down at the primitives), so distinguishing integer-vs-string or scalar-vs-array is not
+  needed. Consequence: the `Column` constraint must allow a primitive `json_type` at
+  `es_column="."` (not only `ARRAY`/`OBJECT`). A strictly-typed destination would instead
+  demand `es_column="~i~"` etc., and would split a list/set into per-item schemas with
+  (possibly different) operations per record — the schema-specific-JX path above. Kyle notes
+  the `es_column="."` choice *may* be wrong long-term, but it is what this code assumes.
+
+- **arrays-of-arrays are out of scope by design.** JX assumes **named properties**; its
+  automatic projection over lists is recursive and blind to structure (it is emphatically NOT
+  numpy). A bare list-of-lists like `[[1, 2], [3]]` has no elegant representation — the
+  operations may not make sense, and schema inference currently errors on it (the inner list
+  hits the `json_type=ARRAY → cardinality in [0,1]` constraint; a single-element inner list is
+  also unwrapped to a scalar, so a column gets conflicting types). Kyle's stance: an array of
+  arrays is really a **tuple** — position carries meaning and should be given **names** — so
+  the fix is to name the positions, not to teach JX positional arrays. Left unhandled on
+  purpose; do not "fix" `[[...],[...]]` by forcing a nameless-array schema.
