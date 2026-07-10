@@ -15,9 +15,9 @@ Legend: `[ ]` skipped, `[x]` passing (decorator removed), `[-]` won't fix.
 > (setop wrapped whole-value scalars in Data); test_id_select ×2, test_time_expression,
 > test_empty_default_domain (jx.sort rewritten: sorts without Container.create/schema
 > inference — rows may hold opaque values — and returns a plain list; harness untouched,
-> see vendor/jx_python/BUGS.md). Remaining errors: QueryOp.wrap() signature
-> (test_meta); 'dict' has no 'schema' (test_complex_edge_value); expected error not raised
-> (test_no_add).
+> see vendor/jx_python/BUGS.md). test_complex_edge_value: import restored to
+> query_op._normalize_edges (37768d8 had pointed it at the unfinished edges_op).
+> Remaining error: QueryOp.wrap() signature (test_meta).
 
 ## 1. Deep / nested queries (~55 tests — the dominant cluster)
 

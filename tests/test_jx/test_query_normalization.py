@@ -9,7 +9,7 @@
 #
 from unittest import skipIf
 
-from jx_base.expressions.edges_op import _normalize_edges
+from jx_base.expressions.query_op import _normalize_edges
 from jx_base.expressions.select_op import normalize_one
 from mo_dots import Null
 from mo_json import json2value, value2json
