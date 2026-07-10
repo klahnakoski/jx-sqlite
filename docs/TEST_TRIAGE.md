@@ -90,6 +90,14 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 - [ ] test_nested
 - [ ] test_single_nested — "nested are broken"
 
+### reclustered from cluster 9 (2026-07-10)
+- [ ] test_expressions_w_set_ops.py::test_select_average — edges on deep table:
+      "no such column: __parent__"
+- [ ] test_expressions_w_set_ops.py::test_select_average_on_none — same
+- [ ] test_filters.py::test_regexp_expression — `select *` from nested table returns parent
+      doc with hidden columns (`__id__`/`__order__`/`__parent__`) and fact-relative paths;
+      the regex where clause compiles correctly
+
 ### test_set_ops.py (deep subset)
 - [ ] test_single_deep_select
 - [ ] test_select_w_deep_star
@@ -179,17 +187,32 @@ window/subquery; sqlite has no MEDIAN).
 - [ ] test_groupby_1.py::test_groupby_object_star — "broken"
 - [ ] test_groupby_1.py::test_groupby_multivalue_naive — "requires groupby sets"
 
-## 9. Scalar expressions (~9 tests)
-- [ ] test_filters.py::test_where_expression — "broken"
-- [ ] test_filters.py::test_add_expression — "broken"
-- [ ] test_filters.py::test_regexp_expression — "broken"
-- [ ] test_expressions_w_set_ops.py::test_length — "broken"
-- [ ] test_expressions_w_set_ops.py::test_select_mult_w_when — "broken"
-- [ ] test_expressions_w_set_ops.py::test_select_average — "broken"
-- [ ] test_expressions_w_set_ops.py::test_select_average_on_none — "broken"
-- [ ] test_expressions_w_set_ops.py::test_left_w_find — (no reason)
-- [ ] test_expressions_w_set_ops.py::test_not_left — "problem partial_eval(SQLang) before
-      to_sql(schema)" ← pipeline-order issue; may explain others in this cluster
+## 9. Scalar expressions (~9 tests) — CLEARED 2026-07-10 (6 fixed, 3 reclustered)
+- [x] test_filters.py::test_where_expression — harness zip fix (see note below)
+- [x] test_filters.py::test_add_expression — harness zip fix
+- [-] test_filters.py::test_regexp_expression — MISFILED: regex where compiles fine; failure
+      is `select *` from nested table (returns parent doc w hidden cols) → cluster 1/2;
+      re-skipped with accurate reason
+- [x] test_expressions_w_set_ops.py::test_length — harness zip fix
+- [x] test_expressions_w_set_ops.py::test_select_mult_w_when — two real bugs fixed:
+      (1) jx_sqlite ToBooleanOp decided boolean-ness from the *abstract* term's jx_type
+      (unresolved for a Variable before schema) and fell back to exists(), so `when: "b"`
+      treated False as true — now decides from the compiled SqlScript's jx_type;
+      (2) jx_base mapped "mult" → ProductOp (always decisive; `nulls` clause crashed) —
+      now "mul"/"mult"/"multiply" → MulOp, matching "add" → AddOp (vendor/jx_base/BUGS.md #4)
+- [-] test_expressions_w_set_ops.py::test_select_average — MISFILED: edges on deep table,
+      "no such column: __parent__" → cluster 1; re-skipped with accurate reason
+- [-] test_expressions_w_set_ops.py::test_select_average_on_none — same → cluster 1
+- [x] test_expressions_w_set_ops.py::test_left_w_find — already passing; decorator removed
+- [x] test_expressions_w_set_ops.py::test_not_left — already passing (the named
+      "partial_eval(SQLang) before to_sql(schema)" defect survives in spirit: it was the
+      ToBooleanOp bug above; the left/find path itself was fixed by earlier repairs)
+
+> Harness fix (tests/__init__.py:224): table-format column remapping left `result.data` as a
+> lazy py3 `zip`, which assertAlmostEqual cannot iterate — every table-format expectation
+> combined with an explicit query `sort` failed regardless of engine correctness (py2
+> leftover; engine output verified correct by direct query first). Several still-skipped
+> cluster-1/2 tests combine table+sort — expect some to pass on un-skip now.
 
 ## 10. Metadata (~3 tests)
 - [ ] test_metadata.py::test_meta_tables — "broken"

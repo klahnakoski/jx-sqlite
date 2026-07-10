@@ -31,3 +31,14 @@ past the `is_text` branch into the `{field: direction}` branch and failed. **Fix
 (2026-07-10):** `s = from_data(s)` at the top of the normalization loop. Coverage to add
 upstream: `_normalize_sort` over Data-wrapped fieldname, plain fieldname, list, `{field:
 direction}`, `{"field":…, "sort":…}` forms.
+
+## 4. `"mult"`/`"mul"`/`"multiply"` mapped to ProductOp — forced decisive, `nulls` clause crashes (FIXED in jx-sqlite vendored copy — needs upstream + tests)
+
+`operators["mult"]` pointed at `ProductOp`, whose `__new__` returns `MulOp(*terms, nulls=True)`
+unconditionally — the JSON `mult` op was always decisive, and an explicit `{"mult": [...],
+"nulls": true}` raised TypeError (`__new__` does not accept the clause). Asymmetric with
+`"add" -> AddOp` (conservative by default, `nulls` clause honored). **Fix applied
+(2026-07-10):** `"mul"/"mult"/"multiply" -> MulOp`; `"product"` remains the decisive
+ProductOp. Verified by jx-sqlite `test_select_mult_w_when` (expects `mult(null, 0) = null`).
+Coverage to add upstream: `{"mult": ["a", "b"]}` over a missing operand (expect null);
+`{"mult": [...], "nulls": true}` (expect decisive, no crash).

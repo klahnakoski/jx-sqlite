@@ -23,7 +23,6 @@ lots_of_data = list_to_data([{"a": i} for i in range(30)])
 
 @add_error_reporting
 class TestFilters(BaseTestCase):
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_where_expression(self):
         test = {
             "data": [  # PROPERTIES STARTING WITH _ ARE NESTED AUTOMATICALLY
@@ -64,7 +63,6 @@ class TestFilters(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_add_expression(self):
         test = {
             "data": [  # PROPERTIES STARTING WITH _ ARE NESTED AUTOMATICALLY
@@ -105,7 +103,7 @@ class TestFilters(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
+    @skipIf(global_settings.use == "sqlite", "select * from nested table returns parent doc w hidden columns; regex where itself works (cluster 1/2)")
     def test_regexp_expression(self):
         test = {
             "data": [{"_a": [

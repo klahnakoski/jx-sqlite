@@ -17,7 +17,10 @@ class ToBooleanOp(_ToBooleanOp):
     @check
     def to_sql(self, schema) -> SqlScript:
         term = self.term.partial_eval(SQLang)
-        if term.jx_type == JX_BOOLEAN or term.missing(SQLang) is TRUE:
+        if term.missing(SQLang) is TRUE:
             return term.to_sql(schema)
-        else:
-            return term.exists().to_sql(schema)
+        sql = term.to_sql(schema)
+        # ONLY THE SCHEMA KNOWS IF term IS BOOLEAN; term.jx_type IS UNRESOLVED FOR A Variable
+        if sql.jx_type == JX_BOOLEAN:
+            return sql
+        return term.exists().to_sql(schema)

@@ -21,7 +21,6 @@ lots_of_data = list_to_data([{"a": i} for i in range(30)])
 
 @add_error_reporting
 class TestSetOps(BaseTestCase):
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_length(self):
         test = {
             "data": [
@@ -238,7 +237,6 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select_mult_w_when(self):
         test = {
             "data": [
@@ -376,7 +374,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
+    @skipIf(global_settings.use == "sqlite", "edges on deep table: no such column __parent__ (cluster 1)")
     def test_select_average(self):
         test = {
             "data": [{"a": {"_b": [
@@ -419,7 +417,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
+    @skipIf(global_settings.use == "sqlite", "edges on deep table: no such column __parent__ (cluster 1)")
     def test_select_average_on_none(self):
         test = {
             "data": [{"a": {"_b": [{"a": 5}, {}]}}],
@@ -858,7 +856,6 @@ class TestSetOps(BaseTestCase):
 
         self.utils.execute_tests(test)
 
-    @skip
     def test_left_w_find(self):
         test = {
             "data": [
@@ -930,7 +927,6 @@ class TestSetOps(BaseTestCase):
 
         self.utils.execute_tests(test)
 
-    @skip("problem partial_eval(SQLang) before to_sql(schema)")
     def test_not_left(self):
         test = {
             "data": [

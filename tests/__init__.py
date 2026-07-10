@@ -190,7 +190,8 @@ def compare_to_expected(query, result, expect):
 
         if result.data:
             columns = list(zip(*from_data(result.data)))
-            result.data = zip(*[columns[m] for m in mapping])
+            # list(), NOT bare zip: py3 zip is lazy and assertAlmostEqual cannot iterate it
+            result.data = list(zip(*[columns[m] for m in mapping]))
 
         if not query.sort:
             sort_table(result)
