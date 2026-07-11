@@ -10,13 +10,13 @@ Store JSON documents in a dynamically-managed SQLite schema and query them via a
 
 ### Decisive (Null-Safe) Operators
 
-JX uses "decisive" null semantics: `null` means "out of class" (the slot shouldn't exist), not "unknown value".
+JX uses "decisive" null semantics: `null` means "out of class" (the slot shouldn't exist), not "unknown value". A decisive op *skips* null operands (non-null wins); it is null only when all operands are null.
 
-- `add(42, null) => 42` — non-null wins
+- `sum(42, null) => 42` — decisive: null skipped, non-null wins
 - `eq(null, null) => true` — nulls match each other
 - Contrast with SQL's conservative `NULL` (any operation with NULL returns NULL) and strict languages (NULL raises an error)
 
-See `C:\Users\kyle\code\ActiveData\docs\jx_decisive_operators.md` for the full spec.
+**Not every operator is decisive by default.** Scalar/fixed-arity operators (`add`, `mul`, `least`, `most`) are *conservative* (any null ⇒ null, like SQL `a+b`); aggregates (`sum`, `product`, `min`, `max`) are *decisive*. The `nulls` clause overrides per call. See `docs/null_semantics.md` (repo-local policy) and `C:\Users\kyle\code\ActiveData\docs\jx_decisive_operators.md` for the full spec.
 
 ### Snowflake / Hierarchy Model
 
