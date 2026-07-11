@@ -13,7 +13,7 @@ from jx_sqlite.expressions.not_op import NotOp
 from jx_sqlite.expressions.or_op import OrOp
 from jx_sqlite.expressions.to_boolean_op import ToBooleanOp
 from jx_sqlite.expressions._utils import check
-from mo_sqlite import SQLang, SqlScript
+from mo_sqlite import SQLang, SqlScript, ConcatSQL
 from mo_sqlite.expressions import SqlCaseOp, SqlWhenOp
 
 
@@ -25,10 +25,12 @@ class WhenOp(_WhenOp):
         _else = self.els_.partial_eval(SQLang)
 
         if then.missing(SQLang) is TRUE:
+            # .expr MAY BE THE SqlScript ITSELF (WHEN ITS SQL IS NOT AN Expression);
+            # ConcatSQL MAKES IT PLAIN SQL (RENDERS IDENTICALLY, NULL GUARD INCLUDED)
             return SqlScript(
                 jx_type=_else.jx_type,
                 frum=self,
-                expr=_else.to_sql(schema).expr,
+                expr=ConcatSQL(_else.to_sql(schema).expr),
                 miss=OrOp(when, _else.missing(SQLang)),
                 schema=schema,
             )
@@ -36,7 +38,7 @@ class WhenOp(_WhenOp):
             return SqlScript(
                 jx_type=then.jx_type,
                 frum=self,
-                expr=then.to_sql(schema).expr,
+                expr=ConcatSQL(then.to_sql(schema).expr),
                 miss=OrOp(NotOp(when), then.missing(SQLang)),
                 schema=schema,
             )

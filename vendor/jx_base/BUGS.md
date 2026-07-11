@@ -60,3 +60,21 @@ unconditionally — the JSON `mult` op was always decisive, and an explicit `{"m
 ProductOp. Verified by jx-sqlite `test_select_mult_w_when` (expects `mult(null, 0) = null`).
 Coverage to add upstream: `{"mult": ["a", "b"]}` over a missing operand (expect null);
 `{"mult": [...], "nulls": true}` (expect decisive, no crash).
+
+## 6. `CaseOp.partial_eval` appends a bare then-value into `whens`; inner-else flatten duplicated per inner when (FIXED in jx-sqlite vendored copy — needs upstream + tests)
+
+Two defects in `case_op.py partial_eval`:
+(a) when a `when` clause folded to TRUE, the code did `whens.append(w.then.partial_eval(lang))`
+— a bare VALUE (e.g. a Literal) in a list every consumer treats as WhenOps. Downstream
+`whens[0].when` / constructor `w.els_` checks then raise `Literal object has no attribute ...`.
+A TRUE when means the branch always fires: it is the `else` for the whens collected so far
+(later whens and the original else are unreachable). **Fix applied (2026-07-12):** the folded
+then becomes `_else` and the loop breaks; the original else is used only when no when folded
+to TRUE.
+(b) flattening a nested CaseOp then-clause appended the inner else (`WhenOp(when, then.els_)`)
+INSIDE the loop over inner whens — duplicated per inner when, and shadowing the inner whens
+after the first. Moved after the loop; also `then.els_` was passed positionally where `then=`
+was meant (same in the nested-WhenOp arm).
+Trigger: any `between` (its partial_eval builds CaseOps whose first when folds by literal
+missing/IsNumber tests). Coverage to add upstream: CaseOp with a when folding TRUE
+mid-sequence; nested CaseOp as then-clause with an else.
