@@ -59,6 +59,14 @@ namespace seen from one table of a snowflake.
 1. **Consume `resolve()` at the expression layer.** `variable.py`, `get_op.py`,
    `select_op.py` call `leaves()` then re-derive typed/untyped names; exact-name lookups
    should be `resolve()`, enumeration (`*`, LeavesOp) stays `leaves()`.
+   *Evidence this is overdue* (Kyle, 2026-07-12): jx_sqlite `select_op.to_sql` now carries
+   per-branch dispatch kludges — `all_leaves` vs `leaves` chosen by
+   `schema.nested_path[0] == select.frum.nested_path[0]`, and a `keep(col)`/`branch_prefix`
+   filter re-rooting push names per branch. Both exist because setop re-compiles the SAME
+   select once per branch and each branch re-interprets the names from its own perspective.
+   The right shape: resolve the select ONCE at the query origin (names → canonical columns +
+   push names), then each branch merely projects the columns it owns. The kludges are the
+   projection rule written in the wrong layer.
 2. **Retire the redundant resolution drafts** now that one binder exists:
    `Schema.map_to_sql` (references `c.names[origin]`, likely dead), `Schema.get_columns`,
    `Schema.keys`, `Snowflake.leaves` (snowflake.py — mixes `name`/`es_column` candidates),

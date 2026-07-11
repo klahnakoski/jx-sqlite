@@ -321,7 +321,14 @@ def flatten_many(self, docs):
                     )
 
             else:
-                curr_column = first(cc for cc in columns if cc.json_type == json_type and cc.name == abs_name)
+                # AN ANCESTOR-LEVEL MATCH IS THE PRE-PROMOTION SCALAR: THE QUEUED nest WILL
+                # MOVE IT DOWN; THIS DOC'S VALUES BELONG IN A COLUMN AT THIS LEVEL (FRESH,
+                # TABLE-RELATIVE), SO DO NOT MATCH SHALLOWER COLUMNS
+                curr_column = first(
+                    cc
+                    for cc in columns
+                    if cc.json_type == json_type and cc.name == abs_name and len(cc.nested_path) >= len(nested_path)
+                )
 
             if not curr_column:
                 curr_column = Column(
@@ -344,10 +351,29 @@ def flatten_many(self, docs):
                     new_query_path = concat_field(curr_column.es_index, curr_column.es_column)
                     deeper_insertion = doc_collection.setdefault(new_query_path, Insertion())
                     old_column_prefix, _ = untyped_column(curr_column.es_column)
+                    moved_columns = []
                     for c in list(insertion.active_columns):
                         if c.nested_path[0] == nested_path[0] and startswith_field(c.es_column, old_column_prefix):
                             doc_collection[table_name].active_columns.remove(c)
                             doc_collection[new_query_path].active_columns.append(c)
+                            moved_columns.append(c)
+                    # SAME-CALL PROMOTION: ROWS ALREADY COLLECTED UNDER THE OLD (PARENT-LEVEL)
+                    # KEYS MOVE TOO - EACH BECOMES AN ORDER-0 CHILD ROW, KEYED TABLE-RELATIVE
+                    # (MATCHING _nest_column's RENAME OF THE SAME Column OBJECTS)
+                    for r in doc_collection[table_name].rows:
+                        child_row = None
+                        for c in moved_columns:
+                            value = r.pop(c.es_column, None)
+                            if value is None:
+                                continue
+                            if child_row is None:
+                                child_row = {
+                                    UID: self.container.next_uid(),
+                                    PARENT: r[UID],
+                                    ORDER: 0,
+                                }
+                                doc_collection[new_query_path].rows.append(child_row)
+                            child_row[relative_field(c.es_column, old_column_prefix)] = value
                     insertion.query_paths.append(curr_column.es_column)
                     required_changes.append({"nest": curr_column})
                 else:
@@ -359,24 +385,6 @@ def flatten_many(self, docs):
                 # ALWAYS PROMOTE OBJECTS TO NESTED
                 json_type = ARRAY
                 v = [v]
-            elif len(curr_column.nested_path) < len(nested_path):
-                es_column = curr_column.es_column
-
-                # PROMOTE COLUMN TO ARRAY OF VALUES
-                parent_rows = doc_collection[table_name].rows
-                for r in parent_rows:
-                    if es_column in r:
-                        deeper_es_column = typed_column(
-                            concat_field(nested_path[0], rel_name), json_type_to_sql_type_key.get(json_type),
-                        )
-
-                        row1 = {
-                            UID: self.container.next_uid(),
-                            PARENT: r[UID],
-                            ORDER: 0,
-                            deeper_es_column: r[es_column],
-                        }
-                        insertion.rows.append(row1)
             elif len(curr_column.nested_path) > len(nested_path):
                 insertion = doc_collection[curr_column.nested_path[0]]
                 # AN INNER OBJECT (leaves() DESCENDS INTO OBJECTS, NOT ARRAYS) ARRIVES AS

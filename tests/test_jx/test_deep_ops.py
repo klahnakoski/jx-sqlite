@@ -732,7 +732,7 @@ class TestDeepOps(BaseTestCase):
 
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "where {exists: deep.column} from fact origin returns no rows")
+    @skipIf(global_settings.use == "sqlite", "multi-value collapse: explicit deep-column select must merge child values ({v: [a,b]}), P7")
     def test_deep_where_on_fact_table(self):
         test = {
             "data": [

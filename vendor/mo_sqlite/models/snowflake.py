@@ -219,7 +219,10 @@ class Snowflake(_Snowflake):
             return
 
         def new_es_column(c):
-            return concat_field(destination_table, relative_field(c.es_column, old_column_prefix))
+            # TABLE-RELATIVE, MATCHING FRESH INSERTS (b.$N, NOT testing.a.$A.b.$N):
+            # THE CANONICAL COORDINATE IS concat(nested_path[0], es_column); BAKING THE
+            # TABLE INTO es_column DOUBLES THE PATH AND BREAKS Names/leaves
+            return relative_field(c.es_column, old_column_prefix)
 
         def new_nested_path(c):
             return [destination_table, *c.nested_path]
@@ -232,7 +235,7 @@ class Snowflake(_Snowflake):
                     quote_column(destination_table),
                     SQL_ADD_COLUMN,
                     quote_column(new_es_column(c)),
-                    quote_column(column.es_type),
+                    quote_column(c.es_type),  # THE MOVED COLUMN'S TYPE (TEXT AFFINITY MANGLES NUMBERS)
                 ))
 
             # FILL THE NESTED TABLE WITH EXISTING DATA
@@ -272,6 +275,7 @@ class Snowflake(_Snowflake):
             # NOTE: c HAS ALREADY BEEN MOVED TO active_columns
             all_columns.remove(c)
             c.es_column = new_es_column(c)
+            c.es_index = destination_table
             c.nested_path = new_nested_path(c)
             all_columns.add(c)
 
