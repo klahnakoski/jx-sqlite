@@ -70,10 +70,19 @@ namespace seen from one table of a snowflake.
    ES/BigQuery) is deliberately deferred — dict builds are cheap when columns are already
    in memory.
 4. **Cluster 1 via Names.** Naming-layer symptoms are fixed (no hidden-column leak, no
-   `_a._a.b`), but setop assembly still: (a) pushes BOTH the fact-scope flattened leaf
-   (`_a.b`) and the nested `_a` branch for `select *`; (b) splits an inner-object row into
-   one doc per typed column (`_a: [{"b":"x"},{"v":5}]`). Fix in `setop.py`
-   (DocumentDetails/P7) — treat Names as the P0 the INTERSECTION_SURVEY operators sit on.
+   `_a._a.b`). Fact-perspective `select *` (`test_select_whole_document`) is now DONE — the two
+   symptoms named here are fixed, but neither was in `setop.py`:
+   (a) the flattened `_a.b`/`_a.v` at fact scope came from `select_op.py` expanding LeavesOp(".")
+       over child-table leaves — plain `*` (no prefix) now stops at the array boundary
+       (`len(col.nested_path) > origin_depth`);
+   (b) the inner-object split (`_a: [{"b":"x"},{"v":5}]`) was an INSERT bug —
+       `mo_sqlite/models/insert.py` spawned a nested row per flattened leaf; now reuses the row
+       for a given (parent, order).
+   Table/cube also needed `format.py::_deep_header` to key on the top-level container name, not
+   the leaf. Still open: **deep-perspective `select *`** (`from testing._a`) does not switch
+   origin and nested-origin `*` never pulls ancestor scalars — leaves() from a child origin
+   must return parents (rule #2 in this doc claims it does; the shim doesn't yet). That blocks
+   `test_select_whole_nested_document`/`test_deep_star`/`test_deep_star_w_parent` — next target.
 5. **Free vars in anger.** Replace the ad-hoc `row.` prefix stripping (variable.py
    `partial_eval`, `tail_field == "row"`) with the `add_free_var`/`stack(row=...)` idiom;
    revive `sql_select_all_from_op.query()` (the algebra path) on top of Names.

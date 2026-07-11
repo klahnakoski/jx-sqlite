@@ -53,10 +53,16 @@ class SelectOp(_SelectOp):
             elif is_op(expr, LeavesOp):
                 # `a*` CARRIES A PREFIX ("a.") THAT FLATTENS LEAVES INTO LITERAL DOTTED KEYS
                 prefix = "" if expr.prefix is NULL else expr.prefix.value
+                # PLAIN `*` IS DOCUMENT ASSEMBLY: A NESTED ARRAY IS ITSELF ONE LEAF-VALUE (A
+                # SUB-DOCUMENT LIST, ASSEMBLED SEPARATELY), SO DO NOT DESCEND INTO CHILD TABLES.
+                # AN EXPLICIT PREFIX (`a.*`) NAMES A PATH AND KEEPS ITS DEEPER LEAVES.
+                origin_depth = len(schema.nested_path)
                 var_names = expr.vars()
                 for var_name in var_names:
                     cols = schema.leaves(var_name)
                     for rel_name, col in cols:
+                        if not prefix and len(col.nested_path) > origin_depth:
+                            continue
                         full_name = concat_field(name, literal_field(prefix + rel_name))
                         jx_type |= full_name + to_jx_type(col.json_type)
                         sql_terms.append(SqlAliasOp(

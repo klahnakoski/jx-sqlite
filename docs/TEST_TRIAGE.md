@@ -42,11 +42,28 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 > __parent__` and doubled deep names (`_a._a.b`) — visible in whole-document / deep-perspective
 > selects. `Schema.leaves()` now delegates to the resurrected **Names** binder
 > (`vendor/jx_base/models/names.py`, `vendor/mo_sqlite/models/names.py`); all six
-> `tests/test_leaves.py` contract cases pass. Remaining cluster-1 work is **setop assembly**,
-> not naming: `setop.py` `_accumulate_nested`/DocumentDetails still (a) emits both the flattened
-> `_a.b` and the nested `_a` branch for `select *`, and (b) splits an inner-object row into one
-> doc per typed column. Treat Names as the P0 under the INTERSECTION_SURVEY operators; see
-> `docs/NAMES.md` next-steps (esp. #4).
+> `tests/test_leaves.py` contract cases pass. Treat Names as the P0 under the
+> INTERSECTION_SURVEY operators; see `docs/NAMES.md` next-steps (esp. #4).
+>
+> 2026-07-11 (later): **fact-perspective `select *` fixed** — `test_select_whole_document`
+> un-skipped and passing (all three formats), suite still green (366 ran, 128 skip). Three
+> root causes, three targeted fixes:
+> (a) `vendor/mo_sqlite/models/insert.py`: an inner object `{"b":..,"v":..}` (leaves() descends
+>     into objects, NOT arrays) arrived as separate flattened leaves, each spawning its own
+>     nested row → one doc split per typed column. The `len(nested_path) >` branch now REUSES
+>     the row already made for this (parent, order) instead of appending per leaf.
+> (b) `jx_sqlite/expressions/select_op.py`: plain `*` (LeavesOp, no prefix) is document
+>     assembly — a nested array is itself one leaf-value — so it no longer descends into child
+>     tables (`len(col.nested_path) > origin_depth`). Explicit `a.*` (prefix) still keeps deep
+>     leaves.
+> (c) `jx_sqlite/format.py`: `_deep_header`/table+cube projection built headers from each
+>     column's leaf `push_column_name`, promoting nested `b`/`v` to top-level; now uses the
+>     top-level container name relative to the query origin (`_top_name`), so `_a` is one column.
+> **Still deep-perspective (`from testing._a select *`) does NOT switch origin** — returns the
+> fact view; and nested-origin `*` never pulls ancestor scalars (`o`/`x`). That is a distinct
+> root cause (leaves() from a child origin must return parents; query origin/relativization not
+> applied) blocking `test_select_whole_nested_document`, `test_deep_star`, `test_deep_star_w_parent`,
+> `test_deep_select_dot`, etc. — the next cluster-1 target.
 
 ### test_deep_ops.py
 - [ ] test_select_gt_on_sub
@@ -56,7 +73,7 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 - [ ] test_deep_select_column_w_groupby
 - [ ] test_bad_deep_select_column_w_groupby
 - [ ] test_abs_shallow_select
-- [ ] test_select_whole_document — "ambiguous column name: __id__"
+- [x] test_select_whole_document — fixed (insert row-reuse + plain-`*` depth filter + deep header)
 - [ ] test_select_whole_nested_document
 - [ ] test_deep_names_w_star
 - [ ] test_deep_names_select_value

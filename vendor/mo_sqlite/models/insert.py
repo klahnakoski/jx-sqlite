@@ -379,12 +379,20 @@ def flatten_many(self, docs):
                         insertion.rows.append(row1)
             elif len(curr_column.nested_path) > len(nested_path):
                 insertion = doc_collection[curr_column.nested_path[0]]
-                row = {
-                    UID: self.container.next_uid(),
-                    PARENT: row_id,
-                    ORDER: row_num,
-                }
-                insertion.rows.append(row)
+                # AN INNER OBJECT (leaves() DESCENDS INTO OBJECTS, NOT ARRAYS) ARRIVES AS
+                # SEVERAL FLATTENED LEAVES THAT ALL BELONG TO ONE NESTED ROW.  REUSE THE ROW
+                # WE ALREADY MADE FOR THIS (parent, order) INSTEAD OF SPLITTING PER LEAF.
+                row = first(
+                    r for r in reversed(insertion.rows)
+                    if r.get(PARENT) == row_id and r.get(ORDER) == row_num
+                )
+                if row is None:
+                    row = {
+                        UID: self.container.next_uid(),
+                        PARENT: row_id,
+                        ORDER: row_num,
+                    }
+                    insertion.rows.append(row)
 
             # BE SURE TO NEST VALUES, IF NEEDED
             if json_type == ARRAY:

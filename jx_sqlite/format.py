@@ -20,7 +20,10 @@ from mo_dots import (
     unwraplist,
     from_data,
     literal_field,
+    relative_field,
+    tail_field,
 )
+from mo_sql.utils import untype_field
 from mo_future import transpose
 from mo_logs import Log
 
@@ -212,20 +215,32 @@ def format_metadata(metadata, query):
         return Data(meta={"format": "list"}, data=[dict(zip(header, r)) for r in metadata])
 
 
-def _deep_header(cols):
+def _top_name(c, origin):
+    # THE TOP-LEVEL DOCUMENT KEY THIS COLUMN LANDS UNDER, RELATIVE TO THE QUERY ORIGIN.
+    # A COLUMN LIVING IN A DEEPER (CHILD-ARRAY) TABLE IS ASSEMBLED UNDER ITS CONTAINER
+    # (e.g. `_a`), NOT ITS OWN LEAF NAME (`b`).
+    rel = untype_field(relative_field(c.nested_path[0], origin))[0]
+    if rel == ".":
+        return c.push_column_name
+    return tail_field(rel)[0]
+
+
+def _deep_header(cols, origin):
     # PRESERVE SELECT-CLAUSE ORDER (push_column_index), NOT ALPHABETICAL
     order = {}
     for c in cols:
-        prev = order.get(c.push_column_name)
+        name = _top_name(c, origin)
+        prev = order.get(name)
         if prev is None or c.push_column_index < prev:
-            order[c.push_column_name] = c.push_column_index
+            order[name] = c.push_column_index
     return tuple(sorted(order, key=order.get))
 
 
 def format_deep(data, cols, query):
+    origin = query.frum.nested_path[0]
     if query.format == "cube":
         num_rows = len(data)
-        header = _deep_header(cols)
+        header = _deep_header(cols, origin)
         if header == (".",):
             temp_data = {".": data}
         else:
@@ -240,7 +255,7 @@ def format_deep(data, cols, query):
             edges=[{"name": "rownum", "domain": {"type": "rownum", "min": 0, "max": num_rows, "interval": 1,},}],
         )
     elif query.format == "table":
-        header = _deep_header(cols)
+        header = _deep_header(cols, origin)
         if header == (".",):
             temp_data = data
         else:
