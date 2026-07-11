@@ -128,14 +128,14 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 - [x] test_bad_deep_select_column_w_groupby
 - [ ] test_abs_shallow_select
 - [x] test_select_whole_document — fixed (insert row-reuse + plain-`*` depth filter + deep header)
-- [ ] test_select_whole_nested_document
-- [ ] test_deep_names_w_star
+- [x] test_select_whole_nested_document
+- [ ] test_deep_names_w_star — prefix-star on fact-absolute name from deep origin loses the container name
 - [x] test_deep_names_select_value
 - [x] test_deep_names
 - [x] test_deep_agg_on_expression
 - [x] test_deep_agg_on_expression_w_shallow_where
-- [ ] test_agg_w_complicated_where
-- [ ] test_deep_where_on_fact_table
+- [x] test_agg_w_complicated_where
+- [ ] test_deep_where_on_fact_table — where {exists: deep.column} from fact origin returns no rows
 - [ ] test_id_select
 - [x] test_aggs_on_parent
 - [x] test_aggs_on_parent_and_child
@@ -153,8 +153,8 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 - [x] test_exists
 - [x] test_deep_or
 - [x] test_sibling_nested_column
-- [ ] test_deep_star
-- [ ] test_deep_star_w_parent
+- [x] test_deep_star
+- [ ] test_deep_star_w_parent — needs `..*` (parent-star) relative names
 - [ ] test_deep_select_dot
 - [ ] test_from_shallow_select_deep_column
 - [x] test_setop_w_shallow_eq_string

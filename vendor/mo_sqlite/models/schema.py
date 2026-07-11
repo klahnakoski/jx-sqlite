@@ -173,6 +173,14 @@ class Schema(_Schema, Expression):
         # (BUILT PER CALL: self.columns MUTATES UNDER SCHEMA CHANGE; SEE docs/NAMES.md)
         return build_names(self.snowflake.query_paths, self.columns, self.nested_path[0]).leaves(prefix)
 
+    def all_leaves(self, prefix) -> List[Tuple[str, Column]]:
+        """
+        DOCUMENT-ASSEMBLY ENUMERATION (select *): LEAVES FROM EVERY SCOPE - THE ORIGIN'S OWN
+        SUBTREE PLUS ANCESTOR SCALARS - DEDUPED BY COLUMN AND BY (SHADOWED) NAME.
+        CONTRAST leaves(): FIRST SCOPE WITH ANY MATCH SUPPLIES THEM ALL.
+        """
+        return build_names(self.snowflake.query_paths, self.columns, self.nested_path[0]).all_leaves(prefix)
+
     def map_to_sql(self, var=""):
         """
         RETURN A MAP FROM THE RELATIVE AND ABSOLUTE NAME SPACE TO COLUMNS

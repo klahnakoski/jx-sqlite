@@ -371,7 +371,6 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select_whole_nested_document(self):
         test = {
             "data": [
@@ -428,7 +427,7 @@ class TestDeepOps(BaseTestCase):
 
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
+    @skipIf(global_settings.use == "sqlite", "prefix-star on fact-absolute name from deep origin: select a._t.* loses the a._t container")
     def test_deep_names_w_star(self):
         test = {
             "data": [
@@ -659,7 +658,6 @@ class TestDeepOps(BaseTestCase):
 
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_agg_w_complicated_where(self):
         # TEST WE CAN PERFORM AGGREGATES ON EXPRESSIONS OF DEEP VARIABLES
         test = {
@@ -734,7 +732,7 @@ class TestDeepOps(BaseTestCase):
 
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
+    @skipIf(global_settings.use == "sqlite", "where {exists: deep.column} from fact origin returns no rows")
     def test_deep_where_on_fact_table(self):
         test = {
             "data": [
@@ -1653,7 +1651,6 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_deep_star(self):
         # SELECTING * IS LIKE . BUT WITH DIFFERENT COLUMN NAMES
         #
@@ -1679,7 +1676,7 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
+    @skipIf(global_settings.use == "sqlite", "needs ..* (parent-star) relative names")
     def test_deep_star_w_parent(self):
         # SELECTING * IS LIKE . BUT WITH DIFFERENT COLUMN NAMES
         #

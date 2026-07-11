@@ -57,9 +57,15 @@ class SelectOp(_SelectOp):
                 # SUB-DOCUMENT LIST, ASSEMBLED SEPARATELY), SO DO NOT DESCEND INTO CHILD TABLES.
                 # AN EXPLICIT PREFIX (`a.*`) NAMES A PATH AND KEEPS ITS DEEPER LEAVES.
                 origin_depth = len(schema.nested_path)
+                # `select *` FROM A NESTED ORIGIN INCLUDES THE PARENT'S FIELDS (all_leaves:
+                # EVERY SCOPE - ORIGIN SUBTREE + ANCESTOR SCALARS; CONTRAST `select "."`:
+                # THE ORIGIN DOC ALONE).  BUT ONLY AT THE QUERY'S OWN ORIGIN: setop RE-COMPILES
+                # THE SELECT PER BRANCH, AND A CHILD BRANCH ONLY OWNS ITS OWN SUBTREE.
+                query_origin = getattr(self.frum, "nested_path", [None])[0]
+                enumerate_leaves = schema.all_leaves if schema.nested_path[0] == query_origin else schema.leaves
                 var_names = expr.vars()
                 for var_name in var_names:
-                    cols = schema.leaves(var_name)
+                    cols = enumerate_leaves(var_name)
                     for rel_name, col in cols:
                         if not prefix and len(col.nested_path) > origin_depth:
                             continue

@@ -94,6 +94,31 @@ class Names:
                 return [(".", self._deref(v)) for v in exact]
         return []
 
+    def all_leaves(self, prefix: str) -> List[Tuple[str, Any]]:
+        """
+        DOCUMENT-ASSEMBLY ENUMERATION (select *): UNION OF LEAF BINDINGS UNDER prefix ACROSS
+        ALL SCOPES, NEAREST FIRST.  A FARTHER SCOPE'S BINDING IS SKIPPED WHEN A NEARER SCOPE
+        ALREADY BOUND THE SAME VALUE (SAME COLUMN SEEN UNDER ANOTHER NAME) OR THE SAME NAME
+        (SHADOWING).  CONTRAST leaves(): FIRST SCOPE WITH ANY MATCH SUPPLIES THEM ALL.
+        """
+        output = []
+        seen_values = set()
+        seen_names = set()
+        for scope in self.scopes:
+            for name, values in scope.names.items():
+                if values is AMBIGUOUS or not startswith_field(name, prefix):
+                    continue
+                rel_name = relative_field(name, prefix)
+                if rel_name in seen_names:
+                    continue
+                seen_names.add(rel_name)
+                for v in values:
+                    if id(v) in seen_values:
+                        continue
+                    seen_values.add(id(v))
+                    output.append((rel_name, self._deref(v)))
+        return output
+
     def _flat(self) -> Dict[str, Tuple]:
         # ALL VISIBLE (ENUMERABLE) BINDINGS, NEARER SCOPES SHADOWING FARTHER
         output = {}
