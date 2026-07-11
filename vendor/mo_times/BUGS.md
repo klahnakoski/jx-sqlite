@@ -2,24 +2,11 @@
 
 ## 1. Two independent clocks made "now" unmockable via one point (FIXED — needs tests)
 
-`dates.py` had two separate sources of the current time:
-
-- `unix_now` (`from time import time as unix_now`, line 15) — used by `Date.now()`,
-  `Date.eod()`, `Date.today()`.
-- `_utcnow` (`from mo_future import utcnow`, line 18) — used by `unicode2Date`'s string
-  branches for `"now"/"today"/"eod"/"tomorrow"`.
-
-Consequence: `Date("now")`/`Date("eod")` (and therefore the JX `{"date":"eod"}` operator)
-read a **different** clock than `Date.now()`. Mocking one did nothing to the other, so time
-could not be pinned in tests with a single mock. Verified via jx-python
-`test_aws_complex`, whose `{"date":"eod"}` used the real clock even with `Date.now` mocked.
-`datetime.utcnow()` (behind `_utcnow`) is also deprecated in Python 3.12+.
-
-**Fix applied:** the `"now"/"today"/"eod"/"tomorrow"` branches of `unicode2Date` now delegate
-to `Date.now()` / `Date.today()` / `Date.eod()`, so `unix_now` is the single clock. The
-formulas were already identical, so behavior is unchanged except that everything is now driven
-by one mockable function. Verified: with `unix_now` mocked to a fixed value, `Date("now")`,
-`Date("today")`, and `Date("eod")` all track it.
+`dates.py` had two time sources: `unix_now` (used by `Date.now/eod/today`) and `_utcnow`
+(used by `unicode2Date`'s `"now"/"today"/"eod"/"tomorrow"` branches). So `Date("now")` read a
+different clock than `Date.now()` — untestable with a single mock (`datetime.utcnow()` behind
+`_utcnow` is also deprecated in 3.12+). Fix: those `unicode2Date` branches now delegate to
+`Date.now()/today()/eod()`, making `unix_now` the single mockable clock (formulas unchanged).
 
 **REQUIRED — do not let this regress:**
 - Add `mo_times` tests that mock `dates.unix_now` to a fixed value and assert `Date("now")`,

@@ -77,7 +77,8 @@ working around the failure in the harness hides the defect.
 
 ## Status
 
-Jan 2024: 118 of 334 tests ignored due to library breakage. Core simple-case functionality works.
+Many tests are skipped for sqlite after vendor library evolution; core simple-case
+functionality works. See `docs/TEST_TRIAGE.md` for the live count and cluster breakdown.
 
 The repair campaign is tracked in `docs/TEST_TRIAGE.md` — all sqlite-skipped tests grouped by
 root cause, with a suggested order of attack. Pick a cluster, fix, un-skip, update the doc.
