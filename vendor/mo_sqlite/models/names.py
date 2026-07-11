@@ -22,7 +22,12 @@ HIDDEN = (GUID, UID, ORDER, PARENT)
 def snowflake_names(snowflake, origin: str) -> Names:
     """
     THE NAMESPACE SEEN FROM origin (A FULL TABLE NAME IN snowflake.query_paths)
+    """
+    return build_names(snowflake.query_paths, snowflake.columns, origin)
 
+
+def build_names(query_paths, columns, origin: str) -> Names:
+    """
     SCOPE ORDER (NEAREST FIRST, MATCHING Schema.leaves SEARCH ORDER):
         origin, ANCESTORS UP TO FACT, THEN DESCENDANTS OF origin (SHALLOWEST FIRST)
     EACH TABLE'S SCOPE COVERS ITS WHOLE SUBTREE, KEYED BY UNTYPED PATH RELATIVE TO THAT
@@ -30,13 +35,13 @@ def snowflake_names(snowflake, origin: str) -> Names:
     ADDRESSES DO NOT TRAVEL THE SCOPE CHAIN.
     HIDDEN COLUMNS (_id/__id__/__order__/__parent__) ARE NOT PART OF THE NAMESPACE.
     """
-    tables = list(snowflake.query_paths)
+    tables = list(query_paths)
     ancestors = sorted((t for t in tables if startswith_field(origin, t)), key=len, reverse=True)
     descendants = sorted((t for t in tables if startswith_field(t, origin) and t != origin), key=len)
 
     columns = [
         c
-        for c in snowflake.columns
+        for c in columns
         if c.json_type not in (OBJECT, EXISTS) and c.es_column not in HIDDEN and c.name not in HIDDEN
     ]
 

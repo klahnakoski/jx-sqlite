@@ -23,6 +23,7 @@ from mo_future import first
 from mo_json import EXISTS, OBJECT, STRUCT, to_jx_type, JxType
 from mo_logs import Log
 from mo_sql.utils import typed_column, SQL_ARRAY_KEY, untyped_column, untype_field, GUID
+from mo_sqlite.models.names import build_names
 from mo_sqlite.expressions import SqlVariable
 
 
@@ -160,45 +161,17 @@ class Schema(_Schema, Expression):
             if c.json_type not in [OBJECT, EXISTS]
         )
 
-    def leaves(self, prefix) -> Set[Tuple[str, Column]]:
+    def leaves(self, prefix) -> List[Tuple[str, Column]]:
         """
         :param prefix:
-        :return: set of (relative_name, column) pairs
+        :return: list of (relative_name, column) pairs
         """
         if prefix == GUID and len(self.nested_path) == 1:
-            return {(".", first(c for c in self.columns if c.name == GUID))}
+            return [(".", first(c for c in self.columns if c.name == GUID))]
 
-        candidates = [c for c in self.columns if c.json_type not in [OBJECT, EXISTS] and c.name != GUID]
-
-        search_path = [
-            *self.nested_path,
-            *(p for p in self.snowflake.query_paths if p.startswith(self.nested_path[0] + ".")),
-        ]
-
-        for q_path in search_path:
-            rel_path, _ = untype_field(relative_field(q_path, self.snowflake.fact_name))
-            if startswith_field(prefix, rel_path):
-                prefix = relative_field(prefix, rel_path)
-
-            full_name = concat_field(q_path, prefix)
-            output = set(
-                pair
-                for c in candidates
-                if startswith_field(c.nested_path[0], q_path)
-                for pair in [first(
-                    (untype_field(relative_field(k, full_name))[0], c)
-                    for k in [
-                        concat_field(c.nested_path[0], relative_field(c.name, rel_path)),
-                        concat_field(c.es_index, c.es_column),
-                        # concat_field(c.nested_path[0], c.name),  # if the column name includes nested path
-                    ]
-                    if startswith_field(k, full_name)
-                )]
-                if pair is not None
-            )
-            if output:
-                return output
-        return set()
+        # NAME RESOLUTION IS DELEGATED TO THE NAMESPACE SEEN FROM THIS PERSPECTIVE
+        # (BUILT PER CALL: self.columns MUTATES UNDER SCHEMA CHANGE; SEE docs/NAMES.md)
+        return build_names(self.snowflake.query_paths, self.columns, self.nested_path[0]).leaves(prefix)
 
     def map_to_sql(self, var=""):
         """

@@ -21,7 +21,6 @@ from tests.test_jx import global_settings
 @add_error_reporting
 class TestLeaves(FuzzyTestCase):
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_exact_es_match(self):
         schema = Data(
             nested_path=["test.$A", "test"],
@@ -48,7 +47,6 @@ class TestLeaves(FuzzyTestCase):
         result = Schema.leaves(schema, "a.$N")
         self.assertEqual(result, [])
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_exact_match_child(self):
         schema = Data(
             nested_path=["test"],
@@ -62,7 +60,6 @@ class TestLeaves(FuzzyTestCase):
         result = Schema.leaves(schema, "a.$N")
         self.assertEqual(result, [])
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_match_dot(self):
         schema = Data(
             nested_path=["test"],
@@ -88,7 +85,6 @@ class TestLeaves(FuzzyTestCase):
         result = Schema.leaves(schema, GUID)
         self.assertEqual(result, [])
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_deep_child_found(self):
         schema = Data(
             nested_path=["test"],
