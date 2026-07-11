@@ -103,8 +103,9 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 > select_average_on_none, nested_filter_with_groupby; expressions_w_set_ops select_average ×2;
 > sort groupby_and_sort/groupby_expression_and_sort/groupby2a_and_sort (cluster 4);
 > groupby_1 groupby_star/groupby_object_star (cluster 8); edge_1 edge_using_tuple (cluster 7);
-> edge_2 edge_using_missing_between1 (cluster 3); agg_ops select_agg_mult_w_when (cluster 6),
-> both_percentile (cluster 5!).
+> edge_2 edge_using_missing_between1 (cluster 3); agg_ops select_agg_mult_w_when (cluster 6).
+> (both_percentile looked fixed but was a false positive - its no-space skipIf dodged the
+> decorator scan; verified individually, still failing.)
 > Remaining deep_ops failures (23) regroup as: aggs_on_parent_and_child ×3 (parent+child in one
 > query — needs the ORDER>0/DISTINCT dedupe rule edges never learned), the nested-origin-`*`
 > group (unchanged), deep_agg_w_deeper_select_relative_name ×2 (`..` names), and the singles.
@@ -233,7 +234,7 @@ Median/percentile/stats need an extension function or emulation (percentile via
 window/subquery; sqlite has no MEDIAN).
 - [ ] test_agg_ops.py::test_median — "not expected to pass yet"
 - [ ] test_agg_ops.py::test_percentile
-- [x] test_agg_ops.py::test_both_percentile
+- [ ] test_agg_ops.py::test_both_percentile
 - [ ] test_agg_ops.py::test_stats
 - [ ] test_agg_ops.py::test_median_on_value — "sqlite does not have a median function"
 - [ ] test_edge_1.py::test_percentile — "no median support"
