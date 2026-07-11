@@ -85,6 +85,29 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 >   doubled path), from_shallow_select_deep_column (float item assignment), id_select,
 >   nested_document_selection, nested_filter_with_groupby, deep_select_column_w_groupby.
 > TestNestedQueries (10 tests): all still fail — mostly deep aggs, likely the `__id__` cause.
+>
+> 2026-07-11 (night): **edges/groupby one-scope rework — 16 more un-skipped** (suite 366 ran,
+> 93 skips). Two changes, both in the P1/P2 zone of `docs/INTERSECTION_SURVEY.md`:
+> 1. `meta_columns.py find(fact)` gathered a snowflake's columns by table-name prefix; after
+>    `rename_tables` to opaque aliases (`__t0__`) the prefixes share nothing, so the renamed
+>    schema LOST every child-table column (edge values compiled to literal NULL). `find` now
+>    consults `_snowflakes` (membership is data, not name algebra), prefix scan as fallback.
+> 2. `edges.py`/`group.py` stopped renaming tables at all: `sql_join_chain` now aliases every
+>    table AS ITSELF (setop precedent — Names/leaves algebra keeps working), joins the spanning
+>    tree covering origin ancestors ∪ tables the query mentions (fan-out only when reached
+>    into), and edges.py inlines the join chain instead of wrapping a facts subquery — the
+>    facts subquery's bare-column select list was the literal "ambiguous __id__", and its alias
+>    trick only ever worked for fact-table references. `__exists__` replaced by
+>    COUNT(origin.__id__). rename_tables/table_alias are now unused by live code.
+> Un-skipped: deep_ops aggs_on_parent, deep_agg_on_expression ×2, deep_edge_using_list,
+> select_average_on_none, nested_filter_with_groupby; expressions_w_set_ops select_average ×2;
+> sort groupby_and_sort/groupby_expression_and_sort/groupby2a_and_sort (cluster 4);
+> groupby_1 groupby_star/groupby_object_star (cluster 8); edge_1 edge_using_tuple (cluster 7);
+> edge_2 edge_using_missing_between1 (cluster 3); agg_ops select_agg_mult_w_when (cluster 6),
+> both_percentile (cluster 5!).
+> Remaining deep_ops failures (23) regroup as: aggs_on_parent_and_child ×3 (parent+child in one
+> query — needs the ORDER>0/DISTINCT dedupe rule edges never learned), the nested-origin-`*`
+> group (unchanged), deep_agg_w_deeper_select_relative_name ×2 (`..` names), and the singles.
 
 ### test_deep_ops.py
 - [x] test_select_gt_on_sub
@@ -99,22 +122,22 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 - [ ] test_deep_names_w_star
 - [x] test_deep_names_select_value
 - [x] test_deep_names
-- [ ] test_deep_agg_on_expression
-- [ ] test_deep_agg_on_expression_w_shallow_where
+- [x] test_deep_agg_on_expression
+- [x] test_deep_agg_on_expression_w_shallow_where
 - [ ] test_agg_w_complicated_where
 - [ ] test_deep_where_on_fact_table
 - [ ] test_id_select
-- [ ] test_aggs_on_parent
+- [x] test_aggs_on_parent
 - [ ] test_aggs_on_parent_and_child
 - [ ] test_aggs_on_parent_and_child2
 - [ ] test_aggs_on_parent_and_child3
-- [ ] test_deep_edge_using_list
+- [x] test_deep_edge_using_list
 - [ ] test_deep_agg_w_deeper_select_relative_name_neop
 - [x] test_setop_w_deep_select_value_neop
 - [ ] test_deep_agg_w_deeper_select_relative_name
 - [x] test_shallow_and_ne_deep
 - [x] test_setop_w_deep_select_value
-- [ ] test_select_average_on_none
+- [x] test_select_average_on_none
 - [x] test_missing
 - [x] test_missing_on_not_exists
 - [x] test_exists
@@ -129,7 +152,7 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 - [ ] test_deep_edge_w_shallow_var
 - [ ] test_nested_property_edge_w_shallow_expression
 - [ ] test_nested_document_selection
-- [ ] test_nested_filter_with_groupby
+- [x] test_nested_filter_with_groupby
 
 ### test_nested.py
 - [ ] TestNestedQueries (whole class) — "broken"
@@ -140,9 +163,8 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 - [x] test_single_nested
 
 ### reclustered from cluster 9 (2026-07-10)
-- [ ] test_expressions_w_set_ops.py::test_select_average — edges on deep table:
-      "no such column: __parent__"
-- [ ] test_expressions_w_set_ops.py::test_select_average_on_none — same
+- [x] test_expressions_w_set_ops.py::test_select_average
+- [x] test_expressions_w_set_ops.py::test_select_average_on_none
 - [x] test_filters.py::test_regexp_expression
 
 ### test_set_ops.py (deep subset)
@@ -185,7 +207,7 @@ Fixed + `jx_sqlite/expressions/select_op.py` LeavesOp branch now honors `expr.pr
 
 BetweenOp (string-slicing between, and edge domains using between).
 - [ ] test_edge_1.py::test_edge_using_between
-- [ ] test_edge_2.py::test_edge_using_missing_between1
+- [x] test_edge_2.py::test_edge_using_missing_between1
 - [ ] test_edge_2.py::test_edge_using_missing_between2
 - [ ] test_expressions_w_set_ops.py::test_between_missing
 - [ ] test_expressions_w_set_ops.py::test_between — "parser stack overflow"
@@ -198,9 +220,9 @@ the edge/groupby output columns. Related to the uncommitted `jx_base/expressions
 change.
 - [x] test_sort.py::test_edge_and_sort
 - [ ] test_sort.py::test_2edge_and_sort
-- [ ] test_sort.py::test_groupby_and_sort — "fix me"
-- [ ] test_sort.py::test_groupby_expression_and_sort — "fix me"
-- [ ] test_sort.py::test_groupby2a_and_sort — "fix me"
+- [x] test_sort.py::test_groupby_and_sort
+- [x] test_sort.py::test_groupby_expression_and_sort
+- [x] test_sort.py::test_groupby2a_and_sort
 - [ ] test_sort.py::test_groupby2b_and_sort
 - [ ] test_sort.py::test_groupby2c_and_sort
 - [ ] test_edge_time.py::test_count_over_time_w_sort — "broken"
@@ -211,13 +233,13 @@ Median/percentile/stats need an extension function or emulation (percentile via
 window/subquery; sqlite has no MEDIAN).
 - [ ] test_agg_ops.py::test_median — "not expected to pass yet"
 - [ ] test_agg_ops.py::test_percentile
-- [ ] test_agg_ops.py::test_both_percentile
+- [x] test_agg_ops.py::test_both_percentile
 - [ ] test_agg_ops.py::test_stats
 - [ ] test_agg_ops.py::test_median_on_value — "sqlite does not have a median function"
 - [ ] test_edge_1.py::test_percentile — "no median support"
 
 ## 6. Other aggregate ops (~4 tests)
-- [ ] test_agg_ops.py::test_select_agg_mult_w_when — "broken"
+- [x] test_agg_ops.py::test_select_agg_mult_w_when
 - [ ] test_agg_ops.py::test_max_on_tuple — "broken"
 - [ ] test_agg_ops.py::test_max_on_tuple2 — "broken"
 - [ ] test_agg_ops.py::test_union — "broken"
@@ -229,7 +251,7 @@ window/subquery; sqlite has no MEDIAN).
 - [ ] test_edge_1.py::test_multiple_union — same
 - [ ] test_edge_1.py::test_multiple_union2 — same
 - [ ] test_edge_1.py::test_empty_default_domain_w_groupby — "broken"
-- [ ] test_edge_1.py::test_edge_using_tuple — "broken"
+- [x] test_edge_1.py::test_edge_using_tuple
 - [ ] test_edge_1.py::test_shallow_with_deep_edge — "not sure what first() of nested column
       would be; requires schema merging of a.b.~n~ and a.~a~.b.~n~" (design question)
 
@@ -238,8 +260,8 @@ window/subquery; sqlite has no MEDIAN).
 - [ ] test_groupby_1.py::test_count_values — "requires subqueries"
 - [ ] test_groupby_1.py::test_groupby_multivalue_nested — "for coverage"
 - [ ] test_groupby_1.py::test_groupby_object — "broken"
-- [ ] test_groupby_1.py::test_groupby_star — "broken"
-- [ ] test_groupby_1.py::test_groupby_object_star — "broken"
+- [x] test_groupby_1.py::test_groupby_star
+- [x] test_groupby_1.py::test_groupby_object_star
 - [ ] test_groupby_1.py::test_groupby_multivalue_naive — "requires groupby sets"
 
 ## 9. Scalar expressions (~9 tests) — CLEARED 2026-07-10 (6 fixed, 3 reclustered)

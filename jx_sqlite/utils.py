@@ -87,29 +87,39 @@ def table_alias(i):
     return "__t" + str(i) + "__"
 
 
-def sql_join_chain(snowflake, origin_path):
+def sql_join_chain(snowflake, origin_path, required_tables=()):
     """
-    THE P2 JOIN-CHAIN (docs/INTERSECTION_SURVEY.md): LEFT JOIN EVERY TABLE ON THE PATH
-    FROM THE FACT TABLE DOWN TO THE QUERY ORIGIN, ON child.__parent__ = parent.__id__
+    THE P2 JOIN-CHAIN (docs/INTERSECTION_SURVEY.md): LEFT JOIN, SPANNING TREE FROM THE FACT,
+    ON child.__parent__ = parent.__id__.  COVERS THE ANCESTORS OF THE ORIGIN PLUS ANY
+    required_tables (AND THEIR ANCESTORS) THE QUERY REACHES INTO - NO MORE, BECAUSE EVERY
+    EXTRA CHILD JOIN FANS OUT THE PARENT ROWS.
+    EACH TABLE IS ALIASED AS ITSELF (setop PRECEDENT): NAME ALGEBRA (Names/leaves) KEEPS
+    WORKING AND NO SCHEMA RENAME IS NEEDED - ONE SCOPE FOR EVERY COMPILED REFERENCE.
     :param snowflake: PROVIDES query_paths
     :param origin_path: THE QUERY'S PERSPECTIVE (schema.nested_path[0])
+    :param required_tables: TABLES HOLDING COLUMNS THE QUERY MENTIONS
     :return: (nest_to_alias, from_sql) - ALIAS FOR EVERY QUERY PATH, FROM-CLAUSE FRAGMENTS
     """
-    nest_to_alias = {sub_table: table_alias(i) for i, sub_table in enumerate(snowflake.query_paths)}
+    nest_to_alias = {sub_table: sub_table for sub_table in snowflake.query_paths}
+    targets = {origin_path, *required_tables}
     chain = sorted(
-        ((nest, alias) for nest, alias in nest_to_alias.items() if startswith_field(origin_path, nest)),
-        key=lambda nest_alias: len(nest_alias[0]),
+        (t for t in snowflake.query_paths if any(startswith_field(target, t) for target in targets)),
+        key=len,
     )
-    nest, alias = chain[0]
-    from_sql = [sql_alias(quote_column(nest), alias)]
-    for (_, parent_alias), (nest, alias) in zip(chain, chain[1:]):
+    fact = chain[0]
+    from_sql = [sql_alias(quote_column(fact), fact)]
+    for nest in chain[1:]:
+        parent = max(
+            (t for t in chain if t != nest and startswith_field(nest, t)),
+            key=len,
+        )
         from_sql.append(ConcatSQL(
             SQL_LEFT_JOIN,
-            sql_alias(quote_column(nest), alias),
+            sql_alias(quote_column(nest), nest),
             SQL_ON,
-            quote_column(alias, PARENT),
+            quote_column(nest, PARENT),
             SQL_EQ,
-            quote_column(parent_alias, UID),
+            quote_column(parent, UID),
         ))
     return nest_to_alias, from_sql
 

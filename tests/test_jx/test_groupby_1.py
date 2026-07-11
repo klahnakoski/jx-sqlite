@@ -535,7 +535,6 @@ class TestgroupBy1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
     def test_groupby_star(self):
         test = {
             "data": [
@@ -574,7 +573,6 @@ class TestgroupBy1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("broken")
     def test_groupby_object_star(self):
         test = {
             "data": [

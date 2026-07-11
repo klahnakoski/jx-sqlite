@@ -44,22 +44,22 @@ from mo_dots import (
 )
 from mo_future import extend
 from mo_json import NUMBER, JX_BOOLEAN, BOOLEAN, jx_type_to_json_type, JX_INTEGER
-from mo_sql.utils import sql_type_key_to_json_type, sql_aggs, DIGITS_TABLE, untyped_column
+from mo_sql.utils import sql_type_key_to_json_type, sql_aggs, DIGITS_TABLE, untyped_column, UID
 from mo_sql import *
 from mo_sqlite import *
 from mo_sqlite import quote_value
 from mo_sqlite.expressions import SqlVariable, SqlEqOp, SqlAliasOp, SqlAndOp
-
-EXISTS_COLUMN = quote_column("__exists__")
-
 
 @extend(Facts)
 def _edges_op(self, query, schema):
     query = query.copy()  # WE WILL BE MARKING UP THE QUERY
     index_to_column = {}  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
     outer_selects = []  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE)
-    nest_to_alias, from_sql = sql_join_chain(self.snowflake, schema.nested_path[0])
-    inner_schema = schema.rename_tables(nest_to_alias)
+    # TABLES ALIAS AS THEMSELVES: EVERY COMPILED REFERENCE IS VALID IN ONE SHARED SCOPE,
+    # AND NO SCHEMA RENAME IS NEEDED (rename_tables TO OPAQUE ALIASES BREAKS Names/leaves)
+    required_tables = {c.nested_path[0] for v in query.vars() for _, c in schema.leaves(v)}
+    nest_to_alias, from_sql = sql_join_chain(self.snowflake, schema.nested_path[0], required_tables)
+    inner_schema = schema
 
     main_filter = ToBooleanOp(query.where).partial_eval(SQLang).to_sql(inner_schema).expr
 
@@ -72,11 +72,6 @@ def _edges_op(self, query, schema):
     orderby = []
     inner_domains = []
     outer_domains = []
-
-    select_clause = [
-        ConcatSQL(SQL_ONE, SQL_AS, EXISTS_COLUMN),
-        *(quote_column(c.es_column) for c in self.snowflake.columns),
-    ]
 
     for edge_index, query_edge in enumerate(query.edges):
         domain_aliases = []
@@ -379,11 +374,6 @@ def _edges_op(self, query, schema):
     for w in query.window:
         outer_selects.append(_window_op(w, schema))
 
-    facts = sql_alias(
-        sql_iso(SQL_SELECT, sql_list(select_clause), SQL_FROM, ConcatSQL(*from_sql), SQL_WHERE, main_filter,),
-        nest_to_alias[self.snowflake.fact_name],
-    )
-
     edge_sql = []
     for edge_index, query_edge in enumerate(query.edges):
         edge_alias = "e" + str(edge_index)
@@ -391,9 +381,12 @@ def _edges_op(self, query, schema):
         edge_sql.append(sql_alias(sql_iso(domains_sql), edge_alias))
 
     # COORDINATES OF ALL primary DATA
-    clauses = [ConcatSQL(SQL_SELECT, sql_list(outer_selects), SQL_FROM, facts)]
+    # THE JOIN CHAIN IS INLINED (NO FACTS SUBQUERY): EVERY COMPILED REFERENCE - AGGREGATES,
+    # EDGE VALUES IN THE ON CLAUSES, THE WHERE - RESOLVES IN THIS ONE SCOPE
+    clauses = [ConcatSQL(SQL_SELECT, sql_list(outer_selects), SQL_FROM, ConcatSQL(*from_sql))]
     for t, s, j in zip(join_types, edge_sql, ons):
         clauses.append(ConcatSQL(t, s, SQL_ON, j))
+    clauses.append(ConcatSQL(SQL_WHERE, main_filter))
     if groupby:
         clauses.append(ConcatSQL(SQL_GROUPBY, sql_list(groupby)))
     command = ConcatSQL(*clauses)
@@ -441,8 +434,9 @@ def _edges_op(self, query, schema):
 def aggregates(self, index_to_column, offset, outer_selects, query, schema):
     for si, s in enumerate(query.select.terms, start=offset):
         if is_op(s.value, Variable) and s.value.var in ["row", "."] and is_op(s.aggregate, CountOp):
-            # COUNT RECORDS, NOT ANY ONE VALUE
-            sql = sql_alias(sql_count(EXISTS_COLUMN), s.name)
+            # COUNT RECORDS, NOT ANY ONE VALUE: COUNT THE ORIGIN TABLE'S UID
+            # (NON-NULL PER ORIGIN ROW; NULL WHERE A LEFT JOIN FOUND NOTHING)
+            sql = sql_alias(sql_count(quote_column(schema.nested_path[0], UID)), s.name)
 
             column_number = len(outer_selects)
             outer_selects.append(sql)

@@ -374,7 +374,6 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "edges on deep table: no such column __parent__ (cluster 1)")
     def test_select_average(self):
         test = {
             "data": [{"a": {"_b": [
@@ -417,7 +416,6 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "edges on deep table: no such column __parent__ (cluster 1)")
     def test_select_average_on_none(self):
         test = {
             "data": [{"a": {"_b": [{"a": 5}, {}]}}],

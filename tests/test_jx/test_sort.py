@@ -178,7 +178,6 @@ class TestSorting(BaseTestCase):
         except Exception as e:
             pass
 
-    @skip("fix me")
     def test_groupby_and_sort(self):
         test = {
             "data": [
@@ -228,7 +227,6 @@ class TestSorting(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("fix me")
     def test_groupby_expression_and_sort(self):
         test = {
             "data": [
@@ -281,7 +279,6 @@ class TestSorting(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("fix me")
     def test_groupby2a_and_sort(self):
         test = {
             "data": [

@@ -46,8 +46,10 @@ from mo_sqlite import sql_alias, sql_call
 @extend(Facts)
 def _groupby_op(self, query, schema):
     index_to_column = {}
-    nest_to_alias, from_sql = sql_join_chain(self.schema.snowflake, schema.nested_path[0])
-    inner_schema = schema.rename_tables(nest_to_alias)
+    # TABLES ALIAS AS THEMSELVES (SEE sql_join_chain): NO SCHEMA RENAME NEEDED
+    required_tables = {c.nested_path[0] for v in query.vars() for _, c in schema.leaves(v)}
+    nest_to_alias, from_sql = sql_join_chain(self.schema.snowflake, schema.nested_path[0], required_tables)
+    inner_schema = schema
 
     selects = []
     groupby = []
