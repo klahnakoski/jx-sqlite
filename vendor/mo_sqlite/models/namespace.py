@@ -9,7 +9,6 @@
 
 from copy import copy
 
-import jx_base
 from jx_base import Facts
 from mo_sqlite.meta_columns import ColumnList
 from mo_sqlite.models.schema import Schema
@@ -17,7 +16,7 @@ from mo_sqlite.models.snowflake import Snowflake
 from mo_imports import export
 
 
-class Namespace(jx_base.Namespace):
+class Namespace:
     """
     MANAGE SQLITE DATABASE
     """
