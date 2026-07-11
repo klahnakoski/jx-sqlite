@@ -103,7 +103,6 @@ class TestFilters(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "select * from nested table returns parent doc w hidden columns; regex where itself works (cluster 1/2)")
     def test_regexp_expression(self):
         test = {
             "data": [{"_a": [

@@ -64,20 +64,41 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 > root cause (leaves() from a child origin must return parents; query origin/relativization not
 > applied) blocking `test_select_whole_nested_document`, `test_deep_star`, `test_deep_star_w_parent`,
 > `test_deep_select_dot`, etc. — the next cluster-1 target.
+>
+> 2026-07-11 (evening): **the origin switch is FIXED — one line.** `from testing._a` never
+> switched perspective because `meta_columns.py get_nested_path("testing._a")` compared the
+> UNTYPED request against TYPED query paths (`testing._a.$A`): `startswith_field` matched only
+> the fact, so every Table got `nested_path=['testing']`. Now compares both in the fixed
+> (untyped) space. **19 tests un-skipped** (13 deep_ops, test_sort test_nested/
+> test_single_nested/test_edge_and_sort, test_set_ops test_single_deep_select/
+> test_select_w_deep_star, test_filters test_regexp_expression); suite 366 ran, 109 skips.
+> Remaining cluster-1 failures regrouped by verified error (all 42 deep_ops skips were run):
+> - **[12] "ambiguous column name: __id__"** — ALL deep edges/agg queries (aggs_on_parent*,
+>   deep_agg*, deep_edge_w_shallow_var, deep_select_column, select_average_on_none):
+>   edges.py join assembly emits unqualified `__id__`. THE next target; one shared cause.
+> - **[6] nested-origin `*` misses ancestor scalars** (deep_star*, deep_names_w_star,
+>   select_whole_nested_document, agg_w_complicated_where, deep_where_on_fact_table):
+>   `leaves(".")` scope-granular rule stops at origin scope; `select *` needs parent scalars too.
+> - **[2] "expecting miss to not be missing"** (deep_edge/nested_property_edge_w_shallow_expression)
+> - singles: deep_select_dot + abs_shallow_select (set mismatch), select_in_w_multivalue
+>   (GetOp.to_sql missing schema), select_when_on_multivalue (`testing.testing.a.$A.$S` —
+>   doubled path), from_shallow_select_deep_column (float item assignment), id_select,
+>   nested_document_selection, nested_filter_with_groupby, deep_select_column_w_groupby.
+> TestNestedQueries (10 tests): all still fail — mostly deep aggs, likely the `__id__` cause.
 
 ### test_deep_ops.py
-- [ ] test_select_gt_on_sub
+- [x] test_select_gt_on_sub
 - [ ] test_select_in_w_multivalue
 - [ ] test_select_when_on_multivalue
 - [ ] test_deep_select_column
 - [ ] test_deep_select_column_w_groupby
-- [ ] test_bad_deep_select_column_w_groupby
+- [x] test_bad_deep_select_column_w_groupby
 - [ ] test_abs_shallow_select
 - [x] test_select_whole_document — fixed (insert row-reuse + plain-`*` depth filter + deep header)
 - [ ] test_select_whole_nested_document
 - [ ] test_deep_names_w_star
-- [ ] test_deep_names_select_value
-- [ ] test_deep_names
+- [x] test_deep_names_select_value
+- [x] test_deep_names
 - [ ] test_deep_agg_on_expression
 - [ ] test_deep_agg_on_expression_w_shallow_where
 - [ ] test_agg_w_complicated_where
@@ -89,21 +110,21 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 - [ ] test_aggs_on_parent_and_child3
 - [ ] test_deep_edge_using_list
 - [ ] test_deep_agg_w_deeper_select_relative_name_neop
-- [ ] test_setop_w_deep_select_value_neop
+- [x] test_setop_w_deep_select_value_neop
 - [ ] test_deep_agg_w_deeper_select_relative_name
-- [ ] test_shallow_and_ne_deep
-- [ ] test_setop_w_deep_select_value
+- [x] test_shallow_and_ne_deep
+- [x] test_setop_w_deep_select_value
 - [ ] test_select_average_on_none
-- [ ] test_missing
-- [ ] test_missing_on_not_exists
-- [ ] test_exists
-- [ ] test_deep_or
-- [ ] test_sibling_nested_column
+- [x] test_missing
+- [x] test_missing_on_not_exists
+- [x] test_exists
+- [x] test_deep_or
+- [x] test_sibling_nested_column
 - [ ] test_deep_star
 - [ ] test_deep_star_w_parent
 - [ ] test_deep_select_dot
 - [ ] test_from_shallow_select_deep_column
-- [ ] test_setop_w_shallow_eq_string
+- [x] test_setop_w_shallow_eq_string
 - [ ] test_deep_edge_w_shallow_expression
 - [ ] test_deep_edge_w_shallow_var
 - [ ] test_nested_property_edge_w_shallow_expression
@@ -115,20 +136,18 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 
 ### test_sort.py (nested subset)
 - [ ] test_nested_array
-- [ ] test_nested
-- [ ] test_single_nested — "nested are broken"
+- [x] test_nested
+- [x] test_single_nested
 
 ### reclustered from cluster 9 (2026-07-10)
 - [ ] test_expressions_w_set_ops.py::test_select_average — edges on deep table:
       "no such column: __parent__"
 - [ ] test_expressions_w_set_ops.py::test_select_average_on_none — same
-- [ ] test_filters.py::test_regexp_expression — `select *` from nested table returns parent
-      doc with hidden columns (`__id__`/`__order__`/`__parent__`) and fact-relative paths;
-      the regex where clause compiles correctly
+- [x] test_filters.py::test_regexp_expression
 
 ### test_set_ops.py (deep subset)
-- [ ] test_single_deep_select
-- [ ] test_select_w_deep_star
+- [x] test_single_deep_select
+- [x] test_select_w_deep_star
 - [ ] test_select_w_nested_values — "fix me first"
 - [ ] test_prefix_in_deep_where_clause — "fix me"
 - [ ] test_exists_in_where_clause — "fix me"
@@ -177,7 +196,7 @@ BetweenOp (string-slicing between, and edge domains using between).
 "coordinate sort clause with matching edges" — the ORDER BY must be expressed in terms of
 the edge/groupby output columns. Related to the uncommitted `jx_base/expressions/sort_op.py`
 change.
-- [ ] test_sort.py::test_edge_and_sort — "broken"
+- [x] test_sort.py::test_edge_and_sort
 - [ ] test_sort.py::test_2edge_and_sort
 - [ ] test_sort.py::test_groupby_and_sort — "fix me"
 - [ ] test_sort.py::test_groupby_expression_and_sort — "fix me"

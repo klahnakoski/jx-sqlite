@@ -115,7 +115,6 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_single_deep_select(self):
         test = {
             "data": [
@@ -547,7 +546,6 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select_w_deep_star(self):
         test = {
             "data": [

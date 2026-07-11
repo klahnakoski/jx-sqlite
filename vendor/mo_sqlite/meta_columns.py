@@ -468,7 +468,9 @@ class ColumnList(Table, Container):
             Log.error("not found", table_name=table_name)
         nested_path = []
         for query_path in query_paths:
-            if startswith_field(clean_name, query_path):
+            # query_paths ARE TYPED (testing._a.$A); COMPARE IN THE SAME (FIXED) SPACE AS
+            # clean_name, ELSE AN UNTYPED REQUEST NEVER MATCHES ITS OWN TABLE, ONLY THE FACT
+            if startswith_field(clean_name, fixer(query_path)):
                 nested_path.append(query_path)
         return list(reversed(nested_path))
 

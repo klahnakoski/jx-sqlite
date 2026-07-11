@@ -23,7 +23,6 @@ lots_of_data = list_to_data([{"a": i} for i in range(30)])
 
 @add_error_reporting
 class TestDeepOps(BaseTestCase):
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select_gt_on_sub(self):
         test = {
             "data": [{"a": {"_b": [
@@ -224,7 +223,6 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_bad_deep_select_column_w_groupby(self):
         test = {
             "data": [  # WE NEED SOME DATA TO MAKE A NESTED COLUMN
@@ -486,7 +484,6 @@ class TestDeepOps(BaseTestCase):
 
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_deep_names_select_value(self):
         test = {
             "data": [
@@ -545,7 +542,6 @@ class TestDeepOps(BaseTestCase):
 
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_deep_names(self):
         test = {
             "data": [
@@ -1294,7 +1290,6 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_setop_w_deep_select_value_neop(self):
         data = [{"a": {"_b": [
             {"r": {"s": "a"}, "v": {"u": 1}},
@@ -1401,7 +1396,6 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_shallow_and_ne_deep(self):
         test = {
             "data": [
@@ -1435,7 +1429,6 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_setop_w_deep_select_value(self):
         data = [{"a": {"_b": [
             {"r": {"s": "a"}, "v": {"u": 1}},
@@ -1514,7 +1507,6 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_missing(self):
         test = {
             "data": [{"a": {"_b": [
@@ -1547,7 +1539,6 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_missing_on_not_exists(self):
         # CHECKING FOR A MISSING COLUMN THAT DOES NOT EXIST SHOULD NOT THROW AN ERROR, RATHER RETURN true
         test = {
@@ -1574,7 +1565,6 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_exists(self):
         test = {
             "data": [{"a": {"_b": [
@@ -1610,7 +1600,6 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_deep_or(self):
         test = {
             "data": [{"a": {"_b": [
@@ -1651,7 +1640,6 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_sibling_nested_column(self):
         test = {
             "data": [{"a": {
@@ -1836,7 +1824,6 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_setop_w_shallow_eq_string(self):
         # TEST A TWO-TYPE PROPERTY ("o") IS ACCURATELY FILTERED
         test = {
