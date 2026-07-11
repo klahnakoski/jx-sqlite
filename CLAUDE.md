@@ -16,7 +16,7 @@ JX uses "decisive" null semantics: `null` means "out of class" (the slot shouldn
 - `eq(null, null) => true` — nulls match each other
 - Contrast with SQL's conservative `NULL` (any operation with NULL returns NULL) and strict languages (NULL raises an error)
 
-**Not every operator is decisive by default.** Scalar/fixed-arity operators (`add`, `mul`, `least`, `most`) are *conservative* (any null ⇒ null, like SQL `a+b`); aggregates (`sum`, `product`, `min`, `max`) are *decisive*. The `nulls` clause overrides per call. See `docs/null_semantics.md` (repo-local policy) and `C:\Users\kyle\code\ActiveData\docs\jx_decisive_operators.md` for the full spec.
+**Not every operator is decisive by default.** Scalar/fixed-arity operators (`add`, `mul`, `least`, `most`) are *conservative* (any null ⇒ null, like SQL `a+b`); aggregates (`sum`, `product`, `min`, `max`) are *decisive*. The `nulls` clause overrides per call. See `vendor/jx_base/null_semantics.md` (canonical policy, owned by jx_base) and `C:\Users\kyle\code\ActiveData\docs\jx_decisive_operators.md` for the full spec.
 
 ### Snowflake / Hierarchy Model
 
