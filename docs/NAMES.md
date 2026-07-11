@@ -83,6 +83,8 @@ namespace seen from one table of a snowflake.
    special case in `Schema.leaves`.
 8. **Partial typed paths.** Aliases are exact-match only; `leaves("a.$A.b")` is unsupported.
    Decide whether that addressing mode is ever needed.
-9. **Upstream before the next svn sync.** `jx_base/models/names.py` → jx-python repo;
-   `mo_sqlite/models/names.py` + schema.py change → mo-sqlite repo. This is exactly how the
-   2024 draft died; do not let it happen twice.
+9. **Upstream before the next svn sync.** ✅ DONE 2026-07-11 via svn-sync from jx-sqlite's
+   vendor WCs: `vendor/jx_base/models/names.py` (r2856), `vendor/mo_sqlite/models/names.py`
+   (r2859), `namespace.py` deletion (r2856), plus the accumulated cluster-2/9 vendored fixes
+   (r2854–2859). jx-python and mo-sqlite pick these up on their next `svn update`. (This is
+   exactly how the 2024 draft died — published this time so it survives.)
