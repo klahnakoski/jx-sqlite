@@ -37,6 +37,17 @@ parent+child, relative (`..`) names. Almost all of `test_deep_ops.py`. Likely a 
 root causes in multi-table join assembly (`jx_sqlite/edges.py`, `mo_sqlite/sql_script.py`
 SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the pattern.
 
+> 2026-07-11: the **name-resolution blocker is cleared**. The old `Schema.leaves()` mixed
+> typed/untyped namespaces and (for `leaves(".")`) leaked hidden cols `__id__/__order__/
+> __parent__` and doubled deep names (`_a._a.b`) — visible in whole-document / deep-perspective
+> selects. `Schema.leaves()` now delegates to the resurrected **Names** binder
+> (`vendor/jx_base/models/names.py`, `vendor/mo_sqlite/models/names.py`); all six
+> `tests/test_leaves.py` contract cases pass. Remaining cluster-1 work is **setop assembly**,
+> not naming: `setop.py` `_accumulate_nested`/DocumentDetails still (a) emits both the flattened
+> `_a.b` and the nested `_a` branch for `select *`, and (b) splits an inner-object row into one
+> doc per typed column. Treat Names as the P0 under the INTERSECTION_SURVEY operators; see
+> `docs/NAMES.md` next-steps (esp. #4).
+
 ### test_deep_ops.py
 - [ ] test_select_gt_on_sub
 - [ ] test_select_in_w_multivalue
