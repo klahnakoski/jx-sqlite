@@ -556,6 +556,9 @@ def aggregates(self, index_to_column, offset, outer_selects, query, schema):
             json_type = jx_type_to_json_type(s.aggregate.jx_type)
 
             default_value = s.default
+            if default_value is NULL and is_op(s.aggregate, CountOp):
+                # COUNT OF NOTHING IS 0, NEVER NULL (DECISIVE COUNT)
+                default_value = ZERO
             column_number = len(outer_selects)
             outer_selects.append(sql_alias(sql, _make_column_name(column_number)))
             index_to_column[column_number] = ColumnMapping(

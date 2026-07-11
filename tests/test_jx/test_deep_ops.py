@@ -931,7 +931,6 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_aggs_on_parent_and_child(self):
         test = {
             "data": [
@@ -1005,7 +1004,6 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_aggs_on_parent_and_child2(self):
         # ADDED DOCUMENT WHERE o IS MISSING
         test = {
@@ -1081,7 +1079,6 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_aggs_on_parent_and_child3(self):
         # NO DOCUEMNT WHERE v IS MISSING
         test = {

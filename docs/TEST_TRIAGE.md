@@ -106,6 +106,15 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 > edge_2 edge_using_missing_between1 (cluster 3); agg_ops select_agg_mult_w_when (cluster 6).
 > (both_percentile looked fixed but was a false positive - its no-space skipIf dodged the
 > decorator scan; verified individually, still failing.)
+>
+> 2026-07-11 (night, cont.): **count default — 4 more** (suite 366 ran, 89 skips). The
+> "aggs_on_parent_and_child ×3 need a dedupe rule" guess was WRONG: from the deep origin there
+> is no fan-out; the only defect was that empty coordinates returned missing instead of 0.
+> edges.py standard-aggregates now defaults CountOp to ZERO (count of nothing is 0, never null
+> — decisive count; mirrors the count-records branch). Un-skipped: aggs_on_parent_and_child
+> ×3, test_edge_time::test_count_over_time_w_sort (cluster 4 now FULLY cleared except
+> 2edge/2b/2c). Full both-spellings skip sweep confirms: no other currently-skipped test
+> passes; remaining 89 skips all genuinely fail.
 > Remaining deep_ops failures (23) regroup as: aggs_on_parent_and_child ×3 (parent+child in one
 > query — needs the ORDER>0/DISTINCT dedupe rule edges never learned), the nested-origin-`*`
 > group (unchanged), deep_agg_w_deeper_select_relative_name ×2 (`..` names), and the singles.
@@ -129,9 +138,9 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 - [ ] test_deep_where_on_fact_table
 - [ ] test_id_select
 - [x] test_aggs_on_parent
-- [ ] test_aggs_on_parent_and_child
-- [ ] test_aggs_on_parent_and_child2
-- [ ] test_aggs_on_parent_and_child3
+- [x] test_aggs_on_parent_and_child
+- [x] test_aggs_on_parent_and_child2
+- [x] test_aggs_on_parent_and_child3
 - [x] test_deep_edge_using_list
 - [ ] test_deep_agg_w_deeper_select_relative_name_neop
 - [x] test_setop_w_deep_select_value_neop
@@ -226,7 +235,7 @@ change.
 - [x] test_sort.py::test_groupby2a_and_sort
 - [ ] test_sort.py::test_groupby2b_and_sort
 - [ ] test_sort.py::test_groupby2c_and_sort
-- [ ] test_edge_time.py::test_count_over_time_w_sort — "broken"
+- [x] test_edge_time.py::test_count_over_time_w_sort
 
 ## 5. Statistical aggregates SQLite lacks (~7 tests)
 

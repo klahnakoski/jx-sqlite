@@ -116,7 +116,6 @@ class TestEdgeTime(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_count_over_time_w_sort(self):
         test = {
             "data": simple_test_data,
