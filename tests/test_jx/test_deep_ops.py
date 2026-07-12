@@ -427,7 +427,6 @@ class TestDeepOps(BaseTestCase):
 
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "prefix-star on fact-absolute name from deep origin: select a._t.* loses the a._t container")
     def test_deep_names_w_star(self):
         test = {
             "data": [

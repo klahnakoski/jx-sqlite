@@ -39,7 +39,7 @@ from mo_dots import (
     unliteral_field,
     list_to_data,
 )
-from mo_future import extend
+from mo_future import extend, first
 from mo_json.types import OBJECT, jx_type_to_json_type, JX_ANY, STRING, INTEGER, JX_TEXT, JX_INTEGER
 from mo_logs import Log
 from mo_sql import SQL_DESC, SQL_ASC, NO_SQL
@@ -146,9 +146,7 @@ def _set_op(self, query):
     cols = tuple(i for i in index_to_column.values() if i.push_list_name != None)
 
     if result.data:
-        all_rows = iter(result.data)
-        first_row = next(all_rows)
-        _, _, data = _accumulate_nested(all_rows, first_row, None, primary_doc_details, 0, 0)
+        _, _, data = _accumulate_nested(iter(result.data), first(result.data), None, primary_doc_details, 0, 0)
     else:
         data = result.data
 
