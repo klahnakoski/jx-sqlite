@@ -10,6 +10,12 @@ Foundation for everything above it. Two things matter when working in this repo:
 - `Data` is a dict with dot-path access; missing paths yield `Null`, and assigning to a deep
   path auto-creates intermediates. `to_data`/`from_data` convert at API boundaries.
 - Empty containers and `Null` are falsey; `is_missing(x)` is the sanctioned test.
+- **List assembly via `+= [x]`:** `slot += [x]` builds a list without pre-allocating.
+  When the slot is `Null`, `NullType.__iadd__` (nones.py) writes the list back through
+  its deferred parent/key; on a `FlatList` it extends in place (lists.py). So
+  `data[k] += [x]` for a missing `k` creates `[x]`, and repeating appends — no
+  `[None]*n` + index bookkeeping. Order is append order, so only use it where the
+  values arrive in the order you want them stored.
 
 ## Field paths (`fields.py`)
 
