@@ -44,26 +44,26 @@ This is the current conclusion for this document.
 
 **List Format**
  
-          "select":["*"] => {"a.b.c":1, "a.b.d":2, "a.e.f":3, "a.e.g":4} 
-        "select":["a.*"] => {"a":{"b.c":1, "b.d":2, "e.f":3, "e.g":4}}
-      "select":["a.b.*"] => {"a":{"b":{"c":1, "d":2}}}
-    "select":["a.b.c.*"] => {"a":{"b":{"c":1}}}
+    "select":["*"]       => {"a.b.c":1, "a.b.d":2, "a.e.f":3, "a.e.g":4} 
+    "select":["a.*"]     => {  "b.c":1,   "b.d":2,   "e.f":3,   "e.g":4}
+    "select":["a.b.*"]   => {    "c":1,     "d":2                      }
+    "select":["a.b.c.*"] => {        1                                 }
 
 **Table Format**
 
 The use of star ("`*`") is now assumed to be the short form of the `leaves()` operator with a name of dot ("`.`"). This is different from a select clause that has an expression; which would require a name. This is also different from the dot selector, which assumes the name is the object selected.
 
-          "select":["*"] => {
+    "select":["*"]       => {
                                 "header":["a.b.c", "a.b.d", "a.e.f", "a.e.g"], 
                                 "data":[[1, 2, 3, 4]]
                             } 
-        "select":["a.*"] => {
+    "select":["a.*"]     => {
                                 "header":["b.c", "b.d", "e.f", "e.g"], 
-                                "data":{[1, 2, 3, 4]]
+                                "data":[[1, 2, 3, 4]]
                             }
-      "select":["a.b.*"] => {
+    "select":["a.b.*"]   => {
                                 "header":["c", "d"],
-                                "data":{[1, 2]]
+                                "data":[[1, 2]]
                             }
     "select":["a.b.c.*"] => {
                                 "header":["."],
