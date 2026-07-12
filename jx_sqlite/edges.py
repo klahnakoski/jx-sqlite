@@ -17,34 +17,23 @@ from jx_base.expressions import (
     SelectOp,
     WhenOp,
     CaseOp,
-    CountOp,
-    PercentileOp,
-    CardinalityOp,
-    OrOp,
-    AndOp,
-    UnionOp,
-    ZERO,
 )
 from jx_base.language import is_op
+from jx_sqlite.aggregates import aggregates
 from jx_sqlite.expressions import EqOp
 from jx_sqlite.expressions.tuple_op import TupleOp
-from jx_sqlite.expressions.variable import Variable
 from jx_sqlite.utils import (
     ColumnMapping,
-    STATS,
-    _make_column_name,
-    get_column,
     sql_join_chain,
-    sql_text_array_to_set,
 )
 from jx_sqlite.window import _window_op
 from mo_dots import (
     is_missing,
-    Null, coalesce, unliteral_field,
+    Null, coalesce,
 )
 from mo_future import extend
-from mo_json import NUMBER, JX_BOOLEAN, BOOLEAN, jx_type_to_json_type, JX_INTEGER
-from mo_sql.utils import sql_type_key_to_json_type, sql_aggs, DIGITS_TABLE, untyped_column, UID
+from mo_json import NUMBER, jx_type_to_json_type, JX_INTEGER
+from mo_sql.utils import DIGITS_TABLE
 from mo_sql import *
 from mo_sqlite import *
 from mo_sqlite import quote_value
@@ -369,7 +358,7 @@ def _edges_op(self, query, schema):
     # AGGREGATE CLAUSE PARTS
     ###################################################################
     offset = len(query.edges)
-    self.aggregates(index_to_column, offset, outer_selects, query, inner_schema)
+    aggregates(self, index_to_column, offset, outer_selects, query, inner_schema)
 
     for w in query.window:
         outer_selects.append(_window_op(w, schema))
@@ -428,149 +417,6 @@ def _edges_op(self, query, schema):
         command = ConcatSQL(command, SQL_ORDERBY, sql_list(orderby))
 
     return command, index_to_column
-
-
-@extend(Facts)
-def aggregates(self, index_to_column, offset, outer_selects, query, schema):
-    for si, s in enumerate(query.select.terms, start=offset):
-        if is_op(s.value, Variable) and s.value.var in ["row", "."] and is_op(s.aggregate, CountOp):
-            # COUNT RECORDS, NOT ANY ONE VALUE: COUNT THE ORIGIN TABLE'S UID
-            # (NON-NULL PER ORIGIN ROW; NULL WHERE A LEFT JOIN FOUND NOTHING)
-            sql = sql_alias(sql_count(quote_column(schema.nested_path[0], UID)), s.name)
-
-            column_number = len(outer_selects)
-            outer_selects.append(sql)
-            index_to_column[column_number] = ColumnMapping(
-                push_list_name=s.name,
-                push_column_name=unliteral_field(s.name),
-                push_column_index=si,
-                push_column_child=".",
-                pull=get_column(column_number, None, ZERO),
-                sql=sql,
-                column_alias=s.name,
-                type=NUMBER,
-            )
-        elif is_op(s.aggregate, CountOp) and (not query.edges and not query.groupby):
-            value = s.value.var
-            columns = [c.es_column for c in self.snowflake.columns if untyped_column(c.es_column)[0] == value]
-            sql = SQL_PLUS.join(sql_count(quote_column(col)) for col in columns)
-            column_number = len(outer_selects)
-            outer_selects.append(sql_alias(sql, _make_column_name(column_number)))
-            index_to_column[column_number] = ColumnMapping(
-                push_list_name=s.name,
-                push_column_name=unliteral_field(s.name),
-                push_column_index=si,
-                push_column_child=".",
-                pull=get_column(column_number, None, s.default),
-                sql=sql,
-                column_alias=_make_column_name(column_number),
-                type=NUMBER,
-            )
-        elif is_op(s.aggregate, PercentileOp):
-            raise NotImplementedError()
-        elif is_op(s.aggregate, CardinalityOp):
-            sql = s.value.partial_eval(SQLang).to_sql(schema)
-            column_number = len(outer_selects)
-            count_sql = sql_alias(sql_count("DISTINCT" + sql_iso(sql)), _make_column_name(column_number),)
-            outer_selects.append(count_sql)
-            index_to_column[column_number] = ColumnMapping(
-                push_list_name=s.name,
-                push_column_name=unliteral_field(s.name),
-                push_column_index=si,
-                push_column_child=".",
-                pull=get_column(column_number, None, 0),
-                sql=count_sql,
-                column_alias=_make_column_name(column_number),
-                type=NUMBER,
-            )
-        elif is_op(s.aggregate, OrOp):
-            sql = s.value.partial_eval(SQLang).to_sql(schema)
-            column_number = len(outer_selects)
-            outer_selects.append(sql_alias(
-                ConcatSQL(SQL_NOT, SQL_NOT, sql_call("SUM", sql_iso(sql))), _make_column_name(column_number),
-            ))
-            index_to_column[column_number] = ColumnMapping(
-                push_list_name=s.name,
-                push_column_name=unliteral_field(s.name),
-                push_column_index=si,
-                push_column_child=".",
-                pull=get_column(column_number, JX_BOOLEAN, s.default),
-                sql=sql,
-                column_alias=_make_column_name(column_number),
-                type=BOOLEAN,
-            )
-        elif is_op(s.aggregate, AndOp):
-            sql = s.value.partial_eval(SQLang).to_sql(schema)
-            column_number = len(outer_selects)
-            outer_selects.append(sql_alias(
-                ConcatSQL(SQL_NOT, sql_call("SUM", sql_iso(ConcatSQL(SQL_NOT, sql_iso(sql))))),
-                _make_column_name(column_number),
-            ))
-            index_to_column[column_number] = ColumnMapping(
-                push_list_name=s.name,
-                push_column_name=unliteral_field(s.name),
-                push_column_index=si,
-                push_column_child=".",
-                pull=get_column(column_number, JX_BOOLEAN, s.default),
-                sql=sql,
-                column_alias=_make_column_name(column_number),
-                type=BOOLEAN,
-            )
-        elif is_op(s.aggregate, UnionOp):
-            for details in s.value.partial_eval(SQLang).to_sql(schema):
-                for sql_type, sql in details.sql.items():
-                    column_number = len(outer_selects)
-                    outer_selects.append(sql_alias(
-                        "JSON_GROUP_ARRAY(DISTINCT" + sql_iso(sql) + ")", _make_column_name(column_number),
-                    ))
-                    index_to_column[column_number] = ColumnMapping(
-                        push_list_name=s.name,
-                        push_column_name=unliteral_field(s.name),
-                        push_column_index=si,
-                        push_column_child=".",
-                        pull=sql_text_array_to_set(column_number),
-                        sql=sql,
-                        column_alias=_make_column_name(column_number),
-                        type=sql_type_key_to_json_type[sql_type],
-                    )
-        elif s.aggregate == "stats":  # THE STATS OBJECT
-            sql = s.value.to_sql(schema)
-            for name, code in STATS.items():
-                full_sql = code.replace("{{value}}", sql)
-                column_number = len(outer_selects)
-                outer_selects.append(sql_alias(full_sql, _make_column_name(column_number)))
-                index_to_column[column_number] = ColumnMapping(
-                    push_list_name=s.name,
-                    push_column_name=unliteral_field(s.name),
-                    push_column_index=si,
-                    push_column_child=name,
-                    pull=get_column(column_number, None, s.default),
-                    sql=full_sql,
-                    column_alias=_make_column_name(column_number),
-                    type="number",
-                )
-        else:  # STANDARD AGGREGATES
-            temp = s.value.partial_eval(SQLang)
-            sql = temp.to_sql(schema)
-            sql = sql_call(sql_aggs[s.aggregate.op], sql)
-            json_type = jx_type_to_json_type(s.aggregate.jx_type)
-
-            default_value = s.default
-            if default_value is NULL and is_op(s.aggregate, CountOp):
-                # COUNT OF NOTHING IS 0, NEVER NULL (DECISIVE COUNT)
-                default_value = ZERO
-            column_number = len(outer_selects)
-            outer_selects.append(sql_alias(sql, _make_column_name(column_number)))
-            index_to_column[column_number] = ColumnMapping(
-                push_list_name=s.name,
-                push_column_name=unliteral_field(s.name),
-                push_column_index=si,
-                push_column_child=".",
-                pull=get_column(column_number, json_type, default_value),
-                sql=sql,
-                column_alias=_make_column_name(column_number),
-                type=json_type,
-            )
 
 
 def range_sql(domain, min_value_name, max_value_name, index_name):
