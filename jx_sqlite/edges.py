@@ -20,7 +20,7 @@ from jx_base.expressions import (
 )
 from jx_base.language import is_op
 from jx_sqlite.aggregates import aggregates
-from jx_sqlite.expressions import EqOp
+from jx_sqlite.complete import sql_complete
 from jx_sqlite.expressions.tuple_op import TupleOp
 from jx_sqlite.utils import (
     ColumnMapping,
@@ -37,7 +37,7 @@ from mo_sql.utils import DIGITS_TABLE
 from mo_sql import *
 from mo_sqlite import *
 from mo_sqlite import quote_value
-from mo_sqlite.expressions import SqlVariable, SqlEqOp, SqlAliasOp, SqlAndOp
+from mo_sqlite.expressions import SqlVariable, SqlEqOp, SqlAliasOp
 
 @extend(Facts)
 def _edges_op(self, query, schema):
@@ -53,14 +53,12 @@ def _edges_op(self, query, schema):
     main_filter = ToBooleanOp(query.where).partial_eval(SQLang).to_sql(inner_schema).expr
 
     column_index = 0
-    edge_names = []
     all_domain_names = []
     ons = []
     join_types = []
     groupby = []
     orderby = []
     inner_domains = []
-    outer_domains = []
 
     for edge_index, query_edge in enumerate(query.edges):
         domain_aliases = []
@@ -69,7 +67,6 @@ def _edges_op(self, query, schema):
             return f"d{edge_index}c{c}"
 
         edge_alias = f"e{edge_index}"
-        edge_names.append(edge_alias)
         query_edge_domain = query_edge.domain
         ###################################################################
         # DOMAIN
@@ -323,18 +320,6 @@ def _edges_op(self, query, schema):
 
         all_domain_names.append(domain_aliases)
         inner_domains.append(domains_sql)
-        if query_edge.allowNulls:
-            outer_domains.append(ConcatSQL(
-                SQL_SELECT,
-                sql_list([quote_column(domain_alias) for domain_alias in domain_aliases]),
-                SQL_FROM,
-                sql_iso(domains_sql),
-                SQL_UNION_ALL,
-                SQL_SELECT,
-                sql_list([SQL_NULL for _ in domain_aliases]),
-            ))
-        else:
-            outer_domains.append(domains_sql)
 
         ons.append(on_clause)
         join_types.append(join_type)
@@ -382,36 +367,14 @@ def _edges_op(self, query, schema):
 
     # ALL COORDINATES MISSED BY primary DATA
     if query.edges:
-        clauses = [ConcatSQL(
-            SQL_SELECT,
-            sql_list([
-                quote_column("e" + str(i.push_column_index) if i.is_edge else "p", i.column_alias,)
-                for i in index_to_column.values()
-            ]),
-            SQL_FROM,
-            sql_iso(outer_domains[0]),
-            SQL_AS,
-            quote_column(edge_names[0]),
-        )]
-        for edge_name, outer_domain in zip(edge_names[1:], outer_domains[1:]):
-            clauses.append(ConcatSQL(
-                SQL_LEFT_JOIN, sql_iso(outer_domain), SQL_AS, quote_column(edge_name), SQL_ON, SQL_TRUE,
-            ))
-        clauses.append(ConcatSQL(
-            SQL_LEFT_JOIN,
-            sql_iso(command),
-            SQL_AS,
-            quote_column("p"),
-            SQL_ON,
-            SqlAndOp(
-                *(
-                    EqOp(SqlVariable("p", d), SqlVariable(e, d)).to_sql(schema).expr
-                    for e, domain_aliases in zip(edge_names, all_domain_names)
-                    for d in domain_aliases
-                )
-            ),
-        ))
-        command = ConcatSQL(*clauses)
+        command = sql_complete(
+            command,
+            inner_domains,
+            all_domain_names,
+            [query_edge.allowNulls for query_edge in query.edges],
+            index_to_column,
+            schema,
+        )
 
     if orderby:
         command = ConcatSQL(command, SQL_ORDERBY, sql_list(orderby))
