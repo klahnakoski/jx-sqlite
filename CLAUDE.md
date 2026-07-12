@@ -75,6 +75,9 @@ Do not change tests (including the harness in `tests/__init__.py`) to make them 
 are more likely correct than the code they test. A failing test indicts the code; catching or
 working around the failure in the harness hides the defect.
 
+Prefer expanding data structures over adding if/else blocks — a special case in code is a
+missing field in the model.
+
 ## Status
 
 Many tests are skipped for sqlite after vendor library evolution; core simple-case
