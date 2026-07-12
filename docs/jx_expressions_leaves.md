@@ -150,7 +150,7 @@ If the names are the same as the values, we can leave them out, for the same eff
 
 ### Star Selection
 
-We go through the same sequence with the star selector for the list format
+We go through the same sequence with the star selector for the list format. Without a name given to a select clause, we will assume the name is "."
 
 **Explicit Star Object**
 
@@ -199,7 +199,7 @@ Adding the array forces the names to be used as destination paths. This is the s
 
 **Implicit Star Object**
 
-**THIS IS DIFFERENT: When the name is left out, it is assumed to be dot ("`.`")**
+The name is assumed to be "."
 
     "select":["*"      ] => {"a.b.c":1, "a.b.d":2, "a.e.f":3, "a.e.g":4}
     "select":["a.*"    ] => {  "b.c":1,   "b.d":2,   "e.f":3,   "e.g":4}
