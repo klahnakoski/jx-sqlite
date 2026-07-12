@@ -29,11 +29,11 @@ from jx_sqlite.utils import (
     table_alias,
 )
 from mo_dots import (
+    concat_field,
     Data,
     startswith_field,
     unwraplist,
     relative_field,
-    is_data,
     is_missing,
     listwrap,
     Null,
@@ -77,6 +77,7 @@ class DocumentDetails:
     nested_path: List[str]
     index_to_column: Dict[int, ColumnMapping]
     children: List["DocumentDetails"]
+    push_list_name: str  # WHERE THIS TABLE'S ASSEMBLED VALUE LANDS IN THE PARENT DOC (None = TABLE'S RELATIVE PATH)
 
     def __init__(self, sub_table: str):
         self.sub_table = sub_table
@@ -85,13 +86,13 @@ class DocumentDetails:
         self.nested_path = [sub_table]
         self.index_to_column = {}
         self.children = []
+        self.push_list_name = None
 
 
 @extend(Facts)
 def _set_op(self, query):
     index_to_column, command, primary_doc_details = to_sql(self, query)
     result = self.container.db.query(command)
-    query_origin, _ = untype_field(query.frum.nested_path[0])
 
     def _accumulate_nested(
         rows,  # row generator
@@ -131,33 +132,13 @@ def _set_op(self, query):
                 if not nested_value:
                     continue
                 doc = doc or Data()
-                child_table, _ = untype_field(child_details.nested_path[0])
-                rel_field = relative_field(child_table, curr_nested_path)
-                merge_maps = tuple(
-                    m
-                    for m in child_details.index_to_column.values()
-                    # ONLY CHILD TABLES STRICTLY BELOW THE QUERY ORIGIN MERGE UPWARD; THE
-                    # ORIGIN'S OWN ROWS ARE EACH THEIR OWN DOC
-                    if child_table != query_origin and not startswith_field(query_origin, child_table)
-                    if m.push_list_name != None and startswith_field(m.push_list_name, rel_field)
+                # THE CHILD'S ASSEMBLED VALUE LANDS AT ITS OWN PUSH NAME (AN EXPLICIT
+                # DEEP-LEAF SELECT ACCUMULATES BARE VALUES AT THE TERM PATH); DEFAULT IS
+                # THE CHILD TABLE'S RELATIVE PATH
+                rel_field = child_details.push_list_name or relative_field(
+                    untype_field(child_details.nested_path[0])[0], curr_nested_path
                 )
-                merged = {}
-                if merge_maps:
-                    # EXPLICIT DEEP-LEAF SELECT (TERM-ROOTED PUSH NAMES): ONE VALUE PER CHILD
-                    # ROW, MERGED AS A MULTIVALUE ON THIS DOC - NOT A LIST OF SUB-DOCUMENTS
-                    for m in merge_maps:
-                        values = [v for nv in nested_value for v in [nv[m.push_list_name]] if not is_missing(v)]
-                        if values:
-                            merged[m.push_list_name] = unwraplist(values)
-                        for nv in nested_value:
-                            if is_data(nv):
-                                nv[m.push_list_name] = None
-                    # DROP DOCS THE MERGE EMPTIED
-                    nested_value = [nv for nv in nested_value if not is_data(nv) or any(v != None for _, v in nv.leaves())]
-                if nested_value:
-                    doc[rel_field] = unwraplist(nested_value)
-                for k, v in merged.items():
-                    doc[k] = v
+                doc[rel_field] = unwraplist(nested_value)
 
             if doc or not parent_id:
                 output.append(doc)
@@ -306,6 +287,28 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
             continue
 
         sub_selects = selects.partial_eval(SQLang).to_sql(sub_schema).expr
+
+        # AN EXPLICIT DEEP-LEAF SELECT KEEPS ITS TERM-ROOTED NAME (REACHES ABOVE THIS
+        # BRANCH): THE BRANCH ACCUMULATES BARE VALUES AND THE ASSEMBLED LIST LANDS AT THE
+        # TERM PATH ON THE ORIGIN DOC (DocumentDetails.push_list_name).  ONLY BRANCHES
+        # STRICTLY BELOW THE QUERY ORIGIN, AND ONLY WHEN THE BRANCH HAS EXACTLY ONE SUCH
+        # TERM (BARE VALUES CANNOT SHARE A DOC WITH OTHER KEYS)
+        origin = query.frum.nested_path[0]
+        merge_term = None
+        if startswith_field(sub_table, origin) and sub_table != origin:
+            branch_rel = untype_field(relative_field(sub_table, origin))[0]
+            merge_terms = [
+                term.name
+                for term in sub_selects.terms
+                for head, child in [tail_field(term.name)]
+                for full in [concat_field(unliteral_field(head), child)]
+                if startswith_field(full, branch_rel) and full != branch_rel
+            ]
+            if len(merge_terms) == 1:
+                merge_term = merge_terms[0]
+                head, child = tail_field(merge_term)
+                nested_doc_details.push_list_name = concat_field(unliteral_field(head), child)
+
         for i, term in enumerate(sub_selects.terms):
             name, value = term.name, term.value
             column_number = len(sql_selects)
@@ -318,8 +321,10 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
             push_column_name, push_column_child = tail_field(name)
             push_column_name = unliteral_field(push_column_name)
             index_to_column[column_number] = nested_doc_details.index_to_column[column_number] = ColumnMapping(
-                # LIST FORMAT SPLATS THE "." CONTAINER INTO THE DOC ROOT
-                push_list_name=push_column_child if push_column_name == "." else name,
+                # LIST FORMAT SPLATS THE "." CONTAINER INTO THE DOC ROOT; A MERGE TERM IS
+                # THE BRANCH'S WHOLE VALUE
+                push_list_name="." if name == merge_term
+                else push_column_child if push_column_name == "." else name,
                 push_column_child=push_column_child,
                 push_column_name=push_column_name,
                 push_column_index=i,
