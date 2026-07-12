@@ -74,6 +74,11 @@ class SelectOp(_SelectOp):
                         # BINDING IS A VALUE AT THE TERM NAME: COLLAPSE UNDER IT.  literal_field
                         # KEEPS THE BOUNDARY WHEN THE TERM IS NAMED "." (concat_field WOULD ERASE IT)
                         full_name = concat_field(name if name != "." else literal_field("."), resolved.push_child)
+                    elif resolved.push_name == "." and resolved.push_child == ".":
+                        # EXPLICIT DEEP LEAF SELECTED FROM ABOVE: ONE VALUE PER BRANCH ROW,
+                        # ACCUMULATED AS A MULTIVALUE ON THE ORIGIN DOC - KEEP THE TERM-ROOTED
+                        # NAME SO ASSEMBLY KNOWS WHERE IT LANDS
+                        full_name = name
                     else:
                         full_name = relative_field(concat_field(name, rel_name), branch_prefix)
                     jx_type |= full_name + to_jx_type(col.json_type)

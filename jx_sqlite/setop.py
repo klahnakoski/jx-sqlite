@@ -33,6 +33,7 @@ from mo_dots import (
     startswith_field,
     unwraplist,
     relative_field,
+    is_data,
     is_missing,
     listwrap,
     Null,
@@ -90,6 +91,7 @@ class DocumentDetails:
 def _set_op(self, query):
     index_to_column, command, primary_doc_details = to_sql(self, query)
     result = self.container.db.query(command)
+    query_origin, _ = untype_field(query.frum.nested_path[0])
 
     def _accumulate_nested(
         rows,  # row generator
@@ -129,8 +131,33 @@ def _set_op(self, query):
                 if not nested_value:
                     continue
                 doc = doc or Data()
-                rel_field = relative_field(untype_field(child_details.nested_path[0])[0], curr_nested_path)
-                doc[rel_field] = unwraplist(nested_value)
+                child_table, _ = untype_field(child_details.nested_path[0])
+                rel_field = relative_field(child_table, curr_nested_path)
+                merge_maps = tuple(
+                    m
+                    for m in child_details.index_to_column.values()
+                    # ONLY CHILD TABLES STRICTLY BELOW THE QUERY ORIGIN MERGE UPWARD; THE
+                    # ORIGIN'S OWN ROWS ARE EACH THEIR OWN DOC
+                    if child_table != query_origin and not startswith_field(query_origin, child_table)
+                    if m.push_list_name != None and startswith_field(m.push_list_name, rel_field)
+                )
+                merged = {}
+                if merge_maps:
+                    # EXPLICIT DEEP-LEAF SELECT (TERM-ROOTED PUSH NAMES): ONE VALUE PER CHILD
+                    # ROW, MERGED AS A MULTIVALUE ON THIS DOC - NOT A LIST OF SUB-DOCUMENTS
+                    for m in merge_maps:
+                        values = [v for nv in nested_value for v in [nv[m.push_list_name]] if not is_missing(v)]
+                        if values:
+                            merged[m.push_list_name] = unwraplist(values)
+                        for nv in nested_value:
+                            if is_data(nv):
+                                nv[m.push_list_name] = None
+                    # DROP DOCS THE MERGE EMPTIED
+                    nested_value = [nv for nv in nested_value if not is_data(nv) or any(v != None for _, v in nv.leaves())]
+                if nested_value:
+                    doc[rel_field] = unwraplist(nested_value)
+                for k, v in merged.items():
+                    doc[k] = v
 
             if doc or not parent_id:
                 output.append(doc)

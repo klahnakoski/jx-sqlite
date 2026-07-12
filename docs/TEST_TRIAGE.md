@@ -32,7 +32,7 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 - [x] test_deep_agg_on_expression
 - [x] test_deep_agg_on_expression_w_shallow_where
 - [x] test_agg_w_complicated_where
-- [ ] test_deep_where_on_fact_table — multi-value collapse (P7): explicit deep-column select must merge child values
+- [x] test_deep_where_on_fact_table — fixed: explicit deep-leaf select keeps its term-rooted push name (ResolvedName push_child='.'); _accumulate_nested merges one value per child row as a multivalue on the origin doc
 - [ ] test_id_select — GUID `_id` not bound from nested origin (NAMES.md #7); also drops empty-parent row
 - [x] test_aggs_on_parent
 - [x] test_aggs_on_parent_and_child
