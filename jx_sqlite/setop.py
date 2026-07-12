@@ -34,6 +34,7 @@ from mo_dots import (
     unwraplist,
     relative_field,
     is_missing,
+    listwrap,
     Null,
     tail_field,
     unliteral_field,
@@ -154,7 +155,13 @@ def _set_op(self, query):
     # the above returns data relative to snowflake.fact_name.  Get the nested_path
     rel_path = untype_field(relative_field(query.frum.nested_path[0], query.frum.schema.snowflake.fact_name))[0]
     if rel_path != ".":
-        data = list_to_data(data).get(rel_path)
+        # NESTED ORIGIN: EACH PARENT ROW (GUARANTEED BY LEFT JOIN) YIELDS ITS CHILDREN,
+        # OR ONE EMPTY DOC WHEN IT HAS NONE
+        data = list_to_data([
+            child
+            for doc in data
+            for child in (listwrap(doc[rel_path]) or [{}])
+        ])
 
     return format_deep(data, cols, query)
 

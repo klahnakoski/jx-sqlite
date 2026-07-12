@@ -10,6 +10,7 @@
 import mo_json
 from jx_base.domains import SimpleSetDomain
 from jx_base.expressions import TupleOp, NULL, SqlScript
+from jx_base.expressions.leaves_op import LeavesOp
 from jx_base.language import is_op
 from jx_python import jx
 from mo_collections.matrix import Matrix, index_to_coordinate
@@ -22,6 +23,7 @@ from mo_dots import (
     literal_field,
     unliteral_field,
     relative_field,
+    startswith_field,
     tail_field,
 )
 from mo_sql.utils import untype_field
@@ -225,10 +227,12 @@ def format_metadata(metadata, query):
 def _top_name(c, origin):
     # THE TOP-LEVEL DOCUMENT KEY THIS COLUMN LANDS UNDER, RELATIVE TO THE QUERY ORIGIN.
     # A COLUMN LIVING IN A DEEPER (CHILD-ARRAY) TABLE IS ASSEMBLED UNDER ITS CONTAINER
-    # (e.g. `_a`), NOT ITS OWN LEAF NAME (`b`).
-    rel = untype_field(relative_field(c.nested_path[0], origin))[0]
-    if rel == ".":
+    # (e.g. `_a`), NOT ITS OWN LEAF NAME (`b`).  AN ANCESTOR COLUMN (UP-REACH: ONE VALUE
+    # PER ORIGIN ROW) LANDS UNDER ITS OWN PUSH NAME.
+    if startswith_field(origin, c.nested_path[0]):
+        # ORIGIN ITSELF, OR AN ANCESTOR OF IT
         return c.push_column_name
+    rel = untype_field(relative_field(c.nested_path[0], origin))[0]
     return tail_field(rel)[0]
 
 
@@ -243,11 +247,22 @@ def _deep_header(cols, origin):
     return tuple(sorted(order, key=order.get))
 
 
+def _is_whole_doc_select(query):
+    # SELECT `.` (EACH NESTED-ORIGIN DOC AS ONE VALUE) COLLAPSES TO A SINGLE `.` COLUMN.
+    # Only for a nested origin: a fact-origin default/`.`/`*` select spreads its leaves.
+    # `.` and `*` both normalize to a single term named `.`; `*` carries a LeavesOp.
+    origin = query.frum.nested_path[0]
+    if origin == query.frum.schema.snowflake.fact_name:
+        return False
+    terms = query.select.terms
+    return len(terms) == 1 and terms[0].name == "." and not is_op(terms[0].value, LeavesOp)
+
+
 def format_deep(data, cols, query):
     origin = query.frum.nested_path[0]
     if query.format == "cube":
         num_rows = len(data)
-        header = _deep_header(cols, origin)
+        header = (".",) if _is_whole_doc_select(query) else _deep_header(cols, origin)
         if header == (".",):
             temp_data = {".": data}
         else:
@@ -262,9 +277,9 @@ def format_deep(data, cols, query):
             edges=[{"name": "rownum", "domain": {"type": "rownum", "min": 0, "max": num_rows, "interval": 1,},}],
         )
     elif query.format == "table":
-        header = _deep_header(cols, origin)
+        header = (".",) if _is_whole_doc_select(query) else _deep_header(cols, origin)
         if header == (".",):
-            temp_data = data
+            temp_data = [(from_data(d),) for d in data]
         else:
             locs = tuple(literal_field(h) for h in header)
             temp_data = [tuple(d[l] for l in locs) for d in data]

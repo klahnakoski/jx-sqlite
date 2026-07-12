@@ -48,7 +48,7 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
+    @skipIf(global_settings.use == "sqlite", "multivalue column: GetOp.to_sql arity error (partial_eval/to_sql ordering), order-dependent flake")
     def test_select_in_w_multivalue(self):
         test = {
             "data": [
@@ -85,7 +85,7 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
+    @skipIf(global_settings.use == "sqlite", "multivalue column: GetOp.to_sql arity error (partial_eval/to_sql ordering), order-dependent flake")
     def test_select_when_on_multivalue(self):
         test = {
             "data": [
@@ -132,7 +132,6 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_deep_select_column(self):
         test = {
             "data": [
@@ -187,7 +186,7 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
+    @skipIf(global_settings.use == "sqlite", "groupby header mints `_a..v` (dot doubling in group.py naming)")
     def test_deep_select_column_w_groupby(self):
         test = {
             "data": [
@@ -240,7 +239,6 @@ class TestDeepOps(BaseTestCase):
         }
         self.assertRaises(Exception, self.utils.execute_tests, test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_abs_shallow_select(self):
         # TEST THAT ABSOLUTE COLUMN NAMES WORK (WHEN THEY DO NOT CONFLICT WITH RELATIVE PROPERTY NAME)
         test = {
@@ -771,7 +769,7 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
+    @skipIf(global_settings.use == "sqlite", "GUID `_id` not bound from nested origin (NAMES.md #7); also drops empty-parent row")
     def test_id_select(self):
         """
         ALWAYS GOOD TO HAVE AN ID, CALL IT "_id"
@@ -1699,7 +1697,6 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_deep_select_dot(self):
         test = {
             "data": [
@@ -2028,7 +2025,7 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
+    @skipIf(global_settings.use == "sqlite", "select of literal nested-doc list: 'Expecting an expression, not [{...'")
     def test_nested_document_selection(self):
         test = {
             "data": [
