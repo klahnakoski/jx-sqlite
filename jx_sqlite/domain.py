@@ -161,20 +161,10 @@ def sql_default_domain(query, query_edge, edge_index, column_index, inner_schema
         ])
         groupby_columns = sql_list([quote_column(domain_alias) for domain_alias in domain_aliases])
         orderby_columns = sql_list([quote_column(domain_alias) for domain_alias in domain_aliases])
-        on_clause = SQL_AND.join([
-            sql_iso(
-                quote_column(edge_alias, domain_alias),
-                SQL_EQ,
-                term.to_sql(inner_schema),
-                SQL_OR,
-                quote_column(edge_alias, domain_alias),
-                SQL_IS_NULL,
-                SQL_AND,
-                term.to_sql(inner_schema),
-                SQL_IS_NULL,
-            )
+        on_clause = SqlAndOp(*(
+            EqOp(SqlVariable(edge_alias, domain_alias), term).to_sql(inner_schema).expr
             for domain_alias, term in zip(domain_aliases, edge_sql.frum.terms)
-        ])
+        ))
 
         for i, term in enumerate(edge_sql.frum.terms):
             column_mappings[column_index + i] = ColumnMapping(
@@ -201,20 +191,10 @@ def sql_default_domain(query, query_edge, edge_index, column_index, inner_schema
         ])
         groupby_columns = sql_list([quote_column(domain_alias) for domain_alias in domain_aliases])
         orderby_columns = sql_list([quote_column(domain_alias) for domain_alias in domain_aliases])
-        on_clause = SQL_AND.join([
-            sql_iso(
-                quote_column(edge_alias, domain_alias),
-                SQL_EQ,
-                term.value.to_sql(inner_schema),
-                SQL_OR,
-                quote_column(edge_alias, domain_alias),
-                SQL_IS_NULL,
-                SQL_AND,
-                term.value.to_sql(inner_schema),
-                SQL_IS_NULL,
-            )
+        on_clause = SqlAndOp(*(
+            EqOp(SqlVariable(edge_alias, domain_alias), term.value).to_sql(inner_schema).expr
             for domain_alias, term in zip(domain_aliases, edge_sql.frum.terms)
-        ])
+        ))
         for i, term in enumerate(edge_sql.frum.terms):
             column_mappings[column_index + i] = ColumnMapping(
                 is_edge=True,
