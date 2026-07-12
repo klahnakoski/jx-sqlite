@@ -23,7 +23,6 @@ from jx_base.language import is_op
 from jx_sqlite.expressions.variable import Variable
 from jx_sqlite.utils import (
     ColumnMapping,
-    STATS,
     _make_column_name,
     get_column,
     sql_text_array_to_set,
@@ -170,17 +169,40 @@ def _union_aggregate(facts, s, si, column_number, schema):
 
 
 def _stats_aggregate(facts, s, si, column_number, schema):
-    # THE STATS OBJECT
-    sql = s.value.to_sql(schema)
-    for name, code in STATS.items():
-        full_sql = code.replace("{{value}}", sql)
-        yield sql_alias(full_sql, _make_column_name(column_number)), ColumnMapping(
+    # THE STATS OBJECT (median lives in PercentilesOp, not here).
+    # SQLite has no VARIANCE aggregate, so variance is the population form
+    # SUM(x*x)/N - (SUM(x)/N)**2, and std is its SQRT.
+    value = sql_iso(s.value.partial_eval(SQLang).to_sql(schema))
+    count = sql_call("COUNT", value)
+    total = sql_call("SUM", value)
+    sos = sql_call("SUM", ConcatSQL(value, SQL_STAR, value))
+    avg = sql_iso(ConcatSQL(total, SQL_STAR, SQL("1.0"), SQL_DIV, count))
+    var = ConcatSQL(
+        sql_iso(ConcatSQL(sos, SQL_STAR, SQL("1.0"), SQL_DIV, count)),
+        SQL(" - "),
+        avg,
+        SQL_STAR,
+        avg,
+    )
+    stats = {
+        "count": count,
+        "std": sql_call("SQRT", sql_iso(var)),
+        "min": sql_call("MIN", value),
+        "max": sql_call("MAX", value),
+        "sum": total,
+        "sos": sos,
+        "var": var,
+        "avg": avg,
+    }
+    for name, code in stats.items():
+        full_sql = sql_alias(code, _make_column_name(column_number))
+        yield full_sql, ColumnMapping(
             push_list_name=s.name,
             push_column_name=unliteral_field(s.name),
             push_column_index=si,
             push_column_child=name,
             pull=get_column(column_number, None, s.default),
-            sql=full_sql,
+            sql=code,
             column_alias=_make_column_name(column_number),
             type="number",
         )

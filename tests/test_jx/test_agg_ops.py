@@ -148,7 +148,7 @@ class TestAggOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "not expected to pass yet")
+    @skipIf(global_settings.use == "sqlite", "PercentilesOp/_percentile not implemented yet")
     def test_median(self):
         test = {
             "data": [{"a": i**2} for i in range(30)],
@@ -174,7 +174,7 @@ class TestAggOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "not expected to pass yet")
+    @skipIf(global_settings.use == "sqlite", "PercentileOp/_percentile not implemented yet")
     def test_percentile(self):
         test = {
             "data": [{"a": i**2} for i in range(30)],
@@ -200,7 +200,7 @@ class TestAggOps(BaseTestCase):
         }
         self.utils.execute_tests(test, places=1.5)  # 1.5 approx +/- 3%
 
-    @skipIf(global_settings.use=="sqlite", "not expected to pass yet")
+    @skipIf(global_settings.use=="sqlite", "PercentileOp/PercentilesOp/_percentile not implemented yet")
     def test_both_percentile(self):
         test = {
             "data": [{"a": i**2} for i in range(30)],
@@ -231,7 +231,6 @@ class TestAggOps(BaseTestCase):
         }
         self.utils.execute_tests(test, places=1.5)  # 1.5 approx +/- 3%
 
-    @skipIf(global_settings.use == "sqlite", "not expected to pass yet")
     def test_stats(self):
         test = {
             "data": [{"a": i**2} for i in range(30)],

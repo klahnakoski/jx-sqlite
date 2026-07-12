@@ -140,18 +140,6 @@ def _make_column_name(number):
     return COLUMN + str(number)
 
 
-STATS = {
-    "count": "COUNT({{value}})",
-    "std": "SQRT((1-1.0/COUNT({{value}}))*VARIANCE({{value}}))",
-    "min": "MIN({{value}})",
-    "max": "MAX({{value}})",
-    "sum": "SUM({{value}})",
-    "sos": "SUM({{value}}*{{value}})",
-    "var": "(1-1.0/COUNT({{value}}))*VARIANCE({{value}})",
-    "avg": "AVG({{value}})",
-}
-
-
 def sql_text_array_to_set(column):
     def _convert(row):
         text = row[column]
