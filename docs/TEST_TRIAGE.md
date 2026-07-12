@@ -18,12 +18,12 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 
 ### test_deep_ops.py
 - [x] test_select_gt_on_sub
-- [ ] test_select_in_w_multivalue
-- [ ] test_select_when_on_multivalue
-- [ ] test_deep_select_column
-- [ ] test_deep_select_column_w_groupby
+- [ ] test_select_in_w_multivalue — multivalue GetOp.to_sql arity (partial_eval/to_sql ordering); order-dependent flake
+- [ ] test_select_when_on_multivalue — same multivalue GetOp arity flake
+- [x] test_deep_select_column — fixed by nested-origin extraction (empty-parent row kept)
+- [ ] test_deep_select_column_w_groupby — groupby header mints `_a..v` (dot doubling in group.py naming)
 - [x] test_bad_deep_select_column_w_groupby
-- [ ] test_abs_shallow_select
+- [x] test_abs_shallow_select — fixed: _deep_header lands up-reach (ancestor) columns under their own push name
 - [x] test_select_whole_document — fixed (insert row-reuse + plain-`*` depth filter + deep header)
 - [x] test_select_whole_nested_document
 - [ ] test_deep_names_w_star — prefix-star on fact-absolute name from deep origin loses the container name
@@ -33,7 +33,7 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 - [x] test_deep_agg_on_expression_w_shallow_where
 - [x] test_agg_w_complicated_where
 - [ ] test_deep_where_on_fact_table — multi-value collapse (P7): explicit deep-column select must merge child values
-- [ ] test_id_select
+- [ ] test_id_select — GUID `_id` not bound from nested origin (NAMES.md #7); also drops empty-parent row
 - [x] test_aggs_on_parent
 - [x] test_aggs_on_parent_and_child
 - [x] test_aggs_on_parent_and_child2
@@ -54,13 +54,13 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 - [x] test_sibling_nested_column
 - [x] test_deep_star
 - [ ] test_deep_star_w_parent — needs `..*` (parent-star) relative names
-- [ ] test_deep_select_dot
+- [x] test_deep_select_dot
 - [ ] test_from_shallow_select_deep_column
 - [x] test_setop_w_shallow_eq_string
 - [ ] test_deep_edge_w_shallow_expression
 - [ ] test_deep_edge_w_shallow_var
 - [ ] test_nested_property_edge_w_shallow_expression
-- [ ] test_nested_document_selection
+- [ ] test_nested_document_selection — select of literal nested-doc list: 'Expecting an expression, not [{...'
 - [x] test_nested_filter_with_groupby
 - [ ] test_deep_origin_agg_on_child
 

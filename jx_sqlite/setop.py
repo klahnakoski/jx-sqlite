@@ -34,6 +34,7 @@ from mo_dots import (
     unwraplist,
     relative_field,
     is_missing,
+    listwrap,
     Null,
     tail_field,
     unliteral_field,
@@ -154,7 +155,13 @@ def _set_op(self, query):
     # the above returns data relative to snowflake.fact_name.  Get the nested_path
     rel_path = untype_field(relative_field(query.frum.nested_path[0], query.frum.schema.snowflake.fact_name))[0]
     if rel_path != ".":
-        data = list_to_data(data).get(rel_path)
+        # NESTED ORIGIN: EACH PARENT ROW (GUARANTEED BY LEFT JOIN) YIELDS ITS CHILDREN,
+        # OR ONE EMPTY DOC WHEN IT HAS NONE
+        data = list_to_data([
+            child
+            for doc in data
+            for child in (listwrap(doc[rel_path]) or [{}])
+        ])
 
     return format_deep(data, cols, query)
 
@@ -282,10 +289,12 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
             column_alias = _make_column_name(column_number)
             sql_selects.append(SqlAliasOp(sql, column_alias))
             push_column_name, push_column_child = tail_field(name)
+            push_column_name = unliteral_field(push_column_name)
             index_to_column[column_number] = nested_doc_details.index_to_column[column_number] = ColumnMapping(
-                push_list_name=name,
+                # LIST FORMAT SPLATS THE "." CONTAINER INTO THE DOC ROOT
+                push_list_name=push_column_child if push_column_name == "." else name,
                 push_column_child=push_column_child,
-                push_column_name=unliteral_field(push_column_name),
+                push_column_name=push_column_name,
                 push_column_index=i,
                 pull=get_column(column_number, json_type=value.jx_type),
                 sql=sql,

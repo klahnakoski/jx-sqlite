@@ -22,6 +22,7 @@ from mo_dots import (
     literal_field,
     unliteral_field,
     relative_field,
+    startswith_field,
     tail_field,
 )
 from mo_sql.utils import untype_field
@@ -229,10 +230,12 @@ def format_metadata(metadata, query):
 def _top_name(c, origin):
     # THE TOP-LEVEL DOCUMENT KEY THIS COLUMN LANDS UNDER, RELATIVE TO THE QUERY ORIGIN.
     # A COLUMN LIVING IN A DEEPER (CHILD-ARRAY) TABLE IS ASSEMBLED UNDER ITS CONTAINER
-    # (e.g. `_a`), NOT ITS OWN LEAF NAME (`b`).
-    rel = untype_field(relative_field(c.nested_path[0], origin))[0]
-    if rel == ".":
+    # (e.g. `_a`), NOT ITS OWN LEAF NAME (`b`).  AN ANCESTOR COLUMN (UP-REACH: ONE VALUE
+    # PER ORIGIN ROW) LANDS UNDER ITS OWN PUSH NAME.
+    if startswith_field(origin, c.nested_path[0]):
+        # ORIGIN ITSELF, OR AN ANCESTOR OF IT
         return c.push_column_name
+    rel = untype_field(relative_field(c.nested_path[0], origin))[0]
     return tail_field(rel)[0]
 
 
@@ -268,7 +271,7 @@ def format_deep(data, cols, query):
     elif query.format == "table":
         header = _deep_header(cols, origin)
         if header == (".",):
-            temp_data = data
+            temp_data = [(from_data(d),) for d in data]
         else:
             locs = tuple(literal_field(h) for h in header)
             temp_data = [tuple(d[l] for l in locs) for d in data]

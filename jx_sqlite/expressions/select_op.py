@@ -66,10 +66,16 @@ class SelectOp(_SelectOp):
                         continue
 
                 emitted = False
-                for rel_name, col in cols:
+                for resolved in cols:
+                    rel_name, col = resolved
                     if not keep(col):
                         continue
-                    full_name = relative_field(concat_field(name, rel_name), branch_prefix)
+                    if at_origin and resolved.push_name == ".":
+                        # BINDING IS A VALUE AT THE TERM NAME: COLLAPSE UNDER IT.  literal_field
+                        # KEEPS THE BOUNDARY WHEN THE TERM IS NAMED "." (concat_field WOULD ERASE IT)
+                        full_name = concat_field(name if name != "." else literal_field("."), resolved.push_child)
+                    else:
+                        full_name = relative_field(concat_field(name, rel_name), branch_prefix)
                     jx_type |= full_name + to_jx_type(col.json_type)
                     sql_terms.append(SqlAliasOp(
                         SqlVariable(col.es_index, col.es_column, jx_type=to_jx_type(col.json_type)), full_name
