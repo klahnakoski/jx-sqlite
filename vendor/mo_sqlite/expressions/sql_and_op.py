@@ -79,5 +79,5 @@ class SqlAndOp(_SqlAndOp, SQL):
                 return lang.SqlAndOp(*and_terms)
 
         return SqlOrOp(
-            *(lang.AndOp(*and_terms) if len(and_terms) > 1 else and_terms[0] for and_terms in or_terms)
+            *(lang.SqlAndOp(*and_terms) if len(and_terms) > 1 else and_terms[0] for and_terms in or_terms)
         ).partial_eval(lang)
