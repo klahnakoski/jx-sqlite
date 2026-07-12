@@ -697,16 +697,16 @@ class TestSetOps(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
-                    {"a": {"b": "x", "v": 2}},
-                    {"a": {"b": "x", "v": 5}},
-                    {"a": {"b": "x", "v": 7}},
+                    {"b": "x", "v": 2},
+                    {"b": "x", "v": 5},
+                    {"b": "x", "v": 7},
                     {},
                 ],
             },
             "expecting_table": {
                 "meta": {"format": "table"},
-                "header": ["a"],
-                "data": [[{"b": "x", "v": 2}], [{"b": "x", "v": 5}], [{"b": "x", "v": 7}], [NULL, NULL]],
+                "header": ["b", "v"],
+                "data": [["x", 2], ["x", 5], ["x", 7], [NULL, NULL]],
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
@@ -714,12 +714,7 @@ class TestSetOps(BaseTestCase):
                     "name": "rownum",
                     "domain": {"type": "rownum", "min": 0, "max": 4, "interval": 1},
                 }],
-                "data": {"a": [
-                    {"b": "x", "v": 2},
-                    {"b": "x", "v": 5},
-                    {"b": "x", "v": 7},
-                    NULL
-                ]},
+                "data": {"b": ["x", "x", "x", NULL], "v": [2, 5, 7, NULL]},
             },
         }
         self.utils.execute_tests(test)
