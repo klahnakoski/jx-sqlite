@@ -146,7 +146,8 @@ def _set_op(self, query):
     cols = tuple(i for i in index_to_column.values() if i.push_list_name != None)
 
     if result.data:
-        _, _, data = _accumulate_nested(iter(result.data), first(result.data), None, primary_doc_details, 0, 0)
+        all_rows = iter(result.data)
+        _, _, data = _accumulate_nested(all_rows, next(all_rows), None, primary_doc_details, 0, 0)
     else:
         data = result.data
 
