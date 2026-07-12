@@ -566,13 +566,8 @@ class TestSetOps(BaseTestCase):
             },
             "expecting_table": {
                 "meta": {"format": "table"},
-                "header": ["a"],
-                "data": [
-                    {"b": 0, "c": 0},
-                    {"b": 0, "c": 1},
-                    {"b": 1, "c": 0},
-                    {"b": 1, "c": 1},
-                ],
+                "header": ["b", "c"],
+                "data": [[0, 0], [0, 1], [1, 0], [1, 1]],
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
@@ -581,12 +576,8 @@ class TestSetOps(BaseTestCase):
                     "domain": {"type": "rownum", "min": 0, "max": 4, "interval": 1},
                 }],
                 "data": {
-                    "a": [
-                        {"b": 0, "c": 0},
-                        {"b": 0, "c": 1},
-                        {"b": 1, "c": 0},
-                        {"b": 1, "c": 1},
-                    ],
+                    "b": [0, 0, 1, 1],
+                    "c": [0, 1, 0, 1],
                 },
             },
         }
@@ -868,19 +859,19 @@ class TestSetOps(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
-                    {"o": 3, "a": {"b": "x", "v": 2}},
-                    {"o": 1, "a": {"b": "x", "v": 5}},
-                    {"o": 2, "a": {"b": "x", "v": 7}},
+                    {"o": 3, "b": "x", "v": 2},
+                    {"o": 1, "b": "x", "v": 5},
+                    {"o": 2, "b": "x", "v": 7},
                     {"o": 4},
                 ],
             },
             "expecting_table": {
                 "meta": {"format": "table"},
-                "header": ["o", "a", "a"],
+                "header": ["o", "b", "v"],
                 "data": [
-                    [3, {"b": "x", "v": 2}],
-                    [1, {"b": "x", "v": 5}],
-                    [2, {"b": "x", "v": 7}],
+                    [3, "x", 2],
+                    [1, "x", 5],
+                    [2, "x", 7],
                     [4, NULL, NULL],
                 ],
             },
@@ -891,12 +882,8 @@ class TestSetOps(BaseTestCase):
                     "domain": {"type": "rownum", "min": 0, "max": 4, "interval": 1},
                 }],
                 "data": {
-                    "a": [
-                        {"b": "x", "v": 2},
-                        {"b": "x", "v": 5},
-                        {"b": "x", "v": 7},
-                        NULL,
-                    ],
+                    "b": ["x", "x", "x", NULL],
+                    "v": [2, 5, 7, NULL],
                     "o": [3, 1, 2, 4],
                 },
             },
