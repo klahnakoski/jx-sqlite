@@ -144,7 +144,10 @@ change.
 - [x] test_agg_ops.py::test_select_agg_mult_w_when
 - [ ] test_agg_ops.py::test_max_on_tuple — "broken"
 - [ ] test_agg_ops.py::test_max_on_tuple2 — "broken"
-- [ ] test_agg_ops.py::test_union — "broken"
+- [x] test_agg_ops.py::test_union — UnionOp needed the `frum=` aggregate ctor (like
+      SumOp/MinOp) and `_union_aggregate` used the dead multi-detail `to_sql` API.
+      NOTE: only the sqlite path is covered; jx_python union test/interp request lives in
+      vendor/jx_python/BUGS.md #3. Nested/multi-value union: see cluster 7 test_union_*.
 
 ## 7. Edge domains (~7 tests)
 

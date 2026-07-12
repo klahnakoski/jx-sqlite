@@ -19,3 +19,13 @@ through `ListContainer.query` raises TypeError. No jx-sqlite test currently exer
 (suite green without touching it); left unfixed pending a test that pins the intended `sort`
 argument shape (list of SortOne from QueryOp normalization, presumably `jx.sort(self.data,
 *sort)`).
+
+## 3. `union` aggregate has no Python interpretation (UNFIXED — needs tests)
+
+`jx_base.UnionOp` was reworked into a single-`frum` decisive set-union aggregate (to fix
+`test_agg_ops.py::test_union` on sqlite). Only the sqlite backend implements it
+(`jx_sqlite/aggregates.py::_union_aggregate` → `JSON_GROUP_ARRAY(DISTINCT ...)`); jx_python
+has no `__call__`/compiled form for it, so a `{"aggregate": "union"}` query run over Python
+objects would error or silently return nothing. Add a jx_python union test (flat scalar
+column) and the interpretation to satisfy it; then nested/multi-value union coverage (mirror
+the skipped `test_edge_1.py::test_union_*`).

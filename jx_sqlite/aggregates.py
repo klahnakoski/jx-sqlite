@@ -151,21 +151,21 @@ def _and_aggregate(facts, s, si, column_number, schema):
 
 
 def _union_aggregate(facts, s, si, column_number, schema):
-    for details in s.value.partial_eval(SQLang).to_sql(schema):
-        for sql_type, sql in details.sql.items():
-            yield sql_alias(
-                "JSON_GROUP_ARRAY(DISTINCT" + sql_iso(sql) + ")", _make_column_name(column_number),
-            ), ColumnMapping(
-                push_list_name=s.name,
-                push_column_name=unliteral_field(s.name),
-                push_column_index=si,
-                push_column_child=".",
-                pull=sql_text_array_to_set(column_number),
-                sql=sql,
-                column_alias=_make_column_name(column_number),
-                type=sql_type_key_to_json_type[sql_type],
-            )
-            column_number += 1
+    sql = s.value.partial_eval(SQLang).to_sql(schema)
+    array_sql = sql_alias(
+        ConcatSQL(SQL("JSON_GROUP_ARRAY(DISTINCT "), sql_iso(sql), SQL_CP),
+        _make_column_name(column_number),
+    )
+    yield array_sql, ColumnMapping(
+        push_list_name=s.name,
+        push_column_name=unliteral_field(s.name),
+        push_column_index=si,
+        push_column_child=".",
+        pull=sql_text_array_to_set(column_number),
+        sql=sql,
+        column_alias=_make_column_name(column_number),
+        type=jx_type_to_json_type(s.value.jx_type),
+    )
 
 
 def _stats_aggregate(facts, s, si, column_number, schema):
