@@ -9,8 +9,7 @@
 #
 from jx_base.expressions import ToBooleanOp
 from jx_sqlite.aggregates import aggregates
-from jx_sqlite.complete import sql_complete
-from jx_sqlite.domain import sql_domain
+from jx_sqlite.domain import sql_domain, sql_complete
 from jx_sqlite.utils import sql_join_chain
 from jx_sqlite.window import _window_op
 from mo_future import extend
