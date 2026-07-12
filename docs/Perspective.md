@@ -16,7 +16,7 @@ The snowflake assumes the data is denormalized in document form; every fact in t
 
 **Paths to tables**
 
-The path along the foreign keys, from the fact table to any other table, is important. We can not refer to tables by name; we must refer to tables by path. The snowflake model calls this the `nested_path` of a table. "nested" alluding to nested objects found in JSON arrays.
+The path along the foreign keys, from any table back to the fact table, is important. We can not refer to tables by name; we must refer to tables by path. The snowflake model calls this the `nested_path` of a table. "nested" alluding to nested objects found in JSON arrays.
 
 ## Perspectives inside a snowflake
 
@@ -67,7 +67,7 @@ There are some important notes:
 * Arrows indicate foreign key relations: The table at the tail of the arrow is assumed to have a property that refers to the table at the head
 * The foreign keys are not shown in the document: If the relational database uses foreign keys to only indicate relations, then we can remove those properties without loss of information: The structure is in the JSON document. Sometimes the foreign key is used for business logic, and must be exposed.
 
-Let us use the origin with `nested_path=["a.b", "."]`. Notice the nested path is a list, in the direction of the relation.
+Let us use the origin with `nested_path=["a.b", "."]`. Notice the nested path is a list, origin (deepest) first, ending at the fact table.
 
 ![schema](nested2.png)
 
@@ -132,7 +132,7 @@ We assume there is only one record in `e`. We include the foreign key `_e` for c
 
 ![schema](ref2.png)
 
-Let us use origin of `nested_path=[".", "_e"]`. Notice the order of the list is in the direction of the relation. 
+Let us use origin of `nested_path=["e", "."]`. Notice the order of the list is still origin first, ending at the fact table; here that is opposite the direction of the foreign key. 
  
 We show that record as JSON:
 
