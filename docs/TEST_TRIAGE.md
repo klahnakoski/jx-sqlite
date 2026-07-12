@@ -39,9 +39,11 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 - [x] test_aggs_on_parent_and_child2
 - [x] test_aggs_on_parent_and_child3
 - [x] test_deep_edge_using_list
-- [ ] test_deep_agg_w_deeper_select_relative_name_neop
+- [x] test_deep_agg_w_deeper_select_relative_name_neop — select name `v.u` was literal_field-escaped
+      (`v..u`) by normalize_one for table/cube; edges.py aggregates now unescapes push_column_name
+      (matching group.py/setop.py) and format.py unescapes cube data keys at emission
 - [x] test_setop_w_deep_select_value_neop
-- [ ] test_deep_agg_w_deeper_select_relative_name
+- [x] test_deep_agg_w_deeper_select_relative_name — same fix
 - [x] test_shallow_and_ne_deep
 - [x] test_setop_w_deep_select_value
 - [x] test_select_average_on_none

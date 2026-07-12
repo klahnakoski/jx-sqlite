@@ -20,6 +20,7 @@ from mo_dots import (
     unwraplist,
     from_data,
     literal_field,
+    unliteral_field,
     relative_field,
     tail_field,
 )
@@ -37,7 +38,7 @@ def format_flat(result, query, index_to_columns):
         if len(query.edges) == 0 and len(query.groupby) == 0:
             data = {n: Data() for n in column_names}
             for s in index_to_columns.values():
-                data[s.push_list_name][s.push_column_child] = from_data(s.pull(result.data[0]))
+                data[s.push_column_name][s.push_column_child] = from_data(s.pull(result.data[0]))
             select = [{"name": s.name} for s in query.select.terms]
 
             return Data(data=from_data(data), select=select, meta={"format": "cube"})
@@ -78,7 +79,10 @@ def format_flat(result, query, index_to_columns):
             select = [{"name": s.name} for s in query.select.terms]
 
             return Data(
-                meta={"format": "cube"}, edges=edges, select=select, data={k: v.cube for k, v in data.items()},
+                meta={"format": "cube"},
+                edges=edges,
+                select=select,
+                data={unliteral_field(k): v.cube for k, v in data.items()},
             )
 
         columns = None
@@ -140,7 +144,10 @@ def format_flat(result, query, index_to_columns):
         select = [{"name": s.name} for s in query.select.terms]
 
         return Data(
-            meta={"format": "cube"}, edges=edges, select=select, data={k: v.cube for k, v in data_cubes.items()},
+            meta={"format": "cube"},
+            edges=edges,
+            select=select,
+            data={unliteral_field(k): v.cube for k, v in data_cubes.items()},
         )
     elif query.format == "table" or (not query.format and query.groupby):
         column_names = [None] * (max(c.push_column_index for c in index_to_columns.values()) + 1)

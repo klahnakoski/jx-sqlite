@@ -40,7 +40,7 @@ from jx_sqlite.utils import (
 from jx_sqlite.window import _window_op
 from mo_dots import (
     is_missing,
-    Null, coalesce,
+    Null, coalesce, unliteral_field,
 )
 from mo_future import extend
 from mo_json import NUMBER, JX_BOOLEAN, BOOLEAN, jx_type_to_json_type, JX_INTEGER
@@ -442,7 +442,7 @@ def aggregates(self, index_to_column, offset, outer_selects, query, schema):
             outer_selects.append(sql)
             index_to_column[column_number] = ColumnMapping(
                 push_list_name=s.name,
-                push_column_name=s.name,
+                push_column_name=unliteral_field(s.name),
                 push_column_index=si,
                 push_column_child=".",
                 pull=get_column(column_number, None, ZERO),
@@ -458,7 +458,7 @@ def aggregates(self, index_to_column, offset, outer_selects, query, schema):
             outer_selects.append(sql_alias(sql, _make_column_name(column_number)))
             index_to_column[column_number] = ColumnMapping(
                 push_list_name=s.name,
-                push_column_name=s.name,
+                push_column_name=unliteral_field(s.name),
                 push_column_index=si,
                 push_column_child=".",
                 pull=get_column(column_number, None, s.default),
@@ -475,7 +475,7 @@ def aggregates(self, index_to_column, offset, outer_selects, query, schema):
             outer_selects.append(count_sql)
             index_to_column[column_number] = ColumnMapping(
                 push_list_name=s.name,
-                push_column_name=s.name,
+                push_column_name=unliteral_field(s.name),
                 push_column_index=si,
                 push_column_child=".",
                 pull=get_column(column_number, None, 0),
@@ -491,7 +491,7 @@ def aggregates(self, index_to_column, offset, outer_selects, query, schema):
             ))
             index_to_column[column_number] = ColumnMapping(
                 push_list_name=s.name,
-                push_column_name=s.name,
+                push_column_name=unliteral_field(s.name),
                 push_column_index=si,
                 push_column_child=".",
                 pull=get_column(column_number, JX_BOOLEAN, s.default),
@@ -508,7 +508,7 @@ def aggregates(self, index_to_column, offset, outer_selects, query, schema):
             ))
             index_to_column[column_number] = ColumnMapping(
                 push_list_name=s.name,
-                push_column_name=s.name,
+                push_column_name=unliteral_field(s.name),
                 push_column_index=si,
                 push_column_child=".",
                 pull=get_column(column_number, JX_BOOLEAN, s.default),
@@ -525,7 +525,7 @@ def aggregates(self, index_to_column, offset, outer_selects, query, schema):
                     ))
                     index_to_column[column_number] = ColumnMapping(
                         push_list_name=s.name,
-                        push_column_name=s.name,
+                        push_column_name=unliteral_field(s.name),
                         push_column_index=si,
                         push_column_child=".",
                         pull=sql_text_array_to_set(column_number),
@@ -541,7 +541,7 @@ def aggregates(self, index_to_column, offset, outer_selects, query, schema):
                 outer_selects.append(sql_alias(full_sql, _make_column_name(column_number)))
                 index_to_column[column_number] = ColumnMapping(
                     push_list_name=s.name,
-                    push_column_name=s.name,
+                    push_column_name=unliteral_field(s.name),
                     push_column_index=si,
                     push_column_child=name,
                     pull=get_column(column_number, None, s.default),
@@ -563,7 +563,7 @@ def aggregates(self, index_to_column, offset, outer_selects, query, schema):
             outer_selects.append(sql_alias(sql, _make_column_name(column_number)))
             index_to_column[column_number] = ColumnMapping(
                 push_list_name=s.name,
-                push_column_name=s.name,
+                push_column_name=unliteral_field(s.name),
                 push_column_index=si,
                 push_column_child=".",
                 pull=get_column(column_number, json_type, default_value),
