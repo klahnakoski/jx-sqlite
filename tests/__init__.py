@@ -108,6 +108,13 @@ class SQLiteUtils:
             # EXECUTE QUERY
             num_expectations = 0
             for k, v in subtest.items():
+                if k == "expecting_resultset":
+                    # THE RAW SQL RESULT (docs/JSON in Database.md): UNION-ALL ROWS AS THE
+                    # DATABASE RETURNS THEM - SORTED, FIRST NESTED RECORD JOINED ONTO THE
+                    # PARENT ROW, METADATA INCLUDED - BEFORE DOCUMENT ASSEMBLY
+                    num_expectations += 1
+                    self.compare_resultset(subtest.query, v)
+                    continue
                 if k.startswith("expecting_"):  # WHAT FORMAT ARE WE REQUESTING
                     format = k[len("expecting_") :]
                 elif k == "expecting":  # NO FORMAT REQUESTED (TO TEST DEFAULT FORMATS)
@@ -146,6 +153,16 @@ class SQLiteUtils:
                 )
         except Exception as cause:
             logger.error("Failed test {{name|quote}}", name=subtest.name, cause=cause)
+
+    def compare_resultset(self, query, expected):
+        """
+        COMPILE THE (SET-OP) QUERY AND COMPARE THE RAW SQL RESULT ROWS
+        """
+        query = to_data({**from_data(query), "limit": query.limit if "limit" in query else 10})
+        normalized = QueryOp.wrap(query, self.table, SQLang)
+        _, command, _ = self.table.to_sql(normalized)
+        result = self.container.db.query(command)
+        assertAlmostEqual(result.data, expected)
 
     def execute_update(self, command):
         return self.table.update(command)

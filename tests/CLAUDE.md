@@ -13,7 +13,8 @@ must set `global_settings` and `utils` before `BaseTestCase` (a `FuzzyTestCase`)
 
 Most tests are data-driven: one dict with `data` (docs to insert), `query`, and up to three
 expectations — `expecting_list`, `expecting_table`, `expecting_cube` — executed via
-`utils.execute_tests(test)`. One logical test = three format assertions; a failure in only
+`utils.execute_tests(test)`. `expecting_resultset` additionally asserts the raw SQL rows
+(before document assembly; shape per `docs/JSON in Database.md`). One logical test = three format assertions; a failure in only
 one format points at `jx_sqlite/format.py`, a failure in all three points at SQL generation.
 FuzzyTestCase compares structurally (subset/approximate), not strict equality.
 
