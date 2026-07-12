@@ -247,6 +247,33 @@ ColumnMapping = DataClass(
 )
 
 
+def fan_out_tuple(terms, make_slot, *, push_list_name, push_column_name, push_column_index, is_edge=False):
+    """
+    Fan a TupleOp value into one output column per slot, sharing the reshape
+    contract: every slot's ColumnMapping carries num_push_columns=len(terms) and
+    push_column_child=i, which is what tells format.py to reassemble the columns
+    into a positional list (rather than a named object).  make_slot(i, term)
+    supplies the per-slot pieces the two call sites (edge domain, select aggregate)
+    compute differently: (select_sql, pull, type, column_alias, mapping_sql).
+    Yields (select_sql, ColumnMapping) per slot, in tuple order.
+    """
+    n = len(terms)
+    for i, term in enumerate(terms):
+        select_sql, pull, type, column_alias, mapping_sql = make_slot(i, term)
+        yield select_sql, ColumnMapping(
+            is_edge=is_edge,
+            push_list_name=push_list_name,
+            push_column_name=push_column_name,
+            push_column_index=push_column_index,
+            num_push_columns=n,
+            push_column_child=i,
+            pull=pull,
+            type=type,
+            sql=mapping_sql,
+            column_alias=column_alias,
+        )
+
+
 class StrictSnowflake(Snowflake):
     def __init__(self, query_paths, columns):
         self._query_paths = query_paths

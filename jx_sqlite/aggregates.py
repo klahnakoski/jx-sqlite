@@ -17,6 +17,7 @@ from jx_base.expressions import (
     OrOp,
     AndOp,
     UnionOp,
+    TupleOp,
     ZERO,
 )
 from jx_base.language import is_op
@@ -24,6 +25,7 @@ from jx_sqlite.expressions.variable import Variable
 from jx_sqlite.utils import (
     ColumnMapping,
     _make_column_name,
+    fan_out_tuple,
     get_column,
     sql_text_array_to_set,
 )
@@ -63,6 +65,8 @@ def aggregate_rule(s, query):
         return _union_aggregate
     if is_op(s.aggregate, StatsOp):
         return _stats_aggregate
+    if is_op(s.value, TupleOp):
+        return _tuple_aggregate
     return _standard_aggregate
 
 
@@ -207,6 +211,28 @@ def _stats_aggregate(facts, s, si, column_number, schema):
             type="number",
         )
         column_number += 1
+
+
+def _tuple_aggregate(facts, s, si, column_number, schema):
+    # A TUPLE VALUE FANS OUT: THE AGGREGATE DISTRIBUTES OVER EACH SLOT
+    # (max([a, b]) == [max(a), max(b)]), ONE OUTPUT COLUMN PER SLOT, REASSEMBLED
+    # INTO A POSITIONAL LIST BY num_push_columns (SEE fan_out_tuple).
+    agg = sql_aggs[s.aggregate.op]
+
+    def make_slot(i, term):
+        col = column_number + i
+        script = term.partial_eval(SQLang).to_sql(schema)
+        code = sql_call(agg, script)
+        alias = _make_column_name(col)
+        json_type = jx_type_to_json_type(script.jx_type)
+        return sql_alias(code, alias), get_column(col, json_type, s.default), json_type, alias, code
+
+    yield from fan_out_tuple(
+        s.value.terms, make_slot,
+        push_list_name=s.name,
+        push_column_name=unliteral_field(s.name),
+        push_column_index=si,
+    )
 
 
 def _standard_aggregate(facts, s, si, column_number, schema):

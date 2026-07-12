@@ -176,7 +176,12 @@ def format_flat(result, query, index_to_columns):
         if not query.edges and not query.groupby and any(s.aggregate is not NULL for s in query.select.terms):
             data = Data()
             for s in index_to_columns.values():
-                if not data[s.push_column_name][s.push_column_child]:
+                if s.num_push_columns:
+                    tuple_value = data[s.push_column_name]
+                    if not tuple_value:
+                        tuple_value = data[s.push_column_name] = [None] * s.num_push_columns
+                    tuple_value[s.push_column_child] = s.pull(result.data[0])
+                elif not data[s.push_column_name][s.push_column_child]:
                     data[s.push_column_name][s.push_column_child] = s.pull(result.data[0])
                 else:
                     data[s.push_column_name][s.push_column_child] += [s.pull(result.data[0])]

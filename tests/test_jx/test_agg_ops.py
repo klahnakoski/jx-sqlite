@@ -478,7 +478,6 @@ class TestAggOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_max_on_tuple(self):
         test = {
             "data": [
@@ -504,7 +503,6 @@ class TestAggOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_max_on_tuple2(self):
         test = {
             "data": [

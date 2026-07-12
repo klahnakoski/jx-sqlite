@@ -22,7 +22,7 @@ from jx_base.expressions import (
 from jx_base.language import is_op
 from jx_sqlite.expressions import EqOp
 from jx_sqlite.expressions.tuple_op import TupleOp
-from jx_sqlite.utils import ColumnMapping
+from jx_sqlite.utils import ColumnMapping, fan_out_tuple
 from mo_dots import is_missing, Null, coalesce
 from mo_json import NUMBER, jx_type_to_json_type, JX_INTEGER
 from mo_logs import Log
@@ -151,11 +151,31 @@ def sql_default_domain(query, query_edge, edge_index, column_index, inner_schema
     edge_sql = query_edge.value.partial_eval(SQLang).to_sql(inner_schema)
 
     if is_op(edge_sql.frum, TupleOp):
-        domain_aliases = [get_domain_alias(column_index + i) for i, term in enumerate(edge_sql.frum.terms)]
-        select_columns = sql_list([
-            sql_alias(term.to_sql(inner_schema), domain_alias)
-            for domain_alias, term in zip(domain_aliases, edge_sql.frum.terms)
-        ])
+        terms = edge_sql.frum.terms
+        domain_aliases = [get_domain_alias(column_index + i) for i in range(len(terms))]
+
+        def make_slot(i, term):
+            domain_alias = domain_aliases[i]
+            return (
+                sql_alias(term.to_sql(inner_schema), domain_alias),
+                get_pull_func(column_index + i),
+                jx_type_to_json_type(term.jx_type),
+                domain_alias,
+                FALSE,
+            )
+
+        select_list = []
+        for i, (select_sql, mapping) in enumerate(fan_out_tuple(
+            terms, make_slot,
+            push_list_name=query_edge.name,
+            push_column_name=query_edge.name,
+            push_column_index=edge_index,
+            is_edge=True,
+        )):
+            select_list.append(select_sql)
+            column_mappings[column_index + i] = mapping
+        select_columns = sql_list(select_list)
+
         where_columns = SQL_OR.join([
             ConcatSQL(quote_column(domain_alias), SQL_IS_NOT_NULL) for domain_alias in domain_aliases
         ])
@@ -163,23 +183,9 @@ def sql_default_domain(query, query_edge, edge_index, column_index, inner_schema
         orderby_columns = sql_list([quote_column(domain_alias) for domain_alias in domain_aliases])
         on_clause = SqlAndOp(*(
             EqOp(SqlVariable(edge_alias, domain_alias), term).to_sql(inner_schema).expr
-            for domain_alias, term in zip(domain_aliases, edge_sql.frum.terms)
+            for domain_alias, term in zip(domain_aliases, terms)
         ))
-
-        for i, term in enumerate(edge_sql.frum.terms):
-            column_mappings[column_index + i] = ColumnMapping(
-                is_edge=True,
-                push_list_name=query_edge.name,
-                push_column_name=query_edge.name,
-                push_column_index=edge_index,
-                num_push_columns=len(query_edge.value.terms),
-                push_column_child=i,
-                pull=get_pull_func(column_index + i),
-                type=jx_type_to_json_type(term.jx_type),
-                sql=FALSE,
-                column_alias=get_domain_alias(column_index + i),
-            )
-        column_index += len(edge_sql.frum.terms)
+        column_index += len(terms)
     elif is_op(edge_sql.frum, SelectOp):
         domain_aliases = [get_domain_alias(column_index + i) for i, term in enumerate(edge_sql.frum.terms)]
         select_columns = sql_list([
