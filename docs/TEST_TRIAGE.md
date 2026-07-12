@@ -132,12 +132,6 @@ change.
 
 ## 5. Statistical aggregates (percentile/median) (~5 tests)
 
-`stats` is now a real op (`StatsOp`), and `median`/`percentile` route to `PercentileOp`/
-`PercentilesOp` (median = the 0.5 `PercentilesOp`). What remains: `_percentile` in
-`jx_sqlite/aggregates.py` still raises `NotImplementedError`. SQLite has no native MEDIAN in
-this build (native `median()`/percentile ext landed in SQLite 3.51.0 but needs
-`-DSQLITE_ENABLE_PERCENTILE`; bundled lib is 3.50.4). The viable path is the existing
-`percentile(x, p)` Python UDF in `mo_sqlite/database.py` — `percentile(x, 0.5)` is the median.
 - [ ] test_agg_ops.py::test_median — _percentile (PercentilesOp) not implemented
 - [ ] test_agg_ops.py::test_percentile — _percentile (PercentileOp) not implemented
 - [ ] test_agg_ops.py::test_both_percentile — _percentile not implemented
