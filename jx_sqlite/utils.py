@@ -146,7 +146,6 @@ STATS = {
     "min": "MIN({{value}})",
     "max": "MAX({{value}})",
     "sum": "SUM({{value}})",
-    "median": "MEDIAN({{value}})",
     "sos": "SUM({{value}}*{{value}})",
     "var": "(1-1.0/COUNT({{value}}))*VARIANCE({{value}})",
     "avg": "AVG({{value}})",

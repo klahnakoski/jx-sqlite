@@ -246,7 +246,6 @@ class TestAggOps(BaseTestCase):
                     "min": 0,
                     "max": 841,
                     "sum": 8555,
-                    "median": 210.5,
                     "sos": 4463999,
                     "var": 67479.93889,
                     "avg": 285.1666667
@@ -261,7 +260,6 @@ class TestAggOps(BaseTestCase):
                     "min": 0,
                     "max": 841,
                     "sum": 8555,
-                    "median": 210.5,
                     "sos": 4463999,
                     "var": 67479.93889,
                     "avg": 285.1666667
@@ -277,7 +275,6 @@ class TestAggOps(BaseTestCase):
                         "min": 0,
                         "max": 841,
                         "sum": 8555,
-                        "median": 210.5,
                         "sos": 4463999,
                         "var": 67479.93889,
                         "avg": 285.1666667

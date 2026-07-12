@@ -11,6 +11,8 @@ from jx_base.expressions import (
     NULL,
     CountOp,
     PercentileOp,
+    PercentilesOp,
+    StatsOp,
     CardinalityOp,
     OrOp,
     AndOp,
@@ -50,7 +52,7 @@ def aggregate_rule(s, query):
         return _count_records
     if is_op(s.aggregate, CountOp) and (not query.edges and not query.groupby):
         return _count_columns
-    if is_op(s.aggregate, PercentileOp):
+    if is_op(s.aggregate, PercentileOp) or is_op(s.aggregate, PercentilesOp):
         return _percentile
     if is_op(s.aggregate, CardinalityOp):
         return _cardinality
@@ -60,7 +62,7 @@ def aggregate_rule(s, query):
         return _and_aggregate
     if is_op(s.aggregate, UnionOp):
         return _union_aggregate
-    if s.aggregate == "stats":
+    if is_op(s.aggregate, StatsOp):
         return _stats_aggregate
     return _standard_aggregate
 
