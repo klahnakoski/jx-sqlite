@@ -59,6 +59,17 @@ namespace seen from one table of a snowflake.
 1. **Consume `resolve()` at the expression layer.** `variable.py`, `get_op.py`,
    `select_op.py` call `leaves()` then re-derive typed/untyped names; exact-name lookups
    should be `resolve()`, enumeration (`*`, LeavesOp) stays `leaves()`.
+   *Progress (2026-07-12, branch resolved-name)*: `leaves()`/`all_leaves()` now return
+   `ResolvedName` — unpacks as the legacy `(rel_name, column)` pair, plus
+   `push_name`/`push_child`: the two-kind split of the name relative to the queried
+   prefix (JX names are uniform property chains; where the relation stops and the value
+   begins is not expressible in the name itself). Rule, per binding: value-collapse
+   (`push_name="."`) when the queried prefix is at/inside an array (including a nested
+   origin's own table — its rows are elements, not facts); spread to the array boundary
+   otherwise. `select_op.to_sql` consumes it at the origin branch; the term-name/child
+   boundary survives the alias pipe via `literal_field(".")`, so setop's existing
+   `tail_field` split lands `push_column_name="."` in ColumnMapping and format.py's
+   `_is_whole_doc_select` kludge is gone.
    *Evidence this is overdue* (Kyle, 2026-07-12): jx_sqlite `select_op.to_sql` now carries
    per-branch dispatch kludges — `all_leaves` vs `leaves` chosen by
    `schema.nested_path[0] == select.frum.nested_path[0]`, and a `keep(col)`/`branch_prefix`

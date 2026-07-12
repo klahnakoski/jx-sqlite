@@ -10,7 +10,6 @@
 import mo_json
 from jx_base.domains import SimpleSetDomain
 from jx_base.expressions import TupleOp, NULL, SqlScript
-from jx_base.expressions.leaves_op import LeavesOp
 from jx_base.language import is_op
 from jx_python import jx
 from mo_collections.matrix import Matrix, index_to_coordinate
@@ -247,22 +246,11 @@ def _deep_header(cols, origin):
     return tuple(sorted(order, key=order.get))
 
 
-def _is_whole_doc_select(query):
-    # SELECT `.` (EACH NESTED-ORIGIN DOC AS ONE VALUE) COLLAPSES TO A SINGLE `.` COLUMN.
-    # Only for a nested origin: a fact-origin default/`.`/`*` select spreads its leaves.
-    # `.` and `*` both normalize to a single term named `.`; `*` carries a LeavesOp.
-    origin = query.frum.nested_path[0]
-    if origin == query.frum.schema.snowflake.fact_name:
-        return False
-    terms = query.select.terms
-    return len(terms) == 1 and terms[0].name == "." and not is_op(terms[0].value, LeavesOp)
-
-
 def format_deep(data, cols, query):
     origin = query.frum.nested_path[0]
     if query.format == "cube":
         num_rows = len(data)
-        header = (".",) if _is_whole_doc_select(query) else _deep_header(cols, origin)
+        header = _deep_header(cols, origin)
         if header == (".",):
             temp_data = {".": data}
         else:
@@ -277,7 +265,7 @@ def format_deep(data, cols, query):
             edges=[{"name": "rownum", "domain": {"type": "rownum", "min": 0, "max": num_rows, "interval": 1,},}],
         )
     elif query.format == "table":
-        header = (".",) if _is_whole_doc_select(query) else _deep_header(cols, origin)
+        header = _deep_header(cols, origin)
         if header == (".",):
             temp_data = [(from_data(d),) for d in data]
         else:

@@ -38,6 +38,7 @@ def build_names(query_paths, columns, origin: str) -> Names:
     tables = list(query_paths)
     ancestors = sorted((t for t in tables if startswith_field(origin, t)), key=len, reverse=True)
     descendants = sorted((t for t in tables if startswith_field(t, origin) and t != origin), key=len)
+    fact = next(t for t in tables if all(startswith_field(u, t) for u in tables))
 
     columns = [
         c
@@ -49,6 +50,7 @@ def build_names(query_paths, columns, origin: str) -> Names:
     for i, table in enumerate([*ancestors, *descendants]):
         names = {}
         aliases = {}
+        boundaries = {}
         for c in columns:
             home = c.nested_path[0]  # THE TABLE THIS COLUMN LIVES IN (AUTHORITATIVE, NOT es_index)
             if not startswith_field(home, table):
@@ -56,10 +58,14 @@ def build_names(query_paths, columns, origin: str) -> Names:
             typed_name = relative_field(concat_field(home, c.es_column), table)
             untyped_name, _ = untype_field(typed_name)
             names.setdefault(untyped_name, []).append(c)
+            # THE ARRAY HOLDING THE VALUE, RELATIVE TO THIS SCOPE ("." = THE SCOPE'S OWN TABLE)
+            boundaries.setdefault(untyped_name, []).append(untype_field(relative_field(home, table))[0])
             if i == 0:
                 aliases.setdefault(typed_name, []).append(c)
         scopes.append(Scope(
             {k: tuple(v) for k, v in names.items()},
             {k: tuple(v) for k, v in aliases.items()},
+            root_is_array=(table != fact),
+            boundaries={k: tuple(v) for k, v in boundaries.items()},
         ))
     return Names(scopes)

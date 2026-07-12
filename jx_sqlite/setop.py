@@ -289,10 +289,12 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
             column_alias = _make_column_name(column_number)
             sql_selects.append(SqlAliasOp(sql, column_alias))
             push_column_name, push_column_child = tail_field(name)
+            push_column_name = unliteral_field(push_column_name)
             index_to_column[column_number] = nested_doc_details.index_to_column[column_number] = ColumnMapping(
-                push_list_name=name,
+                # LIST FORMAT SPLATS THE "." CONTAINER INTO THE DOC ROOT
+                push_list_name=push_column_child if push_column_name == "." else name,
                 push_column_child=push_column_child,
-                push_column_name=unliteral_field(push_column_name),
+                push_column_name=push_column_name,
                 push_column_index=i,
                 pull=get_column(column_number, json_type=value.jx_type),
                 sql=sql,
