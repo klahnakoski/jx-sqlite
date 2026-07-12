@@ -47,10 +47,9 @@ SqlDomain = namedtuple(
 
 def sql_domain(query, query_edge, edge_index, column_index, inner_schema, from_sql):
     """
-    COMPILE ONE query_edge INTO SQL INGREDIENTS, ONE STRATEGY PER DOMAIN TYPE:
-      set                     -> LITERAL-ROW UNION ALL
-      default                 -> DISCOVERED GROUP BY ... ORDER BY count DESC LIMIT
-      duration/time/range     -> range_sql OVER DIGITS_TABLE
+    COMPILE ONE query_edge INTO SQL INGREDIENTS, DISPATCHING TO ONE STRATEGY PER
+    DOMAIN TYPE.  EACH STRATEGY SHARES THE SAME SIGNATURE AND RETURNS A SqlDomain,
+    THREADING column_index THROUGH next_column_index SO THE EDGES STAY SEQUENTIAL.
     :param query: THE OWNING QUERY (FOR query.limit)
     :param query_edge: THE EDGE TO COMPILE
     :param edge_index: POSITION OF THE EDGE (NAMES THE e{edge_index} JOIN ALIAS)
@@ -59,6 +58,19 @@ def sql_domain(query, query_edge, edge_index, column_index, inner_schema, from_s
     :param from_sql: THE JOIN CHAIN (default DOMAIN IS ITSELF A QUERY OVER THE FACTS)
     :return: SqlDomain
     """
+    domain_type = query_edge.domain.type
+    if domain_type == "set":
+        return sql_set_domain(query, query_edge, edge_index, column_index, inner_schema, from_sql)
+    elif domain_type == "default":
+        return sql_default_domain(query, query_edge, edge_index, column_index, inner_schema, from_sql)
+    elif domain_type in ("duration", "time", "range"):
+        return sql_range_domain(query, query_edge, edge_index, column_index, inner_schema, from_sql)
+    else:
+        raise Log.error("not handled")
+
+
+def sql_set_domain(query, query_edge, edge_index, column_index, inner_schema, from_sql):
+    """SET DOMAIN: THE COORDINATES ARE LITERAL PARTITIONS, EMITTED AS A UNION ALL OF SELECTS."""
     query_edge_domain = query_edge.domain
     edge_alias = f"e{edge_index}"
     domain_aliases = []
@@ -67,235 +79,164 @@ def sql_domain(query, query_edge, edge_index, column_index, inner_schema, from_s
     def get_domain_alias(c):
         return f"d{edge_index}c{c}"
 
-    ###################################################################
-    # DOMAIN
-    ###################################################################
-    if query_edge_domain.type == "set":
-        domain_alias = get_domain_alias(column_index)
-        domain_aliases.append(domain_alias)
-        key = column_index
-        column_index += 1
+    domain_alias = get_domain_alias(column_index)
+    domain_aliases.append(domain_alias)
+    key = column_index
+    column_index += 1
 
-        if query_edge.value:
-            edge_sql = query_edge.value.partial_eval(SQLang).to_sql(inner_schema)
-            domains_sql = SQL_UNION_ALL.join(
-                ConcatSQL(
-                    SQL_SELECT,
-                    sql_alias(quote_value(coalesce(p.dataIndex, i)), domain_alias),
-                    SQL_COMMA,
-                    sql_alias(quote_value(p.value), domain_alias + "v"),
-                )
-                for i, p in enumerate(query_edge_domain.partitions)
-            )
-            join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
-            on_clause = SqlEqOp(SqlVariable(edge_alias, domain_alias + "v"), edge_sql)
-        elif any(p.where for p in query_edge_domain.partitions):
-            if not all(p.where for p in query_edge_domain.partitions):
-                Log.error("expecting all partitions to have `where` clause")
-
-            domains_sql = SQL_UNION_ALL.join(
-                ConcatSQL(SQL_SELECT, sql_alias(quote_value(coalesce(p.dataIndex, i)), domain_alias),)
-                for i, p in enumerate(query_edge_domain.partitions)
-            )
-            join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
-            on_clause = SqlEqOp(
-                SqlVariable(edge_alias, domain_alias, jx_type=JX_INTEGER),
-                CaseOp(*(WhenOp(p.where, then=Literal(p.dataIndex)) for p in query_edge_domain.partitions))
-                .partial_eval(SQLang)
-                .to_sql(inner_schema),
-            )
-        else:
-            raise Log.error("do not know what to do")
-
-        column_mappings[key] = ColumnMapping(
-            is_edge=True,
-            push_list_name=query_edge.name,
-            push_column_name=query_edge.name,
-            push_column_index=edge_index,
-            push_column_child=".",
-            pull=get_pull_func(key, query_edge_domain),
-            type=NUMBER,
-            sql=FALSE,
-            column_alias=domain_alias,
-        )
-
-    elif query_edge_domain.type == "default":
+    if query_edge.value:
         edge_sql = query_edge.value.partial_eval(SQLang).to_sql(inner_schema)
+        domains_sql = SQL_UNION_ALL.join(
+            ConcatSQL(
+                SQL_SELECT,
+                sql_alias(quote_value(coalesce(p.dataIndex, i)), domain_alias),
+                SQL_COMMA,
+                sql_alias(quote_value(p.value), domain_alias + "v"),
+            )
+            for i, p in enumerate(query_edge_domain.partitions)
+        )
+        join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
+        on_clause = SqlEqOp(SqlVariable(edge_alias, domain_alias + "v"), edge_sql)
+    elif any(p.where for p in query_edge_domain.partitions):
+        if not all(p.where for p in query_edge_domain.partitions):
+            Log.error("expecting all partitions to have `where` clause")
 
-        if is_op(edge_sql.frum, TupleOp):
-            domain_aliases = [get_domain_alias(column_index + i) for i, term in enumerate(edge_sql.frum.terms)]
-            select_columns = sql_list([
-                sql_alias(term.to_sql(inner_schema), domain_alias)
-                for domain_alias, term in zip(domain_aliases, edge_sql.frum.terms)
-            ])
-            where_columns = SQL_OR.join([
-                ConcatSQL(quote_column(domain_alias), SQL_IS_NOT_NULL) for domain_alias in domain_aliases
-            ])
-            groupby_columns = sql_list([quote_column(domain_alias) for domain_alias in domain_aliases])
-            orderby_columns = sql_list([quote_column(domain_alias) for domain_alias in domain_aliases])
-            on_clause = SQL_AND.join([
-                sql_iso(
-                    quote_column(edge_alias, domain_alias),
-                    SQL_EQ,
-                    term.to_sql(inner_schema),
-                    SQL_OR,
-                    quote_column(edge_alias, domain_alias),
-                    SQL_IS_NULL,
-                    SQL_AND,
-                    term.to_sql(inner_schema),
-                    SQL_IS_NULL,
-                )
-                for domain_alias, term in zip(domain_aliases, edge_sql.frum.terms)
-            ])
+        domains_sql = SQL_UNION_ALL.join(
+            ConcatSQL(SQL_SELECT, sql_alias(quote_value(coalesce(p.dataIndex, i)), domain_alias),)
+            for i, p in enumerate(query_edge_domain.partitions)
+        )
+        join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
+        on_clause = SqlEqOp(
+            SqlVariable(edge_alias, domain_alias, jx_type=JX_INTEGER),
+            CaseOp(*(WhenOp(p.where, then=Literal(p.dataIndex)) for p in query_edge_domain.partitions))
+            .partial_eval(SQLang)
+            .to_sql(inner_schema),
+        )
+    else:
+        raise Log.error("do not know what to do")
 
-            for i, term in enumerate(edge_sql.frum.terms):
-                column_mappings[column_index + i] = ColumnMapping(
-                    is_edge=True,
-                    push_list_name=query_edge.name,
-                    push_column_name=query_edge.name,
-                    push_column_index=edge_index,
-                    num_push_columns=len(query_edge.value.terms),
-                    push_column_child=i,
-                    pull=get_pull_func(column_index + i),
-                    type=jx_type_to_json_type(term.jx_type),
-                    sql=FALSE,
-                    column_alias=get_domain_alias(column_index + i),
-                )
-            column_index += len(edge_sql.frum.terms)
-        elif is_op(edge_sql.frum, SelectOp):
-            domain_aliases = [get_domain_alias(column_index + i) for i, term in enumerate(edge_sql.frum.terms)]
-            select_columns = sql_list([
-                sql_alias(term.value.to_sql(inner_schema), domain_alias)
-                for domain_alias, term in zip(domain_aliases, edge_sql.frum.terms)
-            ])
-            where_columns = SQL_OR.join([
-                ConcatSQL(quote_column(domain_alias), SQL_IS_NOT_NULL) for domain_alias in domain_aliases
-            ])
-            groupby_columns = sql_list([quote_column(domain_alias) for domain_alias in domain_aliases])
-            orderby_columns = sql_list([quote_column(domain_alias) for domain_alias in domain_aliases])
-            on_clause = SQL_AND.join([
-                sql_iso(
-                    quote_column(edge_alias, domain_alias),
-                    SQL_EQ,
-                    term.value.to_sql(inner_schema),
-                    SQL_OR,
-                    quote_column(edge_alias, domain_alias),
-                    SQL_IS_NULL,
-                    SQL_AND,
-                    term.value.to_sql(inner_schema),
-                    SQL_IS_NULL,
-                )
-                for domain_alias, term in zip(domain_aliases, edge_sql.frum.terms)
-            ])
-            for i, term in enumerate(edge_sql.frum.terms):
-                column_mappings[column_index + i] = ColumnMapping(
-                    is_edge=True,
-                    push_list_name=query_edge.name,
-                    push_column_name=query_edge.name,
-                    push_column_index=edge_index,
-                    push_column_child=term.name,
-                    pull=get_pull_func(column_index + i),
-                    type=jx_type_to_json_type(term.jx_type),
-                    sql=FALSE,
-                    column_alias=get_domain_alias(column_index + i),
-                )
-            column_index += len(edge_sql.frum.terms)
-        else:
-            domain_alias = get_domain_alias(column_index)
-            domain_aliases.append(domain_alias)
-            select_columns = SqlAliasOp(edge_sql, domain_alias)
-            key = column_index
-            column_index += 1
-            where_columns = ConcatSQL(quote_column(domain_alias), SQL_IS_NOT_NULL)
-            groupby_columns = quote_column(domain_alias)
-            orderby_columns = quote_column(domain_alias)
-            on_clause = SqlEqOp(SqlVariable(edge_alias, domain_alias), edge_sql)
+    column_mappings[key] = ColumnMapping(
+        is_edge=True,
+        push_list_name=query_edge.name,
+        push_column_name=query_edge.name,
+        push_column_index=edge_index,
+        push_column_child=".",
+        pull=get_pull_func(key, query_edge_domain),
+        type=NUMBER,
+        sql=FALSE,
+        column_alias=domain_alias,
+    )
 
-            column_mappings[key] = ColumnMapping(
+    return SqlDomain(
+        domains_sql=domains_sql,
+        on_clause=on_clause,
+        join_type=join_type,
+        domain_aliases=domain_aliases,
+        column_mappings=column_mappings,
+        next_column_index=column_index,
+    )
+
+
+def sql_default_domain(query, query_edge, edge_index, column_index, inner_schema, from_sql):
+    """DEFAULT DOMAIN: THE COORDINATES ARE DISCOVERED FROM THE FACTS (GROUP BY ... ORDER BY count DESC LIMIT)."""
+    query_edge_domain = query_edge.domain
+    edge_alias = f"e{edge_index}"
+    domain_aliases = []
+    column_mappings = {}
+
+    def get_domain_alias(c):
+        return f"d{edge_index}c{c}"
+
+    edge_sql = query_edge.value.partial_eval(SQLang).to_sql(inner_schema)
+
+    if is_op(edge_sql.frum, TupleOp):
+        domain_aliases = [get_domain_alias(column_index + i) for i, term in enumerate(edge_sql.frum.terms)]
+        select_columns = sql_list([
+            sql_alias(term.to_sql(inner_schema), domain_alias)
+            for domain_alias, term in zip(domain_aliases, edge_sql.frum.terms)
+        ])
+        where_columns = SQL_OR.join([
+            ConcatSQL(quote_column(domain_alias), SQL_IS_NOT_NULL) for domain_alias in domain_aliases
+        ])
+        groupby_columns = sql_list([quote_column(domain_alias) for domain_alias in domain_aliases])
+        orderby_columns = sql_list([quote_column(domain_alias) for domain_alias in domain_aliases])
+        on_clause = SQL_AND.join([
+            sql_iso(
+                quote_column(edge_alias, domain_alias),
+                SQL_EQ,
+                term.to_sql(inner_schema),
+                SQL_OR,
+                quote_column(edge_alias, domain_alias),
+                SQL_IS_NULL,
+                SQL_AND,
+                term.to_sql(inner_schema),
+                SQL_IS_NULL,
+            )
+            for domain_alias, term in zip(domain_aliases, edge_sql.frum.terms)
+        ])
+
+        for i, term in enumerate(edge_sql.frum.terms):
+            column_mappings[column_index + i] = ColumnMapping(
                 is_edge=True,
                 push_list_name=query_edge.name,
                 push_column_name=query_edge.name,
                 push_column_index=edge_index,
-                push_column_child=".",
-                pull=get_pull_func(key, query_edge_domain),
-                type=NUMBER,
+                num_push_columns=len(query_edge.value.terms),
+                push_column_child=i,
+                pull=get_pull_func(column_index + i),
+                type=jx_type_to_json_type(term.jx_type),
                 sql=FALSE,
-                column_alias=domain_alias,
+                column_alias=get_domain_alias(column_index + i),
             )
-
-        limit = MinOp(query.limit, query_edge_domain.limit).partial_eval(SQLang).to_sql(inner_schema)
-
-        domains_sql = ConcatSQL(
-            SQL_SELECT,
-            sql_alias(sql_count(SQL_ONE), "num"),
-            SQL_COMMA,
-            select_columns,
-            SQL_FROM,
-            ConcatSQL(*from_sql),
-            SQL_WHERE,
-            where_columns,
-            SQL_GROUPBY,
-            groupby_columns,
-            SQL_ORDERBY,
-            sql_count(SQL_ONE),
-            SQL_DESC,
-            SQL_COMMA,
-            orderby_columns,
-            SQL_LIMIT,
-            limit,
-        )
-
-        join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
-    elif query_edge_domain.type in ("duration", "time", "range"):
+        column_index += len(edge_sql.frum.terms)
+    elif is_op(edge_sql.frum, SelectOp):
+        domain_aliases = [get_domain_alias(column_index + i) for i, term in enumerate(edge_sql.frum.terms)]
+        select_columns = sql_list([
+            sql_alias(term.value.to_sql(inner_schema), domain_alias)
+            for domain_alias, term in zip(domain_aliases, edge_sql.frum.terms)
+        ])
+        where_columns = SQL_OR.join([
+            ConcatSQL(quote_column(domain_alias), SQL_IS_NOT_NULL) for domain_alias in domain_aliases
+        ])
+        groupby_columns = sql_list([quote_column(domain_alias) for domain_alias in domain_aliases])
+        orderby_columns = sql_list([quote_column(domain_alias) for domain_alias in domain_aliases])
+        on_clause = SQL_AND.join([
+            sql_iso(
+                quote_column(edge_alias, domain_alias),
+                SQL_EQ,
+                term.value.to_sql(inner_schema),
+                SQL_OR,
+                quote_column(edge_alias, domain_alias),
+                SQL_IS_NULL,
+                SQL_AND,
+                term.value.to_sql(inner_schema),
+                SQL_IS_NULL,
+            )
+            for domain_alias, term in zip(domain_aliases, edge_sql.frum.terms)
+        ])
+        for i, term in enumerate(edge_sql.frum.terms):
+            column_mappings[column_index + i] = ColumnMapping(
+                is_edge=True,
+                push_list_name=query_edge.name,
+                push_column_name=query_edge.name,
+                push_column_index=edge_index,
+                push_column_child=term.name,
+                pull=get_pull_func(column_index + i),
+                type=jx_type_to_json_type(term.jx_type),
+                sql=FALSE,
+                column_alias=get_domain_alias(column_index + i),
+            )
+        column_index += len(edge_sql.frum.terms)
+    else:
         domain_alias = get_domain_alias(column_index)
         domain_aliases.append(domain_alias)
+        select_columns = SqlAliasOp(edge_sql, domain_alias)
         key = column_index
         column_index += 1
-
-        if query_edge.value:
-            edge_sql = query_edge.value.partial_eval(SQLang).to_sql(inner_schema)
-            domains_sql = range_sql(
-                domain=query_edge_domain,
-                min_value_name=domain_alias + "v",
-                max_value_name=domain_alias + "max",
-                index_name=domain_alias,
-            )
-            limit = MinOp(query.limit, query_edge_domain.limit).partial_eval(SQLang).to_sql(inner_schema)
-            if limit is not NULL:
-                domains_sql = ConcatSQL(domains_sql, SQL_LIMIT, limit)
-            join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
-            on_clause = ConcatSQL(
-                quote_column(edge_alias, domain_alias + "v"),
-                SQL_LE,
-                edge_sql,
-                SQL_AND,
-                edge_sql,
-                SQL_LT,
-                quote_column(edge_alias, domain_alias + "max"),
-            )
-        elif query_edge.range:
-            min_sql = query_edge.range.min.partial_eval(SQLang).to_sql(inner_schema)
-            max_sql = query_edge.range.max.partial_eval(SQLang).to_sql(inner_schema)
-            domains_sql = range_sql(
-                domain=query_edge_domain,
-                min_value_name=domain_alias + "v",
-                max_value_name=domain_alias + "max",
-                index_name=domain_alias,
-            )
-            limit = MinOp(query.limit, query_edge_domain.limit).partial_eval(SQLang).to_sql(inner_schema)
-            domains_sql = ConcatSQL(domains_sql, SQL_LIMIT, limit,)
-            join_type = SQL_INNER_JOIN
-            on_clause = ConcatSQL(
-                quote_column(edge_alias, domain_alias + "v"),
-                SQL_LT,
-                max_sql,
-                SQL_AND,
-                min_sql,
-                SQL_LT,
-                quote_column(edge_alias, domain_alias + "max"),
-            )
-        else:
-            raise Log.error("do not know how to handle")
+        where_columns = ConcatSQL(quote_column(domain_alias), SQL_IS_NOT_NULL)
+        groupby_columns = quote_column(domain_alias)
+        orderby_columns = quote_column(domain_alias)
+        on_clause = SqlEqOp(SqlVariable(edge_alias, domain_alias), edge_sql)
 
         column_mappings[key] = ColumnMapping(
             is_edge=True,
@@ -308,8 +249,112 @@ def sql_domain(query, query_edge, edge_index, column_index, inner_schema, from_s
             sql=FALSE,
             column_alias=domain_alias,
         )
+
+    limit = MinOp(query.limit, query_edge_domain.limit).partial_eval(SQLang).to_sql(inner_schema)
+
+    domains_sql = ConcatSQL(
+        SQL_SELECT,
+        sql_alias(sql_count(SQL_ONE), "num"),
+        SQL_COMMA,
+        select_columns,
+        SQL_FROM,
+        ConcatSQL(*from_sql),
+        SQL_WHERE,
+        where_columns,
+        SQL_GROUPBY,
+        groupby_columns,
+        SQL_ORDERBY,
+        sql_count(SQL_ONE),
+        SQL_DESC,
+        SQL_COMMA,
+        orderby_columns,
+        SQL_LIMIT,
+        limit,
+    )
+
+    join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
+
+    return SqlDomain(
+        domains_sql=domains_sql,
+        on_clause=on_clause,
+        join_type=join_type,
+        domain_aliases=domain_aliases,
+        column_mappings=column_mappings,
+        next_column_index=column_index,
+    )
+
+
+def sql_range_domain(query, query_edge, edge_index, column_index, inner_schema, from_sql):
+    """RANGE/TIME/DURATION DOMAIN: THE COORDINATES ARE REGULAR INTERVALS, GENERATED OVER DIGITS_TABLE."""
+    query_edge_domain = query_edge.domain
+    edge_alias = f"e{edge_index}"
+    domain_aliases = []
+    column_mappings = {}
+
+    def get_domain_alias(c):
+        return f"d{edge_index}c{c}"
+
+    domain_alias = get_domain_alias(column_index)
+    domain_aliases.append(domain_alias)
+    key = column_index
+    column_index += 1
+
+    if query_edge.value:
+        edge_sql = query_edge.value.partial_eval(SQLang).to_sql(inner_schema)
+        domains_sql = range_sql(
+            domain=query_edge_domain,
+            min_value_name=domain_alias + "v",
+            max_value_name=domain_alias + "max",
+            index_name=domain_alias,
+        )
+        limit = MinOp(query.limit, query_edge_domain.limit).partial_eval(SQLang).to_sql(inner_schema)
+        if limit is not NULL:
+            domains_sql = ConcatSQL(domains_sql, SQL_LIMIT, limit)
+        join_type = SQL_LEFT_JOIN if query_edge.allowNulls else SQL_INNER_JOIN
+        on_clause = ConcatSQL(
+            quote_column(edge_alias, domain_alias + "v"),
+            SQL_LE,
+            edge_sql,
+            SQL_AND,
+            edge_sql,
+            SQL_LT,
+            quote_column(edge_alias, domain_alias + "max"),
+        )
+    elif query_edge.range:
+        min_sql = query_edge.range.min.partial_eval(SQLang).to_sql(inner_schema)
+        max_sql = query_edge.range.max.partial_eval(SQLang).to_sql(inner_schema)
+        domains_sql = range_sql(
+            domain=query_edge_domain,
+            min_value_name=domain_alias + "v",
+            max_value_name=domain_alias + "max",
+            index_name=domain_alias,
+        )
+        limit = MinOp(query.limit, query_edge_domain.limit).partial_eval(SQLang).to_sql(inner_schema)
+        domains_sql = ConcatSQL(domains_sql, SQL_LIMIT, limit,)
+        join_type = SQL_INNER_JOIN
+        on_clause = ConcatSQL(
+            quote_column(edge_alias, domain_alias + "v"),
+            SQL_LT,
+            max_sql,
+            SQL_AND,
+            min_sql,
+            SQL_LT,
+            quote_column(edge_alias, domain_alias + "max"),
+        )
     else:
-        raise Log.error("not handled")
+        raise Log.error("do not know how to handle")
+
+    column_mappings[key] = ColumnMapping(
+        is_edge=True,
+        push_list_name=query_edge.name,
+        push_column_name=query_edge.name,
+        push_column_index=edge_index,
+        push_column_child=".",
+        pull=get_pull_func(key, query_edge_domain),
+        type=NUMBER,
+        sql=FALSE,
+        column_alias=domain_alias,
+    )
 
     return SqlDomain(
         domains_sql=domains_sql,
