@@ -60,6 +60,9 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 - [ ] test_nested_property_edge_w_shallow_expression
 - [ ] test_nested_document_selection
 - [x] test_nested_filter_with_groupby
+- [ ] test_deep_origin_agg_on_child — NEW (2026-07-12): 3-level snowflake, origin = middle
+      table, sum over its child per origin row; plain sibling select falls into edges.py
+      aggregates (`sql_aggs[NULL.op]` KeyError). Pins the per-row accumulate model.
 
 ### test_nested.py
 - [ ] TestNestedQueries (whole class) — "broken"

@@ -1997,6 +1997,39 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skipIf(
+        global_settings.use == "sqlite",
+        "per-origin-row child aggregation: plain sibling select falls into edges.py aggregates (sql_aggs KeyError 'null')",
+    )
+    def test_deep_origin_agg_on_child(self):
+        # origin is a nested table (not the fact table); aggregate values from its child table
+        test = {
+            "data": [
+                {"o": 1, "a": [
+                    {"b": 1, "c": [{"v": 1}, {"v": 2}]},
+                    {"b": 2, "c": [{"v": 3}]},
+                ]},
+                {"o": 2, "a": [
+                    {"b": 3, "c": [{"v": 4}, {"v": 5}, {"v": 6}]},
+                    {"b": 4},
+                ]},
+            ],
+            "query": {
+                "from": concat_field(TEST_TABLE, "a"),
+                "select": ["b", {"name": "s", "value": "c.v", "aggregate": "sum"}],
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"b": 1, "s": 3},
+                    {"b": 2, "s": 3},
+                    {"b": 3, "s": 15},
+                    {"b": 4, "s": NULL},
+                ],
+            },
+        }
+        self.utils.execute_tests(test)
+
     @skipIf(global_settings.use == "sqlite", "broken")
     def test_nested_document_selection(self):
         test = {
