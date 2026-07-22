@@ -39,7 +39,6 @@ from mo_dots import (
     Null,
     tail_field,
     unliteral_field,
-    list_to_data,
 )
 from mo_future import extend, first
 from mo_json.types import OBJECT, jx_type_to_json_type, JX_ANY, STRING, INTEGER, JX_TEXT, JX_INTEGER
@@ -136,20 +135,12 @@ def _set_op(self, query):
 
     if result.data:
         all_rows = iter(result.data)
+        # REASSEMBLY ROOTS AT THE ORIGIN (primary_doc_details IS THE ORIGIN NODE): ANCESTORS OF
+        # THE ORIGIN ARE JOINS ONLY, NOT REASSEMBLY LEVELS.  parent_id=0 => EVERY ORIGIN ROW IS A
+        # TOP-LEVEL DOC (NO ABOVE-ORIGIN GROUPING), SO NO POST-PROC FLATTEN IS NEEDED.
         _, _, data = _accumulate_nested(all_rows, next(all_rows), None, primary_doc_details, 0, 0)
     else:
         data = result.data
-
-    # the above returns data relative to snowflake.fact_name.  Get the nested_path
-    rel_path = untype_field(relative_field(query.frum.nested_path[0], query.frum.schema.snowflake.fact_name))[0]
-    if rel_path != ".":
-        # NESTED ORIGIN: EACH PARENT ROW (GUARANTEED BY LEFT JOIN) YIELDS ITS CHILDREN,
-        # OR ONE EMPTY DOC WHEN IT HAS NONE
-        data = list_to_data([
-            child
-            for doc in data
-            for child in (listwrap(doc[rel_path]) or [{}])
-        ])
 
     return format_deep(data, cols, query)
 
@@ -284,8 +275,11 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
 
     # EVERY SELECT STATEMENT THAT WILL BE REQUIRED, NO MATTER THE DEPTH
     # WE WILL CREATE THEM ACCORDING TO THE DEPTH REQUIRED
+    origin_doc_details = None  # REASSEMBLY ROOTS HERE (THE ORIGIN), NOT AT THE FACT
     for table_number, sub_table in enumerate(branches):
         nested_doc_details = builder.add_branch(sub_table, table_number)
+        if sub_table == origin:
+            origin_doc_details = nested_doc_details
         nested_path = nested_doc_details.nested_path
         sub_schema = self.snowflake.get_schema(list(reversed([
             t for t in self.snowflake.query_paths if startswith_field(sub_table, t)
@@ -391,7 +385,7 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
     ordered_sql = SqlOrderByOp(unsorted_sql, sorts)
     if query.limit is not NULL:
         ordered_sql = SqlLimitOp(ordered_sql, query.limit.to_sql(schema))
-    return index_to_column, ordered_sql, builder.primary_doc_details
+    return index_to_column, ordered_sql, origin_doc_details
 
 
 @extend(Facts)
