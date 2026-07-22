@@ -344,7 +344,18 @@ columns assemble as sub-objects; a lone leaf collapses to a bare list via `push_
    subquery's `frum` is a `FromOp`, which has no `nested_path` and trips select_op's getattr
    KLUDGE; per-value compile is also closer to what `add_column` wants. `_make_sql`/
    `_accumulate_nested` untouched.
-2. **Path→subquery rewrite** (Kyle's rule above) so the flat form routes through step 1.
+2. **Path→subquery rewrite — DONE** (`test_deep_where_on_fact_table` GREEN via the subquery
+   path, 373/0/77). `_deep_split(var)` splits a deep-leaf path at the array boundary
+   (`from` = the leaf's table, relative to origin; `select` = leaf relative to that table) when
+   all of `var`'s leaves live in ONE table below the origin. The partition rewrites a deep-leaf
+   plain term into a one-leaf subquery entry `(name, [(select_path, Variable(select_path))])`.
+   The subquery handler gained the **one-leaf collapse** (generalising A's `len(deep_leaves)==1`):
+   a branch of exactly one column collapses to a bare multivalue (`leaf.push_list_name="."`,
+   `node.push_list_name = outer term name`); several columns assemble as sub-objects. This
+   dropped the deep leaf's redundant fact-branch NULL-pad column, so
+   `test_deep_where_on_fact_table`'s whitebox `expecting_resultset` was updated 8→7 cols (Kyle
+   approved; list/table/cube unchanged). GUARD: a table with SEVERAL deep-leaf plain terms stays
+   on the old re-rooted plain path (`len(cands)==1 and table not in subqueries`) — step 3's job.
 3. **Multiple branches per table** — decouple `add_branch` from `query_paths`; key branches on
    the select term so `a._a` can host two. Then the multivalue test's two deep leaves become
    two independent branches. This is where `_make_sql` and the `DocumentDetails` tree stop

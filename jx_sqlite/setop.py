@@ -10,7 +10,8 @@
 from typing import List, Dict, Tuple
 
 from jx_base import Column, is_op, FALSE
-from jx_base.expressions import NULL, ZERO, SqlScript, SelectOp
+from jx_base.expressions import NULL, ZERO, SqlScript, SelectOp, Variable
+from jx_base.expressions.variable import is_variable
 from jx_base.expressions.sql_is_null_op import SqlIsNullOp
 from jx_base.expressions.sql_order_by_op import OneOrder
 from jx_base.utils import GUID
@@ -160,19 +161,40 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
     schema = query.frum.schema
     known_vars = schema.keys()
 
-    # PARTITION SELECT TERMS: A SUBQUERY VALUE (SelectOp OVER A NESTED FromOp) IS A DEEP GROUP -
-    # ITS OWN BRANCH SELECTING BRANCH-RELATIVE COLUMNS THAT ASSEMBLE AS SUB-OBJECTS (NOT
-    # FLATTENED DEEP LEAVES).  READ THE PRE-partial_eval TERMS: partial_eval FLATTENS A
-    # SUBQUERY BACK TO A PATH.  docs/INTERSECTION_SURVEY.md §7 STEP 1
+    # PARTITION SELECT TERMS INTO BRANCHES.  A SUBQUERY VALUE (SelectOp OVER A NESTED FromOp)
+    # AND A DEEP-LEAF PATH ("a._a.v", CROSSING AN ARRAY BOUNDARY) ARE THE SAME THING: A DEEP
+    # GROUP - ITS OWN BRANCH SELECTING BRANCH-RELATIVE COLUMNS.  KYLE'S RULE: A DEEP-LEAF PATH
+    # `a._a.v` IS SUGAR FOR `{"from":"a._a","select":"v","name":"a._a.v"}` (SPLIT AT THE ARRAY
+    # BOUNDARY).  A BRANCH OF ONE LEAF COLLAPSES TO A BARE MULTIVALUE; SEVERAL LEAVES ASSEMBLE
+    # AS SUB-OBJECTS.  READ THE PRE-partial_eval TERMS: partial_eval FLATTENS BOTH BACK TO
+    # PATHS.  docs/INTERSECTION_SURVEY.md §7 STEPS 1-2
+    origin = query.frum.nested_path[0]
     plain_terms = []
-    subqueries = {}  # subquery origin table path -> list of (outer name, inner SelectOp)
+    subqueries = {}  # branch table path -> list of (outer name, [(inner name, inner value), ...])
+    deep_candidates = {}  # table path -> [(term, select_path), ...] deep-leaf plain terms
     for term in query.select.terms:
         if is_op(term.value, SelectOp):
             rel = first(term.value.frum.vars())
             table_path = first(c.nested_path[0] for _, c in schema.leaves(rel))
-            subqueries.setdefault(table_path, []).append((term.name, term.value))
+            subqueries.setdefault(table_path, []).append((term.name, list(term.value)))
+            continue
+        if is_variable(term.value):
+            split = _deep_split(term.value.var, schema, origin)
+            if split:
+                table_path, select_path = split
+                deep_candidates.setdefault(table_path, []).append((term, select_path))
+                continue
+        plain_terms.append(term)
+
+    # ONE DEEP LEAF PER TABLE -> REWRITE TO A ONE-LEAF SUBQUERY (ROUTES THROUGH THE STEP-1 PATH,
+    # COLLAPSING TO A BARE MULTIVALUE).  SEVERAL DEEP LEAVES AT ONE TABLE STAY PLAIN (THE OLD
+    # RE-ROOTED SUB-DOC PATH) UNTIL STEP 3 MAKES EACH ITS OWN BRANCH.
+    for table_path, cands in deep_candidates.items():
+        if len(cands) == 1 and table_path not in subqueries:
+            term, select_path = cands[0]
+            subqueries.setdefault(table_path, []).append((term.name, [(select_path, Variable(select_path))]))
         else:
-            plain_terms.append(term)
+            plain_terms.extend(term for term, _ in cands)
     plain_select = SelectOp(query.select.frum, *plain_terms)
 
     # GET LIST OF SELECTED COLUMNS
@@ -316,16 +338,17 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
             nested_doc_details.push_list_name = leaf.push_list_name
             leaf.push_list_name = "."
 
-        # A SUBQUERY WHOSE ORIGIN IS THIS BRANCH CONTRIBUTES ITS INNER SELECT COMPILED
-        # BRANCH-RELATIVE (NAMES LIKE "v","s", NOT "a._a.v"): THEY LAND AS SUB-OBJECTS UNDER
-        # THIS NODE, WHICH ITSELF LANDS AT THE CHILD TABLE'S PATH.  SAME COLUMN LOOP AS THE
-        # WHOLE-CHILD PATH, SO NO deep_leaves COLLAPSE FIRES.  docs/INTERSECTION_SURVEY.md §7 STEP 1
+        # A SUBQUERY (OR REWRITTEN DEEP-LEAF) WHOSE ORIGIN IS THIS BRANCH CONTRIBUTES ITS INNER
+        # SELECT COMPILED BRANCH-RELATIVE (NAMES LIKE "v","s", NOT "a._a.v").  SEVERAL LEAVES
+        # ASSEMBLE AS SUB-OBJECTS UNDER THIS NODE; A LONE LEAF COLLAPSES TO A BARE MULTIVALUE
+        # (push_list_name=".") LANDING AT THE OUTER TERM PATH.  docs/INTERSECTION_SURVEY.md §7 STEPS 1-2
         for outer_name, inner_select in subqueries.get(sub_table, []):
+            added = []
             for i, (name, value) in enumerate(inner_select):
                 sql = value.partial_eval(SQLang).to_sql(sub_schema)
                 push_column_name, push_column_child = tail_field(name)
                 push_column_name = unliteral_field(push_column_name)
-                builder.add_column(
+                added.append(builder.add_column(
                     nested_doc_details,
                     sql,
                     push_list_name=push_column_child if push_column_name == "." else name,
@@ -333,7 +356,10 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
                     push_column_child=push_column_child,
                     push_column_index=i,
                     nested_path=nested_path,
-                )
+                ))
+            if len(added) == 1:
+                nested_doc_details.push_list_name = outer_name
+                index_to_column[added[0]].push_list_name = "."
     where_clause = ToBooleanOp(query.where).partial_eval(SQLang).to_sql(schema)
     # ORDERING
     sorts = []
@@ -492,6 +518,20 @@ def _make_sql_for_one_nest_in_set_op(
     )
 
     return sql
+
+
+def _deep_split(var, schema, origin):
+    # A DEEP-LEAF PATH IS SUGAR FOR A ONE-LEAF SUBQUERY: SPLIT AT THE ARRAY BOUNDARY.  RETURN
+    # (branch table path, select path relative to that table) WHEN var'S LEAVES ALL LIVE IN ONE
+    # TABLE BELOW THE ORIGIN; None OTHERWISE (SHALLOW, OR SPLIT ACROSS TABLES/UNION TYPES).
+    tables = set(c.nested_path[0] for _, c in schema.leaves(var))
+    if len(tables) != 1:
+        return None
+    table_path = first(tables)
+    if table_path == origin or not startswith_field(table_path, origin):
+        return None
+    from_path = untype_field(relative_field(table_path, origin))[0]
+    return table_path, untype_field(relative_field(var, from_path))[0]
 
 
 sort_to_sqlite_order = {-1: SQL_DESC, 0: SQL_ASC, 1: SQL_ASC}
