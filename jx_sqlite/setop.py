@@ -237,6 +237,26 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
 
     selects = query.select.partial_eval(SQLang)
 
+    def add_column(node, sql, *, push_list_name, push_column_name, push_column_child, push_column_index, nested_path):
+        # CONTRIBUTE ONE VALUE COLUMN TO THE SHARED ALIGNED SELECT LIST AND REGISTER ITS PULL
+        # UNDER THE SAME INDEX.  THE INDEX IS THE SHARED KEY BETWEEN THE SQL SIDE AND THE PULL
+        # PLAN; add_column IS THE ATOM THAT KEEPS THEM IN LOCKSTEP.  docs/INTERSECTION_SURVEY.md §6
+        n = len(sql_selects)
+        alias = _make_column_name(n)
+        sql_selects.append(SqlAliasOp(sql, alias))
+        index_to_column[n] = node.index_to_column[n] = ColumnMapping(
+            push_list_name=push_list_name,
+            push_column_child=push_column_child,
+            push_column_name=push_column_name,
+            push_column_index=push_column_index,
+            pull=get_column(n, json_type=sql.jx_type),
+            sql=sql,
+            type=jx_type_to_json_type(sql.jx_type),
+            column_alias=alias,
+            nested_path=nested_path,
+        )
+        return n
+
     # EVERY SELECT STATEMENT THAT WILL BE REQUIRED, NO MATTER THE DEPTH
     # WE WILL CREATE THEM ACCORDING TO THE DEPTH REQUIRED
     for table_number, sub_table in enumerate(self.snowflake.query_paths):
@@ -302,29 +322,23 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
 
         for i, term in enumerate(sub_selects.terms):
             name, value = term.name, term.value
-            column_number = len(sql_selects)
             if is_op(value, LeavesOp):
                 Log.error("expecting SelectOp to subsume the LeavesOp")
 
-            sql = value
-            column_alias = _make_column_name(column_number)
-            sql_selects.append(SqlAliasOp(sql, column_alias))
             push_column_name, push_column_child = tail_field(name)
             push_column_name = unliteral_field(push_column_name)
-            if branch_rel and startswith_field(unliteral_field(name), branch_rel) and unliteral_field(name) != branch_rel:
-                deep_leaves.append(column_number)
-            index_to_column[column_number] = nested_doc_details.index_to_column[column_number] = ColumnMapping(
+            column_number = add_column(
+                nested_doc_details,
+                value,
                 # LIST FORMAT SPLATS THE "." CONTAINER INTO THE DOC ROOT
                 push_list_name=push_column_child if push_column_name == "." else name,
-                push_column_child=push_column_child,
                 push_column_name=push_column_name,
+                push_column_child=push_column_child,
                 push_column_index=i,
-                pull=get_column(column_number, json_type=value.jx_type),
-                sql=sql,
-                type=jx_type_to_json_type(sql.jx_type),
-                column_alias=column_alias,
                 nested_path=nested_path,
             )
+            if branch_rel and startswith_field(unliteral_field(name), branch_rel) and unliteral_field(name) != branch_rel:
+                deep_leaves.append(column_number)
 
         # ONE DEEP LEAF COLLAPSES TO BARE VALUES (push_list_name=".") ACCUMULATED AS A
         # MULTIVALUE AT ITS TERM PATH ON THE ORIGIN DOC; BARE VALUES CANNOT SHARE A DOC,
