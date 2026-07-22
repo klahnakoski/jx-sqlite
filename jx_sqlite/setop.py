@@ -29,7 +29,6 @@ from jx_sqlite.utils import (
     table_alias,
 )
 from mo_dots import (
-    concat_field,
     Data,
     startswith_field,
     unwraplist,
@@ -288,26 +287,18 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
 
         sub_selects = selects.partial_eval(SQLang).to_sql(sub_schema).expr
 
-        # AN EXPLICIT DEEP-LEAF SELECT KEEPS ITS TERM-ROOTED NAME (REACHES ABOVE THIS
-        # BRANCH): THE BRANCH ACCUMULATES BARE VALUES AND THE ASSEMBLED LIST LANDS AT THE
-        # TERM PATH ON THE ORIGIN DOC (DocumentDetails.push_list_name).  ONLY BRANCHES
-        # STRICTLY BELOW THE QUERY ORIGIN, AND ONLY WHEN THE BRANCH HAS EXACTLY ONE SUCH
-        # TERM (BARE VALUES CANNOT SHARE A DOC WITH OTHER KEYS)
+        # A BRANCH BELOW THE ORIGIN NORMALLY RE-ROOTS ITS COLUMNS TO BRANCH-RELATIVE NAMES;
+        # select_op KEEPS THE ORIGIN-ROOTED NAME (docs/NAMES.md push_name=push_child=".")
+        # ONLY FOR AN EXPLICIT DEEP LEAF - A SINGLE VALUE SELECTED FROM ABOVE.  READ THAT
+        # DECISION BACK OFF THE RESOLVED TERM NAME: A DEEP LEAF STILL STARTS WITH THE
+        # BRANCH'S ORIGIN-RELATIVE PATH.
         origin = query.frum.nested_path[0]
-        merge_term = None
-        if startswith_field(sub_table, origin) and sub_table != origin:
-            branch_rel = untype_field(relative_field(sub_table, origin))[0]
-            merge_terms = [
-                term.name
-                for term in sub_selects.terms
-                for head, child in [tail_field(term.name)]
-                for full in [concat_field(unliteral_field(head), child)]
-                if startswith_field(full, branch_rel) and full != branch_rel
-            ]
-            if len(merge_terms) == 1:
-                merge_term = merge_terms[0]
-                head, child = tail_field(merge_term)
-                nested_doc_details.push_list_name = concat_field(unliteral_field(head), child)
+        branch_rel = (
+            untype_field(relative_field(sub_table, origin))[0]
+            if startswith_field(sub_table, origin) and sub_table != origin
+            else None
+        )
+        deep_leaves = []  # COLUMN NUMBERS OF EXPLICIT DEEP LEAVES IN THIS BRANCH
 
         for i, term in enumerate(sub_selects.terms):
             name, value = term.name, term.value
@@ -320,11 +311,11 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
             sql_selects.append(SqlAliasOp(sql, column_alias))
             push_column_name, push_column_child = tail_field(name)
             push_column_name = unliteral_field(push_column_name)
+            if branch_rel and startswith_field(unliteral_field(name), branch_rel) and unliteral_field(name) != branch_rel:
+                deep_leaves.append(column_number)
             index_to_column[column_number] = nested_doc_details.index_to_column[column_number] = ColumnMapping(
-                # LIST FORMAT SPLATS THE "." CONTAINER INTO THE DOC ROOT; A MERGE TERM IS
-                # THE BRANCH'S WHOLE VALUE
-                push_list_name="." if name == merge_term
-                else push_column_child if push_column_name == "." else name,
+                # LIST FORMAT SPLATS THE "." CONTAINER INTO THE DOC ROOT
+                push_list_name=push_column_child if push_column_name == "." else name,
                 push_column_child=push_column_child,
                 push_column_name=push_column_name,
                 push_column_index=i,
@@ -334,6 +325,14 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
                 column_alias=column_alias,
                 nested_path=nested_path,
             )
+
+        # ONE DEEP LEAF COLLAPSES TO BARE VALUES (push_list_name=".") ACCUMULATED AS A
+        # MULTIVALUE AT ITS TERM PATH ON THE ORIGIN DOC; BARE VALUES CANNOT SHARE A DOC,
+        # SO SEVERAL LEAVES KEEP THEIR (RE-ROOTED) SUB-DOC INSTEAD
+        if len(deep_leaves) == 1:
+            leaf = index_to_column[deep_leaves[0]]
+            nested_doc_details.push_list_name = leaf.push_list_name
+            leaf.push_list_name = "."
     where_clause = ToBooleanOp(query.where).partial_eval(SQLang).to_sql(schema)
     # ORDERING
     sorts = []
