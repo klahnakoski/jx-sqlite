@@ -816,6 +816,46 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.use == "sqlite", "subquery-in-select (FROM a._a) must correlate v,s per element -> array of {v,s} objects; currently double-nests like the flat multivalue form. This is the correlated counterpart to test_deep_where_on_fact_table_multivalue: same result as selecting `a._a` whole")
+    def test_deep_where_on_fact_table_subquery(self):
+        # THE CORRELATED COUNTERPART: A SUBQUERY `FROM a._a` AS ONE SELECT ELEMENT KEEPS
+        # v,s TOGETHER PER ELEMENT (ARRAY OF {v,s} OBJECTS) - UNLIKE THE FLAT MULTI-LEAF
+        # FORM WHICH SPREADS THEM INTO INDEPENDENT MULTIVALUES.  SAME RESULT AS `select a._a`.
+        test = {
+            "data": [
+                {"o": 1, "a": {"_a": {
+                    "v": "still more",
+                    "s": False
+                }}},
+                {"o": 3, "a": {"_a": [
+                    {"v": "a string", "s": False},
+                    {"v": "another string"}
+                ]}},
+                {"o": 2, "a": {"_a": [
+                    {"v": "string!", "s": True},
+                ]}},
+                {"o": 4, "a": {"_a": {"s": False}}}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": ["o", {"name": "a._a", "value": {"from": "a._a", "select": ["v", "s"]}}],
+                "where": {"exists": "a._a.v"},
+                "sort": "o"
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"o": 1, "a": {"_a": {"v": "still more", "s": False}}},
+                    {"o": 2, "a": {"_a": {"v": "string!", "s": True}}},
+                    {"o": 3, "a": {"_a": [
+                        {"v": "a string", "s": False},
+                        {"v": "another string"},
+                    ]}},
+                ]
+            },
+        }
+        self.utils.execute_tests(test)
+
     @skipIf(global_settings.use == "sqlite", "GUID `_id` not bound from nested origin (NAMES.md #7); also drops empty-parent row")
     def test_id_select(self):
         """
