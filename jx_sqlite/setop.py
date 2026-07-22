@@ -218,9 +218,14 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
 
     selects = query.select.partial_eval(SQLang)
 
+    # THE BRANCHES OF THE RESULT HIERARCHY.  ONE BRANCH PER NESTED LEVEL; THE SORT KEYS AND
+    # THE UNION-ALL SQL ARE BOTH DRIVEN FROM THIS LIST (NOT snowflake.query_paths DIRECTLY),
+    # SO A LATER STEP CAN MAKE THE SET SELECT-DRIVEN.  docs/INTERSECTION_SURVEY.md §6
+    branches = list(self.snowflake.query_paths)
+
     # EVERY SELECT STATEMENT THAT WILL BE REQUIRED, NO MATTER THE DEPTH
     # WE WILL CREATE THEM ACCORDING TO THE DEPTH REQUIRED
-    for table_number, sub_table in enumerate(self.snowflake.query_paths):
+    for table_number, sub_table in enumerate(branches):
         nested_doc_details = builder.add_branch(sub_table, table_number)
         nested_path = nested_doc_details.nested_path
         sub_schema = self.snowflake.get_schema(list(reversed([
@@ -285,7 +290,7 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
             sql_selects.append(sql_alias(sql, column_alias))
             sorts.append(OneOrder(SqlIsNullOp(SqlVariable(None, column_alias)), NO_SQL))
             sorts.append(OneOrder(SqlVariable(None, column_alias), sort_to_sqlite_order[sort.sort]))
-    for t in self.snowflake.query_paths:
+    for t in branches:
         sorts.append(OneOrder(SqlVariable(None, f"{COLUMN}{index_to_uid[t]}", jx_type=JX_TEXT), NO_SQL))
 
     unsorted_sql = _make_sql_for_one_nest_in_set_op(
@@ -298,6 +303,7 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
         index_to_uid,
         query.limit,
         schema,
+        branches,
     )
 
     ordered_sql = SqlOrderByOp(unsorted_sql, sorts)
@@ -317,6 +323,7 @@ def _make_sql_for_one_nest_in_set_op(
     nested_path_to_uid_index,  # COLUMNS USED FOR UID (REQUIRED)
     limit,
     schema,
+    branches,  # THE NESTED LEVELS OF THE RESULT HIERARCHY (ONE UNION-ALL BRANCH EACH)
 ):
     """
     FOR EACH NESTED LEVEL, WE MAKE A QUERY THAT PULLS THE VALUES/COLUMNS REQUIRED
@@ -330,7 +337,7 @@ def _make_sql_for_one_nest_in_set_op(
     done = []
 
     # STATEMENT FOR EACH NESTED PATH
-    tables = self.snowflake.query_paths
+    tables = branches
     for i, sub_table_name in enumerate(tables):
         if any(startswith_field(sub_table_name, d) for d in done):
             continue
@@ -410,6 +417,7 @@ def _make_sql_for_one_nest_in_set_op(
                 None,
                 None,
                 schema=schema,
+                branches=branches,
             ))
         else:
             # SIBLING PATHS ARE IGNORED
