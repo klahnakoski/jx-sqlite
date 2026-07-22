@@ -218,10 +218,28 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
 
     selects = query.select.partial_eval(SQLang)
 
-    # THE BRANCHES OF THE RESULT HIERARCHY.  ONE BRANCH PER NESTED LEVEL; THE SORT KEYS AND
-    # THE UNION-ALL SQL ARE BOTH DRIVEN FROM THIS LIST (NOT snowflake.query_paths DIRECTLY),
-    # SO A LATER STEP CAN MAKE THE SET SELECT-DRIVEN.  docs/INTERSECTION_SURVEY.md §6
-    branches = list(self.snowflake.query_paths)
+    # BRANCHES ALSO NEED TABLES THE where/sort REFERENCE (JOINED FOR FILTERING/ORDERING, NOT
+    # SELECTED AS VALUES).  RESOLVE THOSE VARS TO THEIR TABLES THE SAME WAY select_vars ARE.
+    referenced_paths = set(active_paths)
+    for v in set(
+        rest if first == "row" else v
+        for source in (query.where.vars(), *(s.value.vars() for s in listwrap(query.sort)))
+        for v in source
+        for first, rest in [tail_field(v)]
+    ):
+        for _, c in schema.leaves(v):
+            referenced_paths.add(c.nested_path[0])
+
+    # THE BRANCHES OF THE RESULT HIERARCHY.  QUERY-DRIVEN: KEEP ONLY THE BRANCHES ON THE PATH TO
+    # SOMETHING THE QUERY REFERENCES - EACH REFERENCED PATH AND ITS ANCESTORS (FOR THE JOIN
+    # CHAIN).  UNRELATED/SIBLING TABLES CONTRIBUTE NOTHING, SO DROPPING THEM ONLY REMOVES EMPTY
+    # UNION-ALL BRANCHES.  THE SORT KEYS AND THE UNION-ALL SQL ARE BOTH DRIVEN FROM THIS LIST.
+    # docs/INTERSECTION_SURVEY.md §6
+    branches = [
+        t
+        for t in self.snowflake.query_paths
+        if any(startswith_field(a, t) for a in referenced_paths)
+    ]
 
     # EVERY SELECT STATEMENT THAT WILL BE REQUIRED, NO MATTER THE DEPTH
     # WE WILL CREATE THEM ACCORDING TO THE DEPTH REQUIRED
