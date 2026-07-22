@@ -212,3 +212,85 @@ composition, and the `ORDER = 0` rule should appear in exactly one place.
    path fails loudly at the right place, not with a TypeError.
 5. Only then attack triage cluster 1 — with fixes phrased as compositions of the named
    operators wherever possible.
+
+See §6 for the chosen direction that gives these steps a target shape.
+
+---
+
+## 6. The shared-branch builder (chosen direction, 2026-07-21)
+
+**Decision (Kyle):** pursue a *builder* that assembles one hierarchical query by having each
+operator **contribute a branch** to shared structures, rather than each operator returning a
+finished, detached `SELECT`. This is `SqlHierarchy` (P3+P4+P5) and `PullPlan` (P7) fused into
+one operator, kept in lockstep by a shared column index.
+
+**Driving case.** The subquery-in-select
+`select ["o", {"name":"a._a", "value":{"from":"a._a", "select":["v","s"]}}]`
+(pinned skipped test `test_deep_where_on_fact_table_subquery`). Its value is a **`NestedOp`**
+(`{nested_path, select, where, sort, limit}` — already the JX representation; jx_sqlite's
+`NestedOp.to_sql` builds a QueryOp and calls `engine.to_sql` but **discards the pull plan**,
+returning only SQL — fine for `exists`/scalar contexts, wrong for a select value).
+
+**What "shared" means.** setop already produces ONE query + ONE pull plan; four things are
+shared across every nested level:
+- aligned column list (`sql_selects`, position = index; NULL-pad columns a branch lacks) — P3
+- one `UNION ALL` of per-level SELECTs — P4
+- one sort domain (`__id__`/`__order__` chain) so the union streams for a **single-pass**
+  reassembly — P5
+- one `DocumentDetails` tree that `_accumulate_nested` walks — P7
+
+The load-bearing invariant: **the column index is the shared key** — `_make_column_name(n)`
+names the SQL alias and `get_column(n)` is the pull for the same `n`. SQL side and pull side
+reference one integer. A branch contribution adds columns/branch/node **under consistent
+indices**; a detached subquery makes a second result set and loses both the single-pass
+streaming and correlation-for-free (correlation = the branch's `JOIN _parent = parent.__id__`,
+not a per-row re-query).
+
+**The interface.** Reify what `setop.to_sql` already does inline as a builder threaded through
+compilation:
+```
+add_branch(nested_path, parent_node, where, sort, limit) -> DocumentDetails node
+add_column(node, sql, push_name, pull) -> index      # appends to the aligned list
+```
+Then the **select clause drives** it (today the *snowflake* drives it: setop walks
+`query_paths` and `place()`s a node per table). One rule per term type:
+- leaf at origin → `add_column(root, …)`
+- path leaf into a child (dissolve, multivalue lift) → `add_column(child, …)` marked lift-to-parent
+- `NestedOp` (group) → `add_branch(child)` then recurse over its select terms (nesting composes)
+whole-child `select a._a` becomes **sugar** for a `NestedOp` child selecting all leaves.
+
+**The two halves already exist.** SQL side = `SqlStep`/`SqlTree` (Attack B, dead): the cleanest
+P3/P4/P5, `o/i/c` naming + `position()` offsets make alignment a computation. Pull side =
+`DocumentDetails`/`_accumulate_nested` (Attack A, live). The builder is the operator that owns
+**both on one index**; they must be one operator because the shared index is exactly what
+splitting them would force you to duplicate and keep in sync. SqlTree is dead partly *because*
+it solved only the SQL half — pair it with `DocumentDetails` and teach it A's `ORDER = 0`
+inner-object rule.
+
+**Why better than a detached subquery (not just tidier):**
+1. Convergence — whole-child select, explicit NestedOp, and setop's snowflake walk all become
+   one `add_branch` call.
+2. Unlocks **branch-local `where`/`sort`/`limit`** — correlated top-N per parent
+   (`{from:a._a, where:…, sort:"v", limit:3}` → `ROW_NUMBER() OVER (PARTITION BY _parent …)`).
+   A flat leaf projection has nowhere to hang a per-parent filter/order/limit; a branch does.
+3. edges/groupby are the same shape — `setop = branches from tables`,
+   `groupby = branches from partitions`, `edges = branches from domains` (§4 induction). The
+   builder is the common substrate.
+
+**Pre-mortem (the hard parts):**
+- **Nested ordering** — a branch with its own sort must nest its order *under* the parent id
+  (sort within the parent group). Sort-key concatenation per depth is the subtle bit.
+- **Branch-local limit needs window functions** — the branch stops being a plain
+  `SELECT … UNION` and becomes a windowed subquery; localized, but the first place the
+  "every branch is identical" assumption bends.
+- **Perspective per branch** — compiling a NestedOp's select switches origin to the child;
+  `Names`/`ResolvedName` already does perspective, but the builder must carry the right `Names`
+  per node. **This is the same refactor as NAMES.md #1 ("resolve the select once at the
+  origin") viewed from the other end** — `select_op`'s per-branch re-compile KLUDGE is the
+  projection rule written in the wrong layer.
+
+**Cheapest de-risking experiment.** Make the select-normalizer rewrite whole-child
+`select a._a` into a `NestedOp`, and confirm it routes through the *same* branch +
+`DocumentDetails` path that already makes `select ["o","a._a"]` work. If those two literally
+converge on one branch, the shared-contribution model is validated before touching SqlTree or
+edges.py.
