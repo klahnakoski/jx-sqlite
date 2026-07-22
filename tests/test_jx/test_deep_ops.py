@@ -816,7 +816,6 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "subquery-in-select (FROM a._a) must correlate v,s per element -> array of {v,s} objects; currently double-nests like the flat multivalue form. This is the correlated counterpart to test_deep_where_on_fact_table_multivalue: same result as selecting `a._a` whole")
     def test_deep_where_on_fact_table_subquery(self):
         # THE CORRELATED COUNTERPART: A SUBQUERY `FROM a._a` AS ONE SELECT ELEMENT KEEPS
         # v,s TOGETHER PER ELEMENT (ARRAY OF {v,s} OBJECTS) - UNLIKE THE FLAT MULTI-LEAF

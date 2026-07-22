@@ -331,12 +331,19 @@ whole-child machinery (`_make_sql`/`_accumulate_nested` unchanged): branch-relat
 columns assemble as sub-objects; a lone leaf collapses to a bare list via `push_list_name="."`.
 
 **Incremental plan (each step its own GREEN checkpoint):**
-1. **Subquery test** — populate the origin table-branch with the inner select compiled
-   branch-relative (exactly the whole-child path). Single branch, no multi-per-table yet.
-   Partition `query.select.terms` into plain vs subquery; build `select_vars`/`active_paths`
-   from plain terms; add each subquery's origin table to `active_paths`/`branches`; in the
-   branch loop, when `sub_table` == a subquery's origin, compile its inner `SelectOp` against
-   `sub_schema` and `add_column` each. `_make_sql`/`_accumulate_nested` untouched.
+1. **Subquery test — DONE** (`test_deep_where_on_fact_table_subquery` GREEN, 373/0/77).
+   `setop.to_sql` partitions `query.select.terms` (pre-`partial_eval`) into plain vs subquery
+   (`is_op(term.value, SelectOp)`); `select_vars`/`plain_select` are built from plain terms only
+   (else `partial_eval` flattens the subquery to deep leaves = the multivalue double-nest bug);
+   each subquery's origin table (`first(term.value.frum.vars())` → its leaves' `nested_path[0]`)
+   is added to `active_paths` so it becomes a branch. In the branch loop, at the subquery's
+   origin branch each inner term's VALUE is compiled directly against `sub_schema`
+   (`value.to_sql(sub_schema)`) and `add_column`'d with branch-relative names ("v","s") — same
+   column loop as the whole-child path, so no `deep_leaves` collapse fires and they assemble as
+   sub-objects. NOTE: compiled the inner *values* (not the inner `SelectOp` whole) because the
+   subquery's `frum` is a `FromOp`, which has no `nested_path` and trips select_op's getattr
+   KLUDGE; per-value compile is also closer to what `add_column` wants. `_make_sql`/
+   `_accumulate_nested` untouched.
 2. **Path→subquery rewrite** (Kyle's rule above) so the flat form routes through step 1.
 3. **Multiple branches per table** — decouple `add_branch` from `query_paths`; key branches on
    the select term so `a._a` can host two. Then the multivalue test's two deep leaves become

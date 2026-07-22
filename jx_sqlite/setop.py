@@ -10,7 +10,7 @@
 from typing import List, Dict, Tuple
 
 from jx_base import Column, is_op, FALSE
-from jx_base.expressions import NULL, ZERO, SqlScript
+from jx_base.expressions import NULL, ZERO, SqlScript, SelectOp
 from jx_base.expressions.sql_is_null_op import SqlIsNullOp
 from jx_base.expressions.sql_order_by_op import OneOrder
 from jx_base.utils import GUID
@@ -157,15 +157,31 @@ def _set_op(self, query):
 def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDetails]:
     # EACH SELECT VALUE BELONGS AT QUERY DEPTH, FIND LEAST DEEP FOR EACH (AND THE VARIABLES REQUIRED)
 
+    schema = query.frum.schema
+    known_vars = schema.keys()
+
+    # PARTITION SELECT TERMS: A SUBQUERY VALUE (SelectOp OVER A NESTED FromOp) IS A DEEP GROUP -
+    # ITS OWN BRANCH SELECTING BRANCH-RELATIVE COLUMNS THAT ASSEMBLE AS SUB-OBJECTS (NOT
+    # FLATTENED DEEP LEAVES).  READ THE PRE-partial_eval TERMS: partial_eval FLATTENS A
+    # SUBQUERY BACK TO A PATH.  docs/INTERSECTION_SURVEY.md §7 STEP 1
+    plain_terms = []
+    subqueries = {}  # subquery origin table path -> list of (outer name, inner SelectOp)
+    for term in query.select.terms:
+        if is_op(term.value, SelectOp):
+            rel = first(term.value.frum.vars())
+            table_path = first(c.nested_path[0] for _, c in schema.leaves(rel))
+            subqueries.setdefault(table_path, []).append((term.name, term.value))
+        else:
+            plain_terms.append(term)
+    plain_select = SelectOp(query.select.frum, *plain_terms)
+
     # GET LIST OF SELECTED COLUMNS
     select_vars = set(
         rest if first == "row" else v
-        for s in query.select.terms
+        for s in plain_terms
         for v in s.value.vars()
         for first, rest in [tail_field(v)]
     )
-    schema = query.frum.schema
-    known_vars = schema.keys()
     active_paths = {schema.nested_path[0]: {
         Column(
             name=GUID,
@@ -208,6 +224,9 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
                 cardinality=0,
                 last_updated=Date.now(),
             ))
+    # EACH SUBQUERY'S ORIGIN TABLE IS AN ACTIVE BRANCH (ITS INNER SELECT SUPPLIES THE COLUMNS)
+    for table_path in subqueries:
+        active_paths.setdefault(table_path, set())
     # EVERY COLUMN, AND THE COLUMN INDEX IT OCCUPIES
     builder = BranchBuilder()
     # ALIASES: SAME OBJECTS THE BUILDER OWNS (IN-PLACE MUTATION IS SHARED); THE REST OF to_sql
@@ -216,7 +235,7 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
     index_to_uid = builder.index_to_uid
     sql_selects = builder.sql_selects
 
-    selects = query.select.partial_eval(SQLang)
+    selects = plain_select.partial_eval(SQLang)
 
     # BRANCHES ALSO NEED TABLES THE where/sort REFERENCE (JOINED FOR FILTERING/ORDERING, NOT
     # SELECTED AS VALUES).  RESOLVE THOSE VARS TO THEIR TABLES THE SAME WAY select_vars ARE.
@@ -296,6 +315,25 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
             leaf = index_to_column[deep_leaves[0]]
             nested_doc_details.push_list_name = leaf.push_list_name
             leaf.push_list_name = "."
+
+        # A SUBQUERY WHOSE ORIGIN IS THIS BRANCH CONTRIBUTES ITS INNER SELECT COMPILED
+        # BRANCH-RELATIVE (NAMES LIKE "v","s", NOT "a._a.v"): THEY LAND AS SUB-OBJECTS UNDER
+        # THIS NODE, WHICH ITSELF LANDS AT THE CHILD TABLE'S PATH.  SAME COLUMN LOOP AS THE
+        # WHOLE-CHILD PATH, SO NO deep_leaves COLLAPSE FIRES.  docs/INTERSECTION_SURVEY.md §7 STEP 1
+        for outer_name, inner_select in subqueries.get(sub_table, []):
+            for i, (name, value) in enumerate(inner_select):
+                sql = value.partial_eval(SQLang).to_sql(sub_schema)
+                push_column_name, push_column_child = tail_field(name)
+                push_column_name = unliteral_field(push_column_name)
+                builder.add_column(
+                    nested_doc_details,
+                    sql,
+                    push_list_name=push_column_child if push_column_name == "." else name,
+                    push_column_name=push_column_name,
+                    push_column_child=push_column_child,
+                    push_column_index=i,
+                    nested_path=nested_path,
+                )
     where_clause = ToBooleanOp(query.where).partial_eval(SQLang).to_sql(schema)
     # ORDERING
     sorts = []
