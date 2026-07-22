@@ -294,3 +294,51 @@ inner-object rule.
 `DocumentDetails` path that already makes `select ["o","a._a"]` work. If those two literally
 converge on one branch, the shared-contribution model is validated before touching SqlTree or
 edges.py.
+
+---
+
+## 7. Implemented so far, and the 3c plan (2026-07-21)
+
+**Done (commits `af2d62d`..`5f1201a`, tree GREEN 373/0/78):**
+- `jx_sqlite/builder.py`: `BranchBuilder` (with `DocumentDetails` + `place`). `setop.to_sql`
+  drives it via `add_branch`/`add_column`. The column index is the shared key (SQL alias
+  `_make_column_name(n)` ↔ pull `get_column(n)`).
+- The branch set is **query-driven**: `branches` = the paths referenced by select ∪ where ∪
+  sort, plus ancestors (for the join chain). Both the sort keys and `_make_sql_for_one_nest_in_set_op`
+  read this one `branches` list, not `snowflake.query_paths`. Finding: "select-driven" is really
+  **query-driven** — where/sort tables must be joined though not selected.
+
+**3c model — CONFIRMED by Kyle.** *Every deep select is a branch; a table can host several
+branches.* A branch bottoming out at ONE leaf returns a simple list of non-missing values; a
+branch with several leaves returns sub-objects. The two pinned tests differ ONLY in branch
+count, not in the flattened expression:
+- deep-leaf path `a._a.s` ≡ one-leaf subquery. Kyle's exact rewrite:
+  `["a._a.s"]` → `[{"name":"a._a.s","from":"a._a","select":"s"}]` — split at the array boundary
+  (`from` = nested table, `select` = property inside, `name` = full path).
+- flat `a._a.v, a._a.s` → TWO subquery terms → TWO branches at the SAME table `a._a` → two
+  independent lists (`test_deep_where_on_fact_table_multivalue`).
+- explicit `{from:a._a, select:[v,s]}` → ONE branch → sub-objects
+  (`test_deep_where_on_fact_table_subquery`).
+
+`partial_eval` flattening is CORRECT (it flattens each path to its deepest property); the branch
+COUNT carries the grouping. This kills the `len(deep_leaves)==1` collapse hack in `setop.py`.
+
+**Detection (found by probe):** a subquery term is `is_op(term.value, SelectOp)` (jx_base
+`SelectOp`); its origin path is `first(term.value.frum.vars())` (e.g. `"a._a"`; `frum` is a
+`FromOp`). Handling must read the **pre-`partial_eval`** terms — `partial_eval` flattens the
+subquery back to a path. A single-leaf subquery on its table-branch reuses the existing
+whole-child machinery (`_make_sql`/`_accumulate_nested` unchanged): branch-relative inner
+columns assemble as sub-objects; a lone leaf collapses to a bare list via `push_list_name="."`.
+
+**Incremental plan (each step its own GREEN checkpoint):**
+1. **Subquery test** — populate the origin table-branch with the inner select compiled
+   branch-relative (exactly the whole-child path). Single branch, no multi-per-table yet.
+   Partition `query.select.terms` into plain vs subquery; build `select_vars`/`active_paths`
+   from plain terms; add each subquery's origin table to `active_paths`/`branches`; in the
+   branch loop, when `sub_table` == a subquery's origin, compile its inner `SelectOp` against
+   `sub_schema` and `add_column` each. `_make_sql`/`_accumulate_nested` untouched.
+2. **Path→subquery rewrite** (Kyle's rule above) so the flat form routes through step 1.
+3. **Multiple branches per table** — decouple `add_branch` from `query_paths`; key branches on
+   the select term so `a._a` can host two. Then the multivalue test's two deep leaves become
+   two independent branches. This is where `_make_sql` and the `DocumentDetails` tree stop
+   being 1:1 with tables.
