@@ -76,7 +76,9 @@ are more likely correct than the code they test. A failing test indicts the code
 working around the failure in the harness hides the defect.
 
 Prefer expanding data structures over adding if/else blocks — a special case in code is a
-missing field in the model.
+missing field in the model. `docs/PATTERNS.md` names the wider family (parse-don't-validate,
+make-illegal-states-unrepresentable, null object, …) and pins each to a place in this repo,
+including where the rule is deliberately *not* to add a field.
 
 ## Status
 
