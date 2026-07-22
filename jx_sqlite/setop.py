@@ -7,7 +7,6 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from dataclasses import dataclass
 from typing import List, Dict, Tuple
 
 from jx_base import Column, is_op, FALSE
@@ -15,6 +14,7 @@ from jx_base.expressions import NULL, ZERO, SqlScript
 from jx_base.expressions.sql_is_null_op import SqlIsNullOp
 from jx_base.expressions.sql_order_by_op import OneOrder
 from jx_base.utils import GUID
+from jx_sqlite.builder import DocumentDetails, BranchBuilder
 from jx_sqlite.expressions.leaves_op import LeavesOp
 from jx_sqlite.expressions.to_boolean_op import ToBooleanOp
 from jx_sqlite.format import format_deep
@@ -66,98 +66,6 @@ from mo_sqlite.expressions import SqlVariable, SqlOrderByOp, SqlEqOp, SqlAliasOp
 from mo_sqlite.expressions.sql_and_op import SqlAndOp
 from mo_sqlite.expressions.sql_script import SqlScript
 from mo_times import Date
-
-
-@dataclass
-class DocumentDetails:
-    sub_table: str
-    alias: str
-    id_coord: int
-    nested_path: List[str]
-    index_to_column: Dict[int, ColumnMapping]
-    children: List["DocumentDetails"]
-    push_list_name: str  # WHERE THIS TABLE'S ASSEMBLED VALUE LANDS IN THE PARENT DOC (None = TABLE'S RELATIVE PATH)
-
-    def __init__(self, sub_table: str):
-        self.sub_table = sub_table
-        self.alias = ""
-        self.id_coord = -1
-        self.nested_path = [sub_table]
-        self.index_to_column = {}
-        self.children = []
-        self.push_list_name = None
-
-
-def _place(node, parent):
-    # INSERT node INTO THE DocumentDetails TREE UNDER THE DEEPEST ANCESTOR CONTAINING IT
-    if startswith_field(node.nested_path[0], parent.nested_path[0]):
-        for c in parent.children:
-            if _place(node, c):
-                return True
-        parent.children.append(node)
-        node.nested_path = [node.nested_path[0], *parent.nested_path]
-        return True
-
-
-class _BranchBuilder:
-    """
-    THE SHARED STRUCTURES OF ONE HIERARCHICAL SET-OP QUERY: THE ALIGNED SELECT LIST AND THE
-    PULL PLAN, KEYED BY ONE COLUMN INDEX.  OPERATORS CONTRIBUTE BRANCHES (add_branch) AND
-    COLUMNS (add_column) INTO IT RATHER THAN RETURNING DETACHED SQL.  THE COLUMN INDEX IS THE
-    SHARED KEY BINDING EACH SQL ALIAS TO ITS PULL.  docs/INTERSECTION_SURVEY.md §6
-    """
-
-    def __init__(self):
-        self.sql_selects = []           # ALIGNED SELECT LIST (position = column index)
-        self.index_to_column = {}       # column index -> ColumnMapping (pull-plan leaves)
-        self.index_to_uid = {}          # nested path -> column index of its UID
-        self.primary_doc_details = None  # ROOT OF THE DocumentDetails TREE
-
-    def add_column(self, node, sql, *, push_list_name, push_column_name, push_column_child, push_column_index, nested_path):
-        # CONTRIBUTE ONE VALUE COLUMN: APPEND TO THE ALIGNED SELECT LIST AND REGISTER ITS PULL
-        # UNDER THE SAME INDEX, KEEPING THE SQL SIDE AND THE PULL PLAN IN LOCKSTEP.
-        n = len(self.sql_selects)
-        alias = _make_column_name(n)
-        self.sql_selects.append(SqlAliasOp(sql, alias))
-        self.index_to_column[n] = node.index_to_column[n] = ColumnMapping(
-            push_list_name=push_list_name,
-            push_column_child=push_column_child,
-            push_column_name=push_column_name,
-            push_column_index=push_column_index,
-            pull=get_column(n, json_type=sql.jx_type),
-            sql=sql,
-            type=jx_type_to_json_type(sql.jx_type),
-            column_alias=alias,
-            nested_path=nested_path,
-        )
-        return n
-
-    def add_branch(self, sub_table, table_number):
-        # CONTRIBUTE A BRANCH (ONE NESTED LEVEL): A DocumentDetails NODE PLACED IN THE TREE,
-        # PLUS ITS UID (AND ORDER, FOR A CHILD) PLUMBING COLUMNS.
-        node = DocumentDetails(sub_table)
-        if table_number == 0:
-            self.primary_doc_details = node  # ROOT OF TREE
-        else:
-            _place(node, self.primary_doc_details)  # INSERT INTO TREE
-        node.alias = sub_table
-
-        # WE ALWAYS ADD THE UID
-        n = self.index_to_uid[sub_table] = node.id_coord = len(self.sql_selects)
-        uid_sql = SqlVariable(sub_table, UID, jx_type=JX_TEXT)
-        self.sql_selects.append(sql_alias(uid_sql, _make_column_name(n)))
-        if table_number > 0:
-            # UID AND ORDER FOR CHILD TABLE
-            self.index_to_column[n] = ColumnMapping(
-                sql=uid_sql, type="number", nested_path=node.nested_path, column_alias=_make_column_name(n),
-            )
-            n = len(self.sql_selects)
-            order_sql = SqlVariable(sub_table, ORDER, jx_type=JX_INTEGER)
-            self.sql_selects.append(sql_alias(order_sql, _make_column_name(n)))
-            self.index_to_column[n] = ColumnMapping(
-                sql=order_sql, type="number", nested_path=node.nested_path, column_alias=_make_column_name(n),
-            )
-        return node
 
 
 @extend(Facts)
@@ -301,7 +209,7 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
                 last_updated=Date.now(),
             ))
     # EVERY COLUMN, AND THE COLUMN INDEX IT OCCUPIES
-    builder = _BranchBuilder()
+    builder = BranchBuilder()
     # ALIASES: SAME OBJECTS THE BUILDER OWNS (IN-PLACE MUTATION IS SHARED); THE REST OF to_sql
     # AND _make_sql_for_one_nest_in_set_op READ THESE DIRECTLY
     index_to_column: Dict[int, ColumnMapping] = builder.index_to_column
