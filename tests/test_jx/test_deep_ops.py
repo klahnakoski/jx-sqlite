@@ -779,12 +779,8 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "two+ deep leaves from one child branch double-nest ({a._a:{a._a:{...}}}); each keeps its origin-rooted name instead of collapsing. A lone leaf collapses (test_deep_where_on_fact_table); several must re-form the child sub-object, same as selecting `a._a` whole")
+    @skipIf(global_settings.use == "sqlite", "two+ deep leaves from one child branch double-nest ({a._a:{a._a:{...}}}); each keeps its origin-rooted name instead of collapsing. Each leaf should collapse to its OWN multivalue independently at its origin-relative path (a._a.v -> list, a._a.s -> scalar) - the lone-leaf collapse generalised, not a len==1 special case")
     def test_deep_where_on_fact_table_multivalue(self):
-        # SELECTING MULTIPLE LEAVES OF ONE CHILD (`a._a.v`, `a._a.s`) MUST YIELD THE SAME
-        # SUB-OBJECT ARRAY AS SELECTING THE WHOLE CHILD (`a._a`): CORRELATED FIELDS STAY
-        # TOGETHER PER ELEMENT.  CONTRAST THE LONE-LEAF CASE, WHICH COLLAPSES TO A BARE
-        # MULTIVALUE SET.
         test = {
             "data": [
                 {"o": 1, "a": {"_a": {
@@ -811,10 +807,10 @@ class TestDeepOps(BaseTestCase):
                 "data": [
                     {"o": 1, "a": {"_a": {"v": "still more", "s": False}}},
                     {"o": 2, "a": {"_a": {"v": "string!", "s": True}}},
-                    {"o": 3, "a": {"_a": [
-                        {"v": "a string", "s": False},
-                        {"v": "another string"},
-                    ]}},
+                    {"o": 3, "a": {"_a": {
+                        "v": ["a string", "another string"],
+                        "s": False
+                    }}}
                 ]
             },
         }
