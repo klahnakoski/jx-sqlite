@@ -360,3 +360,38 @@ columns assemble as sub-objects; a lone leaf collapses to a bare list via `push_
    the select term so `a._a` can host two. Then the multivalue test's two deep leaves become
    two independent branches. This is where `_make_sql` and the `DocumentDetails` tree stop
    being 1:1 with tables.
+
+   **3-pre: drop the inline first-row optimization (DECIDED by Kyle, do it globally).**
+   The blocker for branch-per-term: today the first child row (`__order__ = 0`) is carried
+   *on the parent row* (the child table is `LEFT JOIN … AND __order__ = 0` on the parent's arm,
+   and the child's own arm filters `__order__ > 0`). This inline join is only an **optimization**
+   — it lets SQL pre-merge one child row per parent so Python skips a row — but it is what makes
+   two branches over the *same* child rows impossible: `node_v` and `node_s` would both have to
+   read (and destructively advance past) the one shared inline row, and it is also the sole way
+   `_accumulate_nested` currently *detects* a child (`row[child.id_coord]` read off the parent
+   row). **Kyle's call: remove the optimization globally.** Each branch becomes a clean full arm
+   (all its rows, `__order__ >= 0`); the parent arm carries none of the child's columns.
+   `_accumulate_nested` changes from "read the child uid off the parent row" to "the child's
+   rows follow the parent's row" (children on their own lines) — detect/consume each child's
+   contiguous run by its own uid, in whatever order the uid sort produces (match the next row to
+   whichever child's uid is non-null, not a fixed children order). Ordering already cooperates:
+   sort by the real (joined) sort value then each branch's uid (NULLs first) puts the parent row
+   before its children and keeps each child's run contiguous. Consequence: every deep
+   `expecting_resultset` snapshot changes (first child no longer inlined onto the parent row —
+   splits into separate parent/child rows); semantics (`list`/`table`/`cube`) unchanged. The
+   `docs/JSON in Database.md` "Sorted and Compressed" description and any inline-first-row notes
+   need updating to match.
+
+   **BLOCKER found while attempting 3-pre (code reverted; tree kept GREEN at step 2).** Dropping
+   the child join breaks **WHERE clauses that reference a nested table**. `where {exists: a._a.v}`
+   at origin=fact was evaluated *on the fact arm* — which worked only because the inline
+   `LEFT JOIN a._a AND __order__=0` put `a._a.v` in scope there (and dropped a fact whose first
+   element lacked `v`). With no child join the fact arm errors: `no such column: …a._a.$A.v.$S`.
+   So the inline join was doing **two** jobs: (a) carry the first child on the parent line (the
+   optimization Kyle named) AND (b) make nested-table WHERE filters evaluable on the parent arm
+   (existence filtering — drop the fact doc when no child matches). Removing it needs a decision
+   on (b): how does a nested-table filter at a parent origin evaluate without the inline join,
+   given the deliberate "no EXISTS subqueries, filter per child row" policy
+   ([[multivalue-eval-model]])? Candidates: keep a **filter-only** join (joined, not selected) on
+   the parent arm; move the filter to the child arm and drop childless parent docs at assembly;
+   or relax the no-EXISTS rule for parent-origin nested filters. **Open — needs Kyle.**
