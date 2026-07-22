@@ -416,7 +416,27 @@ columns assemble as sub-objects; a lone leaf collapses to a bare list via `push_
 
    So the inline join was doing a THIRD job beyond (a)/(b): it made the parent row *carry a
    child's sort value* (parent = first child), so global value-sort and parent-contiguity
-   coexisted. Without inline they conflict. Needs a decision on how sort orders rows in the
-   no-inline model (e.g. group by parent uid first then value, with a global re-sort of the flat
-   nested-origin result after assembly; or another scheme). **Open — needs Kyle.** Reverted to
-   step 2 GREEN pending that.
+   coexisted. Without inline they conflict.
+
+   **Kyle's answer (SORT) — the confirmed model.** "Every table/select has an order; with no
+   sort it is the natural `__order__`. Streaming order and result order are the SAME — Python
+   cannot handle anything else. We do not care whether the parent is contiguous if our origin is
+   not the parent." So:
+   - **Reassembly roots at the ORIGIN, not the fact.** For a nested origin `from b`, `b` is the
+     reassembler's top level; the fact (and any ancestor of the origin) is a **join only** — it
+     supplies columns and filters but is NOT a `DocumentDetails` reassembly level, so its rows
+     need not be contiguous. This drops the current fact-root + post-proc `listwrap … or [{}]`
+     flatten (`_set_op` lines ~143-152) and makes `primary_doc_details` the origin's node.
+   - **One hierarchical `ORDER BY` = stream order = result order.** Order by the origin's key
+     (its `sort`, else natural `__order__`), then each descendant level's key nested under its
+     parent. For a nested origin sorted by a nested column this is a *global* sort over the
+     origin's rows (fact grouping is irrelevant), giving `test_nested` / `test_single_nested`
+     their global order. For a fact origin it is (fact sort, then child `__order__`), keeping a
+     fact's children contiguous under it. Origin-and-below must be contiguous; above-origin need
+     not be. Oracles: `test_sort.test_nested` (cross-fact interleaving — only a global,
+     origin-rooted order can produce it) and `test_single_nested`.
+
+   Remaining to implement 3-pre with this model: no-inline arms (each level a full arm); per-arm
+   WHERE + `required`/drop-childless (proven above); reassembler rooted at origin with ancestors
+   as joins; hierarchical order keys from the origin down. Reverted to step 2 GREEN; this is the
+   next build.
