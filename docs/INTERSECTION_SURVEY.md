@@ -394,4 +394,29 @@ columns assemble as sub-objects; a lone leaf collapses to a bare list via `push_
    given the deliberate "no EXISTS subqueries, filter per child row" policy
    ([[multivalue-eval-model]])? Candidates: keep a **filter-only** join (joined, not selected) on
    the parent arm; move the filter to the child arm and drop childless parent docs at assembly;
-   or relax the no-EXISTS rule for parent-origin nested filters. **Open — needs Kyle.**
+   or relax the no-EXISTS rule for parent-origin nested filters.
+
+   **Kyle's answer (WHERE):** filter on the child arm + drop childless parents at assembly. This
+   was implemented and works (a `required` flag on the where-referenced branch node below the
+   tree root; `_accumulate` drops a parent that has no row in a required child branch — covers
+   both fact-origin `where exists a._a.v` and nested-origin `where b=x`, where `o=4`/childless
+   facts are dropped). Per-arm WHERE: an arm applies the where iff every table it references is
+   joined there (`all(startswith_field(primary, wt) for wt in where_tables)`), else `WHERE 1`.
+
+   **SECOND BLOCKER — SORT (the inline join's other hidden job).** With the WHERE handled, the
+   remaining failures were `test_sort.test_single_nested` / `test_nested`: a **nested origin**
+   sorted by a nested column (`from b, sort a` = `b.a`). Two problems:
+   1. the sort key `b.a` is a SELECT column valid only where `b` is joined — same off-arm
+      NULL-pad fix as the WHERE (done, kills the `no such column` error); but then
+   2. a nested-origin **flat** result wants a *global* value-sort (`-4,1,4,4` across all parents)
+      while the no-inline streaming needs each parent's child rows *contiguous*. The value-sort
+      is primary, so it scatters a parent's children across other parents, and the bare parent
+      (fact) rows — which no longer carry a first child — sort last and reassemble as spurious
+      empty `{}` docs. Output came out `[{},{},{a:4},{},{}]`.
+
+   So the inline join was doing a THIRD job beyond (a)/(b): it made the parent row *carry a
+   child's sort value* (parent = first child), so global value-sort and parent-contiguity
+   coexisted. Without inline they conflict. Needs a decision on how sort orders rows in the
+   no-inline model (e.g. group by parent uid first then value, with a global re-sort of the flat
+   nested-origin result after assembly; or another scheme). **Open — needs Kyle.** Reverted to
+   step 2 GREEN pending that.
