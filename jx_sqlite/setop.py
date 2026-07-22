@@ -88,6 +88,78 @@ class DocumentDetails:
         self.push_list_name = None
 
 
+def _place(node, parent):
+    # INSERT node INTO THE DocumentDetails TREE UNDER THE DEEPEST ANCESTOR CONTAINING IT
+    if startswith_field(node.nested_path[0], parent.nested_path[0]):
+        for c in parent.children:
+            if _place(node, c):
+                return True
+        parent.children.append(node)
+        node.nested_path = [node.nested_path[0], *parent.nested_path]
+        return True
+
+
+class _BranchBuilder:
+    """
+    THE SHARED STRUCTURES OF ONE HIERARCHICAL SET-OP QUERY: THE ALIGNED SELECT LIST AND THE
+    PULL PLAN, KEYED BY ONE COLUMN INDEX.  OPERATORS CONTRIBUTE BRANCHES (add_branch) AND
+    COLUMNS (add_column) INTO IT RATHER THAN RETURNING DETACHED SQL.  THE COLUMN INDEX IS THE
+    SHARED KEY BINDING EACH SQL ALIAS TO ITS PULL.  docs/INTERSECTION_SURVEY.md §6
+    """
+
+    def __init__(self):
+        self.sql_selects = []           # ALIGNED SELECT LIST (position = column index)
+        self.index_to_column = {}       # column index -> ColumnMapping (pull-plan leaves)
+        self.index_to_uid = {}          # nested path -> column index of its UID
+        self.primary_doc_details = None  # ROOT OF THE DocumentDetails TREE
+
+    def add_column(self, node, sql, *, push_list_name, push_column_name, push_column_child, push_column_index, nested_path):
+        # CONTRIBUTE ONE VALUE COLUMN: APPEND TO THE ALIGNED SELECT LIST AND REGISTER ITS PULL
+        # UNDER THE SAME INDEX, KEEPING THE SQL SIDE AND THE PULL PLAN IN LOCKSTEP.
+        n = len(self.sql_selects)
+        alias = _make_column_name(n)
+        self.sql_selects.append(SqlAliasOp(sql, alias))
+        self.index_to_column[n] = node.index_to_column[n] = ColumnMapping(
+            push_list_name=push_list_name,
+            push_column_child=push_column_child,
+            push_column_name=push_column_name,
+            push_column_index=push_column_index,
+            pull=get_column(n, json_type=sql.jx_type),
+            sql=sql,
+            type=jx_type_to_json_type(sql.jx_type),
+            column_alias=alias,
+            nested_path=nested_path,
+        )
+        return n
+
+    def add_branch(self, sub_table, table_number):
+        # CONTRIBUTE A BRANCH (ONE NESTED LEVEL): A DocumentDetails NODE PLACED IN THE TREE,
+        # PLUS ITS UID (AND ORDER, FOR A CHILD) PLUMBING COLUMNS.
+        node = DocumentDetails(sub_table)
+        if table_number == 0:
+            self.primary_doc_details = node  # ROOT OF TREE
+        else:
+            _place(node, self.primary_doc_details)  # INSERT INTO TREE
+        node.alias = sub_table
+
+        # WE ALWAYS ADD THE UID
+        n = self.index_to_uid[sub_table] = node.id_coord = len(self.sql_selects)
+        uid_sql = SqlVariable(sub_table, UID, jx_type=JX_TEXT)
+        self.sql_selects.append(sql_alias(uid_sql, _make_column_name(n)))
+        if table_number > 0:
+            # UID AND ORDER FOR CHILD TABLE
+            self.index_to_column[n] = ColumnMapping(
+                sql=uid_sql, type="number", nested_path=node.nested_path, column_alias=_make_column_name(n),
+            )
+            n = len(self.sql_selects)
+            order_sql = SqlVariable(sub_table, ORDER, jx_type=JX_INTEGER)
+            self.sql_selects.append(sql_alias(order_sql, _make_column_name(n)))
+            self.index_to_column[n] = ColumnMapping(
+                sql=order_sql, type="number", nested_path=node.nested_path, column_alias=_make_column_name(n),
+            )
+        return node
+
+
 @extend(Facts)
 def _set_op(self, query):
     index_to_column, command, primary_doc_details = to_sql(self, query)
@@ -229,78 +301,19 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
                 last_updated=Date.now(),
             ))
     # EVERY COLUMN, AND THE COLUMN INDEX IT OCCUPIES
-    index_to_column: Dict[int, ColumnMapping] = {}  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
-    index_to_uid = {}  # FROM ARRAY PATH TO THE INDEX OF UID
-    sql_selects = []  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE)
-    primary_doc_details = None  # ROOT OF THE DocumentDetails TREE (SET BY add_branch)
-    # nest_to_alias = {query_path: table_alias(i) for i, query_path in enumerate(self.snowflake.query_paths)}
-    # ADD SQL SELECT COLUMNS
+    builder = _BranchBuilder()
+    # ALIASES: SAME OBJECTS THE BUILDER OWNS (IN-PLACE MUTATION IS SHARED); THE REST OF to_sql
+    # AND _make_sql_for_one_nest_in_set_op READ THESE DIRECTLY
+    index_to_column: Dict[int, ColumnMapping] = builder.index_to_column
+    index_to_uid = builder.index_to_uid
+    sql_selects = builder.sql_selects
 
     selects = query.select.partial_eval(SQLang)
-
-    def add_column(node, sql, *, push_list_name, push_column_name, push_column_child, push_column_index, nested_path):
-        # CONTRIBUTE ONE VALUE COLUMN TO THE SHARED ALIGNED SELECT LIST AND REGISTER ITS PULL
-        # UNDER THE SAME INDEX.  THE INDEX IS THE SHARED KEY BETWEEN THE SQL SIDE AND THE PULL
-        # PLAN; add_column IS THE ATOM THAT KEEPS THEM IN LOCKSTEP.  docs/INTERSECTION_SURVEY.md §6
-        n = len(sql_selects)
-        alias = _make_column_name(n)
-        sql_selects.append(SqlAliasOp(sql, alias))
-        index_to_column[n] = node.index_to_column[n] = ColumnMapping(
-            push_list_name=push_list_name,
-            push_column_child=push_column_child,
-            push_column_name=push_column_name,
-            push_column_index=push_column_index,
-            pull=get_column(n, json_type=sql.jx_type),
-            sql=sql,
-            type=jx_type_to_json_type(sql.jx_type),
-            column_alias=alias,
-            nested_path=nested_path,
-        )
-        return n
-
-    def place(node, parent):
-        # INSERT node INTO THE DocumentDetails TREE UNDER THE DEEPEST ANCESTOR CONTAINING IT
-        if startswith_field(node.nested_path[0], parent.nested_path[0]):
-            for c in parent.children:
-                if place(node, c):
-                    return True
-            parent.children.append(node)
-            node.nested_path = [node.nested_path[0], *parent.nested_path]
-            return True
-
-    def add_branch(sub_table, table_number):
-        # CONTRIBUTE A BRANCH (ONE NESTED LEVEL) TO THE SHARED QUERY: A DocumentDetails NODE
-        # PLACED IN THE PULL-PLAN TREE, PLUS ITS UID (AND ORDER, FOR A CHILD) PLUMBING COLUMNS.
-        # docs/INTERSECTION_SURVEY.md §6
-        nonlocal primary_doc_details
-        node = DocumentDetails(sub_table)
-        if table_number == 0:
-            primary_doc_details = node  # ROOT OF TREE
-        else:
-            place(node, primary_doc_details)  # INSERT INTO TREE
-        node.alias = sub_table
-
-        # WE ALWAYS ADD THE UID
-        n = index_to_uid[sub_table] = node.id_coord = len(sql_selects)
-        uid_sql = SqlVariable(sub_table, UID, jx_type=JX_TEXT)
-        sql_selects.append(sql_alias(uid_sql, _make_column_name(n)))
-        if table_number > 0:
-            # UID AND ORDER FOR CHILD TABLE
-            index_to_column[n] = ColumnMapping(
-                sql=uid_sql, type="number", nested_path=node.nested_path, column_alias=_make_column_name(n),
-            )
-            n = len(sql_selects)
-            order_sql = SqlVariable(sub_table, ORDER, jx_type=JX_INTEGER)
-            sql_selects.append(sql_alias(order_sql, _make_column_name(n)))
-            index_to_column[n] = ColumnMapping(
-                sql=order_sql, type="number", nested_path=node.nested_path, column_alias=_make_column_name(n),
-            )
-        return node
 
     # EVERY SELECT STATEMENT THAT WILL BE REQUIRED, NO MATTER THE DEPTH
     # WE WILL CREATE THEM ACCORDING TO THE DEPTH REQUIRED
     for table_number, sub_table in enumerate(self.snowflake.query_paths):
-        nested_doc_details = add_branch(sub_table, table_number)
+        nested_doc_details = builder.add_branch(sub_table, table_number)
         nested_path = nested_doc_details.nested_path
         sub_schema = self.snowflake.get_schema(list(reversed([
             t for t in self.snowflake.query_paths if startswith_field(sub_table, t)
@@ -332,7 +345,7 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
 
             push_column_name, push_column_child = tail_field(name)
             push_column_name = unliteral_field(push_column_name)
-            column_number = add_column(
+            column_number = builder.add_column(
                 nested_doc_details,
                 value,
                 # LIST FORMAT SPLATS THE "." CONTAINER INTO THE DOC ROOT
@@ -382,7 +395,7 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
     ordered_sql = SqlOrderByOp(unsorted_sql, sorts)
     if query.limit is not NULL:
         ordered_sql = SqlLimitOp(ordered_sql, query.limit.to_sql(schema))
-    return index_to_column, ordered_sql, primary_doc_details
+    return index_to_column, ordered_sql, builder.primary_doc_details
 
 
 @extend(Facts)
