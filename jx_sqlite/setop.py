@@ -232,6 +232,7 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
     index_to_column: Dict[int, ColumnMapping] = {}  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
     index_to_uid = {}  # FROM ARRAY PATH TO THE INDEX OF UID
     sql_selects = []  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE)
+    primary_doc_details = None  # ROOT OF THE DocumentDetails TREE (SET BY add_branch)
     # nest_to_alias = {query_path: table_alias(i) for i, query_path in enumerate(self.snowflake.query_paths)}
     # ADD SQL SELECT COLUMNS
 
@@ -257,49 +258,53 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
         )
         return n
 
+    def place(node, parent):
+        # INSERT node INTO THE DocumentDetails TREE UNDER THE DEEPEST ANCESTOR CONTAINING IT
+        if startswith_field(node.nested_path[0], parent.nested_path[0]):
+            for c in parent.children:
+                if place(node, c):
+                    return True
+            parent.children.append(node)
+            node.nested_path = [node.nested_path[0], *parent.nested_path]
+            return True
+
+    def add_branch(sub_table, table_number):
+        # CONTRIBUTE A BRANCH (ONE NESTED LEVEL) TO THE SHARED QUERY: A DocumentDetails NODE
+        # PLACED IN THE PULL-PLAN TREE, PLUS ITS UID (AND ORDER, FOR A CHILD) PLUMBING COLUMNS.
+        # docs/INTERSECTION_SURVEY.md §6
+        nonlocal primary_doc_details
+        node = DocumentDetails(sub_table)
+        if table_number == 0:
+            primary_doc_details = node  # ROOT OF TREE
+        else:
+            place(node, primary_doc_details)  # INSERT INTO TREE
+        node.alias = sub_table
+
+        # WE ALWAYS ADD THE UID
+        n = index_to_uid[sub_table] = node.id_coord = len(sql_selects)
+        uid_sql = SqlVariable(sub_table, UID, jx_type=JX_TEXT)
+        sql_selects.append(sql_alias(uid_sql, _make_column_name(n)))
+        if table_number > 0:
+            # UID AND ORDER FOR CHILD TABLE
+            index_to_column[n] = ColumnMapping(
+                sql=uid_sql, type="number", nested_path=node.nested_path, column_alias=_make_column_name(n),
+            )
+            n = len(sql_selects)
+            order_sql = SqlVariable(sub_table, ORDER, jx_type=JX_INTEGER)
+            sql_selects.append(sql_alias(order_sql, _make_column_name(n)))
+            index_to_column[n] = ColumnMapping(
+                sql=order_sql, type="number", nested_path=node.nested_path, column_alias=_make_column_name(n),
+            )
+        return node
+
     # EVERY SELECT STATEMENT THAT WILL BE REQUIRED, NO MATTER THE DEPTH
     # WE WILL CREATE THEM ACCORDING TO THE DEPTH REQUIRED
     for table_number, sub_table in enumerate(self.snowflake.query_paths):
-        nested_doc_details = DocumentDetails(sub_table)
+        nested_doc_details = add_branch(sub_table, table_number)
+        nested_path = nested_doc_details.nested_path
         sub_schema = self.snowflake.get_schema(list(reversed([
             t for t in self.snowflake.query_paths if startswith_field(sub_table, t)
         ])))
-        if table_number == 0:
-            # ROOT OF TREE
-            primary_doc_details = nested_doc_details
-        else:
-            # INSERT INTO TREE
-            def place(parent_doc_details: DocumentDetails):
-                if startswith_field(sub_table, parent_doc_details.nested_path[0]):
-                    for c in parent_doc_details.children:
-                        if place(c):
-                            return True
-                    parent_doc_details.children.append(nested_doc_details)
-                    nested_doc_details.nested_path = [sub_table, *parent_doc_details.nested_path]
-                    return True
-
-            place(primary_doc_details)
-
-        nested_path = nested_doc_details.nested_path
-        alias = nested_doc_details.alias = sub_table
-
-        # WE ALWAYS ADD THE UID
-        column_number = index_to_uid[sub_table] = nested_doc_details.id_coord = len(sql_selects)
-        sql_select = SqlVariable(alias, UID, jx_type=JX_TEXT)
-        sql_selects.append(sql_alias(sql_select, _make_column_name(column_number)))
-        if table_number > 0:
-            # UID FOR CHILD TABLE
-            index_to_column[column_number] = ColumnMapping(
-                sql=sql_select, type="number", nested_path=nested_path, column_alias=_make_column_name(column_number),
-            )
-
-            # ORDER FOR CHILD TABLE
-            column_number = len(sql_selects)
-            sql_select = SqlVariable(alias, ORDER, jx_type=JX_INTEGER)
-            sql_selects.append(sql_alias(sql_select, _make_column_name(column_number)))
-            index_to_column[column_number] = ColumnMapping(
-                sql=sql_select, type="number", nested_path=nested_path, column_alias=_make_column_name(column_number),
-            )
 
         # WE DO NOT NEED DATA FROM TABLES WE REQUEST NOTHING FROM
         if sub_table not in active_paths:
