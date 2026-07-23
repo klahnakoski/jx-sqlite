@@ -440,3 +440,34 @@ columns assemble as sub-objects; a lone leaf collapses to a bare list via `push_
    WHERE + `required`/drop-childless (proven above); reassembler rooted at origin with ancestors
    as joins; hierarchical order keys from the origin down. Reverted to step 2 GREEN; this is the
    next build.
+
+   **3-pre LANDED (2026-07-23, commits `7e15e6f` + `ac8772c`; full suite GREEN 373/0/77).** The
+   inline first-row join is gone globally. Final shape:
+   - **Arms.** Each snowflake level = one UNION-ALL arm. The **origin arm LEFT JOINs** down from
+     the fact (a childless parent yields one row = the implicit empty element — Kyle's option 2:
+     `missing child == [{}]`, realised by the LEFT JOIN, not a code branch). **Child arms
+     INNER JOIN** (emit only real rows; no `order>0` filter — that filter's hidden job of
+     suppressing LEFT-JOIN-NULL rows on child arms is now done by INNER). Select condition
+     flipped: a column is real on an arm iff it is at that level **or an ancestor** joined there
+     (`startswith(arm, col.table)`); descendants/siblings NULL-pad.
+   - **Reassembler = streaming hierarchical grouper** (`_accumulate_nested`, rewritten). Rooted at
+     the origin (`parent_id_coord=None`). Build each element from its own row (child uids NULL),
+     then **dispatch the following same-uid rows to whichever child branch's uid is present** —
+     one pass, because ORDER BY keeps each child's rows contiguous. This is what makes **sibling
+     arrays** (`{a:[…], b:[…]}` both selected) assemble without one arm eating another's rows.
+     TRAP: rows carry **mo_dots `Null`, not `None`** — every uid-presence check uses `is_missing`,
+     not `is None` (an `is None` check silently dispatched the wrong sibling and ate its rows).
+   - **WHERE is per-arm.** An arm applies the compiled where iff every referenced table is joined
+     there (`all(startswith(arm, wt))`), else `WHERE 1`. A where table **below** the origin marks
+     its whole branch chain (origin-exclusive down to the where table) `required`; at assembly a
+     parent with **no surviving row** in a required child is dropped. Existence is keyed on a
+     *dispatched row*, not doc content (`exists a.b` selects no child columns, so the child's
+     doc is always empty — only the row's presence signals the match).
+   - **Order** left as (explicit sort keys, then every branch uid shallow→deep); the hierarchical
+     grouping it provides was already sufficient — no separate piece-4 change was needed.
+   - Test change: `test_deep_where_on_fact_table` lost its `expecting_resultset` (it encoded the
+     deleted inline row shape; Kyle: raw-row oracles here cause more harm than good).
+   - **Known gaps / next:** multi-level required-drop propagation is coded (chain marking) but only
+     single-level `where` is exercised by the suite. Nested-origin arms still LEFT JOIN the fact
+     ancestor even when unused (harmless). A default `LIMIT` is applied to the UNION *before*
+     assembly and can truncate mid-document — pre-existing, not addressed here.
