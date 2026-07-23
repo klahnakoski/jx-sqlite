@@ -10,7 +10,7 @@
 from typing import List, Dict, Tuple
 
 from jx_base import Column, is_op, FALSE
-from jx_base.expressions import NULL, ZERO, SqlScript, SelectOp, Variable
+from jx_base.expressions import NULL, SqlScript, SelectOp, Variable
 from jx_base.expressions.variable import is_variable
 from jx_base.expressions.sql_is_null_op import SqlIsNullOp
 from jx_base.expressions.sql_order_by_op import OneOrder
@@ -27,7 +27,6 @@ from jx_sqlite.utils import (
     get_column,
     UID,
     PARENT,
-    table_alias,
 )
 from mo_dots import (
     Data,
@@ -43,27 +42,22 @@ from mo_dots import (
 from mo_future import extend, first
 from mo_json.types import OBJECT, jx_type_to_json_type, JX_ANY, STRING, INTEGER, JX_TEXT, JX_INTEGER
 from mo_logs import Log
-from mo_sql import SQL_DESC, SQL_ASC, NO_SQL
+from mo_sql import SQL_DESC, SQL_ASC, NO_SQL, SQL_TRUE, SQL_INNER_JOIN
 from mo_sql.utils import untype_field
 from mo_sqlite import Facts
 from mo_sqlite import (
-    SQL_AND,
     SQL_FROM,
     SQL_LEFT_JOIN,
     SQL_ON,
     SQL_SELECT,
     SQL_UNION_ALL,
     SQL_WHERE,
-    sql_iso,
     sql_list,
     ConcatSQL,
-    SQL_ZERO,
-    SQL_GT,
 )
 from mo_sqlite import SQLang
 from mo_sqlite import quote_column, sql_alias
-from mo_sqlite.expressions import SqlVariable, SqlOrderByOp, SqlEqOp, SqlAliasOp, SqlLimitOp, SqlGtOp
-from mo_sqlite.expressions.sql_and_op import SqlAndOp
+from mo_sqlite.expressions import SqlVariable, SqlOrderByOp, SqlEqOp, SqlAliasOp, SqlLimitOp
 from mo_sqlite.expressions.sql_script import SqlScript
 from mo_times import Date
 
@@ -74,19 +68,32 @@ def _set_op(self, query):
     result = self.container.db.query(command)
 
     def _accumulate_nested(
-        rows,  # row generator
-        row,  # current row
-        next_row,  # we got this row, but it belongs to the next document
+        state,  # [current_row] one-element list; state[0] is None when the stream is exhausted
+        rows,  # row generator (advance with next(rows, None))
         nested_doc_details: DocumentDetails,  # describes how the rows get mapped to nested docs
-        parent_id: int,  # the id of the parent doc (for detecting when to step out of loop)
-        parent_id_coord: int,  # the column of the parent_id, so we may get the value
-    ) -> Tuple[Data, Data, List[Data]]:
+        parent_id: int,  # the id of the parent doc (child rows carry it at parent_id_coord)
+        parent_id_coord: int,  # the column of the parent_id; None at the origin (no above grouping)
+    ) -> List[Data]:
+        # STREAMING HIERARCHICAL GROUPER (NO INLINE FIRST-ROW).  Rows arrive in hierarchical
+        # ORDER BY (parent uid, then child uid, ...), so each element's own row (child uids NULL)
+        # precedes its child rows.  We build the element from its own row, then dispatch the
+        # following rows of the same element to whichever child's uid is present.  A LEFT-JOIN
+        # NULL element at the origin is a legitimate (empty) doc (missing child == implicit [{}]).
         output = []
         id_coord = nested_doc_details.id_coord
         curr_nested_path, _ = untype_field(nested_doc_details.nested_path[0])
-
+        is_origin = parent_id_coord is None
         index_to_column = tuple((c.push_list_name, c.pull) for _, c in nested_doc_details.index_to_column.items())
-        while True:
+        children = nested_doc_details.children
+
+        while state[0] is not None:
+            row = state[0]
+            if not is_origin and row[parent_id_coord] != parent_id:
+                break  # belongs to a different parent
+            my_id = row[id_coord]
+            if not is_origin and is_missing(my_id):
+                break  # a sibling branch's row (this level's uid absent); let the caller dispatch
+
             doc = Null
             for rel_field, pull in index_to_column:
                 value = pull(row)
@@ -99,46 +106,52 @@ def _set_op(self, query):
                     doc = doc or Data()
                     doc[rel_field] = value
 
-            for child_details in nested_doc_details.children:
-                # EACH NESTED TABLE MUST BE ASSEMBLED INTO A LIST OF OBJECTS
-                child_id = row[child_details.id_coord]
-                if child_id is None:
-                    continue
+            state[0] = next(rows, None)  # CONSUME THIS ELEMENT'S OWN ROW
+            consumed = set()  # id(child) that had a surviving (dispatched) row
+            if not is_missing(my_id):
+                # DISPATCH THE ROWS OF THIS ELEMENT (SAME my_id) TO THEIR CHILD BRANCHES.  ORDER BY
+                # KEEPS EACH CHILD'S ROWS CONTIGUOUS, SO ONE PASS PER CHILD RUN SUFFICES.
+                while state[0] is not None and state[0][id_coord] == my_id:
+                    crow = state[0]
+                    for child_details in children:
+                        if id(child_details) in consumed or is_missing(crow[child_details.id_coord]):
+                            continue
+                        consumed.add(id(child_details))
+                        nested_value = _accumulate_nested(state, rows, child_details, my_id, id_coord)
+                        if nested_value:
+                            doc = doc or Data()
+                            # THE CHILD'S ASSEMBLED VALUE LANDS AT ITS OWN PUSH NAME (AN EXPLICIT
+                            # DEEP-LEAF SELECT ACCUMULATES BARE VALUES AT THE TERM PATH); DEFAULT IS
+                            # THE CHILD TABLE'S RELATIVE PATH
+                            rel_field = child_details.push_list_name or relative_field(
+                                untype_field(child_details.nested_path[0])[0], curr_nested_path
+                            )
+                            doc[rel_field] = unwraplist(nested_value)
+                        break
+                    else:
+                        # NO UNCONSUMED CHILD OWNS crow (guards against an unexpected duplicate row)
+                        break
 
-                next_row, row, nested_value = _accumulate_nested(
-                    rows, row, next_row, child_details, row[id_coord], id_coord,
-                )
-                if not nested_value:
-                    continue
-                doc = doc or Data()
-                # THE CHILD'S ASSEMBLED VALUE LANDS AT ITS OWN PUSH NAME (AN EXPLICIT
-                # DEEP-LEAF SELECT ACCUMULATES BARE VALUES AT THE TERM PATH); DEFAULT IS
-                # THE CHILD TABLE'S RELATIVE PATH
-                rel_field = child_details.push_list_name or relative_field(
-                    untype_field(child_details.nested_path[0])[0], curr_nested_path
-                )
-                doc[rel_field] = unwraplist(nested_value)
+            # A WHERE FILTERED A REQUIRED CHILD TO NOTHING => DROP THIS PARENT.  KEY ON WHETHER A
+            # CHILD ROW SURVIVED (WAS DISPATCHED), NOT ON DOC CONTENT: A where LIKE `exists a.b`
+            # SELECTS NO COLUMNS FROM THE CHILD, SO EXISTENCE IS THE ONLY SIGNAL.
+            dropped = any(id(c) not in consumed for c in children if c.required)
 
-            if doc or not parent_id:
+            if not dropped and (doc or is_origin):
                 output.append(doc)
 
-            if not next_row:
-                try:
-                    next_row = next(rows)
-                except StopIteration:
-                    return Null, Null, output
-            if parent_id and parent_id != next_row[parent_id_coord]:
-                return next_row, row, output
-            row, next_row = next_row, None
+        return output
 
     cols = tuple(i for i in index_to_column.values() if i.push_list_name != None)
 
     if result.data:
-        all_rows = iter(result.data)
-        # REASSEMBLY ROOTS AT THE ORIGIN (primary_doc_details IS THE ORIGIN NODE): ANCESTORS OF
-        # THE ORIGIN ARE JOINS ONLY, NOT REASSEMBLY LEVELS.  parent_id=0 => EVERY ORIGIN ROW IS A
-        # TOP-LEVEL DOC (NO ABOVE-ORIGIN GROUPING), SO NO POST-PROC FLATTEN IS NEEDED.
-        _, _, data = _accumulate_nested(all_rows, next(all_rows), None, primary_doc_details, 0, 0)
+        state = [None]
+        rows = iter(result.data)
+        state[0] = next(rows, None)
+        # REASSEMBLY ROOTS AT THE ORIGIN (primary_doc_details IS THE ORIGIN NODE): ABOVE-ORIGIN
+        # ANCESTORS ARE JOINS ONLY, NOT REASSEMBLY LEVELS.  parent_id_coord=None => EVERY ORIGIN
+        # ELEMENT IS A TOP-LEVEL DOC (NO ABOVE-ORIGIN GROUPING), SO NO POST-PROC FLATTEN IS NEEDED.
+        data = _accumulate_nested(state, rows, primary_doc_details, 0, None)
     else:
         data = result.data
 
@@ -273,6 +286,20 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
         if any(startswith_field(a, t) for a in referenced_paths)
     ]
 
+    # TABLES THE where REFERENCES.  A where TABLE STRICTLY BELOW THE ORIGIN CANNOT BE EVALUATED ON
+    # THE ORIGIN ARM (THE CHILD IS NOT JOINED THERE, NO INLINE FIRST-ROW); INSTEAD ITS OWN ARM
+    # FILTERS AND THE BRANCH IS MARKED required SO A PARENT WITH NO SURVIVING CHILD IS DROPPED AT
+    # ASSEMBLY.  docs/INTERSECTION_SURVEY.md §7 (3-pre WHERE)
+    where_tables = set(
+        c.nested_path[0]
+        for v in set(
+            rest if first == "row" else v
+            for v in query.where.vars()
+            for first, rest in [tail_field(v)]
+        )
+        for _, c in schema.leaves(v)
+    )
+
     # EVERY SELECT STATEMENT THAT WILL BE REQUIRED, NO MATTER THE DEPTH
     # WE WILL CREATE THEM ACCORDING TO THE DEPTH REQUIRED
     origin_doc_details = None  # REASSEMBLY ROOTS HERE (THE ORIGIN), NOT AT THE FACT
@@ -280,6 +307,14 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
         nested_doc_details = builder.add_branch(sub_table, table_number)
         if sub_table == origin:
             origin_doc_details = nested_doc_details
+        if (
+            sub_table != origin
+            and startswith_field(sub_table, origin)
+            and any(startswith_field(wt, sub_table) for wt in where_tables)
+        ):
+            # ON THE CHAIN FROM JUST-BELOW-ORIGIN DOWN TO A where TABLE: A PARENT WITH NO SURVIVING
+            # ROW HERE IS DROPPED, AND THE DROP BUBBLES UP TO THE ORIGIN.
+            nested_doc_details.required = True
         nested_path = nested_doc_details.nested_path
         sub_schema = self.snowflake.get_schema(list(reversed([
             t for t in self.snowflake.query_paths if startswith_field(sub_table, t)
@@ -371,7 +406,8 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
 
     unsorted_sql = _make_sql_for_one_nest_in_set_op(
         self,
-        self.snowflake.fact_name,
+        origin,
+        origin,
         sql_selects,
         where_clause,
         active_paths,
@@ -380,6 +416,7 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
         query.limit,
         schema,
         branches,
+        where_tables,
     )
 
     ordered_sql = SqlOrderByOp(unsorted_sql, sorts)
@@ -392,6 +429,7 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
 def _make_sql_for_one_nest_in_set_op(
     self,
     primary_nested_path,
+    origin_path,  # THE QUERY ORIGIN (ITS ARM LEFT-JOINS FOR THE EMPTY ELEMENT; CHILD ARMS INNER-JOIN)
     selects,  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE
     where_clause,
     active_columns,
@@ -400,10 +438,13 @@ def _make_sql_for_one_nest_in_set_op(
     limit,
     schema,
     branches,  # THE NESTED LEVELS OF THE RESULT HIERARCHY (ONE UNION-ALL BRANCH EACH)
+    where_tables,  # TABLES THE where REFERENCES (FOR PER-ARM WHERE GATING)
 ):
     """
-    FOR EACH NESTED LEVEL, WE MAKE A QUERY THAT PULLS THE VALUES/COLUMNS REQUIRED
-    WE `UNION ALL` THEM WHEN DONE
+    ONE UNION-ALL ARM PER BRANCH AT OR BELOW primary_nested_path.  EACH ARM IS ROOTED AT THE FACT
+    AND LEFT-JOINS DOWN THROUGH ITS ANCESTORS TO ITS OWN LEVEL (SUPPLYING ANCESTOR uids/COLUMNS);
+    IT DOES NOT JOIN ITS CHILDREN - THEY ARE THEIR OWN ARMS (NO INLINE FIRST-ROW).
+    docs/INTERSECTION_SURVEY.md §7 (3-pre)
     """
 
     parent_alias = "a"
@@ -412,13 +453,21 @@ def _make_sql_for_one_nest_in_set_op(
     children_sql = []
     done = []
 
+    # THIS ARM MAY APPLY THE where ONLY IF EVERY TABLE IT REFERENCES IS JOINED HERE (AT OR ABOVE
+    # primary); OTHERWISE A DEEPER ARM FILTERS AND ITS BRANCH IS required (DROP-CHILDLESS).
+    arm_where = (
+        where_clause
+        if all(startswith_field(primary_nested_path, wt) for wt in where_tables)
+        else SQL_TRUE
+    )
+
     # STATEMENT FOR EACH NESTED PATH
     tables = branches
     for i, sub_table_name in enumerate(tables):
         if any(startswith_field(sub_table_name, d) for d in done):
             continue
 
-        alias = sub_table_name  # was table_alias(i)
+        alias = sub_table_name  # BUILDER'S uid/VALUE COLUMNS REFERENCE TABLES BY FULL NAME
 
         if primary_nested_path == sub_table_name:
             select_clause = []
@@ -429,10 +478,11 @@ def _make_sql_for_one_nest_in_set_op(
                     select_clause.append(s)
                     continue
 
-                if startswith_field(column_mapping.nested_path[0], sub_table_name):
+                # REAL VALUE IFF THE COLUMN IS AT THIS LEVEL OR AN ANCESTOR JOINED IN THIS ARM;
+                # DESCENDANT/SIBLING COLUMNS ARE NULL-PADDED (THEIR OWN ARM SUPPLIES THEM).
+                if startswith_field(sub_table_name, column_mapping.nested_path[0]):
                     select_clause.append(SqlAliasOp(column_mapping.sql, column_mapping.column_alias))
                 else:
-                    # DO NOT INCLUDE DEEP STUFF AT THIS LEVEL
                     select_clause.append(SqlAliasOp(NULL.to_sql(schema), column_mapping.column_alias))
 
             if sub_table_name == self.snowflake.fact_name:
@@ -441,59 +491,47 @@ def _make_sql_for_one_nest_in_set_op(
                     SqlAliasOp(SqlVariable(self.snowflake.fact_name, None, jx_type=self.schema.jx_type), alias),
                 ))
             else:
+                # ORIGIN ARM: LEFT JOIN SO A CHILDLESS PARENT STILL YIELDS ONE ROW = THE IMPLICIT
+                # EMPTY ELEMENT (missing child == [{}]).  CHILD ARM: INNER JOIN - EMIT ONLY REAL
+                # ROWS (A PARENT LACKING THIS CHILD IS ALREADY COVERED BY THE ORIGIN/OWN ARM,
+                # ELSE ITS NULL-PAD ROW WOULD BE A SPURIOUS SIBLING/EMPTY).  NO order>0 (NO INLINE).
                 from_clause.append(ConcatSQL(
-                    SQL_LEFT_JOIN,
+                    SQL_LEFT_JOIN if sub_table_name == origin_path else SQL_INNER_JOIN,
                     SqlAliasOp(SqlVariable(sub_table_name, None), alias),
                     SQL_ON,
                     SqlEqOp(SqlVariable(alias, PARENT), SqlVariable(parent_alias, UID)),
                 ))
-                where_clause = SqlAndOp(where_clause, SqlGtOp(SqlVariable(alias, ORDER), ZERO))
             parent_alias = alias
 
         elif startswith_field(primary_nested_path, sub_table_name):
-            # PARENT TABLE
-            # NO NEED TO INCLUDE COLUMNS, BUT WILL INCLUDE ID AND ORDER
+            # ANCESTOR OF primary: JOINED FOR ITS uid/COLUMNS (NO ORDER FILTER, NO INLINE)
             if sub_table_name == self.snowflake.fact_name:
                 from_clause.append(ConcatSQL(SQL_FROM, sql_alias(quote_column(self.snowflake.fact_name), alias)))
             else:
-                parent_alias = alias = table_alias(i)
                 from_clause.append(ConcatSQL(
                     SQL_LEFT_JOIN,
                     sql_alias(quote_column(sub_table_name), alias),
                     SQL_ON,
                     SqlEqOp(SqlVariable(alias, PARENT), SqlVariable(parent_alias, UID)),
                 ))
-                where_clause = ConcatSQL(
-                    sql_iso(where_clause), SQL_AND, SqlVariable(parent_alias, ORDER), SQL_GT, SQL_ZERO,
-                )
             parent_alias = alias
 
         elif startswith_field(sub_table_name, primary_nested_path):
-            # CHILD TABLE
-            # GET FIRST ROW FOR EACH NESTED TABLE
-            from_clause.append(ConcatSQL(
-                SQL_LEFT_JOIN,
-                sql_alias(SqlVariable(sub_table_name, None), alias),
-                SQL_ON,
-                SqlEqOp(SqlVariable(alias, PARENT), SqlVariable(parent_alias, UID)),
-                SQL_AND,
-                SqlEqOp(SqlVariable(alias, ORDER), ZERO),
-            ))
-
-            # IMMEDIATE CHILDREN ONLY
+            # CHILD: ITS OWN ARM (NOT INLINE-JOINED HERE)
             done.append(sub_table_name)
-            # NESTED TABLES WILL USE RECURSION
             children_sql.append(_make_sql_for_one_nest_in_set_op(
                 self,
                 sub_table_name,
-                selects,  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE
+                origin_path,
+                selects,
                 where_clause,
                 active_columns,
-                index_to_sql_select,  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
+                index_to_sql_select,
                 None,
                 None,
-                schema=schema,
-                branches=branches,
+                schema,
+                branches,
+                where_tables,
             ))
         else:
             # SIBLING PATHS ARE IGNORED
@@ -503,7 +541,7 @@ def _make_sql_for_one_nest_in_set_op(
         jx_type=JX_ANY,
         # TODO: IS THIS THE TYPE FOR THE SET OF COLUMNS?  (INCLUDE NESTING, SO WE MAY UNION TO GET FINAL TYPE)
         expr=SQL_UNION_ALL.join([
-            ConcatSQL(SQL_SELECT, sql_list(select_clause), ConcatSQL(*from_clause), SQL_WHERE, where_clause),
+            ConcatSQL(SQL_SELECT, sql_list(select_clause), ConcatSQL(*from_clause), SQL_WHERE, arm_where),
             *children_sql,
         ]),
         frum=None,

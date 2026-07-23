@@ -765,18 +765,6 @@ class TestDeepOps(BaseTestCase):
                     }}},
                 ]
             },
-            # RAW SQL ROWS (docs/JSON in Database.md, "Sorted and Compressed" + metadata):
-            # fact __id__ | fact o | child __id__ | child __order__ | child-arm o (NULL pad) |
-            # child v | sort key (o)
-            # PARENT __id__ ON EVERY ROW; FIRST CHILD JOINED ONTO THE PARENT ROW; REMAINING
-            # CHILDREN UNION'D WITH PARENT VALUES NULL.  a._a.v ROUTES THROUGH THE SUBQUERY PATH
-            # (branch-per-deep-leaf), SO IT HAS NO REDUNDANT NULL-PAD COLUMN AT THE FACT BRANCH.
-            "expecting_resultset": [
-                [1000, 1, 1002, 0, NULL, "still more", 1],
-                [1005, 2, 1006, 0, NULL, "string!", 2],
-                [1001, 3, 1003, 0, NULL, "a string", 3],
-                [1001, NULL, 1004, 1, NULL, "another string", 3],
-            ],
         }
         self.utils.execute_tests(test)
 

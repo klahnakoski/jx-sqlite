@@ -30,6 +30,7 @@ class DocumentDetails:
     index_to_column: Dict[int, ColumnMapping]
     children: List["DocumentDetails"]
     push_list_name: str  # WHERE THIS TABLE'S ASSEMBLED VALUE LANDS IN THE PARENT DOC (None = TABLE'S RELATIVE PATH)
+    required: bool  # A WHERE FILTERS THIS BRANCH: A PARENT WITH NO SURVIVING ROW HERE IS DROPPED AT ASSEMBLY
 
     def __init__(self, sub_table: str):
         self.sub_table = sub_table
@@ -39,6 +40,7 @@ class DocumentDetails:
         self.index_to_column = {}
         self.children = []
         self.push_list_name = None
+        self.required = False
 
 
 def place(node, parent):
