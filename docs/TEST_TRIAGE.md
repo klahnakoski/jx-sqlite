@@ -300,6 +300,37 @@ typed leaf, not the coalesced value.
   routing is fixed. The `sql_aggs["null"]` KeyError for a mixed select is gone for ops that *do*
   have an implementation (count/cardinality both work beside a plain column now).
 
+- [x] test_select_{sum,max,min,average}_of_collection — **the rest of the collection family on
+  ToListOp.** `sum`/`max`/`min` had a `to_sql` from an earlier era (`SUM(self.term)`, `MAX(frum)`)
+  that could only ever have worked in a GROUP BY; in expression position they crashed (`self.term`
+  is `None`; `MAX(arr)` names a column that does not exist for a nested array). All four are now
+  `ToListOp(self.frum).aggregate(AGG, schema)`, like count/cardinality. `avg` needed a jx_base op
+  at all (`AvgOp` was a two-line stub with no `vars`/`__data__`/`partial_eval`) and the `average`
+  and `mean` spellings needed to reach it (`operators` had only `avg`). Each also needs
+  `join_vars() == set()` — same reason as CountOp: the aggregate resolves its nested column
+  through its own FROM, and a branch for it makes the assembler hang child docs off the scalar
+  ('float' object does not support item assignment).
+
+  Two jx_base `missing()` overrides were dead on arrival (`SumOp` had no `return`; `MaxOp` called
+  an undefined `Missing`) and `MinOp` claimed `FALSE` — a lie, min of an empty collection is null.
+  All three are deleted, so the family inherits the default `MissingOp(self)`: *this value is
+  missing exactly when it is null*, which is what a SQL aggregate does.
+
+  That default was unusable before: `SqlScript` renders a non-FALSE miss as
+  `CASE WHEN NOT (miss) THEN expr END`, and rendering `MissingOp(self)` renders `expr` again,
+  whose miss is the same MissingOp — infinite recursion. The wrapper is provably a no-op there
+  (`CASE WHEN NOT (expr IS NULL) THEN expr END == expr`), so `SqlScript._is_self_missing()` now
+  skips it. It replaces a dead branch that tested the same shape but only for a Variable — dead
+  because the line above it already returns for every Variable. Not applied to text, where
+  MissingOp also counts `''` and the wrapper does change the value. Cost: one `Expression.__eq__`
+  per aggregate script (logs "this is slow on SumOp"), because `partial_eval` rebuilds the op, so
+  the cheap identity test does not hold.
+
+  Left out: `product` (no native SQLite aggregate — `EXP(SUM(LN(x)))` breaks on 0 and negatives,
+  so it needs a different shape), and `union`, which is set-valued (cluster 6). jx_base
+  `ProductOp` is a copy of `SumOp` down to `__data__` returning `{"sum": ...}` and `__call__`
+  calling `sum()` — fix those when product gets its SQL.
+
 ## Suggested order of attack
 
 1. **Cluster 1** — the big one and the remaining bulk; multi-table join assembly in edges.py.

@@ -7,21 +7,21 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import MaxOp as _MaxOp, SqlScript
+from jx_base.expressions import AvgOp as _AvgOp, SqlScript
 from jx_sqlite.expressions._utils import check
 from jx_sqlite.expressions.to_list_op import ToListOp
 from mo_sqlite.expressions.sql_script import SqlScript
 from mo_json import JX_NUMBER
 
 
-class MaxOp(_MaxOp):
+class AvgOp(_AvgOp):
     """
-    THE LARGEST VALUE IN THE COLLECTION; MAX SKIPS NULL ROWS, SO IT IS DECISIVE, AND IT IS NULL
-    ONLY WHEN THE COLLECTION HAS NO VALUES
+    THE MEAN OF THE COLLECTION; AVG SKIPS NULL ROWS, SO IT IS DECISIVE, AND IT IS NULL ONLY WHEN
+    THE COLLECTION HAS NO VALUES
     """
 
     @check
     def to_sql(self, schema) -> SqlScript:
         return SqlScript(
-            jx_type=JX_NUMBER, expr=ToListOp(self.frum).aggregate("MAX", schema), frum=self, schema=schema,
+            jx_type=JX_NUMBER, expr=ToListOp(self.frum).aggregate("AVG", schema), frum=self, schema=schema,
         )

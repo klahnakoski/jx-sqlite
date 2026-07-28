@@ -446,6 +446,97 @@ class TestSetOps(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
+    def test_select_sum_of_collection(self):
+        # LIKE test_select_count_of_collection: AN EXPRESSION OVER *THIS* DOCUMENT'S COLLECTION.
+        # sum OF AN EMPTY COLLECTION IS null (DECISIVE: null WHEN ALL TERMS ARE null), WHILE
+        # count OF ONE IS 0
+        test = {
+            "data": [
+                {"id": 1, "arr": [1, 2, 3]},
+                {"id": 2, "arr": [7]},
+                {"id": 3},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": {"name": "n", "value": {"sum": "arr"}},
+                "sort": "id",
+            },
+            "expecting_list": {"meta": {"format": "list"}, "data": [6, 7, null]},
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["n"],
+                "data": [[6], [7], [null]],
+            },
+        }
+        self.utils.execute_tests(test)
+
+    @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
+    def test_select_max_of_collection(self):
+        test = {
+            "data": [
+                {"id": 1, "arr": [1, 2, 3]},
+                {"id": 2, "arr": [7]},
+                {"id": 3},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": {"name": "n", "value": {"max": "arr"}},
+                "sort": "id",
+            },
+            "expecting_list": {"meta": {"format": "list"}, "data": [3, 7, null]},
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["n"],
+                "data": [[3], [7], [null]],
+            },
+        }
+        self.utils.execute_tests(test)
+
+    @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
+    def test_select_min_of_collection(self):
+        test = {
+            "data": [
+                {"id": 1, "arr": [1, 2, 3]},
+                {"id": 2, "arr": [7]},
+                {"id": 3},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": {"name": "n", "value": {"min": "arr"}},
+                "sort": "id",
+            },
+            "expecting_list": {"meta": {"format": "list"}, "data": [1, 7, null]},
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["n"],
+                "data": [[1], [7], [null]],
+            },
+        }
+        self.utils.execute_tests(test)
+
+    @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
+    def test_select_average_of_collection(self):
+        test = {
+            "data": [
+                {"id": 1, "arr": [1, 2, 3]},
+                {"id": 2, "arr": [7]},
+                {"id": 3},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": {"name": "n", "value": {"average": "arr"}},
+                "sort": "id",
+            },
+            "expecting_list": {"meta": {"format": "list"}, "data": [2, 7, null]},
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["n"],
+                "data": [[2], [7], [null]],
+            },
+        }
+        self.utils.execute_tests(test)
+
+    @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
     def test_select_average(self):
         test = {
             "data": [{"a": {"_b": [

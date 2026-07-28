@@ -11,6 +11,7 @@ from jx_sqlite.expressions._utils import JxSql
 from jx_sqlite.expressions.abs_op import AbsOp
 from jx_sqlite.expressions.add_op import AddOp
 from jx_sqlite.expressions.and_op import AndOp
+from jx_sqlite.expressions.avg_op import AvgOp
 from jx_sqlite.expressions.between_op import BetweenOp
 from jx_sqlite.expressions.cardinality_op import CardinalityOp
 from jx_sqlite.expressions.case_op import CaseOp

@@ -9,12 +9,19 @@
 #
 from jx_base.expressions import MinOp as _MinOp, SqlScript
 from jx_sqlite.expressions._utils import check
+from jx_sqlite.expressions.to_list_op import ToListOp
 from mo_sqlite.expressions.sql_script import SqlScript
 from mo_json import JX_NUMBER
-from mo_sqlite import sql_call
 
 
 class MinOp(_MinOp):
+    """
+    THE SMALLEST VALUE IN THE COLLECTION; MIN SKIPS NULL ROWS, SO IT IS DECISIVE, AND IT IS NULL
+    ONLY WHEN THE COLLECTION HAS NO VALUES
+    """
+
     @check
     def to_sql(self, schema) -> SqlScript:
-        return SqlScript(jx_type=JX_NUMBER, expr=sql_call("MIN", self.frum.to_sql(schema)), frum=self, schema=schema)
+        return SqlScript(
+            jx_type=JX_NUMBER, expr=ToListOp(self.frum).aggregate("MIN", schema), frum=self, schema=schema,
+        )

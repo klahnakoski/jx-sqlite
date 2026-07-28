@@ -21,7 +21,7 @@ from jx_base.expressions.variable import is_variable
 from jx_base.language import is_op, Expression, Language
 from mo_future import extend
 from mo_imports import expect, export
-from mo_json import JxType
+from mo_json import JxType, JX_TEXT
 from mo_logs import Log, logger
 from mo_sql import SQL, SQL_CASE, SQL_END, SQL_NULL, SQL_THEN, SQL_WHEN, SQL_NOT, SQL_OP, SQL_CP
 
@@ -89,6 +89,16 @@ class SqlScript(_SqlScript, SQL):
         else:
             Log.error("do not know how to handle")
 
+    def _is_self_missing(self):
+        """
+        TRUE WHEN miss IS NOTHING MORE THAN "THIS VALUE IS NULL", SO THE CASE WRAPPER WOULD BE
+        CASE WHEN NOT (expr IS NULL) THEN expr END == expr.  THAT IS WHAT MissingOp RENDERS FOR
+        AN expr THAT DEFINES ITS OWN missing (THE DEFAULT Expression.missing), EXCEPT FOR TEXT,
+        WHERE MISSING ALSO MEANS THE EMPTY STRING AND THE WRAPPER IS LOAD-BEARING.
+        WITHOUT THIS THE WRAPPER RECURSES: RENDERING miss RENDERS expr, WHOSE miss IS miss AGAIN
+        """
+        return is_op(self.miss, MissingOp) and self.miss.expr == self.frum and self._jx_type != JX_TEXT
+
     def __iter__(self):
         self.miss = self.miss.partial_eval(SQLang)
         if self.miss is TRUE:
@@ -98,7 +108,7 @@ class SqlScript(_SqlScript, SQL):
             yield from self._expr
             return
 
-        if is_op(self.miss, MissingOp) and is_variable(self.frum) and self.miss.expr == self.frum:
+        if self._is_self_missing():
             yield from self._expr
             return
 
@@ -123,7 +133,7 @@ class SqlScript(_SqlScript, SQL):
         elif self.miss is FALSE or is_variable(self.frum):
             return self._expr
 
-        if is_op(self.miss, MissingOp) and is_variable(self.frum) and self.miss.expr == self.frum:
+        if self._is_self_missing():
             return self._expr
 
         try:
