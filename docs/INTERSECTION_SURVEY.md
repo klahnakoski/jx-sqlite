@@ -496,5 +496,73 @@ columns assemble as sub-objects; a lone leaf collapses to a bare list via `push_
      deleted inline row shape; Kyle: raw-row oracles here cause more harm than good).
    - **Known gaps / next:** multi-level required-drop propagation is coded (chain marking) but only
      single-level `where` is exercised by the suite. Nested-origin arms still LEFT JOIN the fact
-     ancestor even when unused (harmless). A default `LIMIT` is applied to the UNION *before*
-     assembly and can truncate mid-document — pre-existing, not addressed here.
+     ancestor even when unused (harmless). The default `LIMIT`-truncates-mid-document gap is now
+     **closed locally** (step 3 made LIMIT count documents: slice at assembly, no SQL row-limit)
+     and **designed for remote** in §8 (the spine). See §8 before touching order/limit again.
+
+## 8. The spine — the ordering was always assembly plumbing (2026-07-27)
+
+**Kyle's reframing (the lede).** The `ORDER BY` over the union was never really the *user's* sort.
+Its job is **assembly**: it delivers rows so the Python streaming grouper (`_accumulate_nested`)
+can carve the union into documents in one pass — each document's own row before its children,
+each child's rows contiguous. That ordering *is* a spine: a total order over documents with their
+internal row-grouping. **We always had a spine.** It was just *implicit* — never named, never
+addressable. Python re-derives document boundaries at runtime by watching uid columns transition
+in a fully-materialised, fully-ordered stream. The user's `sort` is only one prefix of that order;
+the branch-uid tail is pure plumbing.
+
+**The origin arm is the proto-spine.** It already enumerates documents — one row per origin
+element (the all-child-NULL row, LEFT-joined down to the origin). What it never did was *drive* or
+*bound* the other arms. Promote it and three things fall out at once.
+
+**Making the spine explicit (the remote-store shape).** Materialise one row per document, carrying
+a rank, limited:
+
+```sql
+spine AS (
+  SELECT origin.__id__ AS doc,
+         ROW_NUMBER() OVER (ORDER BY <sort keys>) AS rank
+  FROM   <origin join-chain + sort/where tables>
+  WHERE  <the full where>
+  ORDER BY <sort keys>
+  LIMIT  n
+)
+```
+
+Every data arm (origin arm + each child arm) `INNER JOIN spine ON <arm's origin table>.__id__ =
+spine.doc`, and the outer query is `ORDER BY spine.rank, <child __order__ per level>`. Across the
+sibling arms it stays `UNION ALL` (different columns per arm); the spine-join lives *inside* each
+arm. INNER, not LEFT — empty documents are still carried by the origin arm's own LEFT JOIN down to
+the origin table, which is itself pinned to the spine. This is the "limit in a subquery, then join
+from there" shape.
+
+**Three payoffs from the one construct:**
+
+1. **Document LIMIT** — bounded transfer. At most `n` documents' worth of rows leave the store;
+   no fetch-the-whole-union-and-slice (which is what the local path now does, acceptable only
+   because sqlite is "own resources").
+2. **Global document ORDER** — the outer sort collapses to a single clean `spine.rank`, computed
+   once. This is P5 (order recovery) reified as a structure instead of an emergent property of
+   `ORDER BY` + Python.
+3. **It dissolves the open SORT blocker.** Nested-origin-sorted-by-a-nested-column
+   (`from b, sort b.a`) was blocked because `b.a` is a SELECT value valid only on the arm where
+   `b.a` is joined — NULL-padded off-arm, so a *global* value-sort couldn't be expressed across the
+   union. In the spine, `b.a` **is** joined; the global order is computed there once and every arm
+   inherits it as `spine.rank` via the join. The sort key never has to survive the union. The child
+   arms stop carrying sort columns entirely — sort lives in exactly one place.
+
+**Two traps.**
+- **Fan-out.** The spine must stay one-row-per-document. `where exists a.b`, or a sort touching a
+  *child* table, would multiply origin rows if joined naively → use a **semi-join** (`WHERE EXISTS
+  (child …)`) for existence, and for a nested sort key the settled **parent-sort-value** model
+  (rank the document by e.g. `MIN/MAX(child sort value)` per origin = "parent = first child's sort
+  value"). Plain joins in the spine only for tables 1:1 with the origin.
+- **Determinism.** `ROW_NUMBER` needs a total order — append the origin uid as final tiebreak or
+  ties shuffle across the `LIMIT` cutoff.
+
+**Cost & scope.** Every arm gains a join to the spine, and the spine re-evaluates the where/sort
+join-chain once. Clearly worth it for a remote container; overkill for local sqlite, where
+fetch-all-then-slice-at-assembly is simpler and already landed. So the spine is the **remote /
+pushed-down path**, not a rewrite of local `_set_op`. The value of writing it down now: it names
+what the ORDER BY was always doing, and shows the limit and the global sort are the same problem
+seen from two sides — both are the spine.
