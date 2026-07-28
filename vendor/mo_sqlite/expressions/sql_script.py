@@ -98,10 +98,6 @@ class SqlScript(_SqlScript, SQL):
             yield from self._expr
             return
 
-        if TYPE_CHECK and len(inspect.stack()) > 100:
-            logger.alert("stack overflow?")
-            return
-
         if is_op(self.miss, MissingOp) and is_variable(self.frum) and self.miss.expr == self.frum:
             yield from self._expr
             return

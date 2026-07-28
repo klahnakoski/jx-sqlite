@@ -91,6 +91,41 @@ def _binaryop_to_sql(self, schema):
     return SqlScript(jx_type=jx_type, expr=sql, frum=self, miss=missing, schema=schema,)
 
 
+def _decisive_by_identity(iso, sign, zero):
+    """
+    DECISIVE FORM FOR AN OP WITH AN IDENTITY VALUE (add->0, mul->1): A NULL TERM BECOMES THE
+    IDENTITY, SO IT CAN NOT CHANGE THE RESULT
+    """
+
+    def build(terms, schema):
+        temp = [SqlCoalesceOp(t, zero).partial_eval(SQLang).to_sql(schema).expr for t in terms]
+        return iso(sign.join(sql_iso(t) for t in temp))
+
+    return build
+
+
+def _decisive_by_aggregate(agg):
+    """
+    DECISIVE FORM FOR AN OP WITH NO IDENTITY VALUE TO COALESCE TO: MAX/MIN HAVE NO
+    REPRESENTABLE -inf/+inf, AND SQLite's SCALAR MAX()/MIN() ARE NULL-POISONING.  THE AGGREGATE
+    OF THE SAME NAME DOES SKIP NULLS, SO STACK THE TERMS INTO A ONE-COLUMN TABLE AND AGGREGATE
+    THAT.  EACH TERM IS WRITTEN ONCE (max/min NEST, SO A FORM THAT REPEATS ITS TERMS EXPLODES)
+    """
+    column = SQL("c")
+
+    def build(terms, schema):
+        rows = JoinSQL(
+            SQL_UNION_ALL,
+            [
+                ConcatSQL(SQL_SELECT, sql_iso(t.partial_eval(SQLang).to_sql(schema).expr), SQL_AS, column)
+                for t in terms
+            ],
+        )
+        return sql_iso(SQL_SELECT, sql_call(agg, column), SQL_FROM, sql_iso(rows))
+
+    return build
+
+
 def multiop_to_sql(self, schema):
     iso, sign, zero, jx_type = _sql_operators[self.op]
     if len(self.terms) == 0:
@@ -98,8 +133,7 @@ def multiop_to_sql(self, schema):
 
     if self.decisive:
         miss = AndOp(*(t.missing(SQLang) for t in self.terms))
-        temp = [SqlCoalesceOp(t, zero).partial_eval(SQLang).to_sql(schema).expr for t in self.terms]
-        expr = iso(sign.join(sql_iso(t) for t in temp))
+        expr = _decisive_forms[self.op](self.terms, schema)
     else:
         miss = OrOp(*(t.missing(SQLang) for t in self.terms), nulls=False)
         expr = iso(sign.join(sql_iso(t.partial_eval(SQLang).to_sql(schema)) for t in self.terms))
@@ -145,6 +179,13 @@ _sql_operators = {
     "least": (lambda x: ConcatSQL(SQL("MIN"), SQL_OP, x, SQL_CP), SQL_COMMA, NULL, JX_NUMBER),
     "tally": (sql_iso, SQL_PLUS, ZERO, JX_INTEGER),
 }
+
+# HOW EACH MULTI-OP BUILDS ITS DECISIVE (NULL-SKIPPING) FORM; MOST OPS COALESCE TO THEIR IDENTITY
+_decisive_forms = {
+    op: _decisive_by_identity(iso, sign, zero) for op, (iso, sign, zero, _) in _sql_operators.items()
+}
+_decisive_forms["most"] = _decisive_by_aggregate("MAX")
+_decisive_forms["least"] = _decisive_by_aggregate("MIN")
 
 
 _v2b = {True: True, "true": True, "T": True, 1: True, False: False, "false": False, "F": False, 0: False, None: None}
