@@ -204,6 +204,34 @@ change.
 - [-] test_set_ops.py::test_max_limit — "no need for limit when using own resources"
 - [-] test_query_normalization.py::test_naming_select — "test is still unclear"
 
+## 14. Filter ops (test_filters.py — inbound from svn 2026-07-27, WHERE-clause operators)
+
+A new shared conformance module arrived via svn (`cfc8b08`) exercising operators inside
+`where`. It also brought the `ExpOp`→`PowOp` rename (jx_base/jx_python) that broke every
+jx_sqlite import until mirrored. Type-suffix reference for the remaining work: a value's typed
+columns are `x.$B` (bool) / `x.$I` (int) / `x.$N` (number) / `x.$S` (string); a Variable's
+`to_sql` COALESCEs across them (jx_type `JX_ANY`), so a type predicate must resolve the *one*
+typed leaf, not the coalesced value.
+
+- [x] test_where_pow / test_where_power_alias — `pow`/`power` → `PowOp`; SQLite has no `**`, use
+  `POWER(base,exp)` (the old `exp`/`**` `_sql_operators` entry was dead: unparseable + wrong unpack).
+- [x] test_where_mod{,_negative_dividend,_zero} — jx `mod` follows the *divisor* sign
+  (`-7 mod 3 = 2`, like Python); SQLite `%` follows the dividend. `((x%y)+y)%y` normalizes.
+- [ ] test_where_max — **attempted, reverted.** SQLite's *scalar* `max(6,NULL)=NULL` (null-poisoning),
+  so decisive max needs the *aggregate* form `(SELECT MAX(c) FROM (SELECT (a) AS c UNION ALL SELECT
+  (b)))`. That form is valid alone but `find`/`left` clamp indices with the *same* decisive
+  `most`/`least`, and swapping their shared SQL to a UNION-ALL subquery throws `near ","` once
+  composed into a multi-column select (`test_left_w_find`). Needs a decisive form that also composes
+  nested, or a fix that leaves the conservative clamp path (`multiop_to_sql` infix `MAX`) untouched.
+- [ ] test_where_is_number / test_where_is_integer / test_where_is_boolean — type predicates return
+  the value's typed leaf ($N/$I/$B), NULL otherwise; current impls test `value.jx_type ==` which is
+  `JX_ANY` for a union column → wrong. Need per-typed-leaf resolution (schema's hardest area).
+- [ ] test_where_to_integer / test_where_to_text / test_where_number_coercion — coercion semantics
+  (integer truncates 2.9→2; text renders whole float 2.0→"2"; number parses "5"→5, "x"→null).
+- [ ] test_where_count_collection / test_where_cardinality_collection — count / distinct-count over a
+  *nested array* referenced from the fact WHERE; a correlated aggregate subquery over the snowflake.
+  Hardest of the cluster.
+
 ## Suggested order of attack
 
 1. **Cluster 1** — the big one and the remaining bulk; multi-table join assembly in edges.py.
