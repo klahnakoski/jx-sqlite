@@ -7,10 +7,11 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import ToBooleanOp as _ToBooleanOp, TRUE
+from jx_base.expressions import ToBooleanOp as _ToBooleanOp, TRUE, FALSE
 from mo_json import JX_BOOLEAN
 from jx_sqlite.expressions._utils import check
 from mo_sqlite import SQLang, SqlScript
+from mo_sql import ConcatSQL, SQL, sql_iso
 
 
 class ToBooleanOp(_ToBooleanOp):
@@ -23,4 +24,9 @@ class ToBooleanOp(_ToBooleanOp):
         # ONLY THE SCHEMA KNOWS IF term IS BOOLEAN; term.jx_type IS UNRESOLVED FOR A Variable
         if sql.jx_type == JX_BOOLEAN:
             return sql
-        return term.exists().to_sql(schema)
+        # keep rows where the SCHEMA-RESOLVED, null-safe value is present. Iterating `sql` renders
+        # its miss-wrapped value, so for ordinary terms this equals term.exists(), but it also
+        # respects a to_sql that made the value null for a present-but-out-of-class row (is_number's
+        # non-numeric leaf, is_integer's fractional) — which the schema-agnostic .missing() cannot see.
+        expr = ConcatSQL(SQL("NOT "), sql_iso(ConcatSQL(sql_iso(sql), SQL(" IS NULL"))))
+        return SqlScript(jx_type=JX_BOOLEAN, expr=expr, frum=self, miss=FALSE, schema=schema)

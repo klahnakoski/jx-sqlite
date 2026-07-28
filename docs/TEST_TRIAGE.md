@@ -204,6 +204,46 @@ change.
 - [-] test_set_ops.py::test_max_limit — "no need for limit when using own resources"
 - [-] test_query_normalization.py::test_naming_select — "test is still unclear"
 
+## 14. Filter ops (test_filters.py — inbound from svn 2026-07-27, WHERE-clause operators)
+
+A new shared conformance module arrived via svn (`cfc8b08`) exercising operators inside
+`where`. It also brought the `ExpOp`→`PowOp` rename (jx_base/jx_python) that broke every
+jx_sqlite import until mirrored. Type-suffix reference for the remaining work: a value's typed
+columns are `x.$B` (bool) / `x.$I` (int) / `x.$N` (number) / `x.$S` (string); a Variable's
+`to_sql` COALESCEs across them (jx_type `JX_ANY`), so a type predicate must resolve the *one*
+typed leaf, not the coalesced value.
+
+- [x] test_where_pow / test_where_power_alias — `pow`/`power` → `PowOp`; SQLite has no `**`, use
+  `POWER(base,exp)` (the old `exp`/`**` `_sql_operators` entry was dead: unparseable + wrong unpack).
+- [x] test_where_mod{,_negative_dividend,_zero} — jx `mod` follows the *divisor* sign
+  (`-7 mod 3 = 2`, like Python); SQLite `%` follows the dividend. `((x%y)+y)%y` normalizes.
+- [ ] test_where_max — **attempted, reverted.** SQLite's *scalar* `max(6,NULL)=NULL` (null-poisoning),
+  so decisive max needs the *aggregate* form `(SELECT MAX(c) FROM (SELECT (a) AS c UNION ALL SELECT
+  (b)))`. That form is valid alone but `find`/`left` clamp indices with the *same* decisive
+  `most`/`least`, and swapping their shared SQL to a UNION-ALL subquery throws `near ","` once
+  composed into a multi-column select (`test_left_w_find`). Needs a decisive form that also composes
+  nested, or a fix that leaves the conservative clamp path (`multiop_to_sql` infix `MAX`) untouched.
+- [x] test_where_is_number / test_where_is_integer / test_where_is_boolean — type predicates now
+  resolve the *one* typed leaf ($N/$B), not the COALESCE'd union. New `variable.typed_leaf(term,
+  schema, target_types)` filters `schema.leaves` by es_type and returns just that column (NULL if
+  absent) — this is the per-leaf resolution the old `value.jx_type == JX_NUMBER` (always `JX_ANY` for
+  a union) could not do. Integers store as `$N` (REAL, no `$I` column), so is_integer takes the `$N`
+  leaf and nulls fractionals (`CAST(n AS INTEGER)=n`). The load-bearing insight: the WHERE wraps every
+  predicate in `ToBooleanOp`, whose old fallback used schema-agnostic `term.exists()`/`.missing()` —
+  collapsing the narrowing back to the whole union. `ToBooleanOp` now keys off the *rendered* null-safe
+  value (`NOT (<sql> IS NULL)`), identical to exists() for ordinary terms but honouring a to_sql that
+  nulled a present-but-out-of-class row. (`is_number(x)==5` still returns the value, so eq works.)
+- [x] test_where_to_integer / test_where_to_text / test_where_number_coercion — coercion semantics
+  (integer truncates 2.9→2; text renders whole float 2.0→"2"; number parses "5"→5, "x"→null). Root fix
+  was in the pure-SQL layer: `quote_value` rendered a numeric-looking *string* ("2", "0") as a bare
+  number, so `text(x) == "2"` compiled to `'2' = 2` (false in SQLite) and RTRIM's strip-char arg was
+  unquoted; a Python `str` now always quotes. `ToIntegerOp` now always CASTs (it only cast text before,
+  so a float never truncated); `ToNumberOp` wrapped a whole SqlScript in SqlCastOp (→ `KeyError:
+  'partial_eval'`), now parses via a GLOB numeric-string guard (`"x"→null`, not 0).
+- [ ] test_where_count_collection / test_where_cardinality_collection — count / distinct-count over a
+  *nested array* referenced from the fact WHERE; a correlated aggregate subquery over the snowflake.
+  Hardest of the cluster.
+
 ## Suggested order of attack
 
 1. **Cluster 1** — the big one and the remaining bulk; multi-table join assembly in edges.py.

@@ -74,7 +74,8 @@ def quote_value(value):
         return SQL(str(value.unix))
     elif isinstance(value, Duration):
         return SQL(str(value.seconds))
-    elif is_number(value):
+    elif not is_text(value) and is_number(value):
+        # a numeric-looking *string* ("2") is text, not a number: quote it
         return SQL(str(value))
     elif is_many(value):
         return sql_iso(sql_list(map(quote_value, value)))

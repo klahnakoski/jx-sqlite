@@ -7,22 +7,14 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import IsBooleanOp as _ToBooleanOp, FALSE, TRUE, is_literal, SqlScript
-from mo_sqlite import SQLang
+from jx_base.expressions import IsBooleanOp as _IsBooleanOp, SqlScript
 from jx_sqlite.expressions._utils import check
+from jx_sqlite.expressions.variable import typed_leaf
 from mo_json.types import JX_BOOLEAN
 
 
-class IsBooleanOp(_ToBooleanOp):
+class IsBooleanOp(_IsBooleanOp):
     @check
     def to_sql(self, schema) -> SqlScript:
-        term = self.term.partial_eval(SQLang)
-        if term.jx_type is JX_BOOLEAN:
-            return term.to_sql(schema)
-        elif is_literal(term) and term.value in ("T", "F"):
-            if term.value == "T":
-                return TRUE
-            else:
-                return FALSE
-        else:
-            return term.exists().partial_eval(SQLang).to_sql(schema)
+        # the boolean leaf of a (possibly union) column; NULL when the value is not boolean
+        return typed_leaf(self.term, schema, (JX_BOOLEAN,))
