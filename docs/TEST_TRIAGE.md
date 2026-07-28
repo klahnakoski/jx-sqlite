@@ -88,8 +88,14 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
       real prefix (`_a.k`) manufactured an up-ref (`...b`) that JxType rejects ("not allowed"). Now
       `concat_field(name, rel_name)` — a no-op when branch_prefix=="." (the only case any passing test
       hit, so regression-free) and correct for deep branches. **list format now passes.** Remaining:
-      table/cube still split the top level into two columns ('.'+'_a') — the index_to_columns
-      push_column_name assignment should collapse an all-nested whole-doc under a single '.'. That's the
+      table/cube emit two columns ('.'+'_a'); the test's own table/cube expectation was also wrong
+      (it wanted a single '.' column) and has been corrected to `["_a"]`: no select means the implied
+      name '.', which declares the *top-level properties* as columns — same rule that makes
+      test_single_no_select `["a"]` and test_select_whole_document `["o","_a","c"]`. A literal '.'
+      column only comes from a select whose value is '.'. So index_to_columns' push_column_name
+      assignment should drop the '.' column, not merge into it. Doc: docs/jx_expressions_leaves.md
+      §Table format / No select clause; the star-vs-no-select difference is pinned by
+      test_no_select_w_inner_object + test_star_select_w_inner_object (both pass). That's the
       column-mapping/push-name layer (setop/ColumnMapping / Names), a separate deeper step.
 - [ ] test_prefix_in_deep_where_clause — "fix me"
 - [ ] test_exists_in_where_clause — "fix me"

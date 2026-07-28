@@ -227,6 +227,23 @@ Without a name given to a select clause, we will assume the name is `"."`. This 
 
 The header names in a table are derived from the selector name, implied or not. The names are dot-delimted paths, with escaping is used for explicit dots.  
 
+### No select clause
+
+A query with no select clause has the implied name `"."`, so it too declares the top-level
+properties as columns. It differs from the star: it does *not* flatten, the inner properties
+remain the structure of a compound column.
+
+    (no select)     => {"header":["a"                                 ], "data":[[{"b":{"c":1,"d":2},"e":{"f":3,"g":4}}]]}
+    "select":["*" ] => {"header":["a.b.c", "a.b.d", "a.e.f", "a.e.g"  ], "data":[[1, 2, 3, 4                          ]]}
+
+A single `"."` column is only produced by a select whose *value* is `"."` (there the name, implied
+or explicit, is the whole column), or by a value that has no properties to declare:
+
+    "select":{"value":"."} => {"header":["."], "data":[[{"a":{"b":{"c":1,"d":2},"e":{"f":3,"g":4}}}]]}
+
+Given the document `{"a":1}`, both spellings agree; they diverge only when a top-level property
+holds an object.
+
 
 ## Cube format
 
