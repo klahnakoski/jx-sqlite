@@ -31,6 +31,7 @@ class DocumentDetails:
     children: List["DocumentDetails"]
     push_list_name: str  # WHERE THIS TABLE'S ASSEMBLED VALUE LANDS IN THE PARENT DOC (None = TABLE'S RELATIVE PATH)
     required: bool  # A WHERE FILTERS THIS BRANCH: A PARENT WITH NO SURVIVING ROW HERE IS DROPPED AT ASSEMBLY
+    uid_coords: List[int]  # COLUMN INDICES OF THIS NODE'S PLUMBING (uid, AND order FOR A CHILD); OWNED BY THIS NODE
 
     def __init__(self, sub_table: str):
         self.sub_table = sub_table
@@ -41,6 +42,7 @@ class DocumentDetails:
         self.children = []
         self.push_list_name = None
         self.required = False
+        self.uid_coords = []
 
 
 def place(node, parent):
@@ -99,6 +101,7 @@ class BranchBuilder:
 
         # WE ALWAYS ADD THE UID
         n = self.index_to_uid[sub_table] = node.id_coord = len(self.sql_selects)
+        node.uid_coords.append(n)
         uid_sql = SqlVariable(sub_table, UID, jx_type=JX_TEXT)
         self.sql_selects.append(sql_alias(uid_sql, _make_column_name(n)))
         if table_number > 0:
@@ -107,6 +110,7 @@ class BranchBuilder:
                 sql=uid_sql, type="number", nested_path=node.nested_path, column_alias=_make_column_name(n),
             )
             n = len(self.sql_selects)
+            node.uid_coords.append(n)
             order_sql = SqlVariable(sub_table, ORDER, jx_type=JX_INTEGER)
             self.sql_selects.append(sql_alias(order_sql, _make_column_name(n)))
             self.index_to_column[n] = ColumnMapping(

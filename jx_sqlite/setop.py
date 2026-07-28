@@ -401,21 +401,26 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
             sql_selects.append(sql_alias(sql, column_alias))
             sorts.append(OneOrder(SqlIsNullOp(SqlVariable(None, column_alias)), NO_SQL))
             sorts.append(OneOrder(SqlVariable(None, column_alias), sort_to_sqlite_order[sort.sort]))
-    for t in branches:
-        sorts.append(OneOrder(SqlVariable(None, f"{COLUMN}{index_to_uid[t]}", jx_type=JX_TEXT), NO_SQL))
+    # ONE UID SORT KEY PER NODE (SHALLOW->DEEP PRE-ORDER), NOT PER TABLE: TWO SIBLING NODES ON THE
+    # SAME TABLE EACH GET THEIR OWN KEY, KEEPING EACH ARM'S ROWS CONTIGUOUS PER PARENT.
+    for node in _preorder(builder.primary_doc_details):
+        sorts.append(OneOrder(SqlVariable(None, f"{COLUMN}{node.id_coord}", jx_type=JX_TEXT), NO_SQL))
+
+    # THE ORIGIN ARM (AND ALL DESCENDANT ARMS) MUST TREAT ABOVE-ORIGIN ANCESTOR COLUMNS AS REAL;
+    # SEED THE NULL-PAD OWNERSHIP WITH THEM (ABOVE-ORIGIN NODES ARE JOIN-ONLY, NOT THEIR OWN ARMS).
+    above_owned = set()
+    for node in _path_to(builder.primary_doc_details, origin_doc_details)[:-1]:
+        above_owned |= _owned_of(node)
 
     unsorted_sql = _make_sql_for_one_nest_in_set_op(
         self,
-        origin,
+        origin_doc_details,
         origin,
         sql_selects,
         where_clause,
-        active_paths,
         index_to_column,
-        index_to_uid,
-        query.limit,
+        above_owned,
         schema,
-        branches,
         where_tables,
     )
 
@@ -428,128 +433,110 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
 @extend(Facts)
 def _make_sql_for_one_nest_in_set_op(
     self,
-    primary_nested_path,
-    origin_path,  # THE QUERY ORIGIN (ITS ARM LEFT-JOINS FOR THE EMPTY ELEMENT; CHILD ARMS INNER-JOIN)
-    selects,  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE
+    origin_node,  # THE ORIGIN DocumentDetails NODE; REASSEMBLY AND THE ARM TREE BOTH ROOT HERE
+    origin_path,  # ITS TABLE PATH (ITS ARM LEFT-JOINS FOR THE EMPTY ELEMENT; CHILD ARMS INNER-JOIN)
+    sql_selects,  # THE ALIGNED SELECT LIST (POSITION = COLUMN INDEX)
     where_clause,
-    active_columns,
-    index_to_sql_select,  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
-    nested_path_to_uid_index,  # COLUMNS USED FOR UID (REQUIRED)
-    limit,
+    index_to_column,  # COLUMN INDEX -> ColumnMapping (VALUE/uid/order COLUMNS; SORT COLS ABSENT)
+    above_owned,  # COLUMN INDICES OWNED BY ABOVE-ORIGIN ANCESTORS (ALWAYS REAL ON EVERY ARM)
     schema,
-    branches,  # THE NESTED LEVELS OF THE RESULT HIERARCHY (ONE UNION-ALL BRANCH EACH)
     where_tables,  # TABLES THE where REFERENCES (FOR PER-ARM WHERE GATING)
 ):
     """
-    ONE UNION-ALL ARM PER BRANCH AT OR BELOW primary_nested_path.  EACH ARM IS ROOTED AT THE FACT
-    AND LEFT-JOINS DOWN THROUGH ITS ANCESTORS TO ITS OWN LEVEL (SUPPLYING ANCESTOR uids/COLUMNS);
-    IT DOES NOT JOIN ITS CHILDREN - THEY ARE THEIR OWN ARMS (NO INLINE FIRST-ROW).
-    docs/INTERSECTION_SURVEY.md §7 (3-pre)
+    ONE UNION-ALL ARM PER NODE IN THE origin_node SUBTREE (NODE-DRIVEN, NOT TABLE-DRIVEN: TWO
+    SIBLING NODES ON ONE TABLE => TWO ARMS).  EACH ARM IS ROOTED AT THE FACT AND JOINS DOWN
+    node.nested_path TO ITS OWN LEVEL (SUPPLYING ANCESTOR uids/COLUMNS); IT DOES NOT JOIN ITS
+    CHILDREN - THEY ARE THEIR OWN ARMS (NO INLINE FIRST-ROW).  A COLUMN IS REAL ON A NODE'S ARM
+    IFF OWNED BY THAT NODE OR AN ANCESTOR NODE; DESCENDANT/SIBLING COLUMNS NULL-PAD.
+    docs/INTERSECTION_SURVEY.md §7 (3-pre / step 3)
     """
+    fact = self.snowflake.fact_name
 
-    parent_alias = "a"
-    from_clause = []
-    select_clause = []
-    children_sql = []
-    done = []
-
-    # THIS ARM MAY APPLY THE where ONLY IF EVERY TABLE IT REFERENCES IS JOINED HERE (AT OR ABOVE
-    # primary); OTHERWISE A DEEPER ARM FILTERS AND ITS BRANCH IS required (DROP-CHILDLESS).
-    arm_where = (
-        where_clause
-        if all(startswith_field(primary_nested_path, wt) for wt in where_tables)
-        else SQL_TRUE
-    )
-
-    # STATEMENT FOR EACH NESTED PATH
-    tables = branches
-    for i, sub_table_name in enumerate(tables):
-        if any(startswith_field(sub_table_name, d) for d in done):
-            continue
-
-        alias = sub_table_name  # BUILDER'S uid/VALUE COLUMNS REFERENCE TABLES BY FULL NAME
-
-        if primary_nested_path == sub_table_name:
-            select_clause = []
-            # ADD SELECT CLAUSE HERE
-            for select_index, s in enumerate(selects):
-                column_mapping = index_to_sql_select.get(select_index)
-                if not column_mapping:
-                    select_clause.append(s)
-                    continue
-
-                # REAL VALUE IFF THE COLUMN IS AT THIS LEVEL OR AN ANCESTOR JOINED IN THIS ARM;
-                # DESCENDANT/SIBLING COLUMNS ARE NULL-PADDED (THEIR OWN ARM SUPPLIES THEM).
-                if startswith_field(sub_table_name, column_mapping.nested_path[0]):
-                    select_clause.append(SqlAliasOp(column_mapping.sql, column_mapping.column_alias))
-                else:
-                    select_clause.append(SqlAliasOp(NULL.to_sql(schema), column_mapping.column_alias))
-
-            if sub_table_name == self.snowflake.fact_name:
-                from_clause.append(ConcatSQL(
+    def arm_from(node):
+        # FROM fact, THEN JOIN DOWN node.nested_path (fact FIRST).  ORIGIN TABLE + PROPER ANCESTORS
+        # LEFT JOIN (JOIN-ONLY / EMPTY-ELEMENT); TABLES BELOW ORIGIN INNER JOIN (REAL ROWS ONLY).
+        parts = []
+        parent_alias = None
+        for table in reversed(node.nested_path):
+            alias = table  # BUILDER'S uid/VALUE COLUMNS REFERENCE TABLES BY FULL NAME
+            if table == fact:
+                parts.append(ConcatSQL(
                     SQL_FROM,
-                    SqlAliasOp(SqlVariable(self.snowflake.fact_name, None, jx_type=self.schema.jx_type), alias),
+                    SqlAliasOp(SqlVariable(fact, None, jx_type=self.schema.jx_type), alias),
                 ))
             else:
-                # ORIGIN ARM: LEFT JOIN SO A CHILDLESS PARENT STILL YIELDS ONE ROW = THE IMPLICIT
-                # EMPTY ELEMENT (missing child == [{}]).  CHILD ARM: INNER JOIN - EMIT ONLY REAL
-                # ROWS (A PARENT LACKING THIS CHILD IS ALREADY COVERED BY THE ORIGIN/OWN ARM,
-                # ELSE ITS NULL-PAD ROW WOULD BE A SPURIOUS SIBLING/EMPTY).  NO order>0 (NO INLINE).
-                from_clause.append(ConcatSQL(
-                    SQL_LEFT_JOIN if sub_table_name == origin_path else SQL_INNER_JOIN,
-                    SqlAliasOp(SqlVariable(sub_table_name, None), alias),
+                join = SQL_INNER_JOIN if startswith_field(table, origin_path) and table != origin_path else SQL_LEFT_JOIN
+                parts.append(ConcatSQL(
+                    join,
+                    SqlAliasOp(SqlVariable(table, None), alias),
                     SQL_ON,
                     SqlEqOp(SqlVariable(alias, PARENT), SqlVariable(parent_alias, UID)),
                 ))
             parent_alias = alias
+        return parts
 
-        elif startswith_field(primary_nested_path, sub_table_name):
-            # ANCESTOR OF primary: JOINED FOR ITS uid/COLUMNS (NO ORDER FILTER, NO INLINE)
-            if sub_table_name == self.snowflake.fact_name:
-                from_clause.append(ConcatSQL(SQL_FROM, sql_alias(quote_column(self.snowflake.fact_name), alias)))
+    def arm_select(owned):
+        # REAL VALUE IFF THE INDEX IS OWNED BY THIS ARM'S NODE OR AN ANCESTOR; ELSE NULL-PAD.
+        # INDICES ABSENT FROM index_to_column (SORT KEYS) PASS THROUGH UNCHANGED ON EVERY ARM.
+        out = []
+        for select_index, s in enumerate(sql_selects):
+            column_mapping = index_to_column.get(select_index)
+            if not column_mapping:
+                out.append(s)
+            elif select_index in owned:
+                out.append(SqlAliasOp(column_mapping.sql, column_mapping.column_alias))
             else:
-                from_clause.append(ConcatSQL(
-                    SQL_LEFT_JOIN,
-                    sql_alias(quote_column(sub_table_name), alias),
-                    SQL_ON,
-                    SqlEqOp(SqlVariable(alias, PARENT), SqlVariable(parent_alias, UID)),
-                ))
-            parent_alias = alias
+                out.append(SqlAliasOp(NULL.to_sql(schema), column_mapping.column_alias))
+        return out
 
-        elif startswith_field(sub_table_name, primary_nested_path):
-            # CHILD: ITS OWN ARM (NOT INLINE-JOINED HERE)
-            done.append(sub_table_name)
-            children_sql.append(_make_sql_for_one_nest_in_set_op(
-                self,
-                sub_table_name,
-                origin_path,
-                selects,
-                where_clause,
-                active_columns,
-                index_to_sql_select,
-                None,
-                None,
-                schema,
-                branches,
-                where_tables,
-            ))
-        else:
-            # SIBLING PATHS ARE IGNORED
-            continue
+    def build(node, ancestor_owned):
+        owned = ancestor_owned | _owned_of(node)
+        # THIS ARM MAY APPLY THE where ONLY IF EVERY TABLE IT REFERENCES IS JOINED HERE (AT OR ABOVE
+        # THIS NODE'S TABLE); OTHERWISE A DEEPER ARM FILTERS AND ITS BRANCH IS required.
+        arm_where = (
+            where_clause
+            if all(startswith_field(node.nested_path[0], wt) for wt in where_tables)
+            else SQL_TRUE
+        )
+        arm = ConcatSQL(
+            SQL_SELECT, sql_list(arm_select(owned)), ConcatSQL(*arm_from(node)), SQL_WHERE, arm_where
+        )
+        arms = [arm]
+        for child in node.children:
+            arms.extend(build(child, owned))
+        return arms
 
-    sql = SqlScript(
+    return SqlScript(
         jx_type=JX_ANY,
         # TODO: IS THIS THE TYPE FOR THE SET OF COLUMNS?  (INCLUDE NESTING, SO WE MAY UNION TO GET FINAL TYPE)
-        expr=SQL_UNION_ALL.join([
-            ConcatSQL(SQL_SELECT, sql_list(select_clause), ConcatSQL(*from_clause), SQL_WHERE, arm_where),
-            *children_sql,
-        ]),
+        expr=SQL_UNION_ALL.join(build(origin_node, above_owned)),
         frum=None,
         miss=FALSE,
         schema=schema,
     )
 
-    return sql
+
+def _owned_of(node):
+    # COLUMN INDICES A NODE OWNS: ITS VALUE COLUMNS PLUS ITS uid/order PLUMBING.
+    return set(node.index_to_column.keys()) | set(node.uid_coords)
+
+
+def _preorder(node):
+    # NODES SHALLOW->DEEP, PARENTS BEFORE CHILDREN (SORT-KEY ORDER: PARENT uid BEFORE CHILD uid).
+    yield node
+    for child in node.children:
+        yield from _preorder(child)
+
+
+def _path_to(node, target):
+    # THE CHAIN OF NODES FROM node DOWN TO target INCLUSIVE (target IS UNIQUE IN THE TREE).
+    if node is target:
+        return [node]
+    for child in node.children:
+        below = _path_to(child, target)
+        if below:
+            return [node, *below]
+    return None
 
 
 def _deep_split(var, schema, origin):
