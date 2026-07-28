@@ -266,13 +266,19 @@ typed leaf, not the coalesced value.
   the null-skipping comes free because SQL aggregates ignore NULL rows. It is deliberately *not* a
   registered language op: it is relation-valued, and SqlScript can only carry a scalar.
 
-  **Known hole:** `{"count":"arr"} == 0` does not match a document with *no* children. `vars()`
-  reports `arr`, so setop pushes the whole WHERE onto the child arm and marks that branch `required`
-  — a parent with no child row is dropped before the predicate is ever evaluated. The subquery is
-  self-contained and *could* be evaluated on the origin arm; the planner has no way to know that.
-  This is the missing distinction to name next: which vars a predicate needs **joined** vs. which it
-  resolves itself. (`join_vars()` alongside `vars()`? It has to compose through every op, like
-  `vars()` does.)
+- [x] `join_vars()` — the distinction the above needed, now built. `vars()` answers "which fields
+  does this read"; setop was using it for a different question, "which tables must be joined", and a
+  collection aggregate reads a nested column through its own FROM. `Expression.join_vars()` defaults
+  to `vars()` (joining more than needed is slower, never wrong, so un-overridden ops keep today's
+  behaviour); `CountOp`/`CardinalityOp` return empty; `BaseMultiOp`/`BaseBinaryOp`/`NotOp` forward to
+  their children — **the forwarding is load-bearing**, without it the default `self.vars()` at the
+  top swallows the override below, since `vars()` recursion never re-enters `join_vars()`. setop's
+  `referenced_paths` and `where_tables` now read it. Fixes `{"count":"arr"} == 0` against a childless
+  document (was: pushed to the child arm, branch marked `required`, parent dropped before the
+  predicate ran); pinned by `test_where_count_empty_collection`.
+
+  The weak spot: a second traversal parallel to `vars()`, whose payoff depends on every composite op
+  remembering to forward. A missed forward is silent — it just reverts to the pessimistic join.
 
 ## Suggested order of attack
 

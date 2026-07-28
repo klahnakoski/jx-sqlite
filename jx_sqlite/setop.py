@@ -270,10 +270,12 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
 
     # BRANCHES ALSO NEED TABLES THE where/sort REFERENCE (JOINED FOR FILTERING/ORDERING, NOT
     # SELECTED AS VALUES).  RESOLVE THOSE VARS TO THEIR TABLES THE SAME WAY select_vars ARE.
+    # join_vars, NOT vars: A COLLECTION AGGREGATE READS A NESTED COLUMN THROUGH ITS OWN FROM
+    # (ToListOp), SO IT NEEDS NO BRANCH HERE.
     referenced_paths = set(active_paths)
     for v in set(
         rest if first == "row" else v
-        for source in (query.where.vars(), *(s.value.vars() for s in listwrap(query.sort)))
+        for source in (query.where.join_vars(), *(s.value.vars() for s in listwrap(query.sort)))
         for v in source
         for first, rest in [tail_field(v)]
     ):
@@ -291,15 +293,18 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
         if any(startswith_field(a, t) for a in referenced_paths)
     ]
 
-    # TABLES THE where REFERENCES.  A where TABLE STRICTLY BELOW THE ORIGIN CANNOT BE EVALUATED ON
-    # THE ORIGIN ARM (THE CHILD IS NOT JOINED THERE, NO INLINE FIRST-ROW); INSTEAD ITS OWN ARM
-    # FILTERS AND THE BRANCH IS MARKED required SO A PARENT WITH NO SURVIVING CHILD IS DROPPED AT
-    # ASSEMBLY.  docs/INTERSECTION_SURVEY.md §7 (3-pre WHERE)
+    # TABLES THE where MUST HAVE JOINED.  SUCH A TABLE STRICTLY BELOW THE ORIGIN CANNOT BE
+    # EVALUATED ON THE ORIGIN ARM (THE CHILD IS NOT JOINED THERE, NO INLINE FIRST-ROW); INSTEAD ITS
+    # OWN ARM FILTERS AND THE BRANCH IS MARKED required SO A PARENT WITH NO SURVIVING CHILD IS
+    # DROPPED AT ASSEMBLY.  docs/INTERSECTION_SURVEY.md §7 (3-pre WHERE)
+    # A COLLECTION AGGREGATE IS ABSENT HERE (join_vars): IT IS A PROPERTY OF THE *PARENT*, SO IT
+    # BELONGS ON THE ORIGIN ARM - PUSHING IT TO THE CHILD ARM WOULD DROP A DOCUMENT WITH NO CHILD
+    # ROW BEFORE THE PREDICATE COULD SEE IT (count == 0).
     where_tables = set(
         c.nested_path[0]
         for v in set(
             rest if first == "row" else v
-            for v in query.where.vars()
+            for v in query.where.join_vars()
             for first, rest in [tail_field(v)]
         )
         for _, c in schema.leaves(v)

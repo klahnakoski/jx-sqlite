@@ -53,6 +53,9 @@ class CountOp(Expression):
     def vars(self):
         return self.frum.vars()
 
+    def join_vars(self):
+        return set()  # AN AGGREGATE OVER A COLLECTION BRINGS ITS OWN SOURCE
+
     def map(self, map_):
         return CountOp(frum=self.frum.map(map_))
 

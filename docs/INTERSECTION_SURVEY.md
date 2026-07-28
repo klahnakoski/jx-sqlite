@@ -189,9 +189,13 @@ case 1; D's two-phase query is the same shape for case 3 plus completion.
   one `SqlAggregate` over one relation — count/cardinality/max/min differ only in the
   aggregate — and the decisive null semantics come free, because SQL aggregates skip NULL
   rows. Relation-valued, so it is not a registered language op (SqlScript holds a scalar);
-  it appears only under `aggregate()`. Its open edge is the planner's, not its own: a
-  predicate that resolves its own FROM still forces a join, because `vars()` cannot say
-  *which vars need joining* (see TEST_TRIAGE, `count == 0`).
+  it appears only under `aggregate()`.
+- `join_vars()` — **built** (2026-07-28, jx_base `Expression`). Not an operator but the
+  distinction ToListOp forced: `vars()` is "what does this read", `join_vars()` is "what must
+  be joined for this to be evaluable here", and an op that resolves its own FROM answers less.
+  Defaults to `vars()` (over-joining is slow, never wrong); composite ops forward it. setop
+  reads it for `referenced_paths`/`where_tables`. Every planner question of the form "can this
+  arm evaluate that?" wants this shape of answer, not a var list.
 
 Then the three query strategies stop being monoliths and become compositions:
 
