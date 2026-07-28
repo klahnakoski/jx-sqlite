@@ -361,6 +361,33 @@ columns assemble as sub-objects; a lone leaf collapses to a bare list via `push_
    two independent branches. This is where `_make_sql` and the `DocumentDetails` tree stop
    being 1:1 with tables.
 
+   **3a LANDED (commit "node-driven arm builder").** `_make_sql_for_one_nest_in_set_op` rewritten
+   to walk the `DocumentDetails` tree, one UNION-ALL arm per **node** (not per table). Join chain
+   comes from `node.nested_path`; join type = LEFT for the origin table / proper ancestors, INNER
+   for tables below the origin, FROM for the fact. Null-pad is **node-based**: a column is real on
+   node N's arm iff owned by N or an ancestor NODE (`owned = node.index_to_column keys ∪
+   node.uid_coords`), replacing the table `startswith`. Behavior-identical with one node/table
+   (373/0/77) - this is what lets two nodes share a table.
+
+   **3b LANDED (commit "each deep leaf its own arm").** Two deep leaves at one table become two
+   sibling arms, each collapsing to its own multivalue (`a._a.v`->list, `a._a.s`->scalar), NOT one
+   correlated sub-doc (contrast the subquery form). Pieces: `place()` makes same-table nodes
+   **siblings** (proper-ancestor rule, not nested); every deep-leaf candidate -> its own one-leaf
+   subquery entry (dropped the `len==1` guard); a dedicated loop makes **each subquery entry its
+   own branch node/arm**. Also fixed the reassembler dropping a collapsed falsy scalar (`s=False`):
+   `doc or is_origin` -> `not is_missing(doc) or is_origin`. The streaming grouper already handles
+   N sibling arms because each arm sets exactly one sibling uid non-null (NULLs sort together =>
+   each arm's rows are one contiguous run per parent; disjoint uid columns keep siblings apart).
+
+   **BLOCKER (oracle still skipped): document-based LIMIT.** `test_deep_where_on_fact_table_multivalue`
+   assembles **correctly** (verified with the limit lifted) but the default `LIMIT 10` is a SQL
+   **row**-limit on the N-arms-per-document union and truncates o=3 mid-document. Fix is a separate
+   mo_sqlite task: make the setop LIMIT count **documents**. Row-limit is structurally load-bearing
+   today - `SqlOrderByOp` bases are `(_SqlOrderByOp, SQL)` (Expression-first), so it is NOT a
+   renderable top-level command; it only executes because `SqlLimitOp` (SQL-first) always wraps it
+   (default limit is never NULL). Dropping the row-limit needs `SqlOrderByOp` to render standalone
+   (swap bases / give it `__iter__`-based `__str__`), then slice documents at assembly in `_set_op`.
+
    **3-pre: drop the inline first-row optimization (DECIDED by Kyle, do it globally).**
    The blocker for branch-per-term: today the first child row (`__order__ = 0`) is carried
    *on the parent row* (the child table is `LEFT JOIN … AND __order__ = 0` on the parent's arm,
