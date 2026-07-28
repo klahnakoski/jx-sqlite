@@ -279,6 +279,15 @@ typed leaf, not the coalesced value.
 
   The weak spot: a second traversal parallel to `vars()`, whose payoff depends on every composite op
   remembering to forward. A missed forward is silent — it just reverts to the pessimistic join.
+- [ ] test_expressions_w_set_ops.py::test_select_count_of_collection — `count` works in a WHERE, not
+  in a SELECT. A *single-term* `{"count": "x"}` is lifted into the select's `aggregate` slot by
+  normalization (multi-term is `TallyOp` and stays an expression, which is why `test_select_count`
+  passes), so the query routes to `_edges_op`, whose `aggregates.py` reaches nested columns its own
+  way (LEFT JOIN + GROUP BY) and never calls `CountOp.to_sql`/ToListOp — it emits an empty column
+  (`SELECT  AS __column0`). Two implementations of one idea; the select side should go through
+  ToListOp too. Adjacent: a select mixing an aggregate with a plain column and no groupby dies in
+  `sql_aggs["null"]` (`aggregates.py:240`) for *any* aggregate, `sum` included — arguably an invalid
+  query owed a real error.
 
 ## Suggested order of attack
 

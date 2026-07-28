@@ -384,6 +384,36 @@ class TestSetOps(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
+    @skipIf(
+        global_settings.use == "sqlite",
+        "single-term count is lifted into the select's aggregate slot, so the whole query routes to"
+        " _edges_op and emits an empty column (`SELECT  AS __column0`)",
+    )
+    def test_select_count_of_collection(self):
+        # count() AS AN EXPRESSION IS PER DOCUMENT, LIKE test_select_count ABOVE - IT COUNTS THE
+        # VALUES IN *THIS* DOCUMENT'S COLLECTION.  IT IS NOT {"value":"arr","aggregate":"count"},
+        # WHICH COUNTS OVER THE WHOLE TABLE.
+        test = {
+            "data": [
+                {"id": 1, "arr": [1, 2, 3]},
+                {"id": 2, "arr": [7]},
+                {"id": 3},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": {"name": "n", "value": {"count": "arr"}},
+                "sort": "id",
+            },
+            "expecting_list": {"meta": {"format": "list"}, "data": [3, 1, 0]},
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["n"],
+                "data": [[3], [1], [0]],
+            },
+        }
+        self.utils.execute_tests(test)
+
+    @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
     def test_select_average(self):
         test = {
             "data": [{"a": {"_b": [
