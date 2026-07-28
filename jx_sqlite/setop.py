@@ -56,7 +56,7 @@ from mo_sqlite import (
     ConcatSQL,
 )
 from mo_sqlite import SQLang
-from mo_sqlite import quote_column, sql_alias
+from mo_sqlite import sql_alias
 from mo_sqlite.expressions import SqlVariable, SqlOrderByOp, SqlEqOp, SqlAliasOp, SqlLimitOp
 from mo_sqlite.expressions.sql_script import SqlScript
 from mo_times import Date
@@ -137,7 +137,9 @@ def _set_op(self, query):
             # SELECTS NO COLUMNS FROM THE CHILD, SO EXISTENCE IS THE ONLY SIGNAL.
             dropped = any(id(c) not in consumed for c in children if c.required)
 
-            if not dropped and (doc or is_origin):
+            # KEEP ANY NON-MISSING doc, INCLUDING A FALSY SCALAR (A COLLAPSED MULTIVALUE OF False/0):
+            # `doc or is_origin` WOULD DROP s=False.  doc STARTS AS Null (is_missing) UNTIL A VALUE LANDS.
+            if not dropped and (not is_missing(doc) or is_origin):
                 output.append(doc)
 
         return output
@@ -190,15 +192,13 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
                 continue
         plain_terms.append(term)
 
-    # ONE DEEP LEAF PER TABLE -> REWRITE TO A ONE-LEAF SUBQUERY (ROUTES THROUGH THE STEP-1 PATH,
-    # COLLAPSING TO A BARE MULTIVALUE).  SEVERAL DEEP LEAVES AT ONE TABLE STAY PLAIN (THE OLD
-    # RE-ROOTED SUB-DOC PATH) UNTIL STEP 3 MAKES EACH ITS OWN BRANCH.
+    # EACH DEEP LEAF -> ITS OWN ONE-LEAF SUBQUERY (ROUTES THROUGH THE STEP-1 PATH, COLLAPSING TO A
+    # BARE MULTIVALUE).  SEVERAL DEEP LEAVES AT ONE TABLE BECOME SEVERAL INDEPENDENT SUBQUERY
+    # ENTRIES -> SEVERAL SIBLING ARMS (STEP 3), EACH ITS OWN MULTIVALUE (a._a.v -> list,
+    # a._a.s -> scalar), NOT ONE CORRELATED SUB-DOC.  docs/INTERSECTION_SURVEY.md §7 STEP 3
     for table_path, cands in deep_candidates.items():
-        if len(cands) == 1 and table_path not in subqueries:
-            term, select_path = cands[0]
+        for term, select_path in cands:
             subqueries.setdefault(table_path, []).append((term.name, [(select_path, Variable(select_path))]))
-        else:
-            plain_terms.extend(term for term, _ in cands)
     plain_select = SelectOp(query.select.frum, *plain_terms)
 
     # GET LIST OF SELECTED COLUMNS
@@ -367,27 +367,41 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
             nested_doc_details.push_list_name = leaf.push_list_name
             leaf.push_list_name = "."
 
-        # A SUBQUERY (OR REWRITTEN DEEP-LEAF) WHOSE ORIGIN IS THIS BRANCH CONTRIBUTES ITS INNER
-        # SELECT COMPILED BRANCH-RELATIVE (NAMES LIKE "v","s", NOT "a._a.v").  SEVERAL LEAVES
-        # ASSEMBLE AS SUB-OBJECTS UNDER THIS NODE; A LONE LEAF COLLAPSES TO A BARE MULTIVALUE
-        # (push_list_name=".") LANDING AT THE OUTER TERM PATH.  docs/INTERSECTION_SURVEY.md §7 STEPS 1-2
-        for outer_name, inner_select in subqueries.get(sub_table, []):
+    # EACH SUBQUERY ENTRY (INCL. A REWRITTEN DEEP LEAF) IS ITS OWN BRANCH = ITS OWN UNION-ALL ARM
+    # ON ITS TABLE, COMPILED BRANCH-RELATIVE (NAMES LIKE "v","s", NOT "a._a.v").  TWO DEEP LEAVES
+    # a._a.v, a._a.s THUS BECOME TWO SIBLING ARMS, EACH COLLAPSING TO ITS OWN MULTIVALUE.  SEVERAL
+    # LEAVES IN ONE ENTRY ASSEMBLE AS SUB-OBJECTS UNDER ITS NODE; A LONE LEAF COLLAPSES TO A BARE
+    # MULTIVALUE (push_list_name=".") LANDING AT THE OUTER TERM PATH.  docs/INTERSECTION_SURVEY.md §7 STEP 3
+    sub_table_number = len(branches)
+    for table_path, entries in subqueries.items():
+        sub_schema = self.snowflake.get_schema(list(reversed([
+            t for t in self.snowflake.query_paths if startswith_field(table_path, t)
+        ])))
+        for outer_name, inner_select in entries:
+            sub_table_number += 1  # ALWAYS > 0: A SUBQUERY BRANCH IS A CHILD (uid + order PLUMBING)
+            node = builder.add_branch(table_path, sub_table_number)
+            if (
+                startswith_field(table_path, origin)
+                and table_path != origin
+                and any(startswith_field(wt, table_path) for wt in where_tables)
+            ):
+                node.required = True
             added = []
             for i, (name, value) in enumerate(inner_select):
                 sql = value.partial_eval(SQLang).to_sql(sub_schema)
                 push_column_name, push_column_child = tail_field(name)
                 push_column_name = unliteral_field(push_column_name)
                 added.append(builder.add_column(
-                    nested_doc_details,
+                    node,
                     sql,
                     push_list_name=push_column_child if push_column_name == "." else name,
                     push_column_name=push_column_name,
                     push_column_child=push_column_child,
                     push_column_index=i,
-                    nested_path=nested_path,
+                    nested_path=node.nested_path,
                 ))
             if len(added) == 1:
-                nested_doc_details.push_list_name = outer_name
+                node.push_list_name = outer_name
                 index_to_column[added[0]].push_list_name = "."
     where_clause = ToBooleanOp(query.where).partial_eval(SQLang).to_sql(schema)
     # ORDERING

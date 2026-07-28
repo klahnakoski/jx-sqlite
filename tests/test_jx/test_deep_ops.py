@@ -768,7 +768,7 @@ class TestDeepOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "two+ deep leaves from one child branch double-nest ({a._a:{a._a:{...}}}); each keeps its origin-rooted name instead of collapsing. Each leaf should collapse to its OWN multivalue independently at its origin-relative path (a._a.v -> list, a._a.s -> scalar) - the lone-leaf collapse generalised, not a len==1 special case")
+    @skipIf(global_settings.use == "sqlite", "step-3 two-arms assembles this correctly (verified with limit lifted: v->list, s->False scalar), but the default LIMIT 10 is a SQL row-limit on the N-arms-per-document union and truncates o=3 mid-document. Needs the setop LIMIT to count documents (SqlOrderByOp must become a first-class renderable command so the row-LIMIT can be dropped) - separate mo_sqlite task")
     def test_deep_where_on_fact_table_multivalue(self):
         test = {
             "data": [

@@ -46,14 +46,13 @@ class DocumentDetails:
 
 
 def place(node, parent):
-    # INSERT node INTO THE DocumentDetails TREE UNDER THE DEEPEST ANCESTOR CONTAINING IT
-    if startswith_field(node.nested_path[0], parent.nested_path[0]):
-        for c in parent.children:
-            if place(node, c):
-                return True
-        parent.children.append(node)
-        node.nested_path = [node.nested_path[0], *parent.nested_path]
-        return True
+    # INSERT node UNDER THE DEEPEST NODE WHOSE TABLE IS A *PROPER* ANCESTOR OF node'S TABLE.
+    # SAME-TABLE NODES THEREBY BECOME SIBLINGS (TWO ARMS ON ONE TABLE - STEP 3), NOT NESTED.
+    for c in parent.children:
+        if startswith_field(node.nested_path[0], c.nested_path[0]) and node.nested_path[0] != c.nested_path[0]:
+            return place(node, c)
+    parent.children.append(node)
+    node.nested_path = [node.nested_path[0], *parent.nested_path]
 
 
 class BranchBuilder:
