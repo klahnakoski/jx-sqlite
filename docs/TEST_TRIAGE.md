@@ -223,17 +223,23 @@ typed leaf, not the coalesced value.
   `most`/`least`, and swapping their shared SQL to a UNION-ALL subquery throws `near ","` once
   composed into a multi-column select (`test_left_w_find`). Needs a decisive form that also composes
   nested, or a fix that leaves the conservative clamp path (`multiop_to_sql` infix `MAX`) untouched.
-- [ ] test_where_is_number / test_where_is_integer / test_where_is_boolean — type predicates return
-  the value's typed leaf ($N/$I/$B), NULL otherwise; current impls test `value.jx_type ==` which is
-  `JX_ANY` for a union column → wrong. Need per-typed-leaf resolution (schema's hardest area).
+- [x] test_where_is_number / test_where_is_integer / test_where_is_boolean — type predicates now
+  resolve the *one* typed leaf ($N/$B), not the COALESCE'd union. New `variable.typed_leaf(term,
+  schema, target_types)` filters `schema.leaves` by es_type and returns just that column (NULL if
+  absent) — this is the per-leaf resolution the old `value.jx_type == JX_NUMBER` (always `JX_ANY` for
+  a union) could not do. Integers store as `$N` (REAL, no `$I` column), so is_integer takes the `$N`
+  leaf and nulls fractionals (`CAST(n AS INTEGER)=n`). The load-bearing insight: the WHERE wraps every
+  predicate in `ToBooleanOp`, whose old fallback used schema-agnostic `term.exists()`/`.missing()` —
+  collapsing the narrowing back to the whole union. `ToBooleanOp` now keys off the *rendered* null-safe
+  value (`NOT (<sql> IS NULL)`), identical to exists() for ordinary terms but honouring a to_sql that
+  nulled a present-but-out-of-class row. (`is_number(x)==5` still returns the value, so eq works.)
 - [x] test_where_to_integer / test_where_to_text / test_where_number_coercion — coercion semantics
-  (integer truncates 2.9→2; text renders whole float 2.0→"2"; number parses "5"→5). Root fix was in
-  the pure-SQL layer: `quote_value` rendered a numeric-looking *string* ("2", "0") as a bare number,
-  so `text(x) == "2"` compiled to `'2' = 2` (false in SQLite) and RTRIM's strip-char arg was unquoted;
-  a Python `str` now always quotes. `ToIntegerOp` now always CASTs (it only cast text before, so a
-  float never truncated); `ToNumberOp` wrapped a whole SqlScript in SqlCastOp (→ `KeyError:
-  'partial_eval'`), now `sql_cast(value.expr, …)`. Residue: `number("x")` yields 0 not null (SQLite
-  `CAST('x' AS <num>)`=0); harmless here (eq-5 excludes it) but not decisively correct.
+  (integer truncates 2.9→2; text renders whole float 2.0→"2"; number parses "5"→5, "x"→null). Root fix
+  was in the pure-SQL layer: `quote_value` rendered a numeric-looking *string* ("2", "0") as a bare
+  number, so `text(x) == "2"` compiled to `'2' = 2` (false in SQLite) and RTRIM's strip-char arg was
+  unquoted; a Python `str` now always quotes. `ToIntegerOp` now always CASTs (it only cast text before,
+  so a float never truncated); `ToNumberOp` wrapped a whole SqlScript in SqlCastOp (→ `KeyError:
+  'partial_eval'`), now parses via a GLOB numeric-string guard (`"x"→null`, not 0).
 - [ ] test_where_count_collection / test_where_cardinality_collection — count / distinct-count over a
   *nested array* referenced from the fact WHERE; a correlated aggregate subquery over the snowflake.
   Hardest of the cluster.

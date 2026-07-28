@@ -10,10 +10,11 @@
 from jx_base.expressions import NULL, Variable as Variable_, SelectOp, FALSE
 from jx_base.expressions._utils import simplified
 from jx_base.expressions.select_op import SelectOne
+from jx_base.expressions.variable import is_variable
 from jx_sqlite.expressions._utils import SqlScript
 from jx_sqlite.utils import GUID
 from mo_dots import concat_field, tail_field, startswith_field
-from mo_json.types import JX_INTEGER, JxType, to_jx_type, STRING, union_type, JX_TEXT
+from mo_json.types import JX_INTEGER, JxType, to_jx_type, STRING, union_type, JX_TEXT, base_type
 from mo_logs import logger
 from jx_sqlite.expressions._utils import check
 from mo_sqlite import json_type_to_sqlite_type
@@ -73,3 +74,29 @@ class Variable(Variable_):
                 SqlVariable(col.es_index, col.es_column, jx_type=to_jx_type(col.es_type)),
             ))
         return SelectOp(schema, *select).to_sql(schema)
+
+
+def typed_leaf(term, schema, target_types) -> SqlScript:
+    """
+    Resolve `term` to only its leaf column(s) whose type is in `target_types`, NULL otherwise.
+
+    A union column maps to several typed columns ($N/$B/$S/...) and `Variable.to_sql`
+    COALESCEs across them, erasing the per-type split. A type predicate needs the opposite:
+    the single matching leaf, so a non-matching row reads NULL. `frum` is the resolved leaf,
+    so `miss` is that column's null-check (not the whole union's).
+    """
+    value = term.to_sql(schema)
+    if base_type(value.jx_type) in target_types:
+        return value
+    if is_variable(term):  # a Variable, or a GetOp resolving to one (post partial_eval)
+        name = term.var
+        if startswith_field(name, "row"):
+            _, name = tail_field(name)
+        cols = [c for _, c in schema.leaves(name) if base_type(to_jx_type(c.es_type)) in target_types]
+        if cols:
+            exprs = [SqlVariable(c.es_index, c.es_column, jx_type=to_jx_type(c.es_type)) for c in cols]
+            expr = exprs[0] if len(exprs) == 1 else SqlCoalesceOp(*exprs)
+            return SqlScript(
+                jx_type=union_type(*(to_jx_type(c.es_type) for c in cols)), expr=expr, frum=expr, schema=schema,
+            )
+    return NULL.to_sql(schema)

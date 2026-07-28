@@ -7,16 +7,14 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import IsNumberOp as _IsNumberOp, NULL, SqlScript
+from jx_base.expressions import IsNumberOp as _IsNumberOp, SqlScript
 from jx_sqlite.expressions._utils import check
-from mo_json.types import JX_NUMBER
+from jx_sqlite.expressions.variable import typed_leaf
+from mo_json.types import JX_NUMBER, JX_INTEGER
 
 
 class IsNumberOp(_IsNumberOp):
     @check
     def to_sql(self, schema) -> SqlScript:
-        value = self.term.to_sql(schema)
-        if value.jx_type == JX_NUMBER:
-            return value
-        else:
-            return NULL
+        # the numeric leaf of a (possibly union) column; NULL when the value is not numeric
+        return typed_leaf(self.term, schema, (JX_NUMBER, JX_INTEGER))
