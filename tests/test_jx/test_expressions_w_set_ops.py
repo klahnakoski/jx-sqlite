@@ -383,12 +383,44 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    # THE PAIR: SAME DATA, SAME COLUMN, THE TWO SPELLINGS OF count.  THE `aggregate` PROPERTY
+    # COLLAPSES OVER THE ROWS OF THE from; count AS A *VALUE* IS AN EXPRESSION OF ONE DOCUMENT.
+    # THE from CLAUSE SAYS WHICH ROWS ARE DOCUMENTS, SO THE TWO CAN NOT MEAN THE SAME THING.
     @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
-    @skipIf(
-        global_settings.use == "sqlite",
-        "single-term count is lifted into the select's aggregate slot, so the whole query routes to"
-        " _edges_op and emits an empty column (`SELECT  AS __column0`)",
-    )
+    def test_count_as_aggregate(self):
+        test = {
+            "data": [{"a": 1}, {"a": 2}, {}],
+            "query": {
+                "from": TEST_TABLE,
+                "select": {"name": "n", "value": "a", "aggregate": "count"},
+            },
+            "expecting_list": {"meta": {"format": "value"}, "data": 2},
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["n"],
+                "data": [[2]],
+            },
+        }
+        self.utils.execute_tests(test)
+
+    @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
+    def test_count_as_expression(self):
+        test = {
+            "data": [{"a": 1}, {"a": 2}, {}],
+            "query": {
+                "from": TEST_TABLE,
+                "select": {"name": "n", "value": {"count": "a"}},
+            },
+            "expecting_list": {"meta": {"format": "list"}, "data": [1, 1, 0]},
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["n"],
+                "data": [[1], [1], [0]],
+            },
+        }
+        self.utils.execute_tests(test)
+
+    @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
     def test_select_count_of_collection(self):
         # count() AS AN EXPRESSION IS PER DOCUMENT, LIKE test_select_count ABOVE - IT COUNTS THE
         # VALUES IN *THIS* DOCUMENT'S COLLECTION.  IT IS NOT {"value":"arr","aggregate":"count"},

@@ -279,15 +279,26 @@ typed leaf, not the coalesced value.
 
   The weak spot: a second traversal parallel to `vars()`, whose payoff depends on every composite op
   remembering to forward. A missed forward is silent — it just reverts to the pessimistic join.
-- [ ] test_expressions_w_set_ops.py::test_select_count_of_collection — `count` works in a WHERE, not
-  in a SELECT. A *single-term* `{"count": "x"}` is lifted into the select's `aggregate` slot by
-  normalization (multi-term is `TallyOp` and stays an expression, which is why `test_select_count`
-  passes), so the query routes to `_edges_op`, whose `aggregates.py` reaches nested columns its own
-  way (LEFT JOIN + GROUP BY) and never calls `CountOp.to_sql`/ToListOp — it emits an empty column
-  (`SELECT  AS __column0`). Two implementations of one idea; the select side should go through
-  ToListOp too. Adjacent: a select mixing an aggregate with a plain column and no groupby dies in
-  `sql_aggs["null"]` (`aggregates.py:240`) for *any* aggregate, `sum` included — arguably an invalid
-  query owed a real error.
+- [x] test_expressions_w_set_ops.py::test_select_count_of_collection, plus the new pair
+  test_count_as_aggregate / test_count_as_expression — **an aggregate is a declaration, not an
+  operator.** `{"value":"a","aggregate":"count"}` collapses over the rows of the `from`;
+  `{"value":{"count":"a"}}` is an expression of one document. Both build a `CountOp`, and
+  `SelectOne` was storing only that — `.aggregate` re-derived the declaration from the expression's
+  *class* (`canonical_aggregates`), so the two spellings were one object and every collection op in
+  a value position was read as a collapse (`query.py:128` then picks the query strategy, i.e. the
+  result *shape*, from that). `SelectOne` now records the declaration (`_aggregate`, set by the
+  constructor or `SelectOne.aggregated`); `.value`/`.default` read it instead of guessing.
+  `setop.py` select-var resolution also moved to `join_vars` — otherwise the assembler builds a
+  child branch for the aggregate's own nested column and tries to hang child docs off the scalar it
+  produced. Multi-term `count` reaching `TallyOp` (not in `canonical_aggregates`) was the same
+  distinction smuggled through arity; it is no longer load-bearing.
+
+  Newly *visible* (not new): with the op form no longer reinterpreted as a collapse,
+  `{"value":{"sum":"a"}}` and `{"value":{"union":[...]}}` now error with "no attribute to_sql" —
+  `SumOp`/`UnionOp` have no JxSql expression implementation. They used to be silently routed to the
+  aggregate path instead. `test_union_columns` still needs `UnionOp.to_sql` (cluster 6), but its
+  routing is fixed. The `sql_aggs["null"]` KeyError for a mixed select is gone for ops that *do*
+  have an implementation (count/cardinality both work beside a plain column now).
 
 ## Suggested order of attack
 

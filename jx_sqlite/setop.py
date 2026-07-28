@@ -206,11 +206,13 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
             subqueries.setdefault(table_path, []).append((term.name, [(select_path, Variable(select_path))]))
     plain_select = SelectOp(query.select.frum, *plain_terms)
 
-    # GET LIST OF SELECTED COLUMNS
+    # GET LIST OF SELECTED COLUMNS.  join_vars, NOT vars: A COLLECTION AGGREGATE READS ITS NESTED
+    # COLUMN THROUGH ITS OWN FROM (ToListOp), SO IT NEEDS NO BRANCH - AND MUST NOT HAVE ONE, OR THE
+    # ASSEMBLER WOULD TRY TO HANG THE CHILD DOCS OFF THE SCALAR THE AGGREGATE ALREADY PRODUCED.
     select_vars = set(
         rest if first == "row" else v
         for s in plain_terms
-        for v in s.value.vars()
+        for v in s.value.join_vars()
         for first, rest in [tail_field(v)]
     )
     active_paths = {schema.nested_path[0]: {
