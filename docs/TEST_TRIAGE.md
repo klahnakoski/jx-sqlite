@@ -33,6 +33,8 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 - [x] test_deep_agg_on_expression_w_shallow_where
 - [x] test_agg_w_complicated_where
 - [x] test_deep_where_on_fact_table — fixed: explicit deep-leaf select keeps its term-rooted push name (ResolvedName push_child='.'); _accumulate_nested merges one value per child row as a multivalue on the origin doc
+- [x] test_deep_where_on_fact_table_multivalue — fixed (step 3, two arms): each deep leaf is its own UNION-ALL arm on the table (place() makes same-table nodes siblings; each deep-leaf candidate is its own subquery-entry branch node), so a._a.v -> list and a._a.s -> False collapse independently. Also fixed the reassembler dropping a collapsed falsy scalar (doc or is_origin -> not is_missing(doc)), and made setop's LIMIT count documents not union rows (SqlOrderByOp is now a first-class command; row-limit dropped, docs sliced at assembly)
+- [ ] test_deep_where_on_fact_table_subquery — correlated counterpart: a subquery `{from: a._a, select: [v, s]}` as one select element must keep v,s together per element (array of {v,s} objects, = selecting `a._a` whole). Currently double-nests. Kyle: this is "just-another-element in the select clause"
 - [ ] test_id_select — GUID `_id` not bound from nested origin (NAMES.md #7); also drops empty-parent row
 - [x] test_aggs_on_parent
 - [x] test_aggs_on_parent_and_child

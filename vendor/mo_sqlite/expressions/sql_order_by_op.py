@@ -13,7 +13,10 @@ from mo_future import extend
 from mo_sql import SQL_SELECT, sql_iso, SQL_FROM, SQL_STAR, SQL_ORDERBY, NO_SQL, SQL_COMMA, SQL
 
 
-class SqlOrderByOp(_SqlOrderByOp, SQL):
+# SQL FIRST (LIKE SqlLimitOp) SO __str__/__data__ RENDER VIA __iter__: THIS OP IS A FIRST-CLASS
+# TOP-LEVEL COMMAND (setop RUNS IT WITHOUT A SqlLimitOp WRAPPER).  Expression-FIRST WOULD PICK
+# Expression.__str__ (value2json(__data__)) AND RAISE NotImplementedError.
+class SqlOrderByOp(SQL, _SqlOrderByOp):
     def __iter__(self):
         yield from SQL_SELECT
         yield from SQL_STAR
