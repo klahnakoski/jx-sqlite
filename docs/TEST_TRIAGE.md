@@ -226,8 +226,14 @@ typed leaf, not the coalesced value.
 - [ ] test_where_is_number / test_where_is_integer / test_where_is_boolean — type predicates return
   the value's typed leaf ($N/$I/$B), NULL otherwise; current impls test `value.jx_type ==` which is
   `JX_ANY` for a union column → wrong. Need per-typed-leaf resolution (schema's hardest area).
-- [ ] test_where_to_integer / test_where_to_text / test_where_number_coercion — coercion semantics
-  (integer truncates 2.9→2; text renders whole float 2.0→"2"; number parses "5"→5, "x"→null).
+- [x] test_where_to_integer / test_where_to_text / test_where_number_coercion — coercion semantics
+  (integer truncates 2.9→2; text renders whole float 2.0→"2"; number parses "5"→5). Root fix was in
+  the pure-SQL layer: `quote_value` rendered a numeric-looking *string* ("2", "0") as a bare number,
+  so `text(x) == "2"` compiled to `'2' = 2` (false in SQLite) and RTRIM's strip-char arg was unquoted;
+  a Python `str` now always quotes. `ToIntegerOp` now always CASTs (it only cast text before, so a
+  float never truncated); `ToNumberOp` wrapped a whole SqlScript in SqlCastOp (→ `KeyError:
+  'partial_eval'`), now `sql_cast(value.expr, …)`. Residue: `number("x")` yields 0 not null (SQLite
+  `CAST('x' AS <num>)`=0); harmless here (eq-5 excludes it) but not decisively correct.
 - [ ] test_where_count_collection / test_where_cardinality_collection — count / distinct-count over a
   *nested array* referenced from the fact WHERE; a correlated aggregate subquery over the snowflake.
   Hardest of the cluster.
