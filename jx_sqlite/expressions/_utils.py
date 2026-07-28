@@ -78,15 +78,17 @@ def _inequality_to_sql(self, schema):
 
 @check
 def _binaryop_to_sql(self, schema):
-    op, identity = _sql_operators[self.op]
+    iso, op, identity, jx_type = _sql_operators[self.op]
 
     lhs = ToNumberOp(self.lhs).partial_eval(SQLang).to_sql(schema)
     rhs = ToNumberOp(self.rhs).partial_eval(SQLang).to_sql(schema)
 
-    sql = ConcatSQL(sql_iso(lhs.expr), op, sql_iso(rhs.expr))
+    # iso WRAPS THE JOINED OPERANDS: FUNCTION FORM (pow -> POWER(lhs, rhs)) OR sql_iso FOR INFIX.
+    sql = iso(ConcatSQL(sql_iso(lhs.expr), op, sql_iso(rhs.expr)))
+    # CONSERVATIVE: EITHER OPERAND NULL => NULL (null base or null exponent -> null).
     missing = OrOp(self.lhs.missing(SQLang), self.rhs.missing(SQLang))
 
-    return SqlScript(jx_type=JX_NUMBER, expr=sql, frum=self, miss=missing, schema=schema,)
+    return SqlScript(jx_type=jx_type, expr=sql, frum=self, miss=missing, schema=schema,)
 
 
 def multiop_to_sql(self, schema):
@@ -132,7 +134,8 @@ _sql_operators = {
     "mul": (sql_iso, SQL_STAR, ONE, JX_NUMBER),
     "sub": (sql_iso, SQL(" - "), None, JX_NUMBER),
     "div": (sql_iso, SQL_DIV, NULL, JX_NUMBER),
-    "exp": (sql_iso, SQL(" ** "), NULL, JX_NUMBER),
+    # SQLite HAS NO ** OPERATOR; USE THE POWER(base, exponent) FUNCTION.  iso WRAPS "POWER(...)".
+    "pow": (lambda x: ConcatSQL(SQL("POWER"), SQL_OP, x, SQL_CP), SQL_COMMA, NULL, JX_NUMBER),
     "mod": (sql_iso, SQL(" % "), NULL, JX_NUMBER),
     "gt": (sql_iso, SqlGtOp, FALSE, JX_BOOLEAN),
     "gte": (sql_iso, SqlGteOp, FALSE, JX_BOOLEAN),

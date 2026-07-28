@@ -7,9 +7,9 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import ExpOp as _ExpOp, SqlScript
+from jx_base.expressions import PowOp as _PowOp, SqlScript
 from jx_sqlite.expressions._utils import _binaryop_to_sql
 
 
-class ExpOp(_ExpOp):
+class PowOp(_PowOp):
     to_sql = _binaryop_to_sql

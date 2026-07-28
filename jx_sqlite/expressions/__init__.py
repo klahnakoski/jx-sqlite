@@ -21,7 +21,7 @@ from jx_sqlite.expressions.default_op import DefaultOp
 from jx_sqlite.expressions.div_op import DivOp
 from jx_sqlite.expressions.eq_op import EqOp
 from jx_sqlite.expressions.exists_op import ExistsOp
-from jx_sqlite.expressions.exp_op import ExpOp
+from jx_sqlite.expressions.pow_op import PowOp
 from jx_sqlite.expressions.find_op import FindOp
 from jx_sqlite.expressions.first_op import FirstOp
 from jx_sqlite.expressions.floor_op import FloorOp
