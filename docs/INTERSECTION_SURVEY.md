@@ -183,6 +183,15 @@ case 1; D's two-phase query is the same shape for case 3 plus completion.
   module regardless of what happens above it.
 - `SqlAggregate(op, expr)` — P8. D's `aggregates()` special cases as small per-op rules
   (several already exist as jx_base AggregateOp machinery).
+- `ToListOp(terms…)` — **built** (2026-07-28, `jx_sqlite/expressions/to_list_op.py`; Kyle's
+  name). The one-column relation behind a *collection*, from either N scalar expressions
+  (UNION ALL) or the child rows of a multi-valued column. It makes every collection operator
+  one `SqlAggregate` over one relation — count/cardinality/max/min differ only in the
+  aggregate — and the decisive null semantics come free, because SQL aggregates skip NULL
+  rows. Relation-valued, so it is not a registered language op (SqlScript holds a scalar);
+  it appears only under `aggregate()`. Its open edge is the planner's, not its own: a
+  predicate that resolves its own FROM still forces a join, because `vars()` cannot say
+  *which vars need joining* (see TEST_TRIAGE, `count == 0`).
 
 Then the three query strategies stop being monoliths and become compositions:
 

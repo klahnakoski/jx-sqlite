@@ -7,23 +7,23 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import CountOp as _CountOp, FALSE, SqlScript
+from jx_base.expressions import CardinalityOp as _CardinalityOp, FALSE, SqlScript
 from jx_sqlite.expressions._utils import check
 from jx_sqlite.expressions.to_list_op import ToListOp
 from mo_sqlite.expressions.sql_script import SqlScript
 from mo_json import JX_INTEGER
 
 
-class CountOp(_CountOp):
+class CardinalityOp(_CardinalityOp):
     """
-    HOW MANY VALUES THE COLLECTION HAS; COUNT SKIPS NULL ROWS, SO IT IS DECISIVE, AND NEVER NULL
+    HOW MANY *DISTINCT* VALUES THE COLLECTION HAS - count WITH DISTINCT ROWS
     """
 
     @check
     def to_sql(self, schema) -> SqlScript:
         return SqlScript(
             jx_type=JX_INTEGER,
-            expr=ToListOp(self.frum).aggregate("COUNT", schema),
+            expr=ToListOp(self.frum).aggregate("COUNT", schema, distinct=True),
             frum=self,
             miss=FALSE,
             schema=schema,

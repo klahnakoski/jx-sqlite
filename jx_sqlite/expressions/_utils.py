@@ -107,21 +107,16 @@ def _decisive_by_identity(iso, sign, zero):
 def _decisive_by_aggregate(agg):
     """
     DECISIVE FORM FOR AN OP WITH NO IDENTITY VALUE TO COALESCE TO: MAX/MIN HAVE NO
-    REPRESENTABLE -inf/+inf, AND SQLite's SCALAR MAX()/MIN() ARE NULL-POISONING.  THE AGGREGATE
-    OF THE SAME NAME DOES SKIP NULLS, SO STACK THE TERMS INTO A ONE-COLUMN TABLE AND AGGREGATE
-    THAT.  EACH TERM IS WRITTEN ONCE (max/min NEST, SO A FORM THAT REPEATS ITS TERMS EXPLODES)
+    REPRESENTABLE -inf/+inf, AND SQLite's SCALAR MAX()/MIN() ARE NULL-POISONING.  THE TERMS ARE
+    A COLLECTION, SO AGGREGATE THEM AS ONE (ToListOp) - THE AGGREGATE SKIPS NULL ROWS, WHICH IS
+    THE DECISIVE SEMANTIC, AND EACH TERM IS WRITTEN ONCE (max/min NEST, SO A FORM THAT REPEATS
+    ITS TERMS EXPLODES)
     """
-    column = SQL("c")
 
     def build(terms, schema):
-        rows = JoinSQL(
-            SQL_UNION_ALL,
-            [
-                ConcatSQL(SQL_SELECT, sql_iso(t.partial_eval(SQLang).to_sql(schema).expr), SQL_AS, column)
-                for t in terms
-            ],
-        )
-        return sql_iso(SQL_SELECT, sql_call(agg, column), SQL_FROM, sql_iso(rows))
+        from jx_sqlite.expressions.to_list_op import ToListOp
+
+        return ToListOp(*terms).aggregate(agg, schema)
 
     return build
 

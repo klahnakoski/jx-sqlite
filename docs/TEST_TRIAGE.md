@@ -231,12 +231,15 @@ typed leaf, not the coalesced value.
   `POWER(base,exp)` (the old `exp`/`**` `_sql_operators` entry was dead: unparseable + wrong unpack).
 - [x] test_where_mod{,_negative_dividend,_zero} — jx `mod` follows the *divisor* sign
   (`-7 mod 3 = 2`, like Python); SQLite `%` follows the dividend. `((x%y)+y)%y` normalizes.
-- [ ] test_where_max — **attempted, reverted.** SQLite's *scalar* `max(6,NULL)=NULL` (null-poisoning),
-  so decisive max needs the *aggregate* form `(SELECT MAX(c) FROM (SELECT (a) AS c UNION ALL SELECT
-  (b)))`. That form is valid alone but `find`/`left` clamp indices with the *same* decisive
-  `most`/`least`, and swapping their shared SQL to a UNION-ALL subquery throws `near ","` once
-  composed into a multi-column select (`test_left_w_find`). Needs a decisive form that also composes
-  nested, or a fix that leaves the conservative clamp path (`multiop_to_sql` infix `MAX`) untouched.
+- [x] test_where_max — the aggregate form `(SELECT MAX(c) FROM (SELECT (a) AS c UNION ALL SELECT (b)
+  AS c))` was right; the `near ","` that made the first attempt look wrong was **not** this form.
+  `SqlScript.__iter__` silently yielded *nothing* past 100 stack frames (`logger.alert("stack
+  overflow?"); return`), so the script vanished mid-expression and SQLite saw `COALESCE( , 0)`; the
+  subquery just added the frames that tripped it, and whether it tripped depended on how deep the
+  interpreter already was (`python -m unittest` failed, a plain script passed). Guard removed —
+  runaway recursion still raises RecursionError. `vendor/mo_sqlite/BUGS.md` (the twin guard in
+  `__eq__` is still there). The decisive form is now per-op data (`_decisive_forms`) instead of
+  assuming every multi-op has an identity to COALESCE to.
 - [x] test_where_is_number / test_where_is_integer / test_where_is_boolean — type predicates now
   resolve the *one* typed leaf ($N/$B), not the COALESCE'd union. New `variable.typed_leaf(term,
   schema, target_types)` filters `schema.leaves` by es_type and returns just that column (NULL if
@@ -254,9 +257,22 @@ typed leaf, not the coalesced value.
   unquoted; a Python `str` now always quotes. `ToIntegerOp` now always CASTs (it only cast text before,
   so a float never truncated); `ToNumberOp` wrapped a whole SqlScript in SqlCastOp (→ `KeyError:
   'partial_eval'`), now parses via a GLOB numeric-string guard (`"x"→null`, not 0).
-- [ ] test_where_count_collection / test_where_cardinality_collection — count / distinct-count over a
-  *nested array* referenced from the fact WHERE; a correlated aggregate subquery over the snowflake.
-  Hardest of the cluster.
+- [x] test_where_count_collection / test_where_cardinality_collection — count / distinct-count over a
+  *nested array* referenced from the fact WHERE. New `ToListOp` (`jx_sqlite/expressions/to_list_op.py`,
+  Kyle's name): the one-column relation behind a collection, from either N scalar expressions
+  (UNION ALL) or the child rows of a multi-valued column (`SELECT c FROM child AS __list__ WHERE
+  __list__.__parent__ = origin.__id__`). Every collection op is then one aggregate over it —
+  count/cardinality (COUNT, COUNT DISTINCT) and decisive max/min (MAX, MIN) share the same code, and
+  the null-skipping comes free because SQL aggregates ignore NULL rows. It is deliberately *not* a
+  registered language op: it is relation-valued, and SqlScript can only carry a scalar.
+
+  **Known hole:** `{"count":"arr"} == 0` does not match a document with *no* children. `vars()`
+  reports `arr`, so setop pushes the whole WHERE onto the child arm and marks that branch `required`
+  — a parent with no child row is dropped before the predicate is ever evaluated. The subquery is
+  self-contained and *could* be evaluated on the origin arm; the planner has no way to know that.
+  This is the missing distinction to name next: which vars a predicate needs **joined** vs. which it
+  resolves itself. (`join_vars()` alongside `vars()`? It has to compose through every op, like
+  `vars()` does.)
 
 ## Suggested order of attack
 
