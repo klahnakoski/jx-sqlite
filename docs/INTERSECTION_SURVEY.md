@@ -379,14 +379,14 @@ columns assemble as sub-objects; a lone leaf collapses to a bare list via `push_
    N sibling arms because each arm sets exactly one sibling uid non-null (NULLs sort together =>
    each arm's rows are one contiguous run per parent; disjoint uid columns keep siblings apart).
 
-   **BLOCKER (oracle still skipped): document-based LIMIT.** `test_deep_where_on_fact_table_multivalue`
-   assembles **correctly** (verified with the limit lifted) but the default `LIMIT 10` is a SQL
-   **row**-limit on the N-arms-per-document union and truncates o=3 mid-document. Fix is a separate
-   mo_sqlite task: make the setop LIMIT count **documents**. Row-limit is structurally load-bearing
-   today - `SqlOrderByOp` bases are `(_SqlOrderByOp, SQL)` (Expression-first), so it is NOT a
-   renderable top-level command; it only executes because `SqlLimitOp` (SQL-first) always wraps it
-   (default limit is never NULL). Dropping the row-limit needs `SqlOrderByOp` to render standalone
-   (swap bases / give it `__iter__`-based `__str__`), then slice documents at assembly in `_set_op`.
+   **Document-based LIMIT LANDED (commit "LIMIT counts documents").** The oracle
+   `test_deep_where_on_fact_table_multivalue` is now GREEN (373/0/76). The set-op union has N arms
+   per document, so a SQL **row**-limit truncated mid-document. Fix: `SqlOrderByOp` became a
+   first-class top command (bases `(SQL, _SqlOrderByOp)` like `SqlLimitOp`, so `__str__`/`__data__`
+   render via `__iter__` instead of `Expression.__str__`=NotImplementedError); setop drops the SQL
+   row-limit and `_set_op` slices the assembled docs to `query.limit` (assembly emits docs in sort
+   order, so the first N are the document limit). Consistent with Kyle's "no need for a limit on
+   own resources". Trade-off: the whole union is now fetched before slicing (acceptable for sqlite).
 
    **3-pre: drop the inline first-row optimization (DECIDED by Kyle, do it globally).**
    The blocker for branch-per-term: today the first child row (`__order__ = 0`) is carried
