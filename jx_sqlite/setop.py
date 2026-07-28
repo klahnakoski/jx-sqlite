@@ -10,7 +10,7 @@
 from typing import List, Dict, Tuple
 
 from jx_base import Column, is_op, FALSE
-from jx_base.expressions import NULL, SqlScript, SelectOp, Variable
+from jx_base.expressions import NULL, SqlScript, SelectOp, Variable, Literal
 from jx_base.expressions.variable import is_variable
 from jx_base.expressions.sql_is_null_op import SqlIsNullOp
 from jx_base.expressions.sql_order_by_op import OneOrder
@@ -57,7 +57,7 @@ from mo_sqlite import (
 )
 from mo_sqlite import SQLang
 from mo_sqlite import sql_alias
-from mo_sqlite.expressions import SqlVariable, SqlOrderByOp, SqlEqOp, SqlAliasOp, SqlLimitOp
+from mo_sqlite.expressions import SqlVariable, SqlOrderByOp, SqlEqOp, SqlAliasOp
 from mo_sqlite.expressions.sql_script import SqlScript
 from mo_times import Date
 
@@ -156,6 +156,11 @@ def _set_op(self, query):
         data = _accumulate_nested(state, rows, primary_doc_details, 0, None)
     else:
         data = result.data
+
+    # LIMIT COUNTS DOCUMENTS, NOT UNION ROWS.  ASSEMBLY EMITS DOCS IN SORT ORDER, SO SLICING THE
+    # FIRST N IS THE DOCUMENT-LEVEL LIMIT (A SQL ROW-LIMIT WOULD TRUNCATE MID-DOCUMENT - N ARMS EACH).
+    if is_op(query.limit, Literal) and isinstance(query.limit.value, (int, float)):
+        data = data[: int(query.limit.value)]
 
     return format_deep(data, cols, query)
 
@@ -438,10 +443,9 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
         where_tables,
     )
 
-    ordered_sql = SqlOrderByOp(unsorted_sql, sorts)
-    if query.limit is not NULL:
-        ordered_sql = SqlLimitOp(ordered_sql, query.limit.to_sql(schema))
-    return index_to_column, ordered_sql, origin_doc_details
+    # NO SQL ROW-LIMIT: THE UNION HAS N ARMS PER DOCUMENT, SO A ROW-LIMIT TRUNCATES MID-DOCUMENT.
+    # _set_op LIMITS THE ASSEMBLED DOCUMENTS INSTEAD (SqlOrderByOp IS A FIRST-CLASS TOP COMMAND).
+    return index_to_column, SqlOrderByOp(unsorted_sql, sorts), origin_doc_details
 
 
 @extend(Facts)
