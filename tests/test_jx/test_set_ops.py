@@ -1053,7 +1053,7 @@ class TestSetOps(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
-    @skipIf(global_settings.use == "sqlite", "fix me first")
+    @skipIf(global_settings.use == "sqlite", "list format OK; table/cube split top level into '.'+'_a'")
     def test_select_w_nested_values(self):
         test = {
             "data": [

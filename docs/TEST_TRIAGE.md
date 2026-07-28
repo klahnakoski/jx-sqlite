@@ -82,7 +82,15 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 ### test_set_ops.py (deep subset)
 - [x] test_single_deep_select
 - [x] test_select_w_deep_star
-- [ ] test_select_w_nested_values — "fix me first"
+- [~] test_select_w_nested_values — deep (fact→_a→k) whole-doc reconstruction. Fixed the crash:
+      SelectOp.to_sql built a below-origin leaf's push name via `relative_field(concat_field(name,
+      rel_name), branch_prefix)`, but `rel_name` from `schema.leaves` is already branch-relative, so a
+      real prefix (`_a.k`) manufactured an up-ref (`...b`) that JxType rejects ("not allowed"). Now
+      `concat_field(name, rel_name)` — a no-op when branch_prefix=="." (the only case any passing test
+      hit, so regression-free) and correct for deep branches. **list format now passes.** Remaining:
+      table/cube still split the top level into two columns ('.'+'_a') — the index_to_columns
+      push_column_name assignment should collapse an all-nested whole-doc under a single '.'. That's the
+      column-mapping/push-name layer (setop/ColumnMapping / Names), a separate deeper step.
 - [ ] test_prefix_in_deep_where_clause — "fix me"
 - [ ] test_exists_in_where_clause — "fix me"
 - [ ] test_select_into_children — "Too complicated"

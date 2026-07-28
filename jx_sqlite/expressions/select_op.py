@@ -80,7 +80,11 @@ class SelectOp(_SelectOp):
                         # NAME SO ASSEMBLY KNOWS WHERE IT LANDS
                         full_name = name
                     else:
-                        full_name = relative_field(concat_field(name, rel_name), branch_prefix)
+                        # rel_name IS ALREADY RELATIVE TO THIS BRANCH'S ORIGIN, SO THE BRANCH-ROOTED
+                        # PUSH NAME IS JUST name+rel_name.  (SUBTRACTING branch_prefix HERE ASSUMED
+                        # rel_name WAS ORIGIN-ABSOLUTE; FOR A REAL BELOW-ORIGIN PREFIX LIKE `_a.k` IT
+                        # MANUFACTURED AN UP-REF `...b` THAT JxType REJECTS.  A no-op WHEN prefix==".")
+                        full_name = concat_field(name, rel_name)
                     jx_type |= full_name + to_jx_type(col.json_type)
                     sql_terms.append(SqlAliasOp(
                         SqlVariable(col.es_index, col.es_column, jx_type=to_jx_type(col.json_type)), full_name
