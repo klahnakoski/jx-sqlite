@@ -6,7 +6,7 @@ items off. Update this file as tests are un-skipped or reasons are refined.
 
 Legend: `[ ]` skipped, `[x]` passing (decorator removed), `[-]` won't fix.
 
-> Baseline (dev, 2026-07-29): 418 ran / 0 err / 60 skip. The checklists below are the source of
+> Baseline (dev, 2026-07-29): 418 ran / 0 err / 57 skip. The checklists below are the source of
 > truth for what remains; work one cluster per session.
 >
 > Reconciled 2026-07-29 by a **stale-skip sweep**: strip every sqlite-relevant skip in a
@@ -77,27 +77,33 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 - [x] test_deep_origin_agg_on_child — fixed by c176810 (found by the second stale-skip sweep)
 
 ### test_nested.py
-- [ ] TestNestedQueries (whole class) — NOT one cluster; probed 2026-07-29 by stripping the
-      class skip. Six causes, and the per-document-aggregate one is now fixed (below), so
-      test_sum executes correctly and fails only on its `expecting_normalized` key:
-      - `expecting_normalized` / `expecting_sql` are executed by the harness as *formats*
-        (`k.startswith("expecting_")` → `query.format = k[10:]`), so those tests can never pass
-        while they carry them — the query runs, then its result is compared to a normalized-query
-        dict or to hand-written aspirational SQL (`t0.id`, `first(...)`, which no engine emits
-        verbatim). test_sum, test_nested_max, test_nested_max_simple, test_nested_max_of_expression,
-        test_group_by_child1/2. **Kyle's call**: teach the harness those two expectation kinds, or
-        drop the keys. Not touched — shared conformance suite (tests/test_jx is SVN).
-      - test_nested_max_of_expression also names its term `x` but expects key `b`.
-      - test_group_by_child1/2: the engine now answers both queries exactly (see §the origin
-        document is an implicit edge), but the tests still can not pass — `expecting_sql` above,
-        *and* both expect no null-coordinate row while every edges query here emits one (the
-        all-aggregate path has always emitted an empty `{}` row for it). Their content is pinned
-        instead by test_deep_ops::test_edge_w_deep_agg_beside_plain_term and
-        ::test_edge_w_agg_beside_plain_term_from_nested, same data and query.
-      - test_nested_aggregate: `edges: "_id"` fails normalization ("programmer error expr").
-      - test_group_function: `NameError: name 'frum' is not defined` — a live code bug.
-      - test_two_paths: insert fails, `table testing.a.$A has no column named $N`.
-      - test_distinct_on: no `expecting_*` at all (a stub).
+
+The class-level `@skipIf(... "broken")` is gone: it was hiding six unrelated causes behind one
+word. Each test now carries its own reason, so a fix un-skips exactly what it fixed.
+
+The six `expecting_sql` and four `expecting_normalized` keys are **deleted** (Kyle: those
+expectations are wrong). The harness runs any `expecting_*` key as a *format*
+(`k.startswith("expecting_")` → `query.format = k[10:]`), so both kinds failed with `unknown
+format …` before any real expectation was compared — and neither described a result: the SQL was
+hand-written and aspirational (`t0.id`, `first(...)`, one an empty `SELECT / FROM`), the
+normalized form a query shape no format returns.
+
+- [x] test_sum — the per-document-aggregate fix below already returned `{"v":0,"b":22}`; only the
+      dead expectation key was failing. Same for test_nested_max, test_nested_max_simple.
+- [x] test_nested_max
+- [x] test_nested_max_simple
+- [ ] test_nested_max_of_expression — the aggregate mixes origin and nested vars
+      (`{"mul":["v","a._b.b"]}`, see below), and the term is named `x` while the expectation
+      says `b`
+- [ ] test_group_by_child1 / test_group_by_child2 — **values are right** (see §the origin document
+      is an implicit edge); both expectations omit the null-coordinate row that every edges query
+      here emits (the all-aggregate path has always emitted an empty `{}` row for it). Their
+      content is pinned instead by test_deep_ops::test_edge_w_deep_agg_beside_plain_term and
+      ::test_edge_w_agg_beside_plain_term_from_nested — same data, same queries, three formats
+- [ ] test_nested_aggregate — `edges: "_id"` fails normalization ("programmer error expr")
+- [ ] test_group_function — the test body calls an undefined `frum`; unfinished
+- [ ] test_two_paths — insert fails, `table testing.a.$A has no column named $N`
+- [ ] test_distinct_on — a stub: no `expecting_*` clause at all
 
 ### per-document aggregates over a nested branch (2026-07-29) — the `sql_aggs['null']` KeyError
 
