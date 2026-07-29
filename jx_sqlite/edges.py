@@ -10,9 +10,11 @@
 from jx_base.expressions import NULL, ToBooleanOp
 from jx_sqlite.aggregates import aggregates, per_document_aggregates
 from jx_sqlite.domain import sql_domain, sql_complete
-from jx_sqlite.utils import sql_join_chain, frames_one_document
+from jx_sqlite.utils import sql_join_chain, aggregate_frame
 from jx_sqlite.window import _window_op
+from mo_dots import first, startswith_field
 from mo_future import extend
+from mo_logs import Log
 from mo_sql import *
 from mo_sql.utils import UID
 from mo_sqlite import *
@@ -82,11 +84,21 @@ def _edges_op(self, query, schema):
     # AGGREGATE CLAUSE PARTS
     ###################################################################
     offset = len(query.edges)
-    if any(s.aggregate is NULL for s in query.select.terms):
-        # AN AGGREGATE DECLARES A GROUPING, AND WHICH ONE DEPENDS ON WHAT IT SITS BESIDE: A
-        # PLAIN TERM CAN NOT COLLAPSE THE DOCUMENTS OF A COORDINATE, SO THE ORIGIN DOCUMENT
-        # BECOMES AN IMPLICIT EDGE - ONE INNER ROW PER (COORDINATE, DOCUMENT) - AND THE OUTER
-        # QUERY COLLAPSES THAT AXIS.  AN ALL-AGGREGATE SELECT KEEPS THE CLASSIC ONE LEVEL
+    # THE DOCUMENT A COORDINATE COUNTS ONE BY ONE.  A PLAIN TERM CAN NOT COLLAPSE THE DOCUMENTS
+    # OF A COORDINATE, AND AN AGGREGATE OVER AN ANCESTOR'S VALUE MUST NOT COUNT THE COPIES THE
+    # JOIN CHAIN MADE OF IT - EITHER WAY THAT DOCUMENT BECOMES AN IMPLICIT EDGE: ONE INNER ROW
+    # PER (COORDINATE, DOCUMENT), WHICH THE OUTER QUERY COLLAPSES.  AN ALL-AGGREGATE SELECT OVER
+    # THE ORIGIN'S OWN VALUES KEEPS THE CLASSIC ONE LEVEL
+    frames = {aggregate_frame(s, inner_schema) for s in query.select.terms}
+    if frames == {schema.nested_path[0]} and not any(s.aggregate is NULL for s in query.select.terms):
+        frame = None
+        inner_selects = outer_selects
+        aggregates(self, index_to_column, offset, outer_selects, query, inner_schema)
+    else:
+        if len(frames) > 1:
+            # ONE INNER GROUPING SERVES EVERY TERM, SO THE TERMS MUST AGREE ON THE DOCUMENT
+            Log.error("select terms count different documents: {{frames}}", frames=sorted(frames))
+        frame = first(frames)
         inner_selects = list(outer_selects)  # BOTH LEVELS CARRY THE DOMAIN COLUMNS
         outer_selects = [
             sql_alias(quote_column(DOC, domain_alias), domain_alias)
@@ -94,11 +106,8 @@ def _edges_op(self, query, schema):
             for domain_alias in domain_aliases
         ]
         per_document_aggregates(
-            self, index_to_column, offset, outer_selects, inner_selects, query, inner_schema, DOC,
+            self, index_to_column, offset, outer_selects, inner_selects, query, inner_schema, DOC, frame,
         )
-    else:
-        inner_selects = outer_selects
-        aggregates(self, index_to_column, offset, outer_selects, query, inner_schema)
 
     for w in query.window:
         outer_selects.append(_window_op(w, schema))
@@ -117,13 +126,18 @@ def _edges_op(self, query, schema):
         clauses.append(ConcatSQL(t, s, SQL_ON, j))
     clauses.append(ConcatSQL(SQL_WHERE, main_filter))
     inner_groupby = list(groupby)
-    if inner_selects is not outer_selects:
-        inner_groupby.append(quote_column(schema.nested_path[0], UID))
+    if frame:
+        # THE WHOLE UID CHAIN FROM THE FACT DOWN TO frame, NOT JUST frame's OWN UID: A DOCUMENT
+        # WITH NO frame ROW HAS A *NULL* UID, AND SQLITE PUTS EVERY SUCH DOCUMENT IN ONE GROUP
+        inner_groupby.extend(
+            quote_column(table, UID)
+            for table in sorted((t for t in self.snowflake.query_paths if startswith_field(frame, t)), key=len)
+        )
     if inner_groupby:
         clauses.append(ConcatSQL(SQL_GROUPBY, sql_list(inner_groupby)))
     command = ConcatSQL(*clauses)
 
-    if inner_selects is not outer_selects:
+    if frame:
         outer_clauses = [ConcatSQL(
             SQL_SELECT, sql_list(outer_selects), SQL_FROM, sql_alias(sql_iso(command), DOC),
         )]

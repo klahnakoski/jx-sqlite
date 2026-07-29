@@ -16,6 +16,7 @@ from jx_base.expressions import NULL, SqlScript
 from mo_dots import (
     Data,
     concat_field,
+    first,
     is_data,
     is_list,
     join_field,
@@ -152,6 +153,11 @@ def sql_text_array_to_set(column):
     return _convert
 
 
+def value_tables(term, schema):
+    """THE TABLES A SELECT TERM'S VALUE READS"""
+    return {c.nested_path[0] for v in term.value.vars() for _, c in schema.leaves(v)}
+
+
 def frames_one_document(term, schema):
     """
     CAN THIS SELECT TERM COLLAPSE THE ROWS OF THE origin, OR ONLY THE ROWS OF ONE DOCUMENT?
@@ -163,8 +169,26 @@ def frames_one_document(term, schema):
     if term.aggregate is NULL:
         return True
     origin = schema.nested_path[0]
-    tables = {c.nested_path[0] for v in term.value.vars() for _, c in schema.leaves(v)}
+    tables = value_tables(term, schema)
     return bool(tables) and all(t != origin and startswith_field(t, origin) for t in tables)
+
+
+def aggregate_frame(term, schema):
+    """
+    THE TABLE WHOSE ROWS THIS TERM COUNTS ONE BY ONE.  USUALLY THE origin, BUT AN AGGREGATE OVER
+    AN *ANCESTOR'S* VALUE MUST COUNT THAT ANCESTOR'S ROWS: THE JOIN CHAIN REPEATS AN ANCESTOR ROW
+    ONCE PER DESCENDANT, AND `sum(v)` MUST NOT SEE THE COPIES (test_deep_edge_w_shallow_var).
+    A PLAIN TERM IS ALWAYS PER origin ROW - THAT IS WHAT ITS MULTIVALUE ENUMERATES.
+    """
+    origin = schema.nested_path[0]
+    if term.aggregate is NULL:
+        return origin
+    tables = value_tables(term, schema)
+    if len(tables) == 1:
+        table = first(tables)
+        if table != origin and startswith_field(origin, table):
+            return table
+    return origin
 
 
 def gather_column(column, json_type=None, default=NULL):

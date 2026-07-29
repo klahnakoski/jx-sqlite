@@ -51,14 +51,17 @@ def aggregates(facts, index_to_column, offset, outer_selects, query, schema):
             outer_selects.append(sql)
 
 
-def per_document_aggregates(facts, index_to_column, offset, outer_selects, inner_selects, query, schema, doc_alias):
+def per_document_aggregates(
+    facts, index_to_column, offset, outer_selects, inner_selects, query, schema, doc_alias, frame
+):
     """
-    THE ORIGIN DOCUMENT IS AN IMPLICIT EDGE (edges.py): THE INNER QUERY ANSWERS ONE ROW PER
+    THE DOCUMENT IS AN IMPLICIT EDGE (edges.py): THE INNER QUERY ANSWERS ONE ROW PER
     (COORDINATE, DOCUMENT) AND THE OUTER COLLAPSES THAT AXIS.  A TERM THAT FRAMES ONE DOCUMENT
     IS COMPUTED INSIDE AND *GATHERED* OUTSIDE - IT COMES BACK AS A MULTIVALUE, ONE VALUE PER
     DOCUMENT.  A TERM THAT CAN COLLAPSE THE WHOLE GROUP IS SELECTED RAW INSIDE AND AGGREGATED
-    OUTSIDE, WHICH IS SAFE ONLY BECAUSE ITS VALUE LIVES AT (OR ABOVE) THE ORIGIN: IT IS ONE
-    VALUE PER DOCUMENT ALREADY, SO THE INNER GROUPING LOSES NOTHING IT NEEDED
+    OUTSIDE, WHICH IS SAFE ONLY BECAUSE ITS VALUE LIVES AT (OR ABOVE) frame - THE TABLE WHOSE
+    ROWS THE INNER GROUPING KEEPS DISTINCT - SO IT IS ONE VALUE PER DOCUMENT ALREADY
+    :param frame: THE TABLE THE INNER QUERY GROUPS BY (utils.aggregate_frame)
     """
     for si, s in enumerate(query.select.terms, start=offset):
         column_number = len(outer_selects)
@@ -80,7 +83,7 @@ def per_document_aggregates(facts, index_to_column, offset, outer_selects, inner
             pull = gather_column(column_number, json_type, s.default)
         elif rule is _count_records:
             # COUNT DOCUMENTS: THE UID IS THE INNER GROUP KEY, SO EACH INNER ROW IS ONE
-            inner_sql = quote_column(schema.nested_path[0], UID)
+            inner_sql = quote_column(frame, UID)
             outer_sql = sql_count(quote_column(doc_alias, alias))
             json_type = NUMBER
             pull = get_column(column_number, json_type, ZERO)

@@ -6,7 +6,7 @@ items off. Update this file as tests are un-skipped or reasons are refined.
 
 Legend: `[ ]` skipped, `[x]` passing (decorator removed), `[-]` won't fix.
 
-> Baseline (dev, 2026-07-29): 418 ran / 0 err / 57 skip. The checklists below are the source of
+> Baseline (dev, 2026-07-29): 418 ran / 0 err / 54 skip. The checklists below are the source of
 > truth for what remains; work one cluster per session.
 >
 > Reconciled 2026-07-29 by a **stale-skip sweep**: strip every sqlite-relevant skip in a
@@ -69,9 +69,10 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 - [x] test_deep_select_dot
 - [ ] test_from_shallow_select_deep_column
 - [x] test_setop_w_shallow_eq_string
-- [ ] test_deep_edge_w_shallow_expression
-- [ ] test_deep_edge_w_shallow_var
-- [ ] test_nested_property_edge_w_shallow_expression
+- [x] test_deep_edge_w_shallow_expression — needed the ToBooleanOp fix below as well
+- [x] test_deep_edge_w_shallow_var — fixed: an aggregate over an ancestor's value counts that
+      ancestor's rows (§an aggregate counts the rows of its value's table)
+- [x] test_nested_property_edge_w_shallow_expression — same pair of fixes
 - [ ] test_nested_document_selection — select of literal nested-doc list: 'Expecting an expression, not [{...'
 - [x] test_nested_filter_with_groupby
 - [x] test_deep_origin_agg_on_child — fixed by c176810 (found by the second stale-skip sweep)
@@ -166,10 +167,39 @@ Not fixed: the same select clause under `groupby` in a non-cube format goes to `
 separate implementation, and still raises `KeyError 'null'` (cluster 8). A cube-format groupby is
 rewritten to edges by `query.py`, so it takes the path above.
 
-**Lead for the deep-edge trio and cluster 11's test_edge**: those want an aggregate to count each
-row of *the table its value lives in* once (test_deep_edge_w_shallow_var: `sum(v)` at `b==2` is
-`4+8`, not `4+4+8`). That is this same dedup, keyed by the value's table rather than the origin —
-but on the all-aggregate path, which is still one level.
+### an aggregate counts the rows of its value's table (2026-07-29) — the deep-edge trio
+
+`{"from":"testdata.a","edges":["b"],"select":{"value":"v","aggregate":"sum"}}` gave `16` at
+`b==2` where the answer is `12`: the join chain repeats a fact row once per `a` row, and doc
+`v=4` has two `b==2` rows, so its `v` was summed twice. **An aggregate collapses the rows of the
+table its value lives in** — for an ancestor's value, that ancestor's rows, not the origin's.
+
+`utils.aggregate_frame(term, schema)` names that table (the *frame*): the value's table when it is
+a strict ancestor of the origin, the origin otherwise, and always the origin for a plain term —
+which is what a plain term's multivalue enumerates. The frame is the inner GROUP BY of the
+two-level form above, so this needed no new machinery, only the right key. An all-aggregate select
+over the origin's own values still takes the classic one level.
+
+- One inner grouping serves every term, so the terms must agree on the frame; a query mixing them
+  (an ancestor aggregate beside an origin one) raises instead of returning a wrong number. Nesting
+  the levels per frame is the general answer, not built.
+- The group key is the **whole uid chain from the fact down to the frame**, not the frame's own
+  uid: a document with no frame row has a NULL uid, and SQLite puts every such document in one
+  group. That silently merged the parentless documents of the null coordinate (`v:[3,1]` where
+  `[1,3,6,7]` is right) — found by asking the plain-term form of the same query who was in each
+  coordinate, which is worth doing whenever an aggregate looks off by a document or two.
+
+The other half of the trio was unrelated: `{"when":"v","then":1}` crashed in `WhenOp.to_sql`
+("expecting miss to not be missing") because jx_base `ToBooleanOp.missing()` returned
+`term.missing()`. A coercion to boolean is never null — `__call__` is `exists(v) and v is not
+False`, and jx_sqlite's `to_sql` already sets `miss=FALSE` — so every predicate built on it was
+wrongly nullable, and `OrOp(NotOp(when), …)` then violated the SqlScript invariant that a `miss`
+is not itself missing. Now `FALSE`.
+
+Cluster 11's test_edge is the same query on inner-object-merged data: the double count is fixed
+(`b==2` is 4), but its null partition says 14 where the engine says 17 — `v=1,3,6,7`, every doc
+whose `a` row has no `b`, which is exactly what the gather above enumerates and what its sibling
+test_deep_edge_w_shallow_var expects (25 over the same shape). **Kyle's call**: 14 looks wrong.
 
 ### test_sort.py (nested subset)
 - [x] test_nested_array
@@ -384,8 +414,9 @@ object / nested array) resolves to *one* of them instead of the union.
       (`world`, want `hello`) for `a..html` when both `a.html` (a literal dotted name) and
       `a: {html}` exist
 - [ ] test_schema_merging.py::test_dots_in_property_names3 — "broken"
-- [ ] test_schema_merging.py::test_edge — sum over an edge on a merged inner/nested column adds
-      the parent value once per child row (b=2 → 8, want 4)
+- [ ] test_schema_merging.py::test_edge — the double count is fixed (b=2 → 4); the null partition
+      is 17 where the test says 14, and 14 contradicts its sibling test_deep_edge_w_shallow_var
+      (see §an aggregate counts the rows of its value's table)
 
 ## 12. Joins (feature not implemented)
 - [ ] test_joins.py::test_left_join

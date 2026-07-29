@@ -379,7 +379,12 @@ class TestSchemaMerging(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
-    @skipIf(global_settings.use == "sqlite", "sum over an edge on a merged inner/nested column adds the parent value once per child row (b=2 -> 8, want 4)")
+    @skipIf(
+        global_settings.use == "sqlite",
+        "the double count is fixed (b=2 is 4 now); the null partition is 17 -- v=1,3,6,7, every doc"
+        " whose a row has no b -- where this test says 14.  test_deep_ops::test_deep_edge_w_shallow_var"
+        " expects the analogous 25 over the same shape",
+    )
     def test_edge(self):
         test = {
             "data": [

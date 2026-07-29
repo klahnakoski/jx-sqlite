@@ -1954,7 +1954,6 @@ class TestDeepOps(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_deep_edge_w_shallow_expression(self):
         test = {
             "data": [
@@ -2005,7 +2004,6 @@ class TestDeepOps(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_deep_edge_w_shallow_var(self):
         test = {
             "data": [
@@ -2149,7 +2147,6 @@ class TestDeepOps(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_nested_property_edge_w_shallow_expression(self):
         test = {
             "data": [
