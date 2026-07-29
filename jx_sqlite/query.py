@@ -41,6 +41,27 @@ def get_column_name(self, column):
     return relative_field(column.name, self.snowflake.fact_name)
 
 
+def _per_document_aggregates(terms, schema):
+    """
+    AN AGGREGATE DECLARES A GROUPING; WHICH ONE DEPENDS ON WHAT IT SITS BESIDE AND HOW DEEP ITS
+    VALUE REACHES.  AN ALL-AGGREGATE SELECT IS THE CLASSIC COLLAPSE OF THE WHOLE RESULT (ONE
+    ROW).  A PLAIN TERM BESIDE IT KEEPS ONE ROW PER DOCUMENT, SO THE AGGREGATE HAS TO FRAME ONE
+    DOCUMENT INSTEAD - WHICH ITS VALUE CAN ONLY MEAN IF IT LIVES IN A NESTED BRANCH, WHERE ONE
+    DOCUMENT HAS MANY ROWS TO COLLAPSE (ToListOp).  THE QUERY IS THEN A SET OP WHOSE TERMS
+    HAPPEN TO BE COLLECTION AGGREGATES - `{"select":["v",{"value":"a._b.b","aggregate":"sum"}]}`
+    IS ONE SUM PER DOCUMENT BESIDE THAT DOCUMENT'S v.
+    """
+    origin = schema.nested_path[0]
+    aggregates = [t for t in terms if t.aggregate is not NULL]
+    if not aggregates or len(aggregates) == len(terms):
+        return False
+    return all(
+        bool(tables) and all(t != origin and startswith_field(t, origin) for t in tables)
+        for term in aggregates
+        for tables in [set(c.nested_path[0] for v in term.value.vars() for _, c in schema.leaves(v))]
+    )
+
+
 @extend(Facts)
 @register_thread
 def __len__(self):
@@ -125,7 +146,10 @@ def query(self, query=None):
             normalized_query.groupby,
             normalized_query.edges,
         )
-    elif normalized_query.edges or any(t.aggregate is not NULL for t in listwrap(normalized_query.select.terms)):
+    elif normalized_query.edges or (
+        any(t.aggregate is not NULL for t in listwrap(normalized_query.select.terms))
+        and not _per_document_aggregates(listwrap(normalized_query.select.terms), normalized_query.frum.schema)
+    ):
         command, index_to_columns = self._edges_op(normalized_query, normalized_query.frum.schema)
     else:
         return self._set_op(normalized_query)

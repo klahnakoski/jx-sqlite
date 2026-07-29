@@ -48,7 +48,9 @@ class SelectOp(_SelectOp):
         jx_type = JX_IS_NULL
         sql_terms = []
         for term in self.terms:
-            name, expr, agg, default = term.name, term.value, term.aggregate, term.default
+            # expr, NOT value: A TERM CARRYING AN aggregate DECLARATION COMPILES AS ITS OPERATOR
+            # FORM (A COLLECTION AGGREGATE OF ONE DOCUMENT); THE TWO ARE ONE OBJECT OTHERWISE
+            name, expr, agg, default = term.name, term.expr, term.aggregate, term.default
             if is_variable(expr):
                 var_name = expr.var
                 if startswith_field(var_name, "row"):

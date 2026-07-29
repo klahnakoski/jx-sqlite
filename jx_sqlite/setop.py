@@ -11,6 +11,7 @@ from typing import List, Dict, Tuple
 
 from jx_base import Column, is_op, FALSE
 from jx_base.expressions import NULL, SqlScript, SelectOp, Variable, Literal
+from jx_base.expressions.select_op import SelectOne
 from jx_base.expressions.variable import is_variable
 from jx_base.expressions.sql_is_null_op import SqlIsNullOp
 from jx_base.expressions.sql_order_by_op import OneOrder
@@ -188,13 +189,31 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
     origin = query.frum.nested_path[0]
     plain_terms = []
     subqueries = {}  # branch table path -> list of (outer name, [(inner name, inner value), ...])
+    # A TERM CARRYING AN aggregate DECLARATION IS READ AS ITS OPERATOR FORM (SelectOne.expr):
+    # ROUTED HERE, IT IS A COLLECTION AGGREGATE OF ONE DOCUMENT (ToListOp DOES ITS OWN FROM), SO
+    # IT NEEDS NO BRANCH - `.value` WOULD HAND US THE BARE NESTED NAME AND BUILD ONE.  THE TWO
+    # ARE THE SAME OBJECT FOR EVERY OTHER TERM.  query.py::_is_per_document
     for term in query.select.terms:
-        if is_op(term.value, SelectOp):
-            rel = first(term.value.frum.vars())
+        if is_op(term.expr, SelectOp):
+            rel = first(term.expr.frum.vars())
             table_path = first(c.nested_path[0] for _, c in schema.leaves(rel))
-            subqueries.setdefault(table_path, []).append((term.name, rel, list(term.value)))
+            inner = []
+            for inner_term in term.expr.terms:
+                if inner_term.aggregate is not NULL and is_variable(inner_term.value):
+                    # AN AGGREGATE INSIDE THE SUBQUERY COLLAPSES ITS ROWS, SO IT IS A SCALAR OF
+                    # THE OUTER DOCUMENT, NOT A BRANCH: SAME OPERATOR, ORIGIN-ROOTED NAME.  A
+                    # ONE-TERM SUBQUERY *IS* ITS TERM, SO THE OUTER NAME IS THE WHOLE NAME
+                    plain_terms.append(SelectOne(
+                        term.name if len(term.expr.terms) == 1 else concat_field(term.name, inner_term.name),
+                        Variable(concat_field(rel, inner_term.value.var)),
+                        aggregate=inner_term.aggregate,
+                    ))
+                else:
+                    inner.append((inner_term.name, inner_term.expr))
+            if inner:
+                subqueries.setdefault(table_path, []).append((term.name, rel, inner))
             continue
-        if is_variable(term.value):
+        if is_variable(term.expr):
             # EACH TABLE THE NAME REACHES -> ITS OWN SUBQUERY ENTRY = ITS OWN SLOT ON THAT TABLE,
             # SO a._a.v -> list AND a._a.s -> scalar COLLAPSE INDEPENDENTLY.  A NAME WITH BINDINGS
             # AT OR ABOVE THE ORIGIN TOO (`.` OVER A DOC WITH A NESTED ARRAY) KEEPS ITS PLAIN TERM
@@ -214,7 +233,7 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
     select_vars = set(
         rest if first == "row" else v
         for s in plain_terms
-        for v in s.value.join_vars()
+        for v in s.expr.join_vars()
         for first, rest in [tail_field(v)]
     )
     active_paths = {schema.nested_path[0]: {
@@ -275,7 +294,7 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
     # RE-COMPILATION OF THE SAME SELECT: BELOW THE ORIGIN THE PLAIN SELECT CARRIES ONLY THE REST
     # (`*`, EXPRESSIONS EVALUATED PER CHILD ROW).
     deep_selects = SelectOp(
-        query.select.frum, *(t for t in plain_terms if not is_variable(t.value))
+        query.select.frum, *(t for t in plain_terms if not is_variable(t.expr))
     ).partial_eval(SQLang)
 
     # BRANCHES ALSO NEED TABLES THE where/sort REFERENCE (JOINED FOR FILTERING/ORDERING, NOT
@@ -578,7 +597,7 @@ def _branch_split(term, schema, origin):
     RETURN ({table path: (term name, queried name, [(inner name, inner value), ...])}, WHETHER
     ANY BINDING LIVES AT OR ABOVE THE ORIGIN - THOSE STAY WITH THE PLAIN TERM).
     """
-    var = term.value.var
+    var = term.expr.var
     if startswith_field(var, "row"):
         _, var = tail_field(var)
     groups = {}  # table path -> {push_child: branch-relative value}

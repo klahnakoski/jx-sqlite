@@ -470,6 +470,64 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    # AN AGGREGATE OVER A NESTED BRANCH, BESIDE A PLAIN TERM: THE PLAIN TERM KEEPS ONE ROW PER
+    # DOCUMENT, SO THE AGGREGATE CAN ONLY BE FRAMING ONE DOCUMENT - ONE SUM OF THIS DOCUMENT'S
+    # a._b.b, NOT OF THE TABLE'S.  CONTRAST test_count_as_aggregate, WHERE THE SELECT IS
+    # ALL-AGGREGATE AND COLLAPSES THE WHOLE RESULT TO ONE ROW.  THE THREE SPELLINGS BELOW MEAN
+    # THE SAME THING; THE THIRD IS THE ONE THE NORMALIZED FORM WRITES OUT.
+    @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
+    def test_nested_aggregate_beside_plain_term(self):
+        test = {
+            "data": [
+                {"v": 0, "a": {"_b": [{"b": 7}, {"b": 6}, {"b": 5}, {"b": 4}]}},
+                {"v": 1, "a": {"_b": [{"b": 1}]}},
+                {"v": 2},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": ["v", {"name": "b", "value": "a._b.b", "aggregate": "sum"}],
+                "sort": "v",
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [{"v": 0, "b": 22}, {"v": 1, "b": 1}, {"v": 2}],
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["v", "b"],
+                "data": [[0, 22], [1, 1], [2, null]],
+            },
+        }
+        self.utils.execute_tests(test)
+
+    @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
+    def test_nested_aggregate_as_subquery(self):
+        test = {
+            "data": [
+                {"v": 0, "a": {"_b": [{"b": 7}, {"b": 6}, {"b": 5}, {"b": 4}]}},
+                {"v": 1, "a": {"_b": [{"b": 1}]}},
+                {"v": 2},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": [
+                    "v",
+                    {"name": "b", "value": {"from": "a._b", "select": {"value": "b", "aggregate": "sum"}}},
+                ],
+                "sort": "v",
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [{"v": 0, "b": 22}, {"v": 1, "b": 1}, {"v": 2}],
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["v", "b"],
+                "data": [[0, 22], [1, 1], [2, null]],
+            },
+        }
+        self.utils.execute_tests(test)
+
     @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
     def test_select_max_of_collection(self):
         test = {

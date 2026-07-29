@@ -73,7 +73,53 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 - [ ] test_deep_origin_agg_on_child
 
 ### test_nested.py
-- [ ] TestNestedQueries (whole class) — "broken"
+- [ ] TestNestedQueries (whole class) — NOT one cluster; probed 2026-07-29 by stripping the
+      class skip. Six causes, and the per-document-aggregate one is now fixed (below), so
+      test_sum executes correctly and fails only on its `expecting_normalized` key:
+      - `expecting_normalized` / `expecting_sql` are executed by the harness as *formats*
+        (`k.startswith("expecting_")` → `query.format = k[10:]`), so those tests can never pass
+        while they carry them — the query runs, then its result is compared to a normalized-query
+        dict or to hand-written aspirational SQL (`t0.id`, `first(...)`, which no engine emits
+        verbatim). test_sum, test_nested_max, test_nested_max_simple, test_nested_max_of_expression,
+        test_group_by_child1/2. **Kyle's call**: teach the harness those two expectation kinds, or
+        drop the keys. Not touched — shared conformance suite (tests/test_jx is SVN).
+      - test_nested_max_of_expression also names its term `x` but expects key `b`.
+      - test_group_by_child1/2: `KeyError 'null'` with *edges* present — a plain term beside an
+        aggregate must become a per-group multivalue (`{"a.t":"x","v":[0,1],"a.b":[13,3]}`).
+        edges.py work, the hard end of cluster 1.
+      - test_nested_aggregate: `edges: "_id"` fails normalization ("programmer error expr").
+      - test_group_function: `NameError: name 'frum' is not defined` — a live code bug.
+      - test_two_paths: insert fails, `table testing.a.$A has no column named $N`.
+      - test_distinct_on: no `expecting_*` at all (a stub).
+
+### per-document aggregates over a nested branch (2026-07-29) — the `sql_aggs['null']` KeyError
+
+`{"select":["v",{"value":"a._b.b","aggregate":"sum"}]}` crashed in `aggregates.py:240`
+(`sql_aggs[NULL.op]`) because `query.py` sent any query with an aggregate term to `_edges_op`,
+where the plain `v` term has no aggregate to look up. But an aggregate **declares a grouping, and
+which one depends on what it sits beside**: an all-aggregate select collapses the whole result
+(one row), while a plain term beside it keeps one row per document — so the aggregate has to frame
+*one document*, which its value can only mean if it lives in a nested branch. That is a set op
+whose term happens to be a collection aggregate, i.e. exactly `ToListOp`, which already worked in
+the operator spelling (`{"value":{"sum":"a._b.b"}}` → 22).
+
+- `query.py::_per_document_aggregates` decides the routing; all-aggregate selects still collapse
+  (`test_schema_merging.test_sum` = 8 over the table, not per document).
+- The set-op path now reads `SelectOne.expr` (the operator form) instead of `.value` (the
+  aggregate's inner expression) — the same object for every non-aggregate term, so nothing else
+  moved. Without it, `_branch_split` would see the bare nested name and build a branch for a
+  scalar the aggregate already produced.
+- A subquery spelling with an aggregate inside — `{"from":"a._b","select":{"value":"b",
+  "aggregate":"sum"}}`, the form the tests' `expecting_normalized` writes out — is rewritten to
+  that same operator over the origin-rooted name, since it collapses its rows and so is a scalar
+  of the outer document, not a branch. A one-term subquery *is* its term, so the outer name wins.
+- Pinned by test_expressions_w_set_ops.py::test_nested_aggregate_beside_plain_term and
+  ::test_nested_aggregate_as_subquery (sqlite only; jx_python unverified).
+
+Still on the edges path (unchanged): an aggregate whose value mixes origin and nested vars
+(`{"mul":["v","a._b.b"]}`, test_nested_max_of_expression) — `ToListOp._child_rows` only knows a
+nested *variable*, so an expression evaluated per child row needs the correlated subquery to
+compile the whole expression against the child schema.
 
 ### test_sort.py (nested subset)
 - [x] test_nested_array
