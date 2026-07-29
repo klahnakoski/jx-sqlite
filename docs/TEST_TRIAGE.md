@@ -6,7 +6,7 @@ items off. Update this file as tests are un-skipped or reasons are refined.
 
 Legend: `[ ]` skipped, `[x]` passing (decorator removed), `[-]` won't fix.
 
-> Baseline (dev, 2026-07-29): 414 ran / 0 err / 61 skip. The checklists below are the source of
+> Baseline (dev, 2026-07-29): 418 ran / 0 err / 60 skip. The checklists below are the source of
 > truth for what remains; work one cluster per session.
 >
 > Reconciled 2026-07-29 by a **stale-skip sweep**: strip every sqlite-relevant skip in a
@@ -14,6 +14,10 @@ Legend: `[ ]` skipped, `[x]` passing (decorator removed), `[-]` won't fix.
 > were already passing, and 3 more entries were marked `[ ]` here while running green. Repeat the
 > sweep after any cluster lands — a fix in one cluster keeps un-blocking tests filed under
 > another. The 62 that still fail are the real remaining work.
+>
+> Swept again after the slots / per-document-aggregate work (2026-07-29): **one** stale skip
+> (test_deep_origin_agg_on_child, un-blocked by c176810), no regressions. The sweep script only
+> matches single-line decorators — the one it missed was a multi-line `@skipIf(`.
 
 ## 1. Deep / nested queries (~55 tests — the dominant cluster)
 
@@ -70,7 +74,7 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 - [ ] test_nested_property_edge_w_shallow_expression
 - [ ] test_nested_document_selection — select of literal nested-doc list: 'Expecting an expression, not [{...'
 - [x] test_nested_filter_with_groupby
-- [ ] test_deep_origin_agg_on_child
+- [x] test_deep_origin_agg_on_child — fixed by c176810 (found by the second stale-skip sweep)
 
 ### test_nested.py
 - [ ] TestNestedQueries (whole class) — NOT one cluster; probed 2026-07-29 by stripping the
@@ -84,9 +88,12 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
         test_group_by_child1/2. **Kyle's call**: teach the harness those two expectation kinds, or
         drop the keys. Not touched — shared conformance suite (tests/test_jx is SVN).
       - test_nested_max_of_expression also names its term `x` but expects key `b`.
-      - test_group_by_child1/2: `KeyError 'null'` with *edges* present — a plain term beside an
-        aggregate must become a per-group multivalue (`{"a.t":"x","v":[0,1],"a.b":[13,3]}`).
-        edges.py work, the hard end of cluster 1.
+      - test_group_by_child1/2: the engine now answers both queries exactly (see §the origin
+        document is an implicit edge), but the tests still can not pass — `expecting_sql` above,
+        *and* both expect no null-coordinate row while every edges query here emits one (the
+        all-aggregate path has always emitted an empty `{}` row for it). Their content is pinned
+        instead by test_deep_ops::test_edge_w_deep_agg_beside_plain_term and
+        ::test_edge_w_agg_beside_plain_term_from_nested, same data and query.
       - test_nested_aggregate: `edges: "_id"` fails normalization ("programmer error expr").
       - test_group_function: `NameError: name 'frum' is not defined` — a live code bug.
       - test_two_paths: insert fails, `table testing.a.$A has no column named $N`.
@@ -120,6 +127,43 @@ Still on the edges path (unchanged): an aggregate whose value mixes origin and n
 (`{"mul":["v","a._b.b"]}`, test_nested_max_of_expression) — `ToListOp._child_rows` only knows a
 nested *variable*, so an expression evaluated per child row needs the correlated subquery to
 compile the whole expression against the child schema.
+
+### the origin document is an implicit edge (2026-07-29) — the same KeyError with `edges` present
+
+`{"select":["v",{"value":"a.b","aggregate":"sum"}],"edges":["a.t"]}` hit the same
+`sql_aggs[NULL.op]` KeyError, from the other side: with edges the query belongs on the edges path,
+where a plain term has no aggregate to look up. Same rule as above, one level down — **a plain
+term can not collapse the documents of a coordinate**, so the origin document joins the edges as
+an implicit one, and every term answers per (coordinate, document):
+
+- `edges.py` builds two levels when any select term is plain. The inner query is today's command
+  with the origin's `__id__` added to the GROUP BY; the outer groups by the domain columns alone.
+- `aggregates.py::per_document_aggregates` compiles one term per level. A term that
+  `frames_one_document` (a plain term, or an aggregate over a nested branch) is computed *inside*
+  and **gathered** outside — `JSON_GROUP_ARRAY`, pulled back by `utils.gather_column`, where one
+  value is not a list. Anything else is selected raw inside and aggregated outside.
+- Aggregating outside is safe only because the terms that get it have their value at (or above)
+  the origin: one value per document already, so the inner grouping loses nothing. That is the
+  invariant to check before extending this — and it is why the split is per-term, not per-query.
+- `frames_one_document` (moved to utils.py) is the predicate `_per_document_aggregates` already
+  used for the set-op routing; both readings of "an aggregate declares a grouping" now share it.
+
+So `a.b` sums per document under a fact origin (`[13,3]`) but collapses the whole coordinate under
+a nested origin (`16`) — the two halves of test_nested's test_group_by_child1/2, pinned by
+test_deep_ops::test_edge_w_deep_agg_beside_plain_term{,_from_nested}.
+
+Only `_standard_aggregate` and `_count_records` are split so far; percentile/stats/tuple/union
+beside a plain term raise instead of compiling something wrong. `query.window` is not split
+either (it would compile against the inner tables and land in the outer query).
+
+Not fixed: the same select clause under `groupby` in a non-cube format goes to `group.py`, a
+separate implementation, and still raises `KeyError 'null'` (cluster 8). A cube-format groupby is
+rewritten to edges by `query.py`, so it takes the path above.
+
+**Lead for the deep-edge trio and cluster 11's test_edge**: those want an aggregate to count each
+row of *the table its value lives in* once (test_deep_edge_w_shallow_var: `sum(v)` at `b==2` is
+`4+8`, not `4+4+8`). That is this same dedup, keyed by the value's table rather than the origin —
+but on the all-aggregate path, which is still one level.
 
 ### test_sort.py (nested subset)
 - [x] test_nested_array

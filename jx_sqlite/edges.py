@@ -7,14 +7,18 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import ToBooleanOp
-from jx_sqlite.aggregates import aggregates
+from jx_base.expressions import NULL, ToBooleanOp
+from jx_sqlite.aggregates import aggregates, per_document_aggregates
 from jx_sqlite.domain import sql_domain, sql_complete
-from jx_sqlite.utils import sql_join_chain
+from jx_sqlite.utils import sql_join_chain, frames_one_document
 from jx_sqlite.window import _window_op
 from mo_future import extend
 from mo_sql import *
+from mo_sql.utils import UID
 from mo_sqlite import *
+
+# THE ALIAS OF THE INNER (ONE ROW PER COORDINATE PER DOCUMENT) QUERY
+DOC = "d"
 
 @extend(Facts)
 def _edges_op(self, query, schema):
@@ -78,7 +82,23 @@ def _edges_op(self, query, schema):
     # AGGREGATE CLAUSE PARTS
     ###################################################################
     offset = len(query.edges)
-    aggregates(self, index_to_column, offset, outer_selects, query, inner_schema)
+    if any(s.aggregate is NULL for s in query.select.terms):
+        # AN AGGREGATE DECLARES A GROUPING, AND WHICH ONE DEPENDS ON WHAT IT SITS BESIDE: A
+        # PLAIN TERM CAN NOT COLLAPSE THE DOCUMENTS OF A COORDINATE, SO THE ORIGIN DOCUMENT
+        # BECOMES AN IMPLICIT EDGE - ONE INNER ROW PER (COORDINATE, DOCUMENT) - AND THE OUTER
+        # QUERY COLLAPSES THAT AXIS.  AN ALL-AGGREGATE SELECT KEEPS THE CLASSIC ONE LEVEL
+        inner_selects = list(outer_selects)  # BOTH LEVELS CARRY THE DOMAIN COLUMNS
+        outer_selects = [
+            sql_alias(quote_column(DOC, domain_alias), domain_alias)
+            for domain_aliases in all_domain_names
+            for domain_alias in domain_aliases
+        ]
+        per_document_aggregates(
+            self, index_to_column, offset, outer_selects, inner_selects, query, inner_schema, DOC,
+        )
+    else:
+        inner_selects = outer_selects
+        aggregates(self, index_to_column, offset, outer_selects, query, inner_schema)
 
     for w in query.window:
         outer_selects.append(_window_op(w, schema))
@@ -92,13 +112,31 @@ def _edges_op(self, query, schema):
     # COORDINATES OF ALL primary DATA
     # THE JOIN CHAIN IS INLINED (NO FACTS SUBQUERY): EVERY COMPILED REFERENCE - AGGREGATES,
     # EDGE VALUES IN THE ON CLAUSES, THE WHERE - RESOLVES IN THIS ONE SCOPE
-    clauses = [ConcatSQL(SQL_SELECT, sql_list(outer_selects), SQL_FROM, ConcatSQL(*from_sql))]
+    clauses = [ConcatSQL(SQL_SELECT, sql_list(inner_selects), SQL_FROM, ConcatSQL(*from_sql))]
     for t, s, j in zip(join_types, edge_sql, ons):
         clauses.append(ConcatSQL(t, s, SQL_ON, j))
     clauses.append(ConcatSQL(SQL_WHERE, main_filter))
-    if groupby:
-        clauses.append(ConcatSQL(SQL_GROUPBY, sql_list(groupby)))
+    inner_groupby = list(groupby)
+    if inner_selects is not outer_selects:
+        inner_groupby.append(quote_column(schema.nested_path[0], UID))
+    if inner_groupby:
+        clauses.append(ConcatSQL(SQL_GROUPBY, sql_list(inner_groupby)))
     command = ConcatSQL(*clauses)
+
+    if inner_selects is not outer_selects:
+        outer_clauses = [ConcatSQL(
+            SQL_SELECT, sql_list(outer_selects), SQL_FROM, sql_alias(sql_iso(command), DOC),
+        )]
+        if groupby:
+            outer_clauses.append(ConcatSQL(
+                SQL_GROUPBY,
+                sql_list([
+                    quote_column(DOC, domain_alias)
+                    for domain_aliases in all_domain_names
+                    for domain_alias in domain_aliases
+                ]),
+            ))
+        command = ConcatSQL(*outer_clauses)
 
     # ALL COORDINATES MISSED BY primary DATA
     if query.edges:

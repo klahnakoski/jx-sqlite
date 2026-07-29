@@ -26,11 +26,14 @@ from jx_sqlite.utils import (
     ColumnMapping,
     _make_column_name,
     fan_out_tuple,
+    frames_one_document,
+    gather_column,
     get_column,
     sql_text_array_to_set,
 )
 from mo_dots import unliteral_field
 from mo_json import NUMBER, JX_BOOLEAN, BOOLEAN, jx_type_to_json_type
+from mo_logs import Log
 from mo_sql.utils import sql_type_key_to_json_type, sql_aggs, untyped_column, UID
 from mo_sql import *
 from mo_sqlite import *
@@ -46,6 +49,58 @@ def aggregates(facts, index_to_column, offset, outer_selects, query, schema):
         for sql, mapping in rule(facts, s, si, len(outer_selects), schema):
             index_to_column[len(outer_selects)] = mapping
             outer_selects.append(sql)
+
+
+def per_document_aggregates(facts, index_to_column, offset, outer_selects, inner_selects, query, schema, doc_alias):
+    """
+    THE ORIGIN DOCUMENT IS AN IMPLICIT EDGE (edges.py): THE INNER QUERY ANSWERS ONE ROW PER
+    (COORDINATE, DOCUMENT) AND THE OUTER COLLAPSES THAT AXIS.  A TERM THAT FRAMES ONE DOCUMENT
+    IS COMPUTED INSIDE AND *GATHERED* OUTSIDE - IT COMES BACK AS A MULTIVALUE, ONE VALUE PER
+    DOCUMENT.  A TERM THAT CAN COLLAPSE THE WHOLE GROUP IS SELECTED RAW INSIDE AND AGGREGATED
+    OUTSIDE, WHICH IS SAFE ONLY BECAUSE ITS VALUE LIVES AT (OR ABOVE) THE ORIGIN: IT IS ONE
+    VALUE PER DOCUMENT ALREADY, SO THE INNER GROUPING LOSES NOTHING IT NEEDED
+    """
+    for si, s in enumerate(query.select.terms, start=offset):
+        column_number = len(outer_selects)
+        alias = _make_column_name(column_number)
+        rule = NULL if s.aggregate is NULL else aggregate_rule(s, query)
+        if rule not in (NULL, _standard_aggregate, _count_records):
+            # ONLY THE AGGREGATES WHOSE SHAPE IS AGG(<value>) HAVE BEEN SPLIT OVER TWO LEVELS
+            Log.error("{{agg}} beside a term that frames one document is not supported", agg=s.aggregate.op)
+        if frames_one_document(s, schema):
+            # COMPUTED INSIDE, GATHERED OUTSIDE: A MULTIVALUE, ONE VALUE PER DOCUMENT
+            value = s.value.partial_eval(SQLang).to_sql(schema)
+            if rule is NULL:
+                inner_sql = value
+                json_type = jx_type_to_json_type(s.value.jx_type)
+            else:
+                inner_sql = sql_call(sql_aggs[s.aggregate.op], value)
+                json_type = jx_type_to_json_type(s.aggregate.jx_type)
+            outer_sql = sql_call("JSON_GROUP_ARRAY", quote_column(doc_alias, alias))
+            pull = gather_column(column_number, json_type, s.default)
+        elif rule is _count_records:
+            # COUNT DOCUMENTS: THE UID IS THE INNER GROUP KEY, SO EACH INNER ROW IS ONE
+            inner_sql = quote_column(schema.nested_path[0], UID)
+            outer_sql = sql_count(quote_column(doc_alias, alias))
+            json_type = NUMBER
+            pull = get_column(column_number, json_type, ZERO)
+        else:
+            inner_sql = s.value.partial_eval(SQLang).to_sql(schema)
+            outer_sql = sql_call(sql_aggs[s.aggregate.op], quote_column(doc_alias, alias))
+            json_type = jx_type_to_json_type(s.aggregate.jx_type)
+            pull = get_column(column_number, json_type, s.default)
+        inner_selects.append(sql_alias(inner_sql, alias))
+        outer_selects.append(sql_alias(outer_sql, alias))
+        index_to_column[column_number] = ColumnMapping(
+            push_list_name=s.name,
+            push_column_name=unliteral_field(s.name),
+            push_column_index=si,
+            push_column_child=".",
+            pull=pull,
+            sql=outer_sql,
+            column_alias=alias,
+            type=json_type,
+        )
 
 
 def aggregate_rule(s, query):

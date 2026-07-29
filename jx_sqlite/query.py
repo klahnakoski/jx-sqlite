@@ -11,7 +11,7 @@ from jx_base.expressions import jx_expression, QueryOp, NULL
 from mo_sqlite import SQLang
 from jx_sqlite.format import format_flat
 from mo_sqlite.models.facts import Facts
-from jx_sqlite.utils import unique_name
+from jx_sqlite.utils import unique_name, frames_one_document
 from mo_dots import (
     listwrap,
     relative_field,
@@ -51,15 +51,10 @@ def _per_document_aggregates(terms, schema):
     HAPPEN TO BE COLLECTION AGGREGATES - `{"select":["v",{"value":"a._b.b","aggregate":"sum"}]}`
     IS ONE SUM PER DOCUMENT BESIDE THAT DOCUMENT'S v.
     """
-    origin = schema.nested_path[0]
     aggregates = [t for t in terms if t.aggregate is not NULL]
     if not aggregates or len(aggregates) == len(terms):
         return False
-    return all(
-        bool(tables) and all(t != origin and startswith_field(t, origin) for t in tables)
-        for term in aggregates
-        for tables in [set(c.nested_path[0] for v in term.value.vars() for _, c in schema.leaves(v))]
-    )
+    return all(frames_one_document(term, schema) for term in aggregates)
 
 
 @extend(Facts)

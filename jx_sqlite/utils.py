@@ -152,6 +152,44 @@ def sql_text_array_to_set(column):
     return _convert
 
 
+def frames_one_document(term, schema):
+    """
+    CAN THIS SELECT TERM COLLAPSE THE ROWS OF THE origin, OR ONLY THE ROWS OF ONE DOCUMENT?
+    A PLAIN TERM (NO AGGREGATE DECLARED) HAS ONE VALUE PER DOCUMENT, AND AN AGGREGATE WHOSE
+    VALUE LIVES IN A NESTED BRANCH FRAMES ONE DOCUMENT - IT HAS ROWS TO COLLAPSE WITHOUT
+    REACHING ACROSS DOCUMENTS.  AN AGGREGATE OVER A VALUE AT (OR ABOVE) THE origin HAS ONLY
+    THE WHOLE GROUP TO COLLAPSE.
+    """
+    if term.aggregate is NULL:
+        return True
+    origin = schema.nested_path[0]
+    tables = {c.nested_path[0] for v in term.value.vars() for _, c in schema.leaves(v)}
+    return bool(tables) and all(t != origin and startswith_field(t, origin) for t in tables)
+
+
+def gather_column(column, json_type=None, default=NULL):
+    """
+    A GATHERED COLUMN ARRIVES AS A JSON ARRAY - ONE ELEMENT PER DOCUMENT IN THE GROUP.
+    ONE VALUE IS NOT A LIST (THE MULTIVALUE CONVENTION), AND NO VALUES IS THE DEFAULT
+    """
+    to_type = json_type_to_python_type.get(json_type)
+
+    def _gather(row):
+        text = row[column]
+        if is_missing(text):
+            return default.value
+        values = [v for v in json2value(text) if v != None]
+        if to_type is not None:
+            values = [to_type(v) for v in values]
+        if not values:
+            return default.value
+        if len(values) == 1:
+            return values[0]
+        return values
+
+    return _gather
+
+
 def get_column(column, json_type=None, default=NULL):
     """
     :param column: The column you want extracted
