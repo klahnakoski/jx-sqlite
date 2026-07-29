@@ -76,8 +76,8 @@ class BranchBuilder:
         self.primary_doc_details = None  # ROOT OF THE DocumentDetails TREE
 
     def add_column(
-        self, node, sql, *, slot=None, push_list_name, push_column_name, push_column_child, push_column_index,
-        nested_path,
+        self, node, sql, *, slot=None, push_list_name, push_column_name, push_column_path, push_column_child,
+        push_column_index, nested_path,
     ):
         # CONTRIBUTE ONE VALUE COLUMN: APPEND TO THE ALIGNED SELECT LIST AND REGISTER ITS PULL
         # UNDER THE SAME INDEX, KEEPING THE SQL SIDE AND THE PULL PLAN IN LOCKSTEP.
@@ -88,6 +88,8 @@ class BranchBuilder:
             push_list_name=push_list_name,
             push_column_child=push_column_child,
             push_column_name=push_column_name,
+            push_column_path=push_column_path,
+            push_column_slot=slot,
             push_column_index=push_column_index,
             slot_path=node.slot_path[slot],
             pull=get_column(n, json_type=sql.jx_type),

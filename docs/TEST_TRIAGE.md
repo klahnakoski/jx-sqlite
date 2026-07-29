@@ -6,7 +6,7 @@ items off. Update this file as tests are un-skipped or reasons are refined.
 
 Legend: `[ ]` skipped, `[x]` passing (decorator removed), `[-]` won't fix.
 
-> Baseline (dev, 2026-07-29): 418 ran / 0 err / 52 skip. The checklists below are the source of
+> Baseline (dev, 2026-07-29): 418 ran / 0 err / 49 skip. The checklists below are the source of
 > truth for what remains; work one cluster per session.
 >
 > Reconciled 2026-07-29 by a **stale-skip sweep**: strip every sqlite-relevant skip in a
@@ -31,7 +31,7 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 - [ ] test_select_in_w_multivalue — multivalue GetOp.to_sql arity (partial_eval/to_sql ordering); order-dependent flake
 - [ ] test_select_when_on_multivalue — same multivalue GetOp arity flake
 - [x] test_deep_select_column — fixed by nested-origin extraction (empty-parent row kept)
-- [ ] test_deep_select_column_w_groupby — groupby header mints `_a..v` (dot doubling in group.py naming)
+- [x] test_deep_select_column_w_groupby — fixed by §where a table/cube header comes from (cluster 11)
 - [x] test_bad_deep_select_column_w_groupby
 - [x] test_abs_shallow_select — fixed: _deep_header lands up-reach (ancestor) columns under their own push name
 - [x] test_select_whole_document — fixed (insert row-reuse + plain-`*` depth filter + deep header)
@@ -412,9 +412,8 @@ object / nested array) resolves to *one* of them instead of the union.
       and the escaped header was escaped *again* to look up the cell, so it came back Null
       (§a dotted property name is one field)
 - [ ] test_schema_merging.py::test_count — counts one shape only (1, want 6)
-- [ ] test_schema_merging.py::test_dots_in_property_names — list is right now; table/cube die in
-      normalize_one (§a dotted property name is one field)
-- [ ] test_schema_merging.py::test_dots_in_property_names3 — same
+- [x] test_schema_merging.py::test_dots_in_property_names — §where a table/cube header comes from
+- [x] test_schema_merging.py::test_dots_in_property_names3 — same
 - [x] test_schema_merging.py::test_edge — the double count is fixed (b=2 → 4); its null partition
       expectation was wrong (14 → 17, Kyle) — see §an aggregate counts the rows of its value's table
 
@@ -432,14 +431,36 @@ which carries the select term's name — and for table/cube `normalize_one` esca
 `format_deep` then escaped it *again* to look up the cell, so the cell came back Null. `_top_name`
 now unescapes. That fixes test_select2.
 
-Still broken (test_dots_in_property_names, ...3): `normalize_one` escapes a name that is **already**
-one escaped field, so `a..html` becomes `a....html`, which `split_field` rejects outright. The
-escape is not idempotent, and it cannot be made so while the header has to tell `a..html` (the
-user's spelling, one literal field) from `a..b` (our escaping of the path `a.b`) — the two are the
-same string shape. The fix is to stop re-escaping and carry the select term's name as written,
-letting the header read it directly instead of recovering it from path algebra; the doc key then
-falls out of the name, since a path nests and a one-field name does not. That is a real change to
-where a table/cube header comes from, so it is its own step.
+### where a table/cube header comes from (2026-07-29)
+
+The escape above was **removed**, and with it the last place where `query.format` changed how a
+query compiled. It had been load-bearing in a way its comment did not say: escaping the term name
+marked **where the term's name ends and the leaves it expanded into begin**. `a.b` is either the
+term `a.b` (one column, header `a.b`) or the term `a` expanded to its leaf `b` (header `a`, cell an
+object) — the concatenated push name cannot tell you which, and `select "*"` flattens every leaf
+into one escaped key, so the ambiguity is not rare.
+
+So the boundary is now asked for instead of encoded: `setop._push_name` takes the compiled push
+name and the **select clause's own names**, and the longest term name that prefixes it owns the
+column. That yields three things per column, and two of them were the missing fields:
+
+- `push_column_name` — the header, the term's name **as written** (`a..html` selects the property
+  named `a.html` and says so; `a.b` is two steps and nests).
+- `push_column_path` — where that value sits in the assembled document. Usually the same string,
+  but an expanded name is displayed unescaped while the document keeps the escaped key, so
+  `format_deep` must look up by the path, not by re-escaping the header (it re-escaped, which is
+  why an escaped header came back Null).
+- `push_column_slot` — the term that claimed a *below-origin* branch. Those columns are compiled
+  branch-relative (`v`, not `a._a.v`), so only the slot knows what the query called them; without
+  one it is plain document assembly and the column lands under its table (`_a`). A slot named `.`
+  claims no name — the branch *is* the document — so it falls back to the table too.
+
+Fixes test_dots_in_property_names, ...3, and (same root cause, filed in cluster 1)
+test_deep_ops::test_deep_select_column_w_groupby, whose groupby header used to mint `_a..v`.
+
+Cost: this is one more thing setop must know about the select clause it is compiling per branch —
+the kludge NAMES.md already names (the select should resolve once at the origin, and branches
+merely project). `_push_name` would be a projection of that resolution, not a lookup, if it did.
 
 ## 12. Joins (feature not implemented)
 - [ ] test_joins.py::test_left_join

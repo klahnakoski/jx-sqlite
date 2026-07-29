@@ -339,6 +339,9 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
         for _, c in schema.leaves(v)
     )
 
+    # THE SELECT CLAUSE'S OWN NAMES, LONGEST FIRST (SEE _push_name)
+    term_names = sorted((t.name for t in plain_terms), key=len, reverse=True)
+
     # EVERY SELECT STATEMENT THAT WILL BE REQUIRED, NO MATTER THE DEPTH
     # WE WILL CREATE THEM ACCORDING TO THE DEPTH REQUIRED
     origin_doc_details = None  # REASSEMBLY ROOTS HERE (THE ORIGIN), NOT AT THE FACT
@@ -371,14 +374,17 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
             if is_op(value, LeavesOp):
                 Log.error("expecting SelectOp to subsume the LeavesOp")
 
-            push_column_name, push_column_child = tail_field(name)
-            push_column_name = unliteral_field(push_column_name)
+            container, container_path, push_column_child = _push_name(name, term_names)
+            # NAMES ARRIVE ESCAPED FIELD BY FIELD (join_field), SO THE ROOT "." READS AS "\b"
+            is_root = container == "."
             builder.add_column(
                 nested_doc_details,
                 value,
                 # LIST FORMAT SPLATS THE "." CONTAINER INTO THE DOC ROOT
-                push_list_name=push_column_child if push_column_name == "." else name,
-                push_column_name=push_column_name,
+                push_list_name=push_column_child if is_root else name,
+                # THE table/cube HEADER IS WHAT THE SELECT CLAUSE CALLED THIS - A NAME, NOT A PATH
+                push_column_name=container,
+                push_column_path=container_path,
                 push_column_child=push_column_child,
                 push_column_index=i,
                 nested_path=nested_path,
@@ -410,14 +416,15 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
                 )
             for i, (name, value) in enumerate(inner_select):
                 sql = value.partial_eval(SQLang).to_sql(sub_schema)
-                push_column_name, push_column_child = tail_field(name)
-                push_column_name = unliteral_field(push_column_name)
+                container, push_column_child = tail_field(name)
                 builder.add_column(
                     node,
                     sql,
                     slot=slot,
-                    push_list_name=push_column_child if push_column_name == "." else name,
-                    push_column_name=push_column_name,
+                    push_list_name=push_column_child if unliteral_field(container) == "." else name,
+                    # THE HEADER IS THE TERM THAT CLAIMED THIS SLOT, NOT THE BRANCH-RELATIVE NAME
+                    push_column_name=slot,
+                    push_column_path=slot,
                     push_column_child=push_column_child,
                     push_column_index=i,
                     nested_path=node.nested_path,
@@ -618,6 +625,27 @@ def _branch_split(term, schema, origin):
 
 
 sort_to_sqlite_order = {-1: SQL_DESC, 0: SQL_ASC, 1: SQL_ASC}
+
+
+def _push_name(full_name, term_names):
+    """
+    SPLIT A COMPILED PUSH NAME INTO (HEADER, PATH TO IT IN THE DOCUMENT, PATH INSIDE IT).
+
+    THE BOUNDARY IS NOT RECOVERABLE FROM THE STRING - `a.b` IS EITHER THE TERM `a.b` OR THE TERM
+    `a` EXPANDED TO ITS LEAF `b` - SO ASK THE SELECT CLAUSE: THE LONGEST TERM NAME THAT PREFIXES
+    THE PUSH NAME OWNS THE COLUMN, AND ITS NAME IS THE HEADER *AS WRITTEN*, WHICH IS ALSO THE PATH
+    (`a..html` SELECTS THE PROPERTY NAMED `a.html` AND SAYS SO; `a.b` IS TWO STEPS AND NESTS).
+    A NAME NO TERM CLAIMS WAS INVENTED BY EXPANSION - `*` FLATTENS EVERY LEAF INTO ONE ESCAPED KEY
+    - SO THERE THE HEADER IS THE UNESCAPED NAME WHILE THE DOCUMENT IS STILL KEYED BY THE ESCAPED
+    ONE, AND THE TWO DIFFER.
+    """
+    for term_name in term_names:
+        if term_name == full_name:
+            return term_name, term_name, "."
+        if term_name != "." and startswith_field(full_name, term_name):
+            return term_name, term_name, relative_field(full_name, term_name)
+    container, child = tail_field(full_name)
+    return unliteral_field(container), container, child
 
 
 def test_dots(cols):

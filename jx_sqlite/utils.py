@@ -302,6 +302,18 @@ ColumnMapping = DataClass(
             "name": "push_column_name",
             "nulls": True,
         },
+        {  # WHERE push_column_name'S VALUE SITS IN THE ASSEMBLED DOCUMENT.  USUALLY THE SAME
+            # STRING, BUT AN EXPANDED NAME (`*` FLATTENS ITS LEAVES) IS DISPLAYED UNESCAPED WHILE
+            # THE DOCUMENT KEEPS THE ESCAPED KEY (setop._push_name)
+            "name": "push_column_path",
+            "nulls": True,
+        },
+        {  # THE SELECT TERM THAT CLAIMED THIS COLUMN'S BRANCH, IF ANY (setop SLOTS).  A COLUMN
+            # BELOW THE ORIGIN IS COMPILED BRANCH-RELATIVE, SO ONLY ITS SLOT KNOWS WHAT THE QUERY
+            # CALLED IT; WITHOUT ONE IT IS PLAIN DOCUMENT ASSEMBLY AND LANDS UNDER ITS TABLE
+            "name": "push_column_slot",
+            "nulls": True,
+        },
         {"name": "pull", "nulls": True},  # A FUNCTION THAT WILL RETURN A VALUE
         {"name": "sql",},  # A LIST OF MULTI-SQL REQUIRED TO GET THE VALUE FROM THE DATABASE
         "type",  # THE NAME OF THE JSON DATA TYPE EXPECTED

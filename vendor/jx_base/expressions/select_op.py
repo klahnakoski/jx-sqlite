@@ -335,9 +335,10 @@ def normalize_one(frum, select, format):
     if select.default is not NULL and select.default != None:
         canonical = canonical.set_default(select.default)
 
-    if format != "list" and canonical.name != ".":
-        canonical = canonical.set_name(literal_field(canonical.name))
-
+    # A TERM'S NAME IS CARRIED AS WRITTEN, WHATEVER THE FORMAT.  table/cube USED TO GET
+    # literal_field(name) HERE - MAKING `a.b` ONE FIELD SO THE PATH ALGEBRA WOULD KEEP IT WHOLE -
+    # WHICH MEANT THE SAME QUERY COMPILED DIFFERENTLY PER FORMAT, EVERY CONSUMER HAD TO UNESCAPE,
+    # AND A NAME THAT WAS *ALREADY* ONE ESCAPED FIELD (`a..html`) BECAME UNPARSEABLE
     return SelectOp(Null, canonical)
 
 

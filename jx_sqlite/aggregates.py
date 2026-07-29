@@ -31,7 +31,6 @@ from jx_sqlite.utils import (
     get_column,
     sql_text_array_to_set,
 )
-from mo_dots import unliteral_field
 from mo_json import NUMBER, JX_BOOLEAN, BOOLEAN, jx_type_to_json_type
 from mo_logs import Log
 from mo_sql.utils import sql_type_key_to_json_type, sql_aggs, untyped_column, UID
@@ -96,7 +95,7 @@ def per_document_aggregates(
         outer_selects.append(sql_alias(outer_sql, alias))
         index_to_column[column_number] = ColumnMapping(
             push_list_name=s.name,
-            push_column_name=unliteral_field(s.name),
+            push_column_name=s.name,
             push_column_index=si,
             push_column_child=".",
             pull=pull,
@@ -134,7 +133,7 @@ def _count_records(facts, s, si, column_number, schema):
     sql = sql_alias(sql_count(quote_column(schema.nested_path[0], UID)), s.name)
     yield sql, ColumnMapping(
         push_list_name=s.name,
-        push_column_name=unliteral_field(s.name),
+        push_column_name=s.name,
         push_column_index=si,
         push_column_child=".",
         pull=get_column(column_number, None, ZERO),
@@ -150,7 +149,7 @@ def _count_columns(facts, s, si, column_number, schema):
     sql = SQL_PLUS.join(sql_count(quote_column(col)) for col in columns)
     yield sql_alias(sql, _make_column_name(column_number)), ColumnMapping(
         push_list_name=s.name,
-        push_column_name=unliteral_field(s.name),
+        push_column_name=s.name,
         push_column_index=si,
         push_column_child=".",
         pull=get_column(column_number, None, s.default),
@@ -169,7 +168,7 @@ def _cardinality(facts, s, si, column_number, schema):
     count_sql = sql_alias(sql_count("DISTINCT" + sql_iso(sql)), _make_column_name(column_number),)
     yield count_sql, ColumnMapping(
         push_list_name=s.name,
-        push_column_name=unliteral_field(s.name),
+        push_column_name=s.name,
         push_column_index=si,
         push_column_child=".",
         pull=get_column(column_number, None, 0),
@@ -185,7 +184,7 @@ def _or_aggregate(facts, s, si, column_number, schema):
         ConcatSQL(SQL_NOT, SQL_NOT, sql_call("SUM", sql_iso(sql))), _make_column_name(column_number),
     ), ColumnMapping(
         push_list_name=s.name,
-        push_column_name=unliteral_field(s.name),
+        push_column_name=s.name,
         push_column_index=si,
         push_column_child=".",
         pull=get_column(column_number, JX_BOOLEAN, s.default),
@@ -202,7 +201,7 @@ def _and_aggregate(facts, s, si, column_number, schema):
         _make_column_name(column_number),
     ), ColumnMapping(
         push_list_name=s.name,
-        push_column_name=unliteral_field(s.name),
+        push_column_name=s.name,
         push_column_index=si,
         push_column_child=".",
         pull=get_column(column_number, JX_BOOLEAN, s.default),
@@ -220,7 +219,7 @@ def _union_aggregate(facts, s, si, column_number, schema):
     )
     yield array_sql, ColumnMapping(
         push_list_name=s.name,
-        push_column_name=unliteral_field(s.name),
+        push_column_name=s.name,
         push_column_index=si,
         push_column_child=".",
         pull=sql_text_array_to_set(column_number),
@@ -260,7 +259,7 @@ def _stats_aggregate(facts, s, si, column_number, schema):
         full_sql = sql_alias(code, _make_column_name(column_number))
         yield full_sql, ColumnMapping(
             push_list_name=s.name,
-            push_column_name=unliteral_field(s.name),
+            push_column_name=s.name,
             push_column_index=si,
             push_column_child=name,
             pull=get_column(column_number, None, s.default),
@@ -288,7 +287,7 @@ def _tuple_aggregate(facts, s, si, column_number, schema):
     yield from fan_out_tuple(
         s.value.terms, make_slot,
         push_list_name=s.name,
-        push_column_name=unliteral_field(s.name),
+        push_column_name=s.name,
         push_column_index=si,
     )
 
@@ -304,7 +303,7 @@ def _standard_aggregate(facts, s, si, column_number, schema):
         default_value = ZERO
     yield sql_alias(sql, _make_column_name(column_number)), ColumnMapping(
         push_list_name=s.name,
-        push_column_name=unliteral_field(s.name),
+        push_column_name=s.name,
         push_column_index=si,
         push_column_child=".",
         pull=get_column(column_number, json_type, default_value),

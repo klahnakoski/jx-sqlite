@@ -114,11 +114,6 @@ class TestSchemaMerging(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use == "python", "jx_python known failure")
-    @skipIf(
-        global_settings.use == "sqlite",
-        "list is right now; table/cube die in normalize_one, which escapes an already-escaped name"
-        " (`a..html` -> `a....html`, which split_field rejects)",
-    )
     def test_dots_in_property_names(self):
         test = {
             "data": [
@@ -201,11 +196,6 @@ class TestSchemaMerging(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use == "python", "jx_python known failure")
-    @skipIf(
-        global_settings.use == "sqlite",
-        "list is right now; table/cube die in normalize_one, which escapes an already-escaped name"
-        " (`a..html` -> `a....html`, which split_field rejects)",
-    )
     def test_dots_in_property_names3(self):
         test = {
             "data": [

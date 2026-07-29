@@ -19,8 +19,6 @@ from mo_dots import (
     coalesce,
     unwraplist,
     from_data,
-    literal_field,
-    unliteral_field,
     relative_field,
     startswith_field,
     tail_field,
@@ -83,7 +81,7 @@ def format_flat(result, query, index_to_columns):
                 meta={"format": "cube"},
                 edges=edges,
                 select=select,
-                data={unliteral_field(k): v.cube for k, v in data.items()},
+                data={k: v.cube for k, v in data.items()},
             )
 
         columns = None
@@ -148,7 +146,7 @@ def format_flat(result, query, index_to_columns):
             meta={"format": "cube"},
             edges=edges,
             select=select,
-            data={unliteral_field(k): v.cube for k, v in data_cubes.items()},
+            data={k: v.cube for k, v in data_cubes.items()},
         )
     elif query.format == "table" or (not query.format and query.groupby):
         column_names = [None] * (max(c.push_column_index for c in index_to_columns.values()) + 1)
@@ -235,33 +233,38 @@ def _top_name(c, origin):
     # (`{"name":"x","value":"_a"}` -> `x`).  AN ANCESTOR COLUMN (UP-REACH: ONE VALUE PER
     # ORIGIN ROW) LANDS UNDER ITS OWN PUSH NAME.
     if startswith_field(origin, c.nested_path[0]):
-        # ORIGIN ITSELF, OR AN ANCESTOR OF IT
-        return c.push_column_name
-    # THE HEADER IS A NAME, NOT A PATH: A SELECT TERM WHOSE NAME HAS DOTS IS ONE COLUMN, AND
-    # normalize_one ESCAPED THAT NAME (`a.b` -> `a..b`) SO THE PATH ALGEBRA WOULD KEEP IT WHOLE
-    return unliteral_field(tail_field(relative_field(c.slot_path, untype_field(origin)[0]))[0])
+        # ORIGIN ITSELF, OR AN ANCESTOR OF IT: THE SELECT CLAUSE NAMED THIS COLUMN
+        return c.push_column_name, c.push_column_path
+    if c.push_column_slot != None and c.push_column_slot != ".":
+        # A SELECT TERM CLAIMED THE BRANCH; ITS NAME IS THE HEADER, AS WRITTEN.  A TERM NAMED "."
+        # CLAIMS NO NAME OF ITS OWN - THE BRANCH *IS* THE DOCUMENT - SO ITS COLUMNS LAND UNDER
+        # THEIR TABLE, LIKE PLAIN ASSEMBLY
+        return c.push_column_slot, c.push_column_slot
+    container = tail_field(relative_field(c.slot_path, untype_field(origin)[0]))[0]
+    return container, container
 
 
 def _deep_header(cols, origin):
-    # PRESERVE SELECT-CLAUSE ORDER (push_column_index), NOT ALPHABETICAL
+    # PRESERVE SELECT-CLAUSE ORDER (push_column_index), NOT ALPHABETICAL.
+    # EACH HEADER CARRIES THE PATH ITS VALUE SITS AT IN THE ASSEMBLED DOCUMENT
     order = {}
     for c in cols:
-        name = _top_name(c, origin)
+        name, path = _top_name(c, origin)
         prev = order.get(name)
-        if prev is None or c.push_column_index < prev:
-            order[name] = c.push_column_index
-    return tuple(sorted(order, key=order.get))
+        if prev is None or c.push_column_index < prev[0]:
+            order[name] = (c.push_column_index, path)
+    header = tuple(sorted(order, key=lambda n: order[n][0]))
+    return header, tuple(order[n][1] for n in header)
 
 
 def format_deep(data, cols, query):
     origin = query.frum.nested_path[0]
     if query.format == "cube":
         num_rows = len(data)
-        header = _deep_header(cols, origin)
+        header, locs = _deep_header(cols, origin)
         if header == (".",):
             temp_data = {".": data}
         else:
-            locs = tuple(literal_field(h) for h in header)
             temp_data = {h: [None] * num_rows for h in header}
             for rownum, d in enumerate(data):
                 for h, l in zip(header, locs):
@@ -272,11 +275,10 @@ def format_deep(data, cols, query):
             edges=[{"name": "rownum", "domain": {"type": "rownum", "min": 0, "max": num_rows, "interval": 1,},}],
         )
     elif query.format == "table":
-        header = _deep_header(cols, origin)
+        header, locs = _deep_header(cols, origin)
         if header == (".",):
             temp_data = [(from_data(d),) for d in data]
         else:
-            locs = tuple(literal_field(h) for h in header)
             temp_data = [tuple(d[l] for l in locs) for d in data]
 
         return Data(meta={"format": "table"}, header=header, data=temp_data,)

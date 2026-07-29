@@ -191,7 +191,6 @@ class TestDeepOps(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
-    @skipIf(global_settings.use == "sqlite", "groupby header mints `_a..v` (dot doubling in group.py naming)")
     def test_deep_select_column_w_groupby(self):
         test = {
             "data": [
