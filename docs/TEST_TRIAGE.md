@@ -6,7 +6,7 @@ items off. Update this file as tests are un-skipped or reasons are refined.
 
 Legend: `[ ]` skipped, `[x]` passing (decorator removed), `[-]` won't fix.
 
-> Baseline (dev, 2026-07-29): 418 ran / 0 err / 53 skip. The checklists below are the source of
+> Baseline (dev, 2026-07-29): 418 ran / 0 err / 52 skip. The checklists below are the source of
 > truth for what remains; work one cluster per session.
 >
 > Reconciled 2026-07-29 by a **stale-skip sweep**: strip every sqlite-relevant skip in a
@@ -406,16 +406,40 @@ object / nested array) resolves to *one* of them instead of the union.
 - [x] test_schema_merging.py::test_dots_in_property_names2
 - [x] test_schema_merging.py::test_sum
 - [x] test_schema_merging.py::test_where — the "complicated where clause" works now
-- [ ] test_schema_merging.py::test_select — "broken"
-- [ ] test_schema_merging.py::test_select2 — merged schema does not expose the deep leaf
-      (`a.b` not found in `[a]`)
+- [ ] test_schema_merging.py::test_select — SQL syntax error `near "."` selecting the union of
+      string / nested-array / number shapes
+- [x] test_schema_merging.py::test_select2 — the table/cube header was the escaped name (`a..b`),
+      and the escaped header was escaped *again* to look up the cell, so it came back Null
+      (§a dotted property name is one field)
 - [ ] test_schema_merging.py::test_count — counts one shape only (1, want 6)
-- [ ] test_schema_merging.py::test_dots_in_property_names — picks the wrong column
-      (`world`, want `hello`) for `a..html` when both `a.html` (a literal dotted name) and
-      `a: {html}` exist
-- [ ] test_schema_merging.py::test_dots_in_property_names3 — "broken"
+- [ ] test_schema_merging.py::test_dots_in_property_names — list is right now; table/cube die in
+      normalize_one (§a dotted property name is one field)
+- [ ] test_schema_merging.py::test_dots_in_property_names3 — same
 - [x] test_schema_merging.py::test_edge — the double count is fixed (b=2 → 4); its null partition
       expectation was wrong (14 → 17, Kyle) — see §an aggregate counts the rows of its value's table
+
+### a dotted property name is one field (2026-07-29) — cluster 11's naming half
+
+`{"a.html": "hello"}` and `{"a": {"html": "world"}}` are different documents: the first has a
+property *named* `a.html`, written `a..html` as a path. `select "a..html"` returned `world` — the
+path — because jx_base `GetOp.var` rebuilt the name with `concat_field(var, lit.value)`, and an
+offset is a **name**, not a path: it has to be escaped on the way in (`literal_field`). One line,
+and both spellings now resolve to their own column (`schema.leaves` was already right).
+
+The table/cube header was a second, independent bug: `_top_name` read the column's slot address,
+which carries the select term's name — and for table/cube `normalize_one` escapes that name
+(`a.b` → `a..b`) so the path algebra keeps it whole. The header showed the escaped form, and
+`format_deep` then escaped it *again* to look up the cell, so the cell came back Null. `_top_name`
+now unescapes. That fixes test_select2.
+
+Still broken (test_dots_in_property_names, ...3): `normalize_one` escapes a name that is **already**
+one escaped field, so `a..html` becomes `a....html`, which `split_field` rejects outright. The
+escape is not idempotent, and it cannot be made so while the header has to tell `a..html` (the
+user's spelling, one literal field) from `a..b` (our escaping of the path `a.b`) — the two are the
+same string shape. The fix is to stop re-escaping and carry the select term's name as written,
+letting the header read it directly instead of recovering it from path algebra; the doc key then
+falls out of the name, since a path nests and a one-field name does not. That is a real change to
+where a table/cube header comes from, so it is its own step.
 
 ## 12. Joins (feature not implemented)
 - [ ] test_joins.py::test_left_join

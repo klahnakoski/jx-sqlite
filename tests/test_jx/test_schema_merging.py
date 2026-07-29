@@ -114,7 +114,11 @@ class TestSchemaMerging(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use == "python", "jx_python known failure")
-    @skipIf(global_settings.use == "sqlite", "merged dotted-name select picks the wrong column ('world', want 'hello')")
+    @skipIf(
+        global_settings.use == "sqlite",
+        "list is right now; table/cube die in normalize_one, which escapes an already-escaped name"
+        " (`a..html` -> `a....html`, which split_field rejects)",
+    )
     def test_dots_in_property_names(self):
         test = {
             "data": [
@@ -197,7 +201,11 @@ class TestSchemaMerging(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use == "python", "jx_python known failure")
-    @skipIf(global_settings.use == "sqlite", "broken")
+    @skipIf(
+        global_settings.use == "sqlite",
+        "list is right now; table/cube die in normalize_one, which escapes an already-escaped name"
+        " (`a..html` -> `a....html`, which split_field rejects)",
+    )
     def test_dots_in_property_names3(self):
         test = {
             "data": [
@@ -274,7 +282,6 @@ class TestSchemaMerging(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "merged schema does not expose the deep leaf: 'a.b' not found in ['a']")
     def test_select2(self):
         test = {
             "data": [

@@ -237,7 +237,9 @@ def _top_name(c, origin):
     if startswith_field(origin, c.nested_path[0]):
         # ORIGIN ITSELF, OR AN ANCESTOR OF IT
         return c.push_column_name
-    return tail_field(relative_field(c.slot_path, untype_field(origin)[0]))[0]
+    # THE HEADER IS A NAME, NOT A PATH: A SELECT TERM WHOSE NAME HAS DOTS IS ONE COLUMN, AND
+    # normalize_one ESCAPED THAT NAME (`a.b` -> `a..b`) SO THE PATH ALGEBRA WOULD KEEP IT WHOLE
+    return unliteral_field(tail_field(relative_field(c.slot_path, untype_field(origin)[0]))[0])
 
 
 def _deep_header(cols, origin):
