@@ -89,6 +89,7 @@ class BranchBuilder:
             push_column_child=push_column_child,
             push_column_name=push_column_name,
             push_column_index=push_column_index,
+            slot_path=node.slot_path[slot],
             pull=get_column(n, json_type=sql.jx_type),
             sql=sql,
             type=jx_type_to_json_type(sql.jx_type),

@@ -230,6 +230,12 @@ ColumnMapping = DataClass(
             "nulls": True,
         },
         {"name": "push_column_index", "nulls": True},  # THE COLUMN NUMBER
+        {  # ABSOLUTE (FACT-ROOTED) PATH OF THE DOCUMENT THIS COLUMN LANDS IN - ITS SLOT'S ADDRESS
+            # (setop.py).  THE TABLE'S OWN PATH FOR PLAIN ASSEMBLY, THE TERM'S WHEN A SELECT NAMES
+            # THE BRANCH; TABLE/CUBE READ THE TOP-LEVEL KEY OFF IT
+            "name": "slot_path",
+            "nulls": True,
+        },
         {  # THE COLUMN NAME FOR TABLES AND CUBES (WITH NO ESCAPING DOTS, NOT IN LEAF FORM)
             "name": "push_column_name",
             "nulls": True,

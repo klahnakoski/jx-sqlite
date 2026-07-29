@@ -155,9 +155,11 @@ Fixed by naming the thing that was missing: a **slot** is one term's answer from
 
 Not a node per term (a wrapper per instance) — two side tables keyed by slot.
 
-**Still open, unrelated to slots**: `format.py` derives a table/cube header from the term's *var*,
-not its name, so `{"select":{"name":"x","value":"_a"},"format":"table"}` emits header `_a` and a
-Null cell. Broken identically before this work; no test covers it.
+The slot address also fixed the table/cube header, which had been derived from the column's
+*table* (`_top_name` in format.py) and so ignored a rename:
+`{"select":{"name":"x","value":"_a"},"format":"table"}` emitted header `_a` and a Null cell (the
+doc is keyed `x`). It now reads the top-level key off the column's slot address — the table's path
+until a term names the branch otherwise — carried on `ColumnMapping.slot_path`.
 
 `Variable.to_sql`'s `logger.warning("not expected")` branch is no longer reached from setop (it
 built a SELECT whose FROM was the table name reversed character-by-character); it is still live

@@ -229,14 +229,15 @@ def format_metadata(metadata, query):
 
 def _top_name(c, origin):
     # THE TOP-LEVEL DOCUMENT KEY THIS COLUMN LANDS UNDER, RELATIVE TO THE QUERY ORIGIN.
-    # A COLUMN LIVING IN A DEEPER (CHILD-ARRAY) TABLE IS ASSEMBLED UNDER ITS CONTAINER
-    # (e.g. `_a`), NOT ITS OWN LEAF NAME (`b`).  AN ANCESTOR COLUMN (UP-REACH: ONE VALUE
-    # PER ORIGIN ROW) LANDS UNDER ITS OWN PUSH NAME.
+    # A COLUMN LIVING IN A DEEPER (CHILD-ARRAY) TABLE IS ASSEMBLED UNDER ITS CONTAINER,
+    # NOT ITS OWN LEAF NAME (`b`) - AND THE CONTAINER IS THE COLUMN'S SLOT ADDRESS, WHICH
+    # IS THE TABLE'S PATH (`_a`) ONLY UNTIL A SELECT TERM NAMES THE BRANCH SOMETHING ELSE
+    # (`{"name":"x","value":"_a"}` -> `x`).  AN ANCESTOR COLUMN (UP-REACH: ONE VALUE PER
+    # ORIGIN ROW) LANDS UNDER ITS OWN PUSH NAME.
     if startswith_field(origin, c.nested_path[0]):
         # ORIGIN ITSELF, OR AN ANCESTOR OF IT
         return c.push_column_name
-    rel = untype_field(relative_field(c.nested_path[0], origin))[0]
-    return tail_field(rel)[0]
+    return tail_field(relative_field(c.slot_path, untype_field(origin)[0]))[0]
 
 
 def _deep_header(cols, origin):
