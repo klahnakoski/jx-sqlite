@@ -860,7 +860,6 @@ class TestDeepOps(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
-    @skipIf(global_settings.use == "sqlite", "GUID `_id` not bound from nested origin (NAMES.md #7); also drops empty-parent row")
     def test_id_select(self):
         """
         ALWAYS GOOD TO HAVE AN ID, CALL IT "_id"

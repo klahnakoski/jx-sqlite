@@ -840,7 +840,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skip("between is broken")
+    @skipIf(global_settings.use in {"python", "interpret"}, "between is broken")
     @skipIf(sys.version_info[:2] <= (3, 9), "parser stack overflow")
     def test_between_missing(self):
         test = {

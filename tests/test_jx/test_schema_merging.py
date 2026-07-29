@@ -14,7 +14,6 @@ from mo_dots import concat_field
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 
-@skipIf(global_settings.use == "sqlite", "not ready")
 class TestSchemaMerging(BaseTestCase):
     """
     TESTS THAT DEMONSTRATE DIFFERENT SCHEMAS
@@ -115,6 +114,7 @@ class TestSchemaMerging(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use == "python", "jx_python known failure")
+    @skipIf(global_settings.use == "sqlite", "merged dotted-name select picks the wrong column ('world', want 'hello')")
     def test_dots_in_property_names(self):
         test = {
             "data": [
@@ -240,6 +240,7 @@ class TestSchemaMerging(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
+    @skipIf(global_settings.use == "sqlite", "count over a merged schema counts one shape only (1, want 6)")
     def test_count(self):
         test = {
             "data": [
@@ -273,6 +274,7 @@ class TestSchemaMerging(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.use == "sqlite", "merged schema does not expose the deep leaf: 'a.b' not found in ['a']")
     def test_select2(self):
         test = {
             "data": [
@@ -308,7 +310,6 @@ class TestSchemaMerging(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
-    @skipIf(global_settings.use == "sqlite", "complicated where clause needs support")
     def test_where(self):
         test = {
             "data": [
@@ -378,6 +379,7 @@ class TestSchemaMerging(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
+    @skipIf(global_settings.use == "sqlite", "sum over an edge on a merged inner/nested column adds the parent value once per child row (b=2 -> 8, want 4)")
     def test_edge(self):
         test = {
             "data": [

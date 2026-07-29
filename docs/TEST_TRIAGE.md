@@ -6,8 +6,14 @@ items off. Update this file as tests are un-skipped or reasons are refined.
 
 Legend: `[ ]` skipped, `[x]` passing (decorator removed), `[-]` won't fix.
 
-> Baseline (dev, 2026-07-11 night): HEAD b8de874, 370 ran / 0 err / 86 skip. The checklists
-> below are the source of truth for what remains; work one cluster per session.
+> Baseline (dev, 2026-07-29): 414 ran / 0 err / 64 skip. The checklists below are the source of
+> truth for what remains; work one cluster per session.
+>
+> Reconciled 2026-07-29 by a **stale-skip sweep**: strip every sqlite-relevant skip in a
+> throwaway worktree, run the suite, diff per-test status against a clean run. 12 skipped tests
+> were already passing, and 3 more entries were marked `[ ]` here while running green. Repeat the
+> sweep after any cluster lands — a fix in one cluster keeps un-blocking tests filed under
+> another. The 62 that still fail are the real remaining work.
 
 ## 1. Deep / nested queries (~55 tests — the dominant cluster)
 
@@ -26,7 +32,7 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 - [x] test_abs_shallow_select — fixed: _deep_header lands up-reach (ancestor) columns under their own push name
 - [x] test_select_whole_document — fixed (insert row-reuse + plain-`*` depth filter + deep header)
 - [x] test_select_whole_nested_document
-- [ ] test_deep_names_w_star — prefix-star on fact-absolute name from deep origin loses the container name
+- [x] test_deep_names_w_star — passing; the skip was already gone when the 2026-07-29 sweep ran
 - [x] test_deep_names_select_value
 - [x] test_deep_names
 - [x] test_deep_agg_on_expression
@@ -34,8 +40,8 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 - [x] test_agg_w_complicated_where
 - [x] test_deep_where_on_fact_table — fixed: explicit deep-leaf select keeps its term-rooted push name (ResolvedName push_child='.'); _accumulate_nested merges one value per child row as a multivalue on the origin doc
 - [x] test_deep_where_on_fact_table_multivalue — fixed (step 3, two arms): each deep leaf is its own UNION-ALL arm on the table (place() makes same-table nodes siblings; each deep-leaf candidate is its own subquery-entry branch node), so a._a.v -> list and a._a.s -> False collapse independently. Also fixed the reassembler dropping a collapsed falsy scalar (doc or is_origin -> not is_missing(doc)), and made setop's LIMIT count documents not union rows (SqlOrderByOp is now a first-class command; row-limit dropped, docs sliced at assembly)
-- [ ] test_deep_where_on_fact_table_subquery — correlated counterpart: a subquery `{from: a._a, select: [v, s]}` as one select element must keep v,s together per element (array of {v,s} objects, = selecting `a._a` whole). Currently double-nests. Kyle: this is "just-another-element in the select clause"
-- [ ] test_id_select — GUID `_id` not bound from nested origin (NAMES.md #7); also drops empty-parent row
+- [x] test_deep_where_on_fact_table_subquery — passing (never re-skipped after the two-arms work); a subquery `{from: a._a, select: [v, s]}` as one select element does keep v,s together per element. Kyle: "just-another-element in the select clause"
+- [x] test_id_select — passing; GUID `_id` from a nested origin and the empty-parent row both work now
 - [x] test_aggs_on_parent
 - [x] test_aggs_on_parent_and_child
 - [x] test_aggs_on_parent_and_child2
@@ -70,7 +76,7 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 - [ ] TestNestedQueries (whole class) — "broken"
 
 ### test_sort.py (nested subset)
-- [ ] test_nested_array
+- [x] test_nested_array
 - [x] test_nested
 - [x] test_single_nested
 
@@ -122,15 +128,17 @@ Shallow queries whose select clause is an object, `*`, leaves, or an array value
 - [-] test_select_id_and_source — MISFILED: `select "."` (_source) over doc with nested
       array leaks hidden cols → cluster 1 join assembly; re-skipped
 
-## 3. `between` op broken (~6 tests)
+## 3. `between` op broken — CLEARED except test_between
 
-BetweenOp (string-slicing between, and edge domains using between).
-- [ ] test_edge_1.py::test_edge_using_between
+BetweenOp (string-slicing between, and edge domains using between). Only the edge-domain half
+was ever broken on sqlite; the 2026-07-29 sweep found the rest passing behind bare
+`@skip("between is broken")` decorators, now narrowed to python/interpret.
+- [x] test_edge_1.py::test_edge_using_between
 - [x] test_edge_2.py::test_edge_using_missing_between1
-- [ ] test_edge_2.py::test_edge_using_missing_between2
-- [ ] test_expressions_w_set_ops.py::test_between_missing
+- [x] test_edge_2.py::test_edge_using_missing_between2
+- [x] test_expressions_w_set_ops.py::test_between_missing
 - [ ] test_expressions_w_set_ops.py::test_between — "parser stack overflow"
-- [ ] test_edge_1.py (edge_1:1521 skip "between is broken")
+- [x] test_edge_1.py (edge_1 bare `@skip("between is broken")`) — narrowed to python/interpret, which are still unverified
 
 ## 4. Sort coordinated with edges / groupby (~7 tests)
 
@@ -158,8 +166,8 @@ change.
 
 ## 6. Other aggregate ops (~4 tests)
 - [x] test_agg_ops.py::test_select_agg_mult_w_when
-- [ ] test_agg_ops.py::test_max_on_tuple — "broken"
-- [ ] test_agg_ops.py::test_max_on_tuple2 — "broken"
+- [x] test_agg_ops.py::test_max_on_tuple — passing
+- [x] test_agg_ops.py::test_max_on_tuple2 — passing
 - [x] test_agg_ops.py::test_union — UnionOp needed the `frum=` aggregate ctor (like
       SumOp/MinOp) and `_union_aggregate` used the dead multi-detail `to_sql` API.
       NOTE: only the sqlite path is covered; jx_python union test/interp request lives in
@@ -167,9 +175,9 @@ change.
 
 ## 7. Edge domains (~7 tests)
 
-- [ ] test_edge_1.py::test_union_values — "deal with nested table as value"
-- [ ] test_edge_1.py::test_union_nested_objects — same
-- [ ] test_edge_1.py::test_multiple_union — same
+- [x] test_edge_1.py::test_union_values
+- [x] test_edge_1.py::test_union_nested_objects
+- [x] test_edge_1.py::test_multiple_union
 - [ ] test_edge_1.py::test_multiple_union2 — same
 - [ ] test_edge_1.py::test_empty_default_domain_w_groupby — "broken"
 - [x] test_edge_1.py::test_edge_using_tuple
@@ -203,11 +211,25 @@ change.
 - [ ] test_metadata.py::test_get_nested_columns — "broken"
 - [ ] test_metadata.py::test_cardinality — "cardinality not tracked" (feature gap)
 
-## 11. Schema merging (whole area "not ready")
-- [ ] test_schema_merging.py::TestSchemaMerging (whole class)
+## 11. Schema merging (4 of 10 pass — the class-level skip was hiding them)
+
+The class-level `@skipIf(... "not ready")` is gone; the six that still fail carry their own
+reason. The failures are one theme: a name that exists in more than one shape (scalar / inner
+object / nested array) resolves to *one* of them instead of the union.
+- [x] test_schema_merging.py::test_mixed_primitives
+- [x] test_schema_merging.py::test_dots_in_property_names2
+- [x] test_schema_merging.py::test_sum
+- [x] test_schema_merging.py::test_where — the "complicated where clause" works now
 - [ ] test_schema_merging.py::test_select — "broken"
+- [ ] test_schema_merging.py::test_select2 — merged schema does not expose the deep leaf
+      (`a.b` not found in `[a]`)
+- [ ] test_schema_merging.py::test_count — counts one shape only (1, want 6)
+- [ ] test_schema_merging.py::test_dots_in_property_names — picks the wrong column
+      (`world`, want `hello`) for `a..html` when both `a.html` (a literal dotted name) and
+      `a: {html}` exist
 - [ ] test_schema_merging.py::test_dots_in_property_names3 — "broken"
-- [ ] test_schema_merging.py::test_where — "complicated where clause needs support"
+- [ ] test_schema_merging.py::test_edge — sum over an edge on a merged inner/nested column adds
+      the parent value once per child row (b=2 → 8, want 4)
 
 ## 12. Joins (feature not implemented)
 - [ ] test_joins.py::test_left_join
