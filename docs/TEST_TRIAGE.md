@@ -135,13 +135,29 @@ override it, including with `"."` (the branch *is* the doc: `select "_a"` in lis
 built a SELECT whose FROM was the table name reversed character-by-character); it is still live
 for other callers.
 
-**Known limit** (was already broken, now well-formed instead of malformed): a term that renames a
-branch *across an intermediate array* — `select "_a"` where `_a` holds another array — cannot
-apply the rename, because the intermediate table's node is shared by every term and only the
-deepest node is renamed. Doing it needs one node per (term, table) — the "two arms" shape
-generalized, i.e. resolve the select once at the origin (docs/NAMES.md next step 1). setop keeps
-the table's path when the term path does not compose, so the output is a well-formed document
-with the rename dropped above the array.
+**Known limit** — a term that renames a branch *across an intermediate array*. `select "_a"` over
+`{"_a":[{"v":9,"k":[{"b":1},{"b":2}]}]}` splits into two arms (`v` at the `_a` table, `k.b` at the
+`k` table) and **the two arms disagree about the coordinate system**: `{"v":9, "_a":{"k":[...]}}`,
+where `v` took the rename (it is the doc) and `k` did not. Want `[{"v":9,"k":[...]}]`. Two causes,
+both structural:
+
+1. A node's push path is `concat(term name, push_name)`, origin-rooted, but `push_name` is
+   relative to the *queried name* (`k` relative to `_a`) while the parent node's path is the
+   table's (`testing._a`). They agree only when nothing is renamed (`term name == var`, the
+   no-select case — `push_name` is then already origin-rooted) or when the parent IS the origin
+   (one boundary crossed). Otherwise `relative_field` makes an up-ref; setop keeps the table's
+   path in that case so the document stays well-formed.
+2. `place()` attaches a node by TABLE, so a child cannot tell which same-table sibling it belongs
+   to — the `k` arm hangs under the branch-loop `_a` node, not under the renamed one. Fixing (1)
+   alone would not propagate the rename.
+
+The fix is a chain of nodes per branch-valued term (origin → … → binding table), keyed by branch
+identity rather than table: the "two arms" shape generalized from leaves to the interior of the
+path, i.e. resolve the select once at the origin (docs/NAMES.md next step 1).
+
+Was broken before this work too, differently: `_deep_split` bailed on the two-table split, so the
+term stayed plain and was re-compiled per branch — `{"_a":{"v":9,"k":[{"k":{"b":1}},...]}}`, rename
+dropped *and* `k` doubled inside each element.
 
 ## 2. Selecting objects / stars / leaves (setop formatting) — CLEARED (10 fixed, 1 reclustered)
 
