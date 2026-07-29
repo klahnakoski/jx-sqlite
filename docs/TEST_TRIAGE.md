@@ -6,7 +6,7 @@ items off. Update this file as tests are un-skipped or reasons are refined.
 
 Legend: `[ ]` skipped, `[x]` passing (decorator removed), `[-]` won't fix.
 
-> Baseline (dev, 2026-07-29): 418 ran / 0 err / 54 skip. The checklists below are the source of
+> Baseline (dev, 2026-07-29): 418 ran / 0 err / 53 skip. The checklists below are the source of
 > truth for what remains; work one cluster per session.
 >
 > Reconciled 2026-07-29 by a **stale-skip sweep**: strip every sqlite-relevant skip in a
@@ -196,10 +196,10 @@ False`, and jx_sqlite's `to_sql` already sets `miss=FALSE` — so every predicat
 wrongly nullable, and `OrOp(NotOp(when), …)` then violated the SqlScript invariant that a `miss`
 is not itself missing. Now `FALSE`.
 
-Cluster 11's test_edge is the same query on inner-object-merged data: the double count is fixed
-(`b==2` is 4), but its null partition says 14 where the engine says 17 — `v=1,3,6,7`, every doc
-whose `a` row has no `b`, which is exactly what the gather above enumerates and what its sibling
-test_deep_edge_w_shallow_var expects (25 over the same shape). **Kyle's call**: 14 looks wrong.
+Cluster 11's test_edge is the same query on inner-object-merged data, and it passes too: the
+double count is fixed (`b==2` is 4), and its null partition expectation of 14 was wrong — 17,
+`v=1,3,6,7`, every doc whose `a` row has no `b`, which is what the gather above enumerates and
+what its sibling test_deep_edge_w_shallow_var expects (25 over the same shape). Corrected by Kyle.
 
 ### test_sort.py (nested subset)
 - [x] test_nested_array
@@ -414,9 +414,8 @@ object / nested array) resolves to *one* of them instead of the union.
       (`world`, want `hello`) for `a..html` when both `a.html` (a literal dotted name) and
       `a: {html}` exist
 - [ ] test_schema_merging.py::test_dots_in_property_names3 — "broken"
-- [ ] test_schema_merging.py::test_edge — the double count is fixed (b=2 → 4); the null partition
-      is 17 where the test says 14, and 14 contradicts its sibling test_deep_edge_w_shallow_var
-      (see §an aggregate counts the rows of its value's table)
+- [x] test_schema_merging.py::test_edge — the double count is fixed (b=2 → 4); its null partition
+      expectation was wrong (14 → 17, Kyle) — see §an aggregate counts the rows of its value's table
 
 ## 12. Joins (feature not implemented)
 - [ ] test_joins.py::test_left_join
