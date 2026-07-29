@@ -126,38 +126,44 @@ That split replaced two heuristics in `setop.py`:
   answer for `a._a.v` (the queried name *is* the value), different — and now right — for a
   one-leaf array of objects: `select "a"` over `[{"b":1}]` keeps `[{b:1}]` instead of `[1]`.
 
-A node's push name became an **absolute** (fact-rooted) path, `DocumentDetails.push_path`,
-defaulting to the table's own path; assembly lands a child at `relative_field(child, parent)`.
-That is what plain document assembly always computed from table paths — now a select term can
-override it, including with `"."` (the branch *is* the doc: `select "_a"` in list format).
+A node's push name became an **absolute** (fact-rooted) path, defaulting to the table's own path;
+assembly lands a child at `relative_field(child, parent)`. That is what plain document assembly
+always computed from table paths — now a select term can override it, including with `"."` (the
+branch *is* the doc: `select "_a"` in list format).
+
+### slots — one table's rows answering several terms (2026-07-29)
+
+The above left one limit: a term renaming a branch **across an intermediate array** (`select "_a"`
+where `_a` holds another array) could not apply the rename, because only the deepest node was
+renamed and the intermediate node belonged to the snowflake. Its two arms then disagreed about the
+coordinate system — `{"v":9,"_a":{"k":[…]}}` for data `{"_a":[{"v":9,"k":[{"b":1},{"b":2}]}]}`.
+
+Fixed by naming the thing that was missing: a **slot** is one term's answer from one table —
+`DocumentDetails.slot_path` (slot → absolute path where its doc lands) and `slot_columns`
+(slot → its columns), keyed by the term's name, `None` being the document itself. So:
+
+- `_accumulate_nested` builds one doc per **(element, slot)** instead of one per element, and lands
+  each at `relative_field(child.slot_path[slot], parent.slot_path[slot])`. A slot the parent does
+  not answer (its own part was shallow, like `_source`'s `v`) lands in the parent's document.
+- A branch term claims a slot at **every level** from below the origin down to its binding table,
+  so the rename reaches the levels beneath it. `select "_a"` now gives `[{"v":9,"k":[…]}]`, and
+  `["o",{"name":"x","value":"_a"}]` gives `{"o":1,"x":{"k":[…]}}`.
+- One node per table again: same-table siblings collapse, so `place()` needs no branch identity and
+  the "two arms" of step 3 become two slots on the same rows — `a._a.v` → list and `a._a.s` →
+  False still collapse independently, in **2 UNION-ALL arms instead of 4**. Slots subsume the
+  two-arms mechanism; the fork is in the pull plan, not the SQL.
+
+Not a node per term (a wrapper per instance) — two side tables keyed by slot.
+
+**Still open, unrelated to slots**: `format.py` derives a table/cube header from the term's *var*,
+not its name, so `{"select":{"name":"x","value":"_a"},"format":"table"}` emits header `_a` and a
+Null cell. Broken identically before this work; no test covers it.
 
 `Variable.to_sql`'s `logger.warning("not expected")` branch is no longer reached from setop (it
 built a SELECT whose FROM was the table name reversed character-by-character); it is still live
 for other callers.
 
-**Known limit** — a term that renames a branch *across an intermediate array*. `select "_a"` over
-`{"_a":[{"v":9,"k":[{"b":1},{"b":2}]}]}` splits into two arms (`v` at the `_a` table, `k.b` at the
-`k` table) and **the two arms disagree about the coordinate system**: `{"v":9, "_a":{"k":[...]}}`,
-where `v` took the rename (it is the doc) and `k` did not. Want `[{"v":9,"k":[...]}]`. Two causes,
-both structural:
-
-1. A node's push path is `concat(term name, push_name)`, origin-rooted, but `push_name` is
-   relative to the *queried name* (`k` relative to `_a`) while the parent node's path is the
-   table's (`testing._a`). They agree only when nothing is renamed (`term name == var`, the
-   no-select case — `push_name` is then already origin-rooted) or when the parent IS the origin
-   (one boundary crossed). Otherwise `relative_field` makes an up-ref; setop keeps the table's
-   path in that case so the document stays well-formed.
-2. `place()` attaches a node by TABLE, so a child cannot tell which same-table sibling it belongs
-   to — the `k` arm hangs under the branch-loop `_a` node, not under the renamed one. Fixing (1)
-   alone would not propagate the rename.
-
-The fix is a chain of nodes per branch-valued term (origin → … → binding table), keyed by branch
-identity rather than table: the "two arms" shape generalized from leaves to the interior of the
-path, i.e. resolve the select once at the origin (docs/NAMES.md next step 1).
-
-Was broken before this work too, differently: `_deep_split` bailed on the two-table split, so the
-term stayed plain and was re-compiled per branch — `{"_a":{"v":9,"k":[{"k":{"b":1}},...]}}`, rename
-dropped *and* `k` doubled inside each element.
+(This left one limit — a rename across an intermediate array — fixed by slots, below.)
 
 ## 2. Selecting objects / stars / leaves (setop formatting) — CLEARED (10 fixed, 1 reclustered)
 

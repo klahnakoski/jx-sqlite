@@ -74,17 +74,22 @@ def _set_op(self, query):
         nested_doc_details: DocumentDetails,  # describes how the rows get mapped to nested docs
         parent_id: int,  # the id of the parent doc (child rows carry it at parent_id_coord)
         parent_id_coord: int,  # the column of the parent_id; None at the origin (no above grouping)
-    ) -> List[Data]:
+    ) -> Dict[object, List[Data]]:
         # STREAMING HIERARCHICAL GROUPER (NO INLINE FIRST-ROW).  Rows arrive in hierarchical
         # ORDER BY (parent uid, then child uid, ...), so each element's own row (child uids NULL)
         # precedes its child rows.  We build the element from its own row, then dispatch the
         # following rows of the same element to whichever child's uid is present.  A LEFT-JOIN
         # NULL element at the origin is a legitimate (empty) doc (missing child == implicit [{}]).
-        output = []
+        # ONE DOC PER (ELEMENT, SLOT): THE SAME ROWS ANSWER SEVERAL SELECT TERMS, EACH ASSEMBLING
+        # ITS OWN DOCUMENT FROM ITS OWN COLUMNS AND LANDING AT ITS OWN PATH.
+        output = {}  # slot -> its docs
         id_coord = nested_doc_details.id_coord
-        curr_push_path = nested_doc_details.push_path
+        slot_path = nested_doc_details.slot_path
         is_origin = parent_id_coord is None
-        index_to_column = tuple((c.push_list_name, c.pull) for _, c in nested_doc_details.index_to_column.items())
+        slot_columns = tuple(
+            (slot, tuple((c.push_list_name, c.pull) for c in cols.values()))
+            for slot, cols in nested_doc_details.slot_columns.items()
+        )
         children = nested_doc_details.children
 
         while state[0] is not None:
@@ -95,12 +100,13 @@ def _set_op(self, query):
             if not is_origin and is_missing(my_id):
                 break  # a sibling branch's row (this level's uid absent); let the caller dispatch
 
-            doc = Null
-            for rel_field, pull in index_to_column:
-                value = pull(row)
-                if is_missing(value):
-                    continue
-                doc = _land(doc, rel_field, value)
+            docs = {slot: Null for slot in slot_path}  # A SLOT WITHOUT COLUMNS STILL CARRIES CHILDREN
+            for slot, cols in slot_columns:
+                for rel_field, pull in cols:
+                    value = pull(row)
+                    if is_missing(value):
+                        continue
+                    docs[slot] = _land(docs[slot], rel_field, value)
 
             state[0] = next(rows, None)  # CONSUME THIS ELEMENT'S OWN ROW
             consumed = set()  # id(child) that had a surviving (dispatched) row
@@ -113,13 +119,18 @@ def _set_op(self, query):
                         if id(child_details) in consumed or is_missing(crow[child_details.id_coord]):
                             continue
                         consumed.add(id(child_details))
-                        nested_value = _accumulate_nested(state, rows, child_details, my_id, id_coord)
-                        if nested_value:
-                            # BOTH PUSH PATHS ARE ABSOLUTE, SO THE CHILD LANDS AT THE DIFFERENCE:
-                            # PLAIN ASSEMBLY GIVES THE TABLE'S RELATIVE PATH, A SELECT TERM NAMING
-                            # THE BRANCH GIVES ITS OWN (INCLUDING "." - THE CHILD *IS* THE DOC)
-                            rel_field = relative_field(child_details.push_path, curr_push_path)
-                            doc = _land(doc, rel_field, nested_value)
+                        for slot, nested_value in _accumulate_nested(
+                            state, rows, child_details, my_id, id_coord
+                        ).items():
+                            if not nested_value:
+                                continue
+                            # A SLOT LANDS IN THE PARENT'S DOC FOR THE SAME SLOT; A TERM THE PARENT
+                            # DOES NOT ANSWER (ITS OWN PART WAS SHALLOW) LANDS IN THE DOCUMENT.
+                            # BOTH PATHS ARE ABSOLUTE, SO IT LANDS AT THE DIFFERENCE - INCLUDING
+                            # "." (THE CHILD *IS* THE DOC)
+                            target = slot if slot in slot_path else None
+                            rel_field = relative_field(child_details.slot_path[slot], slot_path[target])
+                            docs[target] = _land(docs[target], rel_field, nested_value)
                         break
                     else:
                         # NO UNCONSUMED CHILD OWNS crow (guards against an unexpected duplicate row)
@@ -132,8 +143,10 @@ def _set_op(self, query):
 
             # KEEP ANY NON-MISSING doc, INCLUDING A FALSY SCALAR (A COLLAPSED MULTIVALUE OF False/0):
             # `doc or is_origin` WOULD DROP s=False.  doc STARTS AS Null (is_missing) UNTIL A VALUE LANDS.
-            if not dropped and (not is_missing(doc) or is_origin):
-                output.append(doc)
+            if not dropped:
+                for slot, doc in docs.items():
+                    if not is_missing(doc) or is_origin:
+                        output.setdefault(slot, []).append(doc)
 
         return output
 
@@ -146,7 +159,7 @@ def _set_op(self, query):
         # REASSEMBLY ROOTS AT THE ORIGIN (primary_doc_details IS THE ORIGIN NODE): ABOVE-ORIGIN
         # ANCESTORS ARE JOINS ONLY, NOT REASSEMBLY LEVELS.  parent_id_coord=None => EVERY ORIGIN
         # ELEMENT IS A TOP-LEVEL DOC (NO ABOVE-ORIGIN GROUPING), SO NO POST-PROC FLATTEN IS NEEDED.
-        data = _accumulate_nested(state, rows, primary_doc_details, 0, None)
+        data = _accumulate_nested(state, rows, primary_doc_details, 0, None).get(None, [])
     else:
         data = result.data
 
@@ -179,10 +192,10 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
         if is_op(term.value, SelectOp):
             rel = first(term.value.frum.vars())
             table_path = first(c.nested_path[0] for _, c in schema.leaves(rel))
-            subqueries.setdefault(table_path, []).append((term.name, list(term.value)))
+            subqueries.setdefault(table_path, []).append((term.name, rel, list(term.value)))
             continue
         if is_variable(term.value):
-            # EACH TABLE THE NAME REACHES -> ITS OWN SUBQUERY ENTRY = ITS OWN SIBLING ARM (STEP 3),
+            # EACH TABLE THE NAME REACHES -> ITS OWN SUBQUERY ENTRY = ITS OWN SLOT ON THAT TABLE,
             # SO a._a.v -> list AND a._a.s -> scalar COLLAPSE INDEPENDENTLY.  A NAME WITH BINDINGS
             # AT OR ABOVE THE ORIGIN TOO (`.` OVER A DOC WITH A NESTED ARRAY) KEEPS ITS PLAIN TERM
             # FOR THOSE.  docs/INTERSECTION_SURVEY.md §7 STEP 3
@@ -352,34 +365,30 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
                 nested_path=nested_path,
             )
 
-    # EACH SUBQUERY ENTRY (INCL. A REWRITTEN DEEP NAME) IS ITS OWN BRANCH = ITS OWN UNION-ALL ARM
-    # ON ITS TABLE, COMPILED BRANCH-RELATIVE (NAMES LIKE "v","s", NOT "a._a.v").  TWO DEEP LEAVES
-    # a._a.v, a._a.s THUS BECOME TWO SIBLING ARMS, EACH COLLAPSING TO ITS OWN MULTIVALUE.  THE
-    # ENTRY'S ASSEMBLED VALUE LANDS AT ITS OUTER NAME; ITS COLUMNS ARE NAMED INSIDE THE ELEMENT,
-    # AND AN ENTRY NAMED "." IS THE ELEMENT ITSELF (A BARE MULTIVALUE).
-    # docs/INTERSECTION_SURVEY.md §7 STEP 3
-    sub_table_number = len(branches)
+    # EACH SUBQUERY ENTRY (INCL. A REWRITTEN DEEP NAME) IS A SLOT ON ITS TABLE'S NODE, COMPILED
+    # BRANCH-RELATIVE (NAMES LIKE "v","s", NOT "a._a.v").  TWO DEEP LEAVES a._a.v, a._a.s ARE TWO
+    # SLOTS ON THE SAME ROWS, EACH ASSEMBLING ITS OWN DOC, SO EACH COLLAPSES TO ITS OWN MULTIVALUE.
+    # THE SLOT'S DOC LANDS AT ITS TERM NAME; ITS COLUMNS ARE NAMED INSIDE THE ELEMENT, AND A COLUMN
+    # NAMED "." IS THE ELEMENT ITSELF (A BARE MULTIVALUE).  docs/INTERSECTION_SURVEY.md §7 STEP 3
+    origin_rel = untype_field(origin)[0]
     for table_path, entries in subqueries.items():
         sub_schema = self.snowflake.get_schema(list(reversed([
             t for t in self.snowflake.query_paths if startswith_field(table_path, t)
         ])))
-        for outer_name, inner_select in entries:
-            sub_table_number += 1  # ALWAYS > 0: A SUBQUERY BRANCH IS A CHILD (uid + order PLUMBING)
-            node = builder.add_branch(table_path, sub_table_number)
-            if (
-                startswith_field(table_path, origin)
-                and table_path != origin
-                and any(startswith_field(wt, table_path) for wt in where_tables)
-            ):
-                node.required = True
-            # THE TERM'S NAME REPLACES THE TABLE'S OWN PATH: THIS BRANCH LANDS WHERE THE SELECT
-            # ASKED FOR IT, NOT WHERE THE SNOWFLAKE PUTS IT.  THE TERM PATH IS ORIGIN-ROOTED, SO
-            # IT ONLY COMPOSES WHEN THIS BRANCH HANGS OFF THE DOC BEING NAMED; RENAMING ACROSS AN
-            # INTERMEDIATE ARRAY (`select "_a"` WHERE _a HOLDS ANOTHER ARRAY) WOULD HAVE TO RENAME
-            # THAT NODE TOO - ONE NODE PER (TERM, TABLE), NOT BUILT - SO KEEP THE TABLE'S PATH.
-            term_path = concat_field(untype_field(origin)[0], outer_name)
-            if startswith_field(term_path, node.parent.push_path):
-                node.push_path = term_path
+        for slot, source, inner_select in entries:
+            node = builder.nodes[table_path]
+            # THE SLOT'S ADDRESS AT EVERY LEVEL FROM BELOW THE ORIGIN DOWN TO THIS TABLE: THE TERM
+            # NAME PLUS THE PART OF THAT LEVEL INSIDE THE NAMED VALUE ("." WHILE THE NAME IS STILL
+            # AT OR INSIDE THE LEVEL).  NAMING EVERY LEVEL IS WHAT CARRIES A RENAME ACROSS AN
+            # INTERMEDIATE ARRAY - THE LEVELS BELOW LAND RELATIVE TO THE RENAMED ONE, NOT THE TABLE.
+            for level in self.snowflake.query_paths:
+                if level == origin or not startswith_field(level, origin) or not startswith_field(table_path, level):
+                    continue
+                level_rel = untype_field(relative_field(level, origin))[0]
+                inside = "." if startswith_field(source, level_rel) else relative_field(level_rel, source)
+                builder.nodes[level].slot_path.setdefault(
+                    slot, concat_field(origin_rel, concat_field(slot, inside))
+                )
             for i, (name, value) in enumerate(inner_select):
                 sql = value.partial_eval(SQLang).to_sql(sub_schema)
                 push_column_name, push_column_child = tail_field(name)
@@ -387,6 +396,7 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
                 builder.add_column(
                     node,
                     sql,
+                    slot=slot,
                     push_list_name=push_column_child if push_column_name == "." else name,
                     push_column_name=push_column_name,
                     push_column_child=push_column_child,
@@ -533,8 +543,8 @@ def _land(doc, rel_field, value):
 
 
 def _owned_of(node):
-    # COLUMN INDICES A NODE OWNS: ITS VALUE COLUMNS PLUS ITS uid/order PLUMBING.
-    return set(node.index_to_column.keys()) | set(node.uid_coords)
+    # COLUMN INDICES A NODE OWNS: EVERY SLOT'S VALUE COLUMNS PLUS ITS uid/order PLUMBING.
+    return set(i for cols in node.slot_columns.values() for i in cols) | set(node.uid_coords)
 
 
 def _preorder(node):
@@ -558,20 +568,20 @@ def _path_to(node, target):
 def _branch_split(term, schema, origin):
     """
     A SELECT TERM NAMING A BRANCH IS ONE SUBQUERY PER TABLE THE NAME REACHES.  Names ANSWERS
-    WHERE EACH BINDING LANDS (docs/NAMES.md): push_name IS THE PATH FROM THE QUERIED NAME TO
-    THE ARRAY HOLDING THE BINDING, push_child ITS PATH INSIDE THAT ARRAY'S ELEMENT.  SO THE
-    BRANCH'S ASSEMBLED VALUE LANDS AT concat(term name, push_name) AND ITS COLUMNS ARE NAMED
-    push_child - INCLUDING "." WHEN THE QUERIED NAME *IS* THE VALUE (`a._a.v` -> A BARE
-    MULTIVALUE OF v).  THAT SPLIT IS THE WHOLE RULE: A ONE-LEAF ARRAY OF OBJECTS (`a` OVER
-    [{"b":1}]) KEEPS ITS PROPERTY NAME BECAUSE push_child IS "b", NOT BECAUSE OF ANY COUNT.
+    WHERE EACH BINDING LANDS (docs/NAMES.md): push_child IS ITS PATH INSIDE THE ELEMENT OF THE
+    ARRAY HOLDING IT, SO THAT IS THE COLUMN'S NAME - INCLUDING "." WHEN THE QUERIED NAME *IS*
+    THE VALUE (`a._a.v` -> A BARE MULTIVALUE OF v).  THAT SPLIT IS THE WHOLE RULE: A ONE-LEAF
+    ARRAY OF OBJECTS (`a` OVER [{"b":1}]) KEEPS ITS PROPERTY NAME BECAUSE push_child IS "b",
+    NOT BECAUSE OF ANY COUNT.  (WHERE THE *ELEMENT* LANDS IS THE SLOT'S ADDRESS, DERIVED FROM
+    THE TERM NAME PER LEVEL BY THE CALLER - push_name IS THAT ANSWER FOR ONE LEVEL ONLY.)
 
-    RETURN ({table path: (outer name, [(inner name, inner value), ...])}, WHETHER ANY BINDING
-    LIVES AT OR ABOVE THE ORIGIN - THOSE STAY WITH THE PLAIN TERM).
+    RETURN ({table path: (term name, queried name, [(inner name, inner value), ...])}, WHETHER
+    ANY BINDING LIVES AT OR ABOVE THE ORIGIN - THOSE STAY WITH THE PLAIN TERM).
     """
     var = term.value.var
     if startswith_field(var, "row"):
         _, var = tail_field(var)
-    groups = {}  # table path -> (outer name, {push_child: branch-relative value})
+    groups = {}  # table path -> {push_child: branch-relative value}
     shallow = False
     for resolved in schema.leaves(var):
         _, col = resolved
@@ -580,14 +590,12 @@ def _branch_split(term, schema, origin):
             shallow = True
             continue
         from_path = untype_field(relative_field(table_path, origin))[0]
-        # ONE push_name PER TABLE (A TABLE IS REACHED BY ONE PATH), SO THE OUTER NAME IS SHARED
-        _, entries = groups.setdefault(table_path, (concat_field(term.name, resolved.push_name), {}))
         # UNION TYPES BIND SEVERAL COLUMNS TO ONE NAME; Variable.to_sql COALESCES THEM
-        entries.setdefault(
+        groups.setdefault(table_path, {}).setdefault(
             resolved.push_child,
             Variable(untype_field(relative_field(concat_field(var, resolved.name), from_path))[0]),
         )
-    return {t: (name, list(entries.items())) for t, (name, entries) in groups.items()}, shallow
+    return {t: (term.name, var, list(entries.items())) for t, entries in groups.items()}, shallow
 
 
 sort_to_sqlite_order = {-1: SQL_DESC, 0: SQL_ASC, 1: SQL_ASC}

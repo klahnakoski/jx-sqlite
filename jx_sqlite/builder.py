@@ -28,12 +28,14 @@ class DocumentDetails:
     alias: str
     id_coord: int
     nested_path: List[str]
-    index_to_column: Dict[int, ColumnMapping]
     children: List["DocumentDetails"]
-    parent: "DocumentDetails"  # THE NODE THIS ONE'S VALUE LANDS IN (None AT THE ROOT)
-    push_path: str  # WHERE THIS NODE'S ASSEMBLED VALUE LANDS, AS AN ABSOLUTE (FACT-ROOTED) PATH;
-    # ASSEMBLY LANDS IT AT THAT PATH RELATIVE TO ITS PARENT'S.  DEFAULTS TO THE TABLE'S OWN PATH
-    # (PLAIN DOCUMENT ASSEMBLY); A SELECT TERM NAMING THIS BRANCH OVERRIDES IT WITH THE TERM'S.
+    # ONE TABLE'S ROWS ANSWER SEVERAL SELECT TERMS, EACH ASSEMBLING ITS OWN DOCUMENT AND LANDING
+    # SOMEWHERE ELSE.  A *SLOT* IS ONE SUCH ANSWER, KEYED BY THE TERM'S NAME (None = THE DOCUMENT
+    # ITSELF, PLAIN ASSEMBLY).  TWO SIDE TABLES, NOT A NODE PER TERM:
+    slot_path: Dict[object, str]  # SLOT -> WHERE ITS DOC LANDS, AS AN ABSOLUTE (FACT-ROOTED) PATH;
+    # ASSEMBLY LANDS IT AT THAT PATH RELATIVE TO THE PARENT'S PATH FOR THE SAME SLOT.  THE DEFAULT
+    # SLOT IS THE TABLE'S OWN PATH - PLAIN DOCUMENT ASSEMBLY IS THE SLOT THE SNOWFLAKE DICTATES.
+    slot_columns: Dict[object, Dict[int, ColumnMapping]]  # SLOT -> ITS VALUE COLUMNS
     required: bool  # A WHERE FILTERS THIS BRANCH: A PARENT WITH NO SURVIVING ROW HERE IS DROPPED AT ASSEMBLY
     uid_coords: List[int]  # COLUMN INDICES OF THIS NODE'S PLUMBING (uid, AND order FOR A CHILD); OWNED BY THIS NODE
 
@@ -42,22 +44,19 @@ class DocumentDetails:
         self.alias = ""
         self.id_coord = -1
         self.nested_path = [sub_table]
-        self.index_to_column = {}
         self.children = []
-        self.parent = None
-        self.push_path = untype_field(sub_table)[0]
+        self.slot_path = {None: untype_field(sub_table)[0]}
+        self.slot_columns = {None: {}}
         self.required = False
         self.uid_coords = []
 
 
 def place(node, parent):
     # INSERT node UNDER THE DEEPEST NODE WHOSE TABLE IS A *PROPER* ANCESTOR OF node'S TABLE.
-    # SAME-TABLE NODES THEREBY BECOME SIBLINGS (TWO ARMS ON ONE TABLE - STEP 3), NOT NESTED.
     for c in parent.children:
         if startswith_field(node.nested_path[0], c.nested_path[0]) and node.nested_path[0] != c.nested_path[0]:
             return place(node, c)
     parent.children.append(node)
-    node.parent = parent
     node.nested_path = [node.nested_path[0], *parent.nested_path]
 
 
@@ -73,15 +72,19 @@ class BranchBuilder:
         self.sql_selects = []           # ALIGNED SELECT LIST (position = column index)
         self.index_to_column = {}       # column index -> ColumnMapping (pull-plan leaves)
         self.index_to_uid = {}          # nested path -> column index of its UID
+        self.nodes = {}                 # table path -> its DocumentDetails (ONE NODE PER TABLE)
         self.primary_doc_details = None  # ROOT OF THE DocumentDetails TREE
 
-    def add_column(self, node, sql, *, push_list_name, push_column_name, push_column_child, push_column_index, nested_path):
+    def add_column(
+        self, node, sql, *, slot=None, push_list_name, push_column_name, push_column_child, push_column_index,
+        nested_path,
+    ):
         # CONTRIBUTE ONE VALUE COLUMN: APPEND TO THE ALIGNED SELECT LIST AND REGISTER ITS PULL
         # UNDER THE SAME INDEX, KEEPING THE SQL SIDE AND THE PULL PLAN IN LOCKSTEP.
         n = len(self.sql_selects)
         alias = _make_column_name(n)
         self.sql_selects.append(SqlAliasOp(sql, alias))
-        self.index_to_column[n] = node.index_to_column[n] = ColumnMapping(
+        self.index_to_column[n] = node.slot_columns.setdefault(slot, {})[n] = ColumnMapping(
             push_list_name=push_list_name,
             push_column_child=push_column_child,
             push_column_name=push_column_name,
@@ -97,7 +100,7 @@ class BranchBuilder:
     def add_branch(self, sub_table, table_number):
         # CONTRIBUTE A BRANCH (ONE NESTED LEVEL): A DocumentDetails NODE PLACED IN THE TREE,
         # PLUS ITS UID (AND ORDER, FOR A CHILD) PLUMBING COLUMNS.
-        node = DocumentDetails(sub_table)
+        node = self.nodes[sub_table] = DocumentDetails(sub_table)
         if table_number == 0:
             self.primary_doc_details = node  # ROOT OF TREE
         else:
