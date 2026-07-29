@@ -6,7 +6,7 @@ items off. Update this file as tests are un-skipped or reasons are refined.
 
 Legend: `[ ]` skipped, `[x]` passing (decorator removed), `[-]` won't fix.
 
-> Baseline (dev, 2026-07-29): 414 ran / 0 err / 64 skip. The checklists below are the source of
+> Baseline (dev, 2026-07-29): 414 ran / 0 err / 61 skip. The checklists below are the source of
 > truth for what remains; work one cluster per session.
 >
 > Reconciled 2026-07-29 by a **stale-skip sweep**: strip every sqlite-relevant skip in a
@@ -88,14 +88,15 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 ### test_set_ops.py (deep subset)
 - [x] test_single_deep_select
 - [x] test_select_w_deep_star
-- [~] test_select_w_nested_values — deep (fact→_a→k) whole-doc reconstruction. Fixed the crash:
+- [x] test_select_w_nested_values — deep (fact→_a→k) whole-doc reconstruction; table/cube fixed by
+      the branch-valued select work below (the '.'+'_a' pair was the child branch re-interpreting
+      the term name).  History: fixed the crash first —
       SelectOp.to_sql built a below-origin leaf's push name via `relative_field(concat_field(name,
       rel_name), branch_prefix)`, but `rel_name` from `schema.leaves` is already branch-relative, so a
       real prefix (`_a.k`) manufactured an up-ref (`...b`) that JxType rejects ("not allowed"). Now
       `concat_field(name, rel_name)` — a no-op when branch_prefix=="." (the only case any passing test
-      hit, so regression-free) and correct for deep branches. **list format now passes.** Remaining:
-      table/cube emit two columns ('.'+'_a'); the test's own table/cube expectation was also wrong
-      (it wanted a single '.' column) and has been corrected to `["_a"]`: no select means the implied
+      hit, so regression-free) and correct for deep branches. The test's own table/cube expectation
+      was also wrong (it wanted a single '.' column) and has been corrected to `["_a"]`: no select means the implied
       name '.', which declares the *top-level properties* as columns — same rule that makes
       test_single_no_select `["a"]` and test_select_whole_document `["o","_a","c"]`. A literal '.'
       column only comes from a select whose value is '.'. So index_to_columns' push_column_name
@@ -107,7 +108,42 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 - [ ] test_exists_in_where_clause — "fix me"
 - [ ] test_select_into_children — "Too complicated"
 
-## 2. Selecting objects / stars / leaves (setop formatting) — CLEARED (8 fixed, 3 reclustered)
+### branch-valued select terms (2026-07-29) — test_select_array_as_value, test_select_id_and_source, test_select_w_nested_values
+
+A select term whose value NAMES A BRANCH (`select "_a"`, `{"name":"_source","value":"."}`) is a
+subquery per table the name reaches, and **Names already says where each binding lands**:
+`push_name` is the path from the queried name to the array holding the binding, `push_child` its
+path inside that array's element (docs/NAMES.md). So the branch's assembled value lands at
+`concat(term name, push_name)` and its columns are named `push_child`.
+
+That split replaced two heuristics in `setop.py`:
+
+- `_deep_split` (one table or nothing) → `_branch_split` (group the bindings by table). A name
+  spanning the origin *and* a child (`.` over a doc with a nested array) now hives off the child
+  part and keeps its plain term for the rest — that term used to be re-compiled at the child
+  branch under the wrong name (`_source.b` landing at `a`, giving `a:[{_source:{b}}]}`).
+- "a branch of ONE column collapses to a bare multivalue" → `push_child == "."` collapses. Same
+  answer for `a._a.v` (the queried name *is* the value), different — and now right — for a
+  one-leaf array of objects: `select "a"` over `[{"b":1}]` keeps `[{b:1}]` instead of `[1]`.
+
+A node's push name became an **absolute** (fact-rooted) path, `DocumentDetails.push_path`,
+defaulting to the table's own path; assembly lands a child at `relative_field(child, parent)`.
+That is what plain document assembly always computed from table paths — now a select term can
+override it, including with `"."` (the branch *is* the doc: `select "_a"` in list format).
+
+`Variable.to_sql`'s `logger.warning("not expected")` branch is no longer reached from setop (it
+built a SELECT whose FROM was the table name reversed character-by-character); it is still live
+for other callers.
+
+**Known limit** (was already broken, now well-formed instead of malformed): a term that renames a
+branch *across an intermediate array* — `select "_a"` where `_a` holds another array — cannot
+apply the rename, because the intermediate table's node is shared by every term and only the
+deepest node is renamed. Doing it needs one node per (term, table) — the "two arms" shape
+generalized, i.e. resolve the select once at the origin (docs/NAMES.md next step 1). setop keeps
+the table's path when the term path does not compose, so the output is a well-formed document
+with the rename dropped above the array.
+
+## 2. Selecting objects / stars / leaves (setop formatting) — CLEARED (10 fixed, 1 reclustered)
 
 Shallow queries whose select clause is an object, `*`, leaves, or an array value
 (`jx_sqlite/format.py` result-shaping + jx_base select normalization; see vendor/jx_base/BUGS.md #5).
@@ -121,12 +157,12 @@ Shallow queries whose select clause is an object, `*`, leaves, or an array value
 - [x] test_select_value_object
 - [x] test_select2_object
 - [x] test_select3_object
-- [-] test_select_array_as_value — MISFILED: nested array as value leaks hidden cols
-      (`__id__`/`__order__`/`__parent__`) → cluster 1 join assembly; re-skipped
+- [x] test_select_array_as_value — was filed as a hidden-column leak; the real defect was
+      branch-valued select terms (see cluster 1 §branch-valued select terms)
 - [-] test_union_columns — MISFILED: UnionOp not registered in JxSql (no `.to_sql`) →
       missing operator, see cluster 6 test_union; re-skipped
-- [-] test_select_id_and_source — MISFILED: `select "."` (_source) over doc with nested
-      array leaks hidden cols → cluster 1 join assembly; re-skipped
+- [x] test_select_id_and_source — same: `select "."` beside another term is a branch-valued
+      term, not a hidden-column leak
 
 ## 3. `between` op broken — CLEARED except test_between
 

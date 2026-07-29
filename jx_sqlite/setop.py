@@ -30,6 +30,7 @@ from jx_sqlite.utils import (
 )
 from mo_dots import (
     Data,
+    concat_field,
     startswith_field,
     unwraplist,
     relative_field,
@@ -81,7 +82,7 @@ def _set_op(self, query):
         # NULL element at the origin is a legitimate (empty) doc (missing child == implicit [{}]).
         output = []
         id_coord = nested_doc_details.id_coord
-        curr_nested_path, _ = untype_field(nested_doc_details.nested_path[0])
+        curr_push_path = nested_doc_details.push_path
         is_origin = parent_id_coord is None
         index_to_column = tuple((c.push_list_name, c.pull) for _, c in nested_doc_details.index_to_column.items())
         children = nested_doc_details.children
@@ -99,12 +100,7 @@ def _set_op(self, query):
                 value = pull(row)
                 if is_missing(value):
                     continue
-                if rel_field == ".":
-                    # WHOLE-VALUE SELECT; doc["."] = value WOULD WRAP A SCALAR IN Data
-                    doc = value
-                else:
-                    doc = doc or Data()
-                    doc[rel_field] = value
+                doc = _land(doc, rel_field, value)
 
             state[0] = next(rows, None)  # CONSUME THIS ELEMENT'S OWN ROW
             consumed = set()  # id(child) that had a surviving (dispatched) row
@@ -119,14 +115,11 @@ def _set_op(self, query):
                         consumed.add(id(child_details))
                         nested_value = _accumulate_nested(state, rows, child_details, my_id, id_coord)
                         if nested_value:
-                            doc = doc or Data()
-                            # THE CHILD'S ASSEMBLED VALUE LANDS AT ITS OWN PUSH NAME (AN EXPLICIT
-                            # DEEP-LEAF SELECT ACCUMULATES BARE VALUES AT THE TERM PATH); DEFAULT IS
-                            # THE CHILD TABLE'S RELATIVE PATH
-                            rel_field = child_details.push_list_name or relative_field(
-                                untype_field(child_details.nested_path[0])[0], curr_nested_path
-                            )
-                            doc[rel_field] = unwraplist(nested_value)
+                            # BOTH PUSH PATHS ARE ABSOLUTE, SO THE CHILD LANDS AT THE DIFFERENCE:
+                            # PLAIN ASSEMBLY GIVES THE TABLE'S RELATIVE PATH, A SELECT TERM NAMING
+                            # THE BRANCH GIVES ITS OWN (INCLUDING "." - THE CHILD *IS* THE DOC)
+                            rel_field = relative_field(child_details.push_path, curr_push_path)
+                            doc = _land(doc, rel_field, nested_value)
                         break
                     else:
                         # NO UNCONSUMED CHILD OWNS crow (guards against an unexpected duplicate row)
@@ -173,16 +166,15 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
     known_vars = schema.keys()
 
     # PARTITION SELECT TERMS INTO BRANCHES.  A SUBQUERY VALUE (SelectOp OVER A NESTED FromOp)
-    # AND A DEEP-LEAF PATH ("a._a.v", CROSSING AN ARRAY BOUNDARY) ARE THE SAME THING: A DEEP
+    # AND A NAME REACHING BELOW THE ORIGIN ("a._a.v", "_a", ".") ARE THE SAME THING: A DEEP
     # GROUP - ITS OWN BRANCH SELECTING BRANCH-RELATIVE COLUMNS.  KYLE'S RULE: A DEEP-LEAF PATH
     # `a._a.v` IS SUGAR FOR `{"from":"a._a","select":"v","name":"a._a.v"}` (SPLIT AT THE ARRAY
-    # BOUNDARY).  A BRANCH OF ONE LEAF COLLAPSES TO A BARE MULTIVALUE; SEVERAL LEAVES ASSEMBLE
-    # AS SUB-OBJECTS.  READ THE PRE-partial_eval TERMS: partial_eval FLATTENS BOTH BACK TO
-    # PATHS.  docs/INTERSECTION_SURVEY.md §7 STEPS 1-2
+    # BOUNDARY); _branch_split GENERALIZES THAT SPLIT TO A NAME THAT REACHES SEVERAL TABLES,
+    # ASKING Names WHERE EACH BINDING LANDS.  READ THE PRE-partial_eval TERMS: partial_eval
+    # FLATTENS BOTH BACK TO PATHS.  docs/INTERSECTION_SURVEY.md §7 STEPS 1-2
     origin = query.frum.nested_path[0]
     plain_terms = []
     subqueries = {}  # branch table path -> list of (outer name, [(inner name, inner value), ...])
-    deep_candidates = {}  # table path -> [(term, select_path), ...] deep-leaf plain terms
     for term in query.select.terms:
         if is_op(term.value, SelectOp):
             rel = first(term.value.frum.vars())
@@ -190,20 +182,17 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
             subqueries.setdefault(table_path, []).append((term.name, list(term.value)))
             continue
         if is_variable(term.value):
-            split = _deep_split(term.value.var, schema, origin)
-            if split:
-                table_path, select_path = split
-                deep_candidates.setdefault(table_path, []).append((term, select_path))
+            # EACH TABLE THE NAME REACHES -> ITS OWN SUBQUERY ENTRY = ITS OWN SIBLING ARM (STEP 3),
+            # SO a._a.v -> list AND a._a.s -> scalar COLLAPSE INDEPENDENTLY.  A NAME WITH BINDINGS
+            # AT OR ABOVE THE ORIGIN TOO (`.` OVER A DOC WITH A NESTED ARRAY) KEEPS ITS PLAIN TERM
+            # FOR THOSE.  docs/INTERSECTION_SURVEY.md §7 STEP 3
+            deep, shallow = _branch_split(term, schema, origin)
+            for table_path, entry in deep.items():
+                subqueries.setdefault(table_path, []).append(entry)
+            if deep and not shallow:
                 continue
         plain_terms.append(term)
 
-    # EACH DEEP LEAF -> ITS OWN ONE-LEAF SUBQUERY (ROUTES THROUGH THE STEP-1 PATH, COLLAPSING TO A
-    # BARE MULTIVALUE).  SEVERAL DEEP LEAVES AT ONE TABLE BECOME SEVERAL INDEPENDENT SUBQUERY
-    # ENTRIES -> SEVERAL SIBLING ARMS (STEP 3), EACH ITS OWN MULTIVALUE (a._a.v -> list,
-    # a._a.s -> scalar), NOT ONE CORRELATED SUB-DOC.  docs/INTERSECTION_SURVEY.md §7 STEP 3
-    for table_path, cands in deep_candidates.items():
-        for term, select_path in cands:
-            subqueries.setdefault(table_path, []).append((term.name, [(select_path, Variable(select_path))]))
     plain_select = SelectOp(query.select.frum, *plain_terms)
 
     # GET LIST OF SELECTED COLUMNS.  join_vars, NOT vars: A COLLECTION AGGREGATE READS ITS NESTED
@@ -269,6 +258,12 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
     sql_selects = builder.sql_selects
 
     selects = plain_select.partial_eval(SQLang)
+    # A NAME REACHES DOWN THROUGH ITS OWN ARM (_branch_split ABOVE), NEVER THROUGH A BRANCH
+    # RE-COMPILATION OF THE SAME SELECT: BELOW THE ORIGIN THE PLAIN SELECT CARRIES ONLY THE REST
+    # (`*`, EXPRESSIONS EVALUATED PER CHILD ROW).
+    deep_selects = SelectOp(
+        query.select.frum, *(t for t in plain_terms if not is_variable(t.value))
+    ).partial_eval(SQLang)
 
     # BRANCHES ALSO NEED TABLES THE where/sort REFERENCE (JOINED FOR FILTERING/ORDERING, NOT
     # SELECTED AS VALUES).  RESOLVE THOSE VARS TO THEIR TABLES THE SAME WAY select_vars ARE.
@@ -336,20 +331,8 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
         if sub_table not in active_paths:
             continue
 
-        sub_selects = selects.partial_eval(SQLang).to_sql(sub_schema).expr
-
-        # A BRANCH BELOW THE ORIGIN NORMALLY RE-ROOTS ITS COLUMNS TO BRANCH-RELATIVE NAMES;
-        # select_op KEEPS THE ORIGIN-ROOTED NAME (docs/NAMES.md push_name=push_child=".")
-        # ONLY FOR AN EXPLICIT DEEP LEAF - A SINGLE VALUE SELECTED FROM ABOVE.  READ THAT
-        # DECISION BACK OFF THE RESOLVED TERM NAME: A DEEP LEAF STILL STARTS WITH THE
-        # BRANCH'S ORIGIN-RELATIVE PATH.
-        origin = query.frum.nested_path[0]
-        branch_rel = (
-            untype_field(relative_field(sub_table, origin))[0]
-            if startswith_field(sub_table, origin) and sub_table != origin
-            else None
-        )
-        deep_leaves = []  # COLUMN NUMBERS OF EXPLICIT DEEP LEAVES IN THIS BRANCH
+        below_origin = sub_table != origin and startswith_field(sub_table, origin)
+        sub_selects = (deep_selects if below_origin else selects).partial_eval(SQLang).to_sql(sub_schema).expr
 
         for i, term in enumerate(sub_selects.terms):
             name, value = term.name, term.value
@@ -358,7 +341,7 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
 
             push_column_name, push_column_child = tail_field(name)
             push_column_name = unliteral_field(push_column_name)
-            column_number = builder.add_column(
+            builder.add_column(
                 nested_doc_details,
                 value,
                 # LIST FORMAT SPLATS THE "." CONTAINER INTO THE DOC ROOT
@@ -368,22 +351,13 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
                 push_column_index=i,
                 nested_path=nested_path,
             )
-            if branch_rel and startswith_field(unliteral_field(name), branch_rel) and unliteral_field(name) != branch_rel:
-                deep_leaves.append(column_number)
 
-        # ONE DEEP LEAF COLLAPSES TO BARE VALUES (push_list_name=".") ACCUMULATED AS A
-        # MULTIVALUE AT ITS TERM PATH ON THE ORIGIN DOC; BARE VALUES CANNOT SHARE A DOC,
-        # SO SEVERAL LEAVES KEEP THEIR (RE-ROOTED) SUB-DOC INSTEAD
-        if len(deep_leaves) == 1:
-            leaf = index_to_column[deep_leaves[0]]
-            nested_doc_details.push_list_name = leaf.push_list_name
-            leaf.push_list_name = "."
-
-    # EACH SUBQUERY ENTRY (INCL. A REWRITTEN DEEP LEAF) IS ITS OWN BRANCH = ITS OWN UNION-ALL ARM
+    # EACH SUBQUERY ENTRY (INCL. A REWRITTEN DEEP NAME) IS ITS OWN BRANCH = ITS OWN UNION-ALL ARM
     # ON ITS TABLE, COMPILED BRANCH-RELATIVE (NAMES LIKE "v","s", NOT "a._a.v").  TWO DEEP LEAVES
-    # a._a.v, a._a.s THUS BECOME TWO SIBLING ARMS, EACH COLLAPSING TO ITS OWN MULTIVALUE.  SEVERAL
-    # LEAVES IN ONE ENTRY ASSEMBLE AS SUB-OBJECTS UNDER ITS NODE; A LONE LEAF COLLAPSES TO A BARE
-    # MULTIVALUE (push_list_name=".") LANDING AT THE OUTER TERM PATH.  docs/INTERSECTION_SURVEY.md §7 STEP 3
+    # a._a.v, a._a.s THUS BECOME TWO SIBLING ARMS, EACH COLLAPSING TO ITS OWN MULTIVALUE.  THE
+    # ENTRY'S ASSEMBLED VALUE LANDS AT ITS OUTER NAME; ITS COLUMNS ARE NAMED INSIDE THE ELEMENT,
+    # AND AN ENTRY NAMED "." IS THE ELEMENT ITSELF (A BARE MULTIVALUE).
+    # docs/INTERSECTION_SURVEY.md §7 STEP 3
     sub_table_number = len(branches)
     for table_path, entries in subqueries.items():
         sub_schema = self.snowflake.get_schema(list(reversed([
@@ -398,12 +372,19 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
                 and any(startswith_field(wt, table_path) for wt in where_tables)
             ):
                 node.required = True
-            added = []
+            # THE TERM'S NAME REPLACES THE TABLE'S OWN PATH: THIS BRANCH LANDS WHERE THE SELECT
+            # ASKED FOR IT, NOT WHERE THE SNOWFLAKE PUTS IT.  THE TERM PATH IS ORIGIN-ROOTED, SO
+            # IT ONLY COMPOSES WHEN THIS BRANCH HANGS OFF THE DOC BEING NAMED; RENAMING ACROSS AN
+            # INTERMEDIATE ARRAY (`select "_a"` WHERE _a HOLDS ANOTHER ARRAY) WOULD HAVE TO RENAME
+            # THAT NODE TOO - ONE NODE PER (TERM, TABLE), NOT BUILT - SO KEEP THE TABLE'S PATH.
+            term_path = concat_field(untype_field(origin)[0], outer_name)
+            if startswith_field(term_path, node.parent.push_path):
+                node.push_path = term_path
             for i, (name, value) in enumerate(inner_select):
                 sql = value.partial_eval(SQLang).to_sql(sub_schema)
                 push_column_name, push_column_child = tail_field(name)
                 push_column_name = unliteral_field(push_column_name)
-                added.append(builder.add_column(
+                builder.add_column(
                     node,
                     sql,
                     push_list_name=push_column_child if push_column_name == "." else name,
@@ -411,10 +392,7 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
                     push_column_child=push_column_child,
                     push_column_index=i,
                     nested_path=node.nested_path,
-                ))
-            if len(added) == 1:
-                node.push_list_name = outer_name
-                index_to_column[added[0]].push_list_name = "."
+                )
     where_clause = ToBooleanOp(query.where).partial_eval(SQLang).to_sql(schema)
     # ORDERING
     sorts = []
@@ -541,6 +519,19 @@ def _make_sql_for_one_nest_in_set_op(
     )
 
 
+def _land(doc, rel_field, value):
+    # LAND ONE VALUE IN THE DOC UNDER ITS PUSH NAME.  ONE RULE FOR BOTH KINDS - THIS ELEMENT'S OWN
+    # COLUMNS AND A CHILD BRANCH'S ASSEMBLED LIST: A ONE-ELEMENT MULTIVALUE IS THE VALUE
+    # (unwraplist, A NO-OP ON A COLUMN - A SQL CELL IS NEVER A LIST), AND A PUSH NAME OF "." MEANS
+    # THE VALUE *IS* THE DOC (WHOLE-VALUE SELECT), WHERE doc["."] = value WOULD WRAP IT IN Data.
+    value = unwraplist(value)
+    if rel_field == ".":
+        return value
+    doc = doc or Data()
+    doc[rel_field] = value
+    return doc
+
+
 def _owned_of(node):
     # COLUMN INDICES A NODE OWNS: ITS VALUE COLUMNS PLUS ITS uid/order PLUMBING.
     return set(node.index_to_column.keys()) | set(node.uid_coords)
@@ -564,18 +555,39 @@ def _path_to(node, target):
     return None
 
 
-def _deep_split(var, schema, origin):
-    # A DEEP-LEAF PATH IS SUGAR FOR A ONE-LEAF SUBQUERY: SPLIT AT THE ARRAY BOUNDARY.  RETURN
-    # (branch table path, select path relative to that table) WHEN var'S LEAVES ALL LIVE IN ONE
-    # TABLE BELOW THE ORIGIN; None OTHERWISE (SHALLOW, OR SPLIT ACROSS TABLES/UNION TYPES).
-    tables = set(c.nested_path[0] for _, c in schema.leaves(var))
-    if len(tables) != 1:
-        return None
-    table_path = first(tables)
-    if table_path == origin or not startswith_field(table_path, origin):
-        return None
-    from_path = untype_field(relative_field(table_path, origin))[0]
-    return table_path, untype_field(relative_field(var, from_path))[0]
+def _branch_split(term, schema, origin):
+    """
+    A SELECT TERM NAMING A BRANCH IS ONE SUBQUERY PER TABLE THE NAME REACHES.  Names ANSWERS
+    WHERE EACH BINDING LANDS (docs/NAMES.md): push_name IS THE PATH FROM THE QUERIED NAME TO
+    THE ARRAY HOLDING THE BINDING, push_child ITS PATH INSIDE THAT ARRAY'S ELEMENT.  SO THE
+    BRANCH'S ASSEMBLED VALUE LANDS AT concat(term name, push_name) AND ITS COLUMNS ARE NAMED
+    push_child - INCLUDING "." WHEN THE QUERIED NAME *IS* THE VALUE (`a._a.v` -> A BARE
+    MULTIVALUE OF v).  THAT SPLIT IS THE WHOLE RULE: A ONE-LEAF ARRAY OF OBJECTS (`a` OVER
+    [{"b":1}]) KEEPS ITS PROPERTY NAME BECAUSE push_child IS "b", NOT BECAUSE OF ANY COUNT.
+
+    RETURN ({table path: (outer name, [(inner name, inner value), ...])}, WHETHER ANY BINDING
+    LIVES AT OR ABOVE THE ORIGIN - THOSE STAY WITH THE PLAIN TERM).
+    """
+    var = term.value.var
+    if startswith_field(var, "row"):
+        _, var = tail_field(var)
+    groups = {}  # table path -> (outer name, {push_child: branch-relative value})
+    shallow = False
+    for resolved in schema.leaves(var):
+        _, col = resolved
+        table_path = col.nested_path[0]
+        if table_path == origin or not startswith_field(table_path, origin):
+            shallow = True
+            continue
+        from_path = untype_field(relative_field(table_path, origin))[0]
+        # ONE push_name PER TABLE (A TABLE IS REACHED BY ONE PATH), SO THE OUTER NAME IS SHARED
+        _, entries = groups.setdefault(table_path, (concat_field(term.name, resolved.push_name), {}))
+        # UNION TYPES BIND SEVERAL COLUMNS TO ONE NAME; Variable.to_sql COALESCES THEM
+        entries.setdefault(
+            resolved.push_child,
+            Variable(untype_field(relative_field(concat_field(var, resolved.name), from_path))[0]),
+        )
+    return {t: (name, list(entries.items())) for t, (name, entries) in groups.items()}, shallow
 
 
 sort_to_sqlite_order = {-1: SQL_DESC, 0: SQL_ASC, 1: SQL_ASC}

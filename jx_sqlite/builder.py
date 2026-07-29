@@ -16,6 +16,7 @@ from typing import List, Dict
 
 from jx_sqlite.utils import ColumnMapping, ORDER, _make_column_name, get_column, UID
 from mo_dots import startswith_field
+from mo_sql.utils import untype_field
 from mo_json.types import jx_type_to_json_type, JX_TEXT, JX_INTEGER
 from mo_sqlite import sql_alias
 from mo_sqlite.expressions import SqlVariable, SqlAliasOp
@@ -29,7 +30,10 @@ class DocumentDetails:
     nested_path: List[str]
     index_to_column: Dict[int, ColumnMapping]
     children: List["DocumentDetails"]
-    push_list_name: str  # WHERE THIS TABLE'S ASSEMBLED VALUE LANDS IN THE PARENT DOC (None = TABLE'S RELATIVE PATH)
+    parent: "DocumentDetails"  # THE NODE THIS ONE'S VALUE LANDS IN (None AT THE ROOT)
+    push_path: str  # WHERE THIS NODE'S ASSEMBLED VALUE LANDS, AS AN ABSOLUTE (FACT-ROOTED) PATH;
+    # ASSEMBLY LANDS IT AT THAT PATH RELATIVE TO ITS PARENT'S.  DEFAULTS TO THE TABLE'S OWN PATH
+    # (PLAIN DOCUMENT ASSEMBLY); A SELECT TERM NAMING THIS BRANCH OVERRIDES IT WITH THE TERM'S.
     required: bool  # A WHERE FILTERS THIS BRANCH: A PARENT WITH NO SURVIVING ROW HERE IS DROPPED AT ASSEMBLY
     uid_coords: List[int]  # COLUMN INDICES OF THIS NODE'S PLUMBING (uid, AND order FOR A CHILD); OWNED BY THIS NODE
 
@@ -40,7 +44,8 @@ class DocumentDetails:
         self.nested_path = [sub_table]
         self.index_to_column = {}
         self.children = []
-        self.push_list_name = None
+        self.parent = None
+        self.push_path = untype_field(sub_table)[0]
         self.required = False
         self.uid_coords = []
 
@@ -52,6 +57,7 @@ def place(node, parent):
         if startswith_field(node.nested_path[0], c.nested_path[0]) and node.nested_path[0] != c.nested_path[0]:
             return place(node, c)
     parent.children.append(node)
+    node.parent = parent
     node.nested_path = [node.nested_path[0], *parent.nested_path]
 
 

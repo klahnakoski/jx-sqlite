@@ -1068,7 +1068,6 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "nested array as value leaks hidden cols (__id__/__order__/__parent__); cluster 1 join assembly")
     def test_select_array_as_value(self):
         test = {
             "data": [
@@ -1106,7 +1105,6 @@ class TestSetOps(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
-    @skipIf(global_settings.use == "sqlite", "list format OK; table/cube emit ['.', '_a'], want ['_a']")
     def test_select_w_nested_values(self):
         test = {
             "data": [
@@ -1213,7 +1211,6 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(global_settings.use == "sqlite", "select . (_source) over doc with nested array leaks hidden cols; cluster 1 join assembly")
     def test_select_id_and_source(self):
         test = {
             "data": [{"_id": "test_id", "v": 4, "a": [{"b": 1}, {"b": 2}, {"b": 2}]},],
