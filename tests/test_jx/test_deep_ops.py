@@ -1995,7 +1995,6 @@ class TestDeepOps(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use == "python", "jx_python known failure")
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_from_shallow_select_deep_column(self):
         # QUERY AS IF _a.b IS A NULTI-VALUED COLUMN
         test = {
