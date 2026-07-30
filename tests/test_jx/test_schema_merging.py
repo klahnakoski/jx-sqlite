@@ -20,7 +20,6 @@ class TestSchemaMerging(BaseTestCase):
     """
 
     @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
-    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select(self):
         test = {
             "data": [
@@ -238,7 +237,6 @@ class TestSchemaMerging(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
-    @skipIf(global_settings.use == "sqlite", "count over a merged schema counts one shape only (1, want 6)")
     def test_count(self):
         test = {
             "data": [

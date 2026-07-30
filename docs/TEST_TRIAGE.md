@@ -6,7 +6,7 @@ items off. Update this file as tests are un-skipped or reasons are refined.
 
 Legend: `[ ]` skipped, `[x]` passing (decorator removed), `[-]` won't fix.
 
-> Baseline (dev, 2026-07-29): 418 ran / 0 err / 49 skip. The checklists below are the source of
+> Baseline (dev, 2026-07-29): 418 ran / 0 err / 47 skip. The checklists below are the source of
 > truth for what remains; work one cluster per session.
 >
 > Reconciled 2026-07-29 by a **stale-skip sweep**: strip every sqlite-relevant skip in a
@@ -397,25 +397,54 @@ change.
 - [ ] test_metadata.py::test_get_nested_columns — "broken"
 - [ ] test_metadata.py::test_cardinality — "cardinality not tracked" (feature gap)
 
-## 11. Schema merging (4 of 10 pass — the class-level skip was hiding them)
+## 11. Schema merging — CLEARED (all 10 pass)
 
-The class-level `@skipIf(... "not ready")` is gone; the six that still fail carry their own
-reason. The failures are one theme: a name that exists in more than one shape (scalar / inner
-object / nested array) resolves to *one* of them instead of the union.
+One theme, as suspected: a name that exists in more than one shape (scalar / inner object /
+nested array) resolved to *one* of them instead of the union. Two root causes, below
+(§a merged name is bound to its columns and §where a table/cube header comes from).
 - [x] test_schema_merging.py::test_mixed_primitives
 - [x] test_schema_merging.py::test_dots_in_property_names2
 - [x] test_schema_merging.py::test_sum
 - [x] test_schema_merging.py::test_where — the "complicated where clause" works now
-- [ ] test_schema_merging.py::test_select — SQL syntax error `near "."` selecting the union of
-      string / nested-array / number shapes
+- [x] test_schema_merging.py::test_select — §a merged name is bound to its columns
 - [x] test_schema_merging.py::test_select2 — the table/cube header was the escaped name (`a..b`),
       and the escaped header was escaped *again* to look up the cell, so it came back Null
       (§a dotted property name is one field)
-- [ ] test_schema_merging.py::test_count — counts one shape only (1, want 6)
+- [x] test_schema_merging.py::test_count — §a merged name is bound to its columns
 - [x] test_schema_merging.py::test_dots_in_property_names — §where a table/cube header comes from
 - [x] test_schema_merging.py::test_dots_in_property_names3 — same
 - [x] test_schema_merging.py::test_edge — the double count is fixed (b=2 → 4); its null partition
       expectation was wrong (14 → 17, Kyle) — see §an aggregate counts the rows of its value's table
+
+### a merged name is bound to its columns (2026-07-29) — cluster 11's union-of-shapes half
+
+`[{"a": "b"}, {"a": [{"b": 1}, {"b": 2}]}, {"a": 3}]` gives `a` three shapes at once. Nesting
+moves the scalar into the child table, so after merging the columns are `a.$N` on the fact, `$S`
+(the element's own value) in `testing.a.$A`, and `b.$N` beside it. `select "a"` must answer
+`["b", [{"b":1},{"b":2}], 3]` — each document its own shape.
+
+Both failures were the same mistake in two places: **a name that spans shapes was re-resolved by
+name where the columns were already known.**
+
+- `setop._branch_split` bound each `push_child` to a re-derived `Variable` "to get COALESCE for
+  free" over union types. For `push_child == "."` — *this element's own value* — that name resolves
+  to the whole element, which here has a value **and** a property `b`, so it reached
+  `Variable.to_sql`'s `logger.warning("not expected")` branch and emitted a SELECT whose FROM was
+  the table name reversed character by character (`A."$".".".a.".".g.n.i.t.s.e.t`). It now binds
+  the resolved columns (`Variable(es_column)`, coalesced when a union type has several), which is
+  what the Variable was standing in for.
+- `aggregates._count_columns` found a name's columns by matching `untyped_column(es_column)`, which
+  can only ever match the origin's shape — a child's column is named relative to its own table
+  (`$S`, `b.$N`), so the count saw one shape and answered 1 where 6 was right. It now asks
+  `schema.leaves`, groups the columns by table, and counts a child table's columns **in their own
+  table** (`(SELECT COUNT("$S") + COUNT("b.$N") FROM "testing.a.$A")`): each child row is one value.
+  An unresolvable name now counts 0 instead of emitting an empty select list.
+
+`ToListOp._child_rows` still refuses a name that spans tables (`"{{name}} spans more than one
+table"`), so a *collection* op over a merged name — `{"count": "a"}` in an expression position, as
+opposed to the `aggregate` declaration above — is still unbuilt. The relation it wants is the union
+of the shallow columns' one row and each child table's rows; the binding above is the piece it was
+missing.
 
 ### a dotted property name is one field (2026-07-29) — cluster 11's naming half
 
@@ -590,8 +619,8 @@ typed leaf, not the coalesced value.
    Treat edges.py as scaffolding to decompose (see INTERSECTION_SURVEY / Names), not to extend.
 2. **Cluster 4** — sort/edges coordination.
 3. Clusters 3, 6, 7, 8 as they come.
-4. Clusters 5, 10, 11, 12 are feature work, not repairs — schedule deliberately.
-(Clusters 2 and 9 are cleared.)
+4. Clusters 5, 10, 12 are feature work, not repairs — schedule deliberately.
+(Clusters 2, 9 and 11 are cleared.)
 
 ## Open design questions (from commits/tests, in Kyle's head)
 

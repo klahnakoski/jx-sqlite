@@ -144,9 +144,23 @@ def _count_records(facts, s, si, column_number, schema):
 
 
 def _count_columns(facts, s, si, column_number, schema):
-    value = s.value.var
-    columns = [c.es_column for c in facts.snowflake.columns if untyped_column(c.es_column)[0] == value]
-    sql = SQL_PLUS.join(sql_count(quote_column(col)) for col in columns)
+    # count OF A NAME COUNTS ITS VALUES, WHEREVER THEY LIVE.  A MERGED NAME HAS COLUMNS IN THE
+    # ORIGIN *AND* IN THE CHILD TABLE ITS ARRAY SHAPE CREATED (`a` OVER "b" AND [{"b":1}]), AND
+    # EACH CHILD ROW IS ONE VALUE - SO THE CHILD'S COLUMNS ARE COUNTED IN THEIR OWN TABLE.
+    # schema.leaves RESOLVES THE NAME; MATCHING untyped_column AGAINST es_column ONLY EVER FOUND
+    # THE ORIGIN'S SHAPE, BECAUSE A CHILD'S COLUMN IS NAMED RELATIVE TO ITS OWN TABLE
+    origin = schema.nested_path[0]
+    by_table = {}
+    for _, c in schema.leaves(s.value.var):
+        by_table.setdefault(c.nested_path[0], []).append(c)
+    counts = []
+    for table, cols in by_table.items():
+        col_counts = SQL_PLUS.join(sql_count(quote_column(c.es_column)) for c in cols)
+        if table == origin:
+            counts.append(col_counts)
+        else:
+            counts.append(sql_iso(SQL_SELECT, col_counts, SQL_FROM, quote_column(table)))
+    sql = SQL_PLUS.join(counts) if counts else SQL_ZERO
     yield sql_alias(sql, _make_column_name(column_number)), ColumnMapping(
         push_list_name=s.name,
         push_column_name=s.name,

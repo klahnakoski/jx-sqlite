@@ -17,6 +17,7 @@ from jx_base.expressions.sql_is_null_op import SqlIsNullOp
 from jx_base.expressions.sql_order_by_op import OneOrder
 from jx_base.utils import GUID
 from jx_sqlite.builder import DocumentDetails, BranchBuilder
+from jx_sqlite.expressions.coalesce_op import CoalesceOp
 from jx_sqlite.expressions.leaves_op import LeavesOp
 from jx_sqlite.expressions.to_boolean_op import ToBooleanOp
 from jx_sqlite.format import format_deep
@@ -607,7 +608,7 @@ def _branch_split(term, schema, origin):
     var = term.expr.var
     if startswith_field(var, "row"):
         _, var = tail_field(var)
-    groups = {}  # table path -> {push_child: branch-relative value}
+    groups = {}  # table path -> {push_child: [column]}
     shallow = False
     for resolved in schema.leaves(var):
         _, col = resolved
@@ -615,13 +616,27 @@ def _branch_split(term, schema, origin):
         if table_path == origin or not startswith_field(table_path, origin):
             shallow = True
             continue
-        from_path = untype_field(relative_field(table_path, origin))[0]
-        # UNION TYPES BIND SEVERAL COLUMNS TO ONE NAME; Variable.to_sql COALESCES THEM
-        groups.setdefault(table_path, {}).setdefault(
-            resolved.push_child,
-            Variable(untype_field(relative_field(concat_field(var, resolved.name), from_path))[0]),
-        )
-    return {t: (term.name, var, list(entries.items())) for t, entries in groups.items()}, shallow
+        groups.setdefault(table_path, {}).setdefault(resolved.push_child, []).append(col)
+    return (
+        {
+            t: (term.name, var, [(push_child, _binding(cols)) for push_child, cols in entries.items()])
+            for t, entries in groups.items()
+        },
+        shallow,
+    )
+
+
+def _binding(cols):
+    """
+    THE VALUE OF ONE push_child: ITS COLUMNS.  UNION TYPES BIND SEVERAL TO ONE NAME, SO THEY ARE
+    COALESCED - BUT BY es_column, NOT BY A RE-DERIVED NAME.  A NAME THAT IS *BOTH* A BARE VALUE AND
+    AN OBJECT (`a` OVER ["b", {"b": 1}] AFTER MERGING) RESOLVES TO THE WHOLE ELEMENT WHEN ASKED BY
+    NAME, WHICH IS NOT WHAT push_child "." MEANS - IT MEANS THIS ELEMENT'S OWN VALUE
+    """
+    terms = [Variable(c.es_column, c.json_type) for c in cols]
+    if len(terms) == 1:
+        return terms[0]
+    return CoalesceOp(*terms)
 
 
 sort_to_sqlite_order = {-1: SQL_DESC, 0: SQL_ASC, 1: SQL_ASC}
