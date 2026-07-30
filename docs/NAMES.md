@@ -45,6 +45,12 @@ namespace seen from one table of a snowflake.
 5. **Hidden columns are not part of the namespace**: `_id`/`__id__`/`__order__`/`__parent__`
    are never bound; they are plumbing, reachable only by dedicated code paths
    (`Schema.leaves` keeps the GUID special case for now).
+6. **A fan-out is not a property**: document-assembly enumeration (`all_leaves`) skips a
+   binding whose table is off the perspective's line — a sibling/cousin array has many
+   elements per element of the perspective, so an ancestor contributes its scalars, not its
+   other children. `build_names` decides it per binding (`Scope.fan_out`), where both table
+   paths are known and typed. `leaves()` still binds those names: a name can be *reached*, it
+   just is not a property of the document.
 
 ## What is wired
 
@@ -98,10 +104,14 @@ namespace seen from one table of a snowflake.
        `mo_sqlite/models/insert.py` spawned a nested row per flattened leaf; now reuses the row
        for a given (parent, order).
    Table/cube also needed `format.py::_deep_header` to key on the top-level container name, not
-   the leaf. Still open: **deep-perspective `select *`** (`from testing._a`) does not switch
-   origin and nested-origin `*` never pulls ancestor scalars — leaves() from a child origin
-   must return parents (rule #2 in this doc claims it does; the shim doesn't yet). That blocks
-   `test_select_whole_nested_document`/`test_deep_star`/`test_deep_star_w_parent` — next target.
+   the leaf.
+   *Deep-perspective `select *` — DONE 2026-07-30.* The note here used to say nested-origin `*`
+   never pulls ancestor scalars; it does — that is what `all_leaves` is for. The real defect was
+   that it *also* pulled sibling arrays, which are a fan-out, not properties of the document.
+   Fixed as rule #6 (`Scope.fan_out`), pinned by three cases in `tests/test_namespace.py`.
+   `test_select_whole_nested_document` and `test_deep_star` were already green on sqlite; only
+   `test_deep_star_w_parent` stays skipped, for an unrelated reason — `..*` (parent-relative
+   names) is not implemented.
 5. **Free vars in anger.** Replace the ad-hoc `row.` prefix stripping (variable.py
    `partial_eval`, `tail_field == "row"`) with the `add_free_var`/`stack(row=...)` idiom;
    revive `sql_select_all_from_op.query()` (the algebra path) on top of Names.

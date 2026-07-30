@@ -35,6 +35,19 @@ def _live_snowflake():
     )
 
 
+def _sibling_snowflake():
+    # TWO ARRAYS UNDER ONE FACT: NEITHER IS REACHABLE FROM THE OTHER'S PERSPECTIVE
+    # SHAPE: data=[{"o":1,"a":[{"b":"x"}],"k":{"deep":[{"z":1}]}}]
+    return Data(
+        query_paths=["testing", "testing.a.$A", "testing.k.deep.$A"],
+        columns=[
+            dict(name="o", es_column="o.$N", es_index="testing", nested_path=["testing"], json_type=NUMBER),
+            dict(name="a.b", es_column="b.$S", es_index="testing.a.$A", nested_path=["testing.a.$A", "testing"], json_type=STRING),
+            dict(name="k.deep.z", es_column="z.$N", es_index="testing.k.deep.$A", nested_path=["testing.k.deep.$A", "testing"], json_type=NUMBER),
+        ],
+    )
+
+
 @add_error_reporting
 class TestNamespace(FuzzyTestCase):
 
@@ -128,6 +141,26 @@ class TestNamespace(FuzzyTestCase):
         names = snowflake_names(_live_snowflake(), "testing._a.$A")
         result = names.leaves(".")
         self.assertEqual(sorted(rel for rel, _ in result), ["b", "v"])
+
+    def test_all_leaves_from_fact_is_the_whole_document(self):
+        # THE PERSPECTIVE REACHES DOWN INTO ITS OWN ARRAYS
+        names = snowflake_names(_sibling_snowflake(), "testing")
+        result = names.all_leaves(".")
+        self.assertEqual(sorted(rel for rel, _ in result), ["a.b", "k.deep.z", "o"])
+
+    def test_all_leaves_from_child_adds_ancestor_scalars(self):
+        # A NESTED PERSPECTIVE SEES ITS OWN COLUMNS PLUS THE ANCESTORS' SCALARS (ONE VALUE PER
+        # ELEMENT), WHICH IS WHAT leaves() CAN NOT GIVE - IT STOPS AT THE FIRST MATCHING SCOPE
+        names = snowflake_names(_sibling_snowflake(), "testing.k.deep.$A")
+        self.assertEqual(sorted(rel for rel, _ in names.leaves(".")), ["z"])
+        self.assertEqual(sorted(rel for rel, _ in names.all_leaves(".")), ["o", "z"])
+
+    def test_all_leaves_from_child_excludes_a_sibling_array(self):
+        # `a` IS A SIBLING ARRAY UNDER THE FACT: MANY a PER DOCUMENT, MANY k.deep PER DOCUMENT.
+        # IT IS A FAN-OUT, NOT A PROPERTY OF A k.deep ELEMENT, SO IT IS NOT PART OF THAT
+        # PERSPECTIVE'S DOCUMENT - AN ANCESTOR CONTRIBUTES ITS SCALARS, NOT ITS OTHER CHILDREN
+        names = snowflake_names(_sibling_snowflake(), "testing.k.deep.$A")
+        self.assertEqual([rel for rel, _ in names.all_leaves(".") if rel.startswith("a")], [])
 
     # ------ SHADOWING AND PERSPECTIVE ------
 
