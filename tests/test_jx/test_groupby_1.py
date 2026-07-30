@@ -58,6 +58,42 @@ class TestgroupBy1(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
+    def test_groupby_cardinality_and_count(self):
+        # cardinality COUNTS THE DISTINCT VALUES OF A GROUP, count COUNTS THE VALUES: GROUP "b" HAS
+        # v = 1, 1, 2 AND A DOCUMENT WITH NO v AT ALL, SO 2 AND 3 - BOTH SKIP THE NULL.  THE groupby
+        # PATH HAD NO cardinality RULE OF ITS OWN UNTIL IT STARTED SHARING aggregates.py
+        # (NO expecting_cube: A CUBE groupby IS ANSWERED BY THE EDGES PATH, WHICH PADS A COORDINATE
+        # NO DOCUMENT REACHED - SEE docs/TEST_TRIAGE.md CLUSTER 8)
+        test = {
+            "data": [
+                {"a": "b", "v": 1},
+                {"a": "b", "v": 1},
+                {"a": "b", "v": 2},
+                {"a": "b"},
+                {"a": "c", "v": 5},
+                {"a": "c", "v": 5},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "groupby": ["a"],
+                "select": [
+                    {"name": "c", "value": "v", "aggregate": "cardinality"},
+                    {"name": "n", "value": "v", "aggregate": "count"},
+                ],
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [{"a": "b", "c": 2, "n": 3}, {"a": "c", "c": 1, "n": 2}],
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["a", "c", "n"],
+                "data": [["b", 2, 3], ["c", 1, 2]],
+            },
+        }
+        self.utils.execute_tests(test)
+
+    @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
     def test_edge_keeps_null_partition(self):
         # AN EDGE DECLARES A DOMAIN, SO EVERY COORDINATE GETS A CELL - INCLUDING THE NULL PART,
         # EVEN WHERE NO DOCUMENT LANDS.  ONE ROW MORE THAN test_groupby_has_no_null_group OVER THE

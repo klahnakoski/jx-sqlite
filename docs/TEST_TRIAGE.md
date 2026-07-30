@@ -6,7 +6,7 @@ items off. Update this file as tests are un-skipped or reasons are refined.
 
 Legend: `[ ]` skipped, `[x]` passing (decorator removed), `[-]` won't fix.
 
-> Baseline (dev, 2026-07-29): 418 ran / 0 err / 47 skip. The checklists below are the source of
+> Baseline (dev, 2026-07-29): 421 ran / 0 err / 47 skip. The checklists below are the source of
 > truth for what remains; work one cluster per session.
 >
 > Reconciled 2026-07-29 by a **stale-skip sweep**: strip every sqlite-relevant skip in a
@@ -326,18 +326,21 @@ was ever broken on sqlite; the 2026-07-29 sweep found the rest passing behind ba
 - [ ] test_expressions_w_set_ops.py::test_between — "parser stack overflow"
 - [x] test_edge_1.py (edge_1 bare `@skip("between is broken")`) — narrowed to python/interpret, which are still unverified
 
-## 4. Sort coordinated with edges / groupby (~7 tests)
+## 4. Sort coordinated with edges / groupby — CLEARED (5 fixed, 3 won't-fix)
 
 "coordinate sort clause with matching edges" — the ORDER BY must be expressed in terms of
-the edge/groupby output columns. Related to the uncommitted `jx_base/expressions/sort_op.py`
-change.
+the edge/groupby output columns. The single-edge cases work; the multi-edge ones are **won't-fix**
+(Kyle): a cube's row order *is* the cross-product of its domains, so a query-level `sort` is either
+redundant or a contradiction, and a row `limit` over a cross-product cuts coordinates arbitrarily.
+Both belong to the edge's domain (`domain.limit` already does). The three tests below ask for a
+query-level sort across two edges, so they are declined for every backend, not just sqlite.
 - [x] test_sort.py::test_edge_and_sort
-- [ ] test_sort.py::test_2edge_and_sort
+- [-] test_sort.py::test_2edge_and_sort — sort belongs to the edge domain
 - [x] test_sort.py::test_groupby_and_sort
 - [x] test_sort.py::test_groupby_expression_and_sort
 - [x] test_sort.py::test_groupby2a_and_sort
-- [ ] test_sort.py::test_groupby2b_and_sort
-- [ ] test_sort.py::test_groupby2c_and_sort
+- [-] test_sort.py::test_groupby2b_and_sort — same
+- [-] test_sort.py::test_groupby2c_and_sort — same
 - [x] test_edge_time.py::test_count_over_time_w_sort
 
 ## 5. Statistical aggregates (percentile/median) (~5 tests)
@@ -400,22 +403,22 @@ answered `KeyError 'null'` before and now gets the per-document multivalue from 
 Shared, not duplicated: `group.py` now calls `aggregates()` — the same rule-per-shape dispatcher the
 edges path uses — instead of its own hand-rolled `sql_aggs[op]` + `COUNT(1)` copy. That copy was why
 percentile / stats / cardinality / or / and / union / a tuple value were all missing on the groupby
-path; they work there now (stats and cardinality verified by hand, no test yet).
+path. `test_groupby_cardinality_and_count` pins the new capability (and the distinction: cardinality
+counts distinct values, count counts values, both skipping nulls). Writing it found `_cardinality`
+defaulting its pull to a bare `0` where `get_column` reads `default.value` — an AttributeError that
+only fired on a coordinate no document reached, so only the cube form ever hit it; now `ZERO`.
 
 Left standing: the fallback pads the null coordinate, so a groupby answered by the general path can
 report an empty group the fast path would not. Closing that needs the domain kind this whole note
 implies — **"every value that occurs"**, unpadded and unlimited, as against today's `default` domain
 ("top-N observed, padded"). With that, `edges` and `groupby` differ only in which domain they build.
 
-**sort and limit with multiple edges** — Kyle's question, and I think *deny* is right. A cube's row
-order is the cross-product of its domains, so a `sort` clause is either redundant (it agrees) or a
-contradiction (it does not); there is no third case, and honouring it would mean giving up the
-alignment that makes a cube a cube. `limit` is already a *domain* property (`domain.limit`, top-N by
-count per edge) — a result-row limit over a cross-product cuts coordinates arbitrarily. So: `sort`
-and `limit` belong on the edge (its domain's order and size), and a query-level `sort`/`limit`
-alongside `edges` should be refused rather than approximated. That reading makes cluster 4's
-remaining tests (test_2edge_and_sort, test_groupby2b/c_and_sort) `[-]` won't-fix rather than repairs
-— they ask for a query-level sort across two edges. Worth deciding before spending a session there.
+**sort and limit with multiple edges belong to the edge domain — decided (Kyle), won't-fix.** A
+cube's row order *is* the cross-product of its domains, so a query-level `sort` is either redundant
+(it agrees) or a contradiction (it does not); there is no third case, and honouring it would give up
+the alignment that makes a cube a cube. `limit` is already a domain property (`domain.limit`, top-N
+by count per edge) — a result-row limit over a cross-product cuts coordinates arbitrarily. Cluster 4
+is closed on that basis: its three multi-edge tests are `[-]`, declined for every backend.
 
 Fixed while measuring: `format != "cube"` read False when no format was named — both `Null == x`
 and `Null != x` are `Null`, which is falsy — so a **default-format groupby went to `_edges_op`** and
@@ -682,10 +685,9 @@ typed leaf, not the coalesced value.
 
 1. **Cluster 1** — the big one and the remaining bulk; multi-table join assembly in edges.py.
    Treat edges.py as scaffolding to decompose (see INTERSECTION_SURVEY / Names), not to extend.
-2. **Cluster 4** — sort/edges coordination.
-3. Clusters 3, 6, 7, 8 as they come.
-4. Clusters 5, 10, 12 are feature work, not repairs — schedule deliberately.
-(Clusters 2, 9 and 11 are cleared.)
+2. Clusters 3, 6, 7, 8 as they come.
+3. Clusters 5, 10, 12 are feature work, not repairs — schedule deliberately.
+(Clusters 2, 4, 9 and 11 are cleared.)
 
 ## Open design questions (from commits/tests, in Kyle's head)
 

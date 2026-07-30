@@ -99,7 +99,8 @@ class TestSorting(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
-    @skipIf(global_settings.use == "sqlite", "coordinate sort clause with matching edges")
+    @skip("a cube's row order is the cross-product of its domains: sort and limit belong to the"
+          " edge domain, not the query (Kyle)")
     def test_2edge_and_sort(self):
         test = {
             "data": [
@@ -333,7 +334,8 @@ class TestSorting(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
-    @skipIf(global_settings.use == "sqlite", "coordinate sort clause with matching edges")
+    @skip("a cube's row order is the cross-product of its domains: sort and limit belong to the"
+          " edge domain, not the query (Kyle)")
     def test_groupby2b_and_sort(self):
         test = {
             "data": [
@@ -400,7 +402,8 @@ class TestSorting(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
-    @skipIf(global_settings.use == "sqlite", "coordinate sort clause with matching edges")
+    @skip("a cube's row order is the cross-product of its domains: sort and limit belong to the"
+          " edge domain, not the query (Kyle)")
     def test_groupby2c_and_sort(self):
         test = {
             "data": [
