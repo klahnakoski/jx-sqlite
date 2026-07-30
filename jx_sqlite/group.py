@@ -7,11 +7,11 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from jx_base.expressions import SelectOp, CountOp, DefaultOp, SqlScript, SqlSelectOp
-from jx_base.expressions.variable import is_variable
+from jx_base.expressions import SelectOp, SqlScript, SqlSelectOp
 from jx_base.language import is_op
 from mo_sqlite import Facts
 from mo_sqlite import SQLang
+from jx_sqlite.aggregates import aggregates
 from jx_sqlite.utils import (
     ColumnMapping,
     _make_column_name,
@@ -108,35 +108,12 @@ def _groupby_op(self, query, schema):
             )
             column_index += 1
 
-    for select in query.select.terms:
-        column_number = len(selects)
-
-        # AGGREGATE
-        base_agg = select.aggregate
-        if is_variable(select.value) and select.value.var == "." and is_op(base_agg, CountOp):
-            sql = sql_count(SQL_ONE)
-            json_type = JX_INTEGER
-        else:
-            sql = select.value.partial_eval(SQLang).to_sql(inner_schema)
-            json_type = sql.frum.jx_type
-            sql = sql_call(sql_aggs[base_agg.op], sql)
-
-        if is_op(select.aggregate, DefaultOp):
-            sql = sql_coalesce([sql, select.default.partial_eval(SQLang).to_sql(inner_schema),])
-
-        selects.append(sql_alias(sql, select.name))
-
-        index_to_column[column_number] = ColumnMapping(
-            push_list_name=select.name,
-            push_column_name=select.name,
-            push_column_index=column_index,
-            push_column_child=".",
-            pull=get_column(column_number, default=select.default),
-            sql=sql,
-            column_alias=select.name,
-            type=jx_type_to_json_type(json_type),
-        )
-        column_index += 1
+    # THE SAME AGGREGATE RULES AS THE EDGES PATH: ONE RULE PER AGGREGATE SHAPE (aggregates.py).
+    # A groupby IS AN OPTIMIZATION OF edges - NO DOMAIN SUBQUERY, NO OUTER JOIN TO PAD COORDINATES
+    # THAT NO DOCUMENT REACHED - SO IT MUST NOT HAVE ITS OWN OPINION ABOUT HOW AN AGGREGATE
+    # COMPILES.  THE HAND-ROLLED COPY HERE KNEW ONLY sql_aggs[op] AND COUNT(1), SO percentile,
+    # stats, cardinality, or/and/union AND A TUPLE VALUE ALL WENT MISSING ON THIS PATH
+    aggregates(self, index_to_column, column_index, selects, query, inner_schema)
 
     for w in query.window:
         selects.append(_window_op(w, schema))

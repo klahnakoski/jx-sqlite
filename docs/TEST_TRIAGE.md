@@ -372,21 +372,50 @@ change.
 
 ## 8. Groupby advanced (~7 tests)
 
-### groupby vs edges: density is a property of the domain (2026-07-29)
+### groupby is an optimization of edges (2026-07-29)
 
 Measured, same data and select, `groupby ["a.b"]` against `edges ["a.b"]`
 (test_groupby_1::test_groupby_has_no_null_group / ::test_edge_keeps_null_partition pin it):
 
-| clause | list | table | cube | default |
-|---|---|---|---|---|
-| groupby | 2 rows | 2 rows | 3 cells (padded) | table, 2 rows |
-| edges | 3 rows (`{}` last) | 3 rows | 3 cells | cube |
+| clause | list | table | cube |
+|---|---|---|---|
+| groupby | 2 rows | 2 rows | 3 cells (padded) |
+| edges | 3 rows (`{}` last) | 3 rows | 3 cells |
 
-So the **group key lands identically** (`{"a": {"b": "x"}}`, not a flat `a.b` key) and the values
+The **group key lands identically** (`{"a": {"b": "x"}}`, not a flat `a.b` key) and the values
 agree. The whole difference is **density**: an edge declares a domain and every coordinate gets a
-cell; a groupby has no domain, so the groups are the values that occur. A cube-format groupby is
-already rerouted to `_edges_op` by query.py — because a cube *needs* a domain, so the observed
-values get promoted to one.
+cell; a groupby has no domain, so the groups are the values that occur.
+
+**The default format is now `list` for every query** (Kyle). It used to be cube for edges and table
+for groupby, which let the clause pick the presentation and hid the real difference behind it.
+`test_groupby_is_table` was renamed `test_groupby_is_list` and now pins both spellings.
+
+So `_groupby_op` is **the optimization** of the edges plan — a plain GROUP BY, no domain subquery,
+no outer join — and `query.py::_groupby_is_enough` says when it applies: not a cube (which needs a
+domain to be rectangular), and every select term collapses its group. Otherwise the groupby defers
+to `_edges_op` through the one shared swap (`_edges_op_on_groupby`), which is what the cube case was
+already doing inline. `{"select": ["v", {"value": "a.b", "aggregate": "sum"}], "groupby": ["a.t"]}`
+answered `KeyError 'null'` before and now gets the per-document multivalue from the edges path.
+
+Shared, not duplicated: `group.py` now calls `aggregates()` — the same rule-per-shape dispatcher the
+edges path uses — instead of its own hand-rolled `sql_aggs[op]` + `COUNT(1)` copy. That copy was why
+percentile / stats / cardinality / or / and / union / a tuple value were all missing on the groupby
+path; they work there now (stats and cardinality verified by hand, no test yet).
+
+Left standing: the fallback pads the null coordinate, so a groupby answered by the general path can
+report an empty group the fast path would not. Closing that needs the domain kind this whole note
+implies — **"every value that occurs"**, unpadded and unlimited, as against today's `default` domain
+("top-N observed, padded"). With that, `edges` and `groupby` differ only in which domain they build.
+
+**sort and limit with multiple edges** — Kyle's question, and I think *deny* is right. A cube's row
+order is the cross-product of its domains, so a `sort` clause is either redundant (it agrees) or a
+contradiction (it does not); there is no third case, and honouring it would mean giving up the
+alignment that makes a cube a cube. `limit` is already a *domain* property (`domain.limit`, top-N by
+count per edge) — a result-row limit over a cross-product cuts coordinates arbitrarily. So: `sort`
+and `limit` belong on the edge (its domain's order and size), and a query-level `sort`/`limit`
+alongside `edges` should be refused rather than approximated. That reading makes cluster 4's
+remaining tests (test_2edge_and_sort, test_groupby2b/c_and_sort) `[-]` won't-fix rather than repairs
+— they ask for a query-level sort across two edges. Worth deciding before spending a session there.
 
 Fixed while measuring: `format != "cube"` read False when no format was named — both `Null == x`
 and `Null != x` are `Null`, which is falsy — so a **default-format groupby went to `_edges_op`** and

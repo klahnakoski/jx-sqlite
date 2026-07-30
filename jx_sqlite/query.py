@@ -57,6 +57,29 @@ def _per_document_aggregates(terms, schema):
     return all(frames_one_document(term, schema) for term in aggregates)
 
 
+def _groupby_is_enough(query):
+    """
+    CAN THE OPTIMIZATION ANSWER THIS groupby?  IT EMITS ONE ROW PER GROUP THAT OCCURS, WHICH IS
+    ENOUGH WHEN EVERY SELECT TERM COLLAPSES ITS GROUP.  A CUBE NEEDS A DOMAIN TO BE RECTANGULAR,
+    AND A PLAIN TERM CAN NOT COLLAPSE ANYTHING - BOTH ARE THE GENERAL PATH'S BUSINESS
+    """
+    if query.format == "cube":
+        return False
+    return all(t.aggregate is not NULL for t in listwrap(query.select.terms))
+
+
+def _edges_op_on_groupby(facts, query):
+    """
+    ANSWER A groupby ON THE EDGES PATH.  IT PADS COORDINATES NO DOCUMENT REACHED, WHICH A groupby
+    WOULD NOT REPORT - THE DENSITY DIFFERENCE, SEE docs/TEST_TRIAGE.md CLUSTER 8
+    """
+    query.edges, query.groupby = query.groupby, query.edges
+    try:
+        return facts._edges_op(query, facts.schema)
+    finally:
+        query.edges, query.groupby = query.groupby, query.edges
+
+
 @extend(Facts)
 @register_thread
 def __len__(self):
@@ -129,21 +152,16 @@ def query(self, query=None):
         Log.error("Expecting table, or some nested table")
     normalized_query = QueryOp.wrap(query, self, SQLang)
 
-    # `format != "cube"` READ FALSE WHEN NO FORMAT WAS NAMED: BOTH `Null == x` AND `Null != x` ARE
-    # Null, WHICH IS FALSY, SO A DEFAULT-FORMAT groupby WENT TO _edges_op AND CAME BACK WITH THE
-    # PADDED NULL GROUP THAT format="table" DOES NOT HAVE.  TEST THE POSITIVE FORM
-    if normalized_query.groupby and not (normalized_query.format == "cube"):
+    # A groupby IS AN EDGE WHOSE DOMAIN IS EVERY VALUE THAT OCCURS, AND _groupby_op IS THE
+    # OPTIMIZATION OF THAT: A PLAIN GROUP BY, NO DOMAIN SUBQUERY, NO OUTER JOIN.  WHEN THE
+    # OPTIMIZATION CAN NOT ANSWER - A CUBE NEEDS A DOMAIN TO BE RECTANGULAR, AND A PLAIN TERM BESIDE
+    # AN AGGREGATE NEEDS THE DOCUMENT FRAMED (edges.py) - DEFER TO THE GENERAL PATH.
+    # (`format != "cube"` WOULD READ FALSE WHEN NO FORMAT WAS NAMED: BOTH `Null == x` AND
+    # `Null != x` ARE Null, WHICH IS FALSY, SO A DEFAULT-FORMAT groupby CAME BACK PADDED)
+    if normalized_query.groupby and _groupby_is_enough(normalized_query):
         command, index_to_columns = self._groupby_op(normalized_query, self.schema)
     elif normalized_query.groupby:
-        normalized_query.edges, normalized_query.groupby = (
-            normalized_query.groupby,
-            normalized_query.edges,
-        )
-        command, index_to_columns = self._edges_op(normalized_query, self.schema)
-        normalized_query.edges, normalized_query.groupby = (
-            normalized_query.groupby,
-            normalized_query.edges,
-        )
+        command, index_to_columns = _edges_op_on_groupby(self, normalized_query)
     elif normalized_query.edges or (
         any(t.aggregate is not NULL for t in listwrap(normalized_query.select.terms))
         and not _per_document_aggregates(listwrap(normalized_query.select.terms), normalized_query.frum.schema)

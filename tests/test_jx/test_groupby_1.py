@@ -42,9 +42,8 @@ class TestgroupBy1(BaseTestCase):
                 "groupby": ["a.b"],
             },
             "expecting": {
-                "meta": {"format": "table"},
-                "header": ["a.b", "s"],
-                "data": [["x", 3], ["y", 3]],
+                "meta": {"format": "list"},
+                "data": [{"a": {"b": "x"}, "s": 3}, {"a": {"b": "y"}, "s": 3}],
             },
             "expecting_table": {
                 "meta": {"format": "table"},
@@ -467,7 +466,9 @@ class TestgroupBy1(BaseTestCase):
         self.assertRaises(Exception, self.utils.execute_tests, test)
 
     @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
-    def test_groupby_is_table(self):
+    def test_groupby_is_list(self):
+        # THE DEFAULT FORMAT IS list, WHATEVER THE CLAUSES.  THE NULL GROUP IS HERE BECAUSE null IS
+        # A VALUE THAT OCCURS (DOCUMENTS WITH NO `a`), NOT BECAUSE A DOMAIN WAS PADDED
         test = {
             "data": simple_test_data,
             "query": {
@@ -478,6 +479,14 @@ class TestgroupBy1(BaseTestCase):
                 "groupby": "a"
             },
             "expecting": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"a": "b", "v": 2},
+                    {"a": "c", "v": 31},
+                    {"v": 3}
+                ]
+            },
+            "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["a", "v"],
                 "data": [

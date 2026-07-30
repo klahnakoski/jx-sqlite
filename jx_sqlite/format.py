@@ -29,7 +29,9 @@ from mo_logs import Log
 
 
 def format_flat(result, query, index_to_columns):
-    if query.format == "cube" or (not query.format and query.edges):
+    # THE DEFAULT FORMAT IS list, WHATEVER THE CLAUSES: edges USED TO DEFAULT TO cube AND groupby
+    # TO table, WHICH MADE THE CLAUSE PICK THE PRESENTATION AND HID A REAL DIFFERENCE BEHIND IT
+    if query.format == "cube":
         column_names = [None] * (max(c.push_column_index for c in index_to_columns.values()) + 1)
         for c in index_to_columns.values():
             column_names[c.push_column_index] = c.push_column_name
@@ -148,7 +150,7 @@ def format_flat(result, query, index_to_columns):
             select=select,
             data={k: v.cube for k, v in data_cubes.items()},
         )
-    elif query.format == "table" or (not query.format and query.groupby):
+    elif query.format == "table":
         column_names = [None] * (max(c.push_column_index for c in index_to_columns.values()) + 1)
         for c in index_to_columns.values():
             column_names[c.push_column_index] = c.push_column_name
@@ -171,7 +173,7 @@ def format_flat(result, query, index_to_columns):
             data.append(tuple(from_data(r) for r in row))
 
         output = Data(meta={"format": "table"}, header=column_names, data=data)
-    elif query.format == "list" or (not query.edges and not query.groupby):
+    elif query.format == "list" or not query.format:
         if not query.edges and not query.groupby and any(s.aggregate is not NULL for s in query.select.terms):
             data = Data()
             for s in index_to_columns.values():
