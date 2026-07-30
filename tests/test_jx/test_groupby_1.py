@@ -22,6 +22,76 @@ from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 class TestgroupBy1(BaseTestCase):
 
     @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
+    def test_groupby_has_no_null_group(self):
+        # A groupby HAS NO DOMAIN: THE GROUPS *ARE* THE VALUES THAT OCCUR, SO THERE IS NO EMPTY
+        # GROUP TO REPORT - CONTRAST test_edge_keeps_null_partition, SAME DATA AND SELECT, WHICH
+        # PADS ITS DOMAIN.  THE `expecting` CLAUSE ASKS FOR THE DEFAULT FORMAT: THE ANSWER MUST
+        # NOT DEPEND ON WHETHER THE FORMAT WAS NAMED.
+        # NOTE: assertAlmostEqual PAIRS ROWS WITH zip_longest AND A None EXPECTATION MATCHES
+        # ANYTHING, SO AN *EXTRA* TRAILING ROW IS TOLERATED - THIS TEST PINS THE VALUES AND THE
+        # SHAPE OF THE GROUP KEY, NOT THE ABSENCE OF THE NULL GROUP
+        test = {
+            "data": [
+                {"a": {"b": "x"}, "v": 1},
+                {"a": {"b": "x"}, "v": 2},
+                {"a": {"b": "y"}, "v": 3},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": {"name": "s", "value": "v", "aggregate": "sum"},
+                "groupby": ["a.b"],
+            },
+            "expecting": {
+                "meta": {"format": "table"},
+                "header": ["a.b", "s"],
+                "data": [["x", 3], ["y", 3]],
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["a.b", "s"],
+                "data": [["x", 3], ["y", 3]],
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [{"a": {"b": "x"}, "s": 3}, {"a": {"b": "y"}, "s": 3}],
+            },
+        }
+        self.utils.execute_tests(test)
+
+    @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
+    def test_edge_keeps_null_partition(self):
+        # AN EDGE DECLARES A DOMAIN, SO EVERY COORDINATE GETS A CELL - INCLUDING THE NULL PART,
+        # EVEN WHERE NO DOCUMENT LANDS.  ONE ROW MORE THAN test_groupby_has_no_null_group OVER THE
+        # SAME DATA: THAT DENSITY IS THE DIFFERENCE BETWEEN THE TWO CLAUSES.  THE GROUP KEY LANDS
+        # THE SAME WAY IN BOTH (`{"a": {"b": "x"}}`, NOT A FLAT `a.b` KEY)
+        test = {
+            "data": [
+                {"a": {"b": "x"}, "v": 1},
+                {"a": {"b": "x"}, "v": 2},
+                {"a": {"b": "y"}, "v": 3},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": {"name": "s", "value": "v", "aggregate": "sum"},
+                "edges": ["a.b"],
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [{"a": {"b": "x"}, "s": 3}, {"a": {"b": "y"}, "s": 3}, {}],
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["a.b", "s"],
+                "data": [["x", 3], ["y", 3], [NULL, NULL]],
+            },
+            "expecting_cube": {
+                "meta": {"format": "cube"},
+                "data": {"s": [3, 3, NULL]},
+            },
+        }
+        self.utils.execute_tests(test)
+
+    @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
     def test_no_select(self):
         test = {
             "data": simple_test_data,

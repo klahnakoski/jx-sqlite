@@ -129,7 +129,10 @@ def query(self, query=None):
         Log.error("Expecting table, or some nested table")
     normalized_query = QueryOp.wrap(query, self, SQLang)
 
-    if normalized_query.groupby and normalized_query.format != "cube":
+    # `format != "cube"` READ FALSE WHEN NO FORMAT WAS NAMED: BOTH `Null == x` AND `Null != x` ARE
+    # Null, WHICH IS FALSY, SO A DEFAULT-FORMAT groupby WENT TO _edges_op AND CAME BACK WITH THE
+    # PADDED NULL GROUP THAT format="table" DOES NOT HAVE.  TEST THE POSITIVE FORM
+    if normalized_query.groupby and not (normalized_query.format == "cube"):
         command, index_to_columns = self._groupby_op(normalized_query, self.schema)
     elif normalized_query.groupby:
         normalized_query.edges, normalized_query.groupby = (

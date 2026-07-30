@@ -371,6 +371,42 @@ change.
       would be; requires schema merging of a.b.~n~ and a.~a~.b.~n~" (design question)
 
 ## 8. Groupby advanced (~7 tests)
+
+### groupby vs edges: density is a property of the domain (2026-07-29)
+
+Measured, same data and select, `groupby ["a.b"]` against `edges ["a.b"]`
+(test_groupby_1::test_groupby_has_no_null_group / ::test_edge_keeps_null_partition pin it):
+
+| clause | list | table | cube | default |
+|---|---|---|---|---|
+| groupby | 2 rows | 2 rows | 3 cells (padded) | table, 2 rows |
+| edges | 3 rows (`{}` last) | 3 rows | 3 cells | cube |
+
+So the **group key lands identically** (`{"a": {"b": "x"}}`, not a flat `a.b` key) and the values
+agree. The whole difference is **density**: an edge declares a domain and every coordinate gets a
+cell; a groupby has no domain, so the groups are the values that occur. A cube-format groupby is
+already rerouted to `_edges_op` by query.py — because a cube *needs* a domain, so the observed
+values get promoted to one.
+
+Fixed while measuring: `format != "cube"` read False when no format was named — both `Null == x`
+and `Null != x` are `Null`, which is falsy — so a **default-format groupby went to `_edges_op`** and
+came back with a padded null group that `format="table"` does not have. Same query, same emitted
+format, different data. Now tests the positive form.
+
+Also learned, and worth knowing before trusting any of these expectations: `assertAlmostEqual`
+pairs rows with `zip_longest` and a `None` expectation matches anything, so an **extra trailing row
+is silently tolerated** (a *missing* row is not). That is why an unpadded expectation can pass
+against a padded result, and why the null-row mismatches in this doc only ever surfaced when
+sorting misaligned them.
+
+**Open (Kyle's question): is groupby just an edge whose domain is "every value that occurs"?**
+Nothing measured above says otherwise — density and the default format are the only differences, and
+both are properties of the domain / of presentation, not of the operator. The cheap experiment is
+to route `groupby` through `_edges_op` with `allowNulls=False` and no domain limit, and see what
+breaks; if nothing does, `group.py` holds nothing semantic and the two clauses differ only in sugar.
+The known risks are the ORDER BY contract (a cube's rows must line up with the domain order) and
+whatever `test_groupby_star` / `test_groupby_object` rely on in group.py's own key naming; the cost
+is a domain subquery plus a join that a plain GROUP BY does not need.
 - [ ] test_groupby_1.py::test_groupby_left_id — "broken"
 - [ ] test_groupby_1.py::test_count_values — "requires subqueries"
 - [ ] test_groupby_1.py::test_groupby_multivalue_nested — "for coverage"
