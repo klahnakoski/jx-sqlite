@@ -242,12 +242,15 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
         if sub_table == origin:
             origin_doc_details = nested_doc_details
         if (
-            sub_table != origin
-            and startswith_field(sub_table, origin)
+            not startswith_field(origin, sub_table)
             and any(startswith_field(wt, sub_table) for wt in where_tables)
         ):
-            # ON THE CHAIN FROM JUST-BELOW-ORIGIN DOWN TO A where TABLE: A PARENT WITH NO SURVIVING
-            # ROW HERE IS DROPPED, AND THE DROP BUBBLES UP TO THE ORIGIN.
+            # ON THE CHAIN FROM THE ORIGIN DOWN TO A where TABLE: A PARENT WITH NO SURVIVING ROW
+            # HERE IS DROPPED, AND THE DROP BUBBLES UP TO THE ORIGIN.  "NOT AT OR ABOVE THE
+            # ORIGIN" COVERS AN OFF-LINE BRANCH TOO: IT IS IN THE ORIGIN'S REASSEMBLY SUBTREE, SO
+            # A where ON A SIBLING FILTERS THAT SIBLING'S ARM AND DROPS THE ELEMENTS OF ANY
+            # DOCUMENT WHOSE SIBLING ROWS ALL FAILED.  WITHOUT THIS THE where WAS APPLIED ON THAT
+            # ARM AND THEN IGNORED - NOTHING DROPPED THE PARENT, SO EVERY ELEMENT SURVIVED.
             nested_doc_details.required = True
 
     # A BRANCH OFF THE ORIGIN'S LINE HANGS UNDER THE ORIGIN, NOT UNDER THE FACT.  IT IS REACHED
