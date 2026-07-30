@@ -159,7 +159,10 @@ def query(self, query=None):
     # (`format != "cube"` WOULD READ FALSE WHEN NO FORMAT WAS NAMED: BOTH `Null == x` AND
     # `Null != x` ARE Null, WHICH IS FALSY, SO A DEFAULT-FORMAT groupby CAME BACK PADDED)
     if normalized_query.groupby and _groupby_is_enough(normalized_query):
-        command, index_to_columns = self._groupby_op(normalized_query, self.schema)
+        # THE QUERY'S OWN PERSPECTIVE, LIKE _edges_op: WITH THE FACT'S SCHEMA A groupby FROM A
+        # NESTED ORIGIN COMPILED AS IF THE FACT WERE THE ORIGIN, AND THE JOIN CHAIN THEN CLIMBED
+        # *DOWN* TO THE ORIGIN, INVENTING A ROW FOR EVERY DOCUMENT THAT HAS NONE
+        command, index_to_columns = self._groupby_op(normalized_query, normalized_query.frum.schema)
     elif normalized_query.groupby:
         command, index_to_columns = _edges_op_on_groupby(self, normalized_query)
     elif normalized_query.edges or (
