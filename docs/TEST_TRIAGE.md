@@ -6,7 +6,7 @@ items off. Update this file as tests are un-skipped or reasons are refined.
 
 Legend: `[ ]` skipped, `[x]` passing (decorator removed), `[-]` won't fix.
 
-> Baseline (dev, 2026-07-30): 429 ran / 0 err / 46 skip. The checklists below are the source of
+> Baseline (dev, 2026-07-30): 430 ran / 0 err / 44 skip. The checklists below are the source of
 > truth for what remains; work one cluster per session.
 >
 > Reconciled 2026-07-29 by a **stale-skip sweep**: strip every sqlite-relevant skip in a
@@ -33,8 +33,8 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 
 ### test_deep_ops.py
 - [x] test_select_gt_on_sub
-- [ ] test_select_in_w_multivalue — multivalue GetOp.to_sql arity (partial_eval/to_sql ordering); order-dependent flake
-- [ ] test_select_when_on_multivalue — same multivalue GetOp arity flake
+- [x] test_select_in_w_multivalue — §a comparison against a collection is existential
+- [x] test_select_when_on_multivalue — same
 - [x] test_deep_select_column — fixed by nested-origin extraction (empty-parent row kept)
 - [x] test_deep_select_column_w_groupby — fixed by §where a table/cube header comes from (cluster 11)
 - [x] test_bad_deep_select_column_w_groupby
@@ -316,6 +316,30 @@ dropped nothing (`{"where":{"eq":{"k.z":9}}}` returned every element); the test 
 above the origin", the same predicate `_branch_split` uses. Four tests, each verified to fail when
 its code is reverted: test_where_on_sibling_of_origin, test_select_cousin_of_origin,
 test_select_sibling_from_deep_origin, test_select_two_siblings_and_own_child.
+
+### a comparison against a collection is existential (2026-07-30)
+
+`{"when":{"eq":{"a":"e"}}}` and `{"in":[{"literal":"e"},"a"]}` over `a: ["e","c"]` both want ONE
+value per document — "some element matches" — not one value per child row (the expectations say
+`is_e: 1`, `is_c: 1` for that document). Compiled plainly, `eq` named the child table from the
+origin's arm, which never joins it (`no such column: testing.a.$A.$S`); `in` reached a dead draft
+(`SqlSelectAllFromOp(superset.to_sql())` — no schema) and `not in` another
+(`StrictInOp` asking `schema.get_table` for a *name*).
+
+`in` **is** that question: membership in the name's collection. So the family gets one more member
+beside count/cardinality/sum/max/min — `sql_membership(value, collection, schema)` is
+`value IN (<ToListOp rows>)`, raw SQL because the superset is a relation and an op can only hold
+expressions. `EqOp.to_sql` rewrites to `InOp` when exactly one side `is_multivalued` (its columns
+live in ONE table strictly below the origin — a merged name spanning tables answers False and takes
+the old path, the same limit `_child_rows` refuses). A name at or above the origin is a one-row
+collection, so `{"in":[1,"s"]}` on a plain column is just equality; the empty collection makes `IN`
+false, which is the answer for a document with no elements.
+
+Known asymmetry, not changed: in a **where** clause a nested name is still a *row filter* — the
+child arm filters and `required` drops a parent with no surviving row — so
+`{"where":{"not":{"eq":{"a":"e"}}}}` drops the document that has no `a` at all, where the same
+predicate in a select answers True for it. The where reading is what the sibling tests pin
+(79ad594); the two questions differ and only the select one is settled.
 
 ### what the strict matcher found (2026-07-30) — 7df986a
 

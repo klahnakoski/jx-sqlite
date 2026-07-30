@@ -10,6 +10,8 @@
 from jx_base import builtin_ops, simplified
 from jx_base.expressions import EqOp as _EqOp, FALSE, TRUE, is_literal, NotOp
 from jx_sqlite.expressions._utils import value2boolean
+from jx_sqlite.expressions.in_op import InOp
+from jx_sqlite.expressions.to_list_op import is_multivalued
 from mo_json import JX_ARRAY, ARRAY, JX_BOOLEAN
 from mo_logs import logger
 from jx_sqlite.expressions._utils import check
@@ -22,6 +24,16 @@ class EqOp(_EqOp):
     def to_sql(self, schema) -> SqlScript:
         if is_literal(self.rhs) and self.rhs.jx_type == ARRAY:
             return SqlInOp(self.lhs, self.rhs).to_sql(schema)
+
+        # A COMPARISON AGAINST A COLLECTION IS EXISTENTIAL: THE DOCUMENT MATCHES WHEN *SOME*
+        # ELEMENT DOES, SO THE ANSWER IS ONE VALUE OF THE DOCUMENT AND NOT ONE PER CHILD ROW.
+        # in ALREADY ASKS EXACTLY THAT (MEMBERSHIP IN THE COLLECTION), AND ITS SUBQUERY IS WHAT
+        # KEEPS THE PREDICATE ON THE ORIGIN'S ARM - COMPILED PLAINLY IT NAMED THE CHILD TABLE
+        # THAT ARM NEVER JOINS
+        lhs_many, rhs_many = is_multivalued(self.lhs, schema), is_multivalued(self.rhs, schema)
+        if lhs_many != rhs_many:
+            value, collection = (self.rhs, self.lhs) if lhs_many else (self.lhs, self.rhs)
+            return InOp(value, collection).to_sql(schema)
 
         lhs = self.lhs.to_sql(schema)
         if is_literal(self.rhs) and lhs.jx_type == JX_BOOLEAN:

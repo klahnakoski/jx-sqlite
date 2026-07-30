@@ -50,7 +50,6 @@ class TestDeepOps(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
-    @skipIf(global_settings.use == "sqlite", "multivalue column: GetOp.to_sql arity error (partial_eval/to_sql ordering), order-dependent flake")
     def test_select_in_w_multivalue(self):
         test = {
             "data": [
@@ -88,7 +87,6 @@ class TestDeepOps(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
-    @skipIf(global_settings.use == "sqlite", "multivalue column: GetOp.to_sql arity error (partial_eval/to_sql ordering), order-dependent flake")
     def test_select_when_on_multivalue(self):
         test = {
             "data": [

@@ -64,10 +64,18 @@ class ToListOp:
         return ConcatSQL(SQL_SELECT, sql_iso(term.partial_eval(SQLang).to_sql(schema).expr), SQL_AS, LIST_COLUMN)
 
 
-def _child_rows(term, schema):
+def sql_membership(value, collection, schema) -> SQL:
     """
-    THE CHILD ROWS OF A MULTI-VALUED COLUMN, OR None WHEN term IS SINGLE-VALUED AT THIS ORIGIN
-    (A PLAIN COLUMN IS A ONE-ROW COLLECTION, WHICH IS WHY count OF A SCALAR IS 1)
+    `value IN (<THE ROWS OF collection>)` - THE EXISTENTIAL COMPARISON.  RAW SQL, NOT SqlInOp:
+    THE SUPERSET IS A *RELATION*, AND AN OP CAN ONLY HOLD EXPRESSIONS.  A COLLECTION WITH NO
+    ROWS MAKES IN FALSE, WHICH IS THE ANSWER FOR A DOCUMENT THAT HAS NONE
+    """
+    return ConcatSQL(sql_iso(value), SQL_IN, sql_iso(ToListOp(collection).to_sql(schema)))
+
+
+def _leaf_columns(term, schema):
+    """
+    THE COLUMNS term NAMES, OR None WHEN term IS NOT A NAME (OR NAMES NOTHING HERE)
     """
     if not is_variable(term):
         return None
@@ -75,9 +83,35 @@ def _child_rows(term, schema):
     if startswith_field(var_name, "row"):
         _, var_name = tail_field(var_name)
 
-    cols = [c for _, c in schema.leaves(var_name)]
+    return [c for _, c in schema.leaves(var_name)] or None
+
+
+def is_multivalued(term, schema) -> bool:
+    """
+    TRUE WHEN THE DOCUMENT HAS A *COLLECTION* OF term: ITS COLUMNS LIVE IN ONE TABLE STRICTLY
+    BELOW THE ORIGIN.  A NAME THAT SPANS TABLES (A MERGED SHAPE) IS NOT ONE COLLECTION, SO IT
+    ANSWERS False - THE SAME LIMIT _child_rows REFUSES, REPORTED HERE INSTEAD OF RAISED
+    """
+    cols = _leaf_columns(term, schema)
+    if not cols:
+        return False
+    tables = set(c.nested_path[0] for c in cols)
+    if len(tables) > 1:
+        return False
+    table = first(tables)
+    origin = schema.nested_path[0]
+    return table != origin and startswith_field(table, origin)
+
+
+def _child_rows(term, schema):
+    """
+    THE CHILD ROWS OF A MULTI-VALUED COLUMN, OR None WHEN term IS SINGLE-VALUED AT THIS ORIGIN
+    (A PLAIN COLUMN IS A ONE-ROW COLLECTION, WHICH IS WHY count OF A SCALAR IS 1)
+    """
+    cols = _leaf_columns(term, schema)
     if not cols:
         return None
+    var_name = term.var
     tables = set(c.nested_path[0] for c in cols)
     if len(tables) > 1:
         logger.error("{{name}} spans more than one table: {{tables}}", name=var_name, tables=tables)

@@ -12,21 +12,18 @@ from jx_base.expressions import (
     StrictInOp as _StrictInOp,
     FALSE,
     Literal,
-    ExistsOp,
-    NestedOp,
-    EqOp,
 )
 from jx_base.expressions.variable import is_variable
 from jx_base.language import is_op
 from mo_sqlite import SQLang
 from jx_sqlite.expressions._utils import check
 from jx_sqlite.expressions._utils import value2boolean
+from jx_sqlite.expressions.to_list_op import sql_membership
 from mo_sqlite.expressions.sql_script import SqlScript
 from mo_json.types import JX_BOOLEAN
 from mo_logs import Log
 from mo_sql import ConcatSQL, SQL_IN
 from mo_sqlite import quote_list
-from mo_sqlite.expressions import SqlVariable
 
 
 class StrictInOp(_StrictInOp):
@@ -45,7 +42,13 @@ class StrictInOp(_StrictInOp):
         if not is_variable(superset):
             Log.error("Do not know how to hanldle")
 
-        sub_table = schema.get_table(superset.var)
-        return ExistsOp(NestedOp(
-            nested_path=sub_table.nested_path, where=EqOp(SqlVariable(None, "."), value.frum)
-        )).to_sql(schema)
+        # MEMBERSHIP IN THE NAME'S COLLECTION - THE STRICT FORM, SO NO null GUARD (SAME AS THE
+        # LITERAL SUPERSET ABOVE).  WAS AN ExistsOp/NestedOp DRAFT THAT ASKED schema.get_table FOR
+        # THE *NAME*, WHICH IS NOT A TABLE
+        return SqlScript(
+            jx_type=JX_BOOLEAN,
+            expr=sql_membership(value, superset, schema),
+            frum=self,
+            miss=FALSE,
+            schema=schema,
+        )

@@ -12,10 +12,11 @@ from jx_base.expressions.variable import is_variable
 from jx_base.language import is_op
 from jx_sqlite.expressions._utils import value2boolean
 from jx_sqlite.expressions.literal import Literal
-from jx_sqlite.expressions.sql_select_all_from_op import SqlSelectAllFromOp
+from jx_sqlite.expressions.to_list_op import sql_membership
 from mo_json import JX_BOOLEAN
 from mo_logs import Log
 from jx_sqlite.expressions._utils import check
+from mo_sql import SQL_FALSE, sql_coalesce
 from mo_sqlite import SQLang, SqlScript
 from mo_sqlite.expressions import SqlInOp, SqlAliasOp, SqlCoalesceOp
 
@@ -39,9 +40,11 @@ class InOp(_InOp):
         if not is_variable(superset):
             Log.error("Do not know how to hanlde")
 
+        # A NAME IS A COLLECTION - ITS CHILD ROWS WHEN IT IS MULTI-VALUED HERE, ITS ONE VALUE
+        # OTHERWISE.  COALESCE BECAUSE `NULL IN (<ROWS>)` IS NULL WHERE THIS PROMISES A BOOLEAN
         return SqlScript(
             jx_type=JX_BOOLEAN,
-            expr=SqlInOp(value, SqlSelectAllFromOp(superset.to_sql())),
+            expr=sql_coalesce([sql_membership(value, superset, schema), SQL_FALSE]),
             frum=self,
             miss=FALSE,
             schema=schema,
