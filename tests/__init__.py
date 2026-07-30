@@ -25,11 +25,34 @@ from mo_logs import logger, Except, constants
 from mo_logs.exceptions import get_stacktrace
 import jx_sqlite  # ATTACH query() AND FRIENDS TO Facts (@extend), SO SINGLE-TEST RUNS WORK
 from mo_sqlite import SQLang, Container, Facts
-from mo_testing.fuzzytestcase import assertAlmostEqual
+from mo_testing.fuzzytestcase import assert_almost_equal, FuzzyMatcher
 from tests import test_jx
 from tests.test_jx import TEST_TABLE
 
 logger.static_template = False
+
+
+class ExactMatcher(FuzzyMatcher):
+    """
+    THE RESULT MAY NOT HAVE MORE ELEMENTS THAN EXPECTED
+
+    THE DEFAULT MATCHER IGNORES ELEMENTS PAST THE END OF expected, WHICH HIDES SURPLUS
+    ROWS (AND SURPLUS CUBE CELLS).  expected MAY STILL BE LONGER: A TRAILING NULL
+    CONTINUES TO MEAN "MUST NOT EXIST".
+    """
+
+    def compare_many(self, test, expected, msg=None):
+        _test, _expected = list(test), list(expected)
+        surplus = _test[len(_expected):]
+        if surplus:
+            logger.error(
+                "{path}got {a} elements, expecting {b}, surplus {surplus|json|limit(1000)}",
+                path=coalesce(msg, ""),
+                a=len(_test),
+                b=len(_expected),
+                surplus=surplus,
+            )
+        return FuzzyMatcher.compare_many(self, test, expected, msg=msg)
 
 
 NEW_DB_EACH_RUN = False
@@ -162,7 +185,7 @@ class SQLiteUtils:
         normalized = QueryOp.wrap(query, self.table, SQLang)
         _, command, _ = self.table.to_sql(normalized)
         result = self.container.db.query(command)
-        assertAlmostEqual(result.data, expected)
+        ExactMatcher().compare(result.data, expected)
 
     def execute_update(self, command):
         return self.table.update(command)
@@ -190,7 +213,7 @@ def compare_to_expected(query, result, expect):
     expect = to_data(expect)
 
     if result.meta.format == "table":
-        assertAlmostEqual(set(result.header), set(expect.header))
+        assert_almost_equal(set(result.header), set(expect.header))
 
         # MAP FROM expected COLUMN TO result COLUMN
         mapping = list(zip(
@@ -259,7 +282,7 @@ def compare_to_expected(query, result, expect):
         expect.data = list2cube(expect_data, expect_header)
 
     # CONFIRM MATCH
-    assertAlmostEqual(result, expect, places=6)
+    ExactMatcher(places=6).compare(result, expect)
 
 
 def cube2list(cube):

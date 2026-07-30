@@ -6,7 +6,7 @@ items off. Update this file as tests are un-skipped or reasons are refined.
 
 Legend: `[ ]` skipped, `[x]` passing (decorator removed), `[-]` won't fix.
 
-> Baseline (dev, 2026-07-29): 421 ran / 0 err / 47 skip. The checklists below are the source of
+> Baseline (dev, 2026-07-30): 429 ran / 0 err / 46 skip. The checklists below are the source of
 > truth for what remains; work one cluster per session.
 >
 > Reconciled 2026-07-29 by a **stale-skip sweep**: strip every sqlite-relevant skip in a
@@ -18,6 +18,11 @@ Legend: `[ ]` skipped, `[x]` passing (decorator removed), `[-]` won't fix.
 > Swept again after the slots / per-document-aggregate work (2026-07-29): **one** stale skip
 > (test_deep_origin_agg_on_child, un-blocked by c176810), no regressions. The sweep script only
 > matches single-line decorators — the one it missed was a multi-line `@skipIf(`.
+>
+> Swept again after the sibling work (2026-07-30, all 42 sqlite skips stripped in a throwaway
+> worktree, multi-line decorators included): **one** stale skip
+> (test_from_shallow_select_deep_column, un-blocked by 2e34abf), no regressions. Every other skip
+> still fails, so there are no more free wins in this list.
 
 ## 1. Deep / nested queries (~55 tests — the dominant cluster)
 
@@ -67,7 +72,8 @@ SqlStep/SqlTree) rather than one bug; expect fixing the first few to reveal the 
 - [x] test_deep_star
 - [ ] test_deep_star_w_parent — needs `..*` (parent-star) relative names
 - [x] test_deep_select_dot
-- [ ] test_from_shallow_select_deep_column
+- [x] test_from_shallow_select_deep_column — `select "_a.b"` from the fact is a below-origin
+      branch collapsing to a bare multivalue; un-blocked by §a sibling of the origin is a branch
 - [x] test_setop_w_shallow_eq_string
 - [x] test_deep_edge_w_shallow_expression — needed the ToBooleanOp fix below as well
 - [x] test_deep_edge_w_shallow_var — fixed: an aggregate over an ancestor's value counts that
@@ -293,6 +299,44 @@ for other callers.
 
 (This left one limit — a rename across an intermediate array — fixed by slots, below.)
 
+### a sibling of the origin is a branch through the common ancestor (2026-07-30) — 2e34abf, 79ad594
+
+`{"from":"testing.a","select":["v","o","k.z"]}` died with `no such column: testing.k.$A.z.$N`:
+`keep()`'s up-reach test was a **depth** test, and a sibling array sits at the same depth as the
+origin, so the origin arm referenced a table it never joins. Up-reach means up this *line*. A
+sibling is visible from the origin (nothing shadows it) and its parent repeats per origin record,
+so it is a branch like any other — it just hangs off the **common ancestor**: `_branch_split` keeps
+only an at-or-above-origin binding with the plain term, the node is re-parented under the origin,
+`arm_from` joins each table on its real parent, and the per-arm where gate asks whether a
+where-table is in the arm's *chain*. That also dropped `select_op`'s three-arm dispatch to two
+(a branch off the origin's line was compiling the plain select into a dead arm).
+
+`required` was then marked only for a branch *below* the origin, so a sibling's failed `where`
+dropped nothing (`{"where":{"eq":{"k.z":9}}}` returned every element); the test is "not at or
+above the origin", the same predicate `_branch_split` uses. Four tests, each verified to fail when
+its code is reverted: test_where_on_sibling_of_origin, test_select_cousin_of_origin,
+test_select_sibling_from_deep_origin, test_select_two_siblings_and_own_child.
+
+### what the strict matcher found (2026-07-30) — 7df986a
+
+`assertAlmostEqual` pairs rows with `zip_longest`, so a **surplus** result row was silently
+tolerated (the hazard noted in cluster 8). `tests/__init__.py::ExactMatcher` now fails on one, and
+three green tests turned red — both defects the same shape, a coordinate no document can occupy:
+
+- **a tuple edge has no null coordinate** (d12f2b7): a tuple always has a value, so the all-null
+  tuple is one of the observed partitions — and `dims` counted it again as the padded null slot,
+  giving the cube nine cells where list/table emit eight rows
+  (test_deep_edge_using_list, test_edge_using_tuple).
+- **a group is a group of documents of the origin** (c209d2d): `query.py` handed `_groupby_op` the
+  *fact* schema where `_edges_op` uses the query's own perspective, so a groupby from a nested
+  origin compiled as if the fact were the origin — and `sql_join_chain` then LEFT JOINed *down* to
+  the origin, inventing an all-null origin row per ancestor document with none. That row became an
+  empty group. The climb to the origin is now the caller's choice (`origin_join`): edges keeps the
+  stand-in (its null coordinate collects every row outside the domain and sums the ancestor's value
+  there — test_deep_edge_w_shallow_var's 25 includes the document with no `a` at all), a groupby has
+  no such bucket. An element merely *missing* the key still makes a null group
+  (test_deep_select_column_w_groupby).
+
 ## 2. Selecting objects / stars / leaves (setop formatting) — CLEARED (10 fixed, 1 reclustered)
 
 Shallow queries whose select clause is an object, `*`, leaves, or an array value
@@ -427,9 +471,10 @@ format, different data. Now tests the positive form.
 
 Also learned, and worth knowing before trusting any of these expectations: `assertAlmostEqual`
 pairs rows with `zip_longest` and a `None` expectation matches anything, so an **extra trailing row
-is silently tolerated** (a *missing* row is not). That is why an unpadded expectation can pass
+was silently tolerated** (a *missing* row never was). That is why an unpadded expectation could pass
 against a padded result, and why the null-row mismatches in this doc only ever surfaced when
-sorting misaligned them.
+sorting misaligned them. Closed by 7df986a (`ExactMatcher`) — see §what the strict matcher found;
+an expectation may still be *longer*, where a trailing null means "must not exist".
 
 **Open (Kyle's question): is groupby just an edge whose domain is "every value that occurs"?**
 Nothing measured above says otherwise — density and the default format are the only differences, and

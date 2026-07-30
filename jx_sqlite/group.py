@@ -26,6 +26,7 @@ from mo_sql.utils import sql_aggs
 from mo_sqlite import (
     SQL_FROM,
     SQL_GROUPBY,
+    SQL_INNER_JOIN,
     SQL_IS_NULL,
     SQL_ONE,
     SQL_ORDERBY,
@@ -48,7 +49,12 @@ def _groupby_op(self, query, schema):
     index_to_column = {}
     # TABLES ALIAS AS THEMSELVES (SEE sql_join_chain): NO SCHEMA RENAME NEEDED
     required_tables = {c.nested_path[0] for v in query.vars() for _, c in schema.leaves(v)}
-    nest_to_alias, from_sql = sql_join_chain(self.schema.snowflake, schema.nested_path[0], required_tables)
+    # A GROUP IS A GROUP OF DOCUMENTS OF THE ORIGIN, SO CLIMBING TO THE ORIGIN IS AN INNER JOIN:
+    # AN ANCESTOR DOCUMENT WITH NO ORIGIN ROW IS NOT IN THIS PERSPECTIVE, AND THE LEFT JOIN'S
+    # ALL-NULL STAND-IN FOR IT BECAME AN EMPTY GROUP THAT NO DOCUMENT OCCUPIES
+    nest_to_alias, from_sql = sql_join_chain(
+        self.schema.snowflake, schema.nested_path[0], required_tables, SQL_INNER_JOIN
+    )
     inner_schema = schema
 
     selects = []

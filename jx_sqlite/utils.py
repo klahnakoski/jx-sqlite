@@ -31,7 +31,7 @@ from mo_json.typed_encoder import untype_path
 from mo_logs import Log
 from mo_math import randoms
 from mo_sql.utils import SQL_KEYS, SQL_ARRAY_KEY, SQL_KEY_PREFIX, SQL_NUMBER_KEY, UID, GUID, ORDER, PARENT, COLUMN
-from mo_sqlite import ConcatSQL, SQL_EQ, SQL_LEFT_JOIN, SQL_ON, sql_alias
+from mo_sqlite import ConcatSQL, SQL_EQ, SQL_INNER_JOIN, SQL_LEFT_JOIN, SQL_ON, sql_alias
 from mo_sqlite.utils import quote_column
 from mo_times import Date
 
@@ -88,7 +88,7 @@ def table_alias(i):
     return "__t" + str(i) + "__"
 
 
-def sql_join_chain(snowflake, origin_path, required_tables=()):
+def sql_join_chain(snowflake, origin_path, required_tables=(), origin_join=SQL_LEFT_JOIN):
     """
     THE P2 JOIN-CHAIN (docs/INTERSECTION_SURVEY.md): LEFT JOIN, SPANNING TREE FROM THE FACT,
     ON child.__parent__ = parent.__id__.  COVERS THE ANCESTORS OF THE ORIGIN PLUS ANY
@@ -99,6 +99,12 @@ def sql_join_chain(snowflake, origin_path, required_tables=()):
     :param snowflake: PROVIDES query_paths
     :param origin_path: THE QUERY'S PERSPECTIVE (schema.nested_path[0])
     :param required_tables: TABLES HOLDING COLUMNS THE QUERY MENTIONS
+    :param origin_join: THE JOIN THAT CLIMBS DOWN TO THE ORIGIN.  LEFT KEEPS AN ALL-NULL ORIGIN ROW
+        FOR AN ANCESTOR DOCUMENT THAT HAS NO ORIGIN ROW - WHICH edges WANTS (ITS NULL COORDINATE
+        COLLECTS EVERY ROW OUTSIDE THE DOMAIN, INCLUDING THAT ONE, AND SUMS THE ANCESTOR'S VALUE
+        THERE) AND groupby DOES NOT (ITS GROUPS ARE THE DOCUMENTS OF THE ORIGIN).  THE JOINS OFF
+        THAT LINE - BELOW THE ORIGIN, OR A SIBLING - ARE ALWAYS LEFT, SO AN ORIGIN ROW SURVIVES
+        HAVING NONE OF THEM
     :return: (nest_to_alias, from_sql) - ALIAS FOR EVERY QUERY PATH, FROM-CLAUSE FRAGMENTS
     """
     nest_to_alias = {sub_table: sub_table for sub_table in snowflake.query_paths}
@@ -115,7 +121,7 @@ def sql_join_chain(snowflake, origin_path, required_tables=()):
             key=len,
         )
         from_sql.append(ConcatSQL(
-            SQL_LEFT_JOIN,
+            origin_join if startswith_field(origin_path, nest) else SQL_LEFT_JOIN,
             sql_alias(quote_column(nest), nest),
             SQL_ON,
             quote_column(nest, PARENT),

@@ -234,93 +234,46 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
     # THE SELECT CLAUSE'S OWN NAMES, LONGEST FIRST (SEE _push_name)
     term_names = sorted((t.name for t in plain_terms), key=len, reverse=True)
 
-    # EVERY SELECT STATEMENT THAT WILL BE REQUIRED, NO MATTER THE DEPTH
-    # WE WILL CREATE THEM ACCORDING TO THE DEPTH REQUIRED
+    # EVERY BRANCH GETS ITS NODE (AND uid PLUMBING) BEFORE ANY COLUMN IS PLACED, SO A
+    # CONTRIBUTOR MAY NAME ANY NODE - INCLUDING A LEVEL BETWEEN THE ORIGIN AND ITS OWN TABLE
     origin_doc_details = None  # REASSEMBLY ROOTS HERE (THE ORIGIN), NOT AT THE FACT
     for table_number, sub_table in enumerate(branches):
         nested_doc_details = builder.add_branch(sub_table, table_number)
         if sub_table == origin:
             origin_doc_details = nested_doc_details
         if (
-            sub_table != origin
-            and startswith_field(sub_table, origin)
+            not startswith_field(origin, sub_table)
             and any(startswith_field(wt, sub_table) for wt in where_tables)
         ):
-            # ON THE CHAIN FROM JUST-BELOW-ORIGIN DOWN TO A where TABLE: A PARENT WITH NO SURVIVING
-            # ROW HERE IS DROPPED, AND THE DROP BUBBLES UP TO THE ORIGIN.
+            # ON THE CHAIN FROM THE ORIGIN DOWN TO A where TABLE: A PARENT WITH NO SURVIVING ROW
+            # HERE IS DROPPED, AND THE DROP BUBBLES UP TO THE ORIGIN.  "NOT AT OR ABOVE THE
+            # ORIGIN" COVERS AN OFF-LINE BRANCH TOO: IT IS IN THE ORIGIN'S REASSEMBLY SUBTREE, SO
+            # A where ON A SIBLING FILTERS THAT SIBLING'S ARM AND DROPS THE ELEMENTS OF ANY
+            # DOCUMENT WHOSE SIBLING ROWS ALL FAILED.  WITHOUT THIS THE where WAS APPLIED ON THAT
+            # ARM AND THEN IGNORED - NOTHING DROPPED THE PARENT, SO EVERY ELEMENT SURVIVED.
             nested_doc_details.required = True
-        nested_path = nested_doc_details.nested_path
-        sub_schema = self.snowflake.get_schema(list(reversed([
-            t for t in self.snowflake.query_paths if startswith_field(sub_table, t)
-        ])))
 
-        # WE DO NOT NEED DATA FROM TABLES WE REQUEST NOTHING FROM
-        if sub_table not in active_paths:
-            continue
+    # A BRANCH OFF THE ORIGIN'S LINE HANGS UNDER THE ORIGIN, NOT UNDER THE FACT.  IT IS REACHED
+    # THROUGH THE COMMON ANCESTOR - THE DOCUMENT - AND THE PARENT IS REPEATED FOR EACH RECORD OF
+    # THE ORIGIN, SO EVERY ORIGIN ELEMENT SEES THE SAME ROWS AND THE ASSEMBLER COLLAPSES THEM
+    # INTO ONE MULTIVALUE APIECE.  place() PUT IT UNDER THE FACT (IT PLACES BY TABLE PREFIX) AND
+    # REASSEMBLY NEVER VISITS ABOVE THE ORIGIN, SO IT WOULD HAVE HAD NO ARM AT ALL.
+    for node in list(builder.primary_doc_details.children):
+        if not startswith_field(node.sub_table, origin) and not startswith_field(origin, node.sub_table):
+            builder.primary_doc_details.children.remove(node)
+            origin_doc_details.children.append(node)
+            _reroot(node, origin_doc_details.nested_path)
 
-        below_origin = sub_table != origin and startswith_field(sub_table, origin)
-        sub_selects = (deep_selects if below_origin else selects).partial_eval(SQLang).to_sql(sub_schema).expr
+    # WHAT EACH NODE ANSWERS.  TWO CONTRIBUTORS, ONE LIST OF (node, sql, push fields): THEY
+    # DIFFER ONLY IN HOW A COLUMN IS NAMED - BY THE SELECT TERM THAT CLAIMS IT, OR BY THE SLOT
+    # THAT CLAIMED THE BRANCH - WHICH IS A FIELD OF THE CONTRIBUTION, NOT A SECOND LOOP.
+    contributions = [
+        *_plain_columns(self.snowflake, builder.nodes, branches, active_paths, origin, selects, deep_selects, term_names),
+        *_slot_columns(self.snowflake, builder.nodes, subqueries, origin),
+    ]
+    for node, sql, push in contributions:
+        builder.add_column(node, sql, **push)
 
-        for i, term in enumerate(sub_selects.terms):
-            name, value = term.name, term.value
-            if is_op(value, LeavesOp):
-                Log.error("expecting SelectOp to subsume the LeavesOp")
-
-            container, container_path, push_column_child = _push_name(name, term_names)
-            # NAMES ARRIVE ESCAPED FIELD BY FIELD (join_field), SO THE ROOT "." READS AS "\b"
-            is_root = container == "."
-            builder.add_column(
-                nested_doc_details,
-                value,
-                # LIST FORMAT SPLATS THE "." CONTAINER INTO THE DOC ROOT
-                push_list_name=push_column_child if is_root else name,
-                # THE table/cube HEADER IS WHAT THE SELECT CLAUSE CALLED THIS - A NAME, NOT A PATH
-                push_column_name=container,
-                push_column_path=container_path,
-                push_column_child=push_column_child,
-                push_column_index=i,
-                nested_path=nested_path,
-            )
-
-    # EACH SUBQUERY ENTRY (INCL. A REWRITTEN DEEP NAME) IS A SLOT ON ITS TABLE'S NODE, COMPILED
-    # BRANCH-RELATIVE (NAMES LIKE "v","s", NOT "a._a.v").  TWO DEEP LEAVES a._a.v, a._a.s ARE TWO
-    # SLOTS ON THE SAME ROWS, EACH ASSEMBLING ITS OWN DOC, SO EACH COLLAPSES TO ITS OWN MULTIVALUE.
-    # THE SLOT'S DOC LANDS AT ITS TERM NAME; ITS COLUMNS ARE NAMED INSIDE THE ELEMENT, AND A COLUMN
-    # NAMED "." IS THE ELEMENT ITSELF (A BARE MULTIVALUE).  docs/INTERSECTION_SURVEY.md §7 STEP 3
-    origin_rel = untype_field(origin)[0]
-    for table_path, entries in subqueries.items():
-        sub_schema = self.snowflake.get_schema(list(reversed([
-            t for t in self.snowflake.query_paths if startswith_field(table_path, t)
-        ])))
-        for slot, source, inner_select in entries:
-            node = builder.nodes[table_path]
-            # THE SLOT'S ADDRESS AT EVERY LEVEL FROM BELOW THE ORIGIN DOWN TO THIS TABLE: THE TERM
-            # NAME PLUS THE PART OF THAT LEVEL INSIDE THE NAMED VALUE ("." WHILE THE NAME IS STILL
-            # AT OR INSIDE THE LEVEL).  NAMING EVERY LEVEL IS WHAT CARRIES A RENAME ACROSS AN
-            # INTERMEDIATE ARRAY - THE LEVELS BELOW LAND RELATIVE TO THE RENAMED ONE, NOT THE TABLE.
-            for level in self.snowflake.query_paths:
-                if level == origin or not startswith_field(level, origin) or not startswith_field(table_path, level):
-                    continue
-                level_rel = untype_field(relative_field(level, origin))[0]
-                inside = "." if startswith_field(source, level_rel) else relative_field(level_rel, source)
-                builder.nodes[level].slot_path.setdefault(
-                    slot, concat_field(origin_rel, concat_field(slot, inside))
-                )
-            for i, (name, value) in enumerate(inner_select):
-                sql = value.partial_eval(SQLang).to_sql(sub_schema)
-                container, push_column_child = tail_field(name)
-                builder.add_column(
-                    node,
-                    sql,
-                    slot=slot,
-                    push_list_name=push_column_child if unliteral_field(container) == "." else name,
-                    # THE HEADER IS THE TERM THAT CLAIMED THIS SLOT, NOT THE BRANCH-RELATIVE NAME
-                    push_column_name=slot,
-                    push_column_path=slot,
-                    push_column_child=push_column_child,
-                    push_column_index=i,
-                    nested_path=node.nested_path,
-                )
     where_clause = ToBooleanOp(query.where).partial_eval(SQLang).to_sql(schema)
     # ORDERING
     sorts = []
@@ -384,26 +337,31 @@ def _make_sql_for_one_nest_in_set_op(
     fact = self.snowflake.fact_name
 
     def arm_from(node):
-        # FROM fact, THEN JOIN DOWN node.nested_path (fact FIRST).  ORIGIN TABLE + PROPER ANCESTORS
-        # LEFT JOIN (JOIN-ONLY / EMPTY-ELEMENT); TABLES BELOW ORIGIN INNER JOIN (REAL ROWS ONLY).
+        # FROM fact, THEN JOIN DOWN THE ARM'S CHAIN (fact FIRST), EACH TABLE ON ITS *REAL* PARENT -
+        # THE LONGEST TABLE IN THE CHAIN THAT PREFIXES IT.  A BRANCH OFF THE ORIGIN'S LINE IS IN
+        # THE CHAIN BUT HANGS OFF THE COMMON ANCESTOR, NOT OFF THE TABLE ABOVE IT IN THE LIST.
+        # LEFT JOIN ONLY WHILE CLIMBING TO THE ORIGIN ON THE ORIGIN'S OWN ARM - THAT IS THE EMPTY
+        # ELEMENT (A DOCUMENT WITH NO CHILD STILL YIELDS ONE ROW).  EVERY OTHER ARM WANTS REAL
+        # ROWS, AND AN OFF-LINE TABLE IS NOT REACHED *THROUGH* THE ORIGIN, SO A LEFT JOIN THERE
+        # WOULD NOT BE FORCED BY THE ARM'S OWN INNER JOIN.
+        chain = list(reversed(node.nested_path))  # BUILDER'S COLUMNS REFERENCE TABLES BY FULL NAME
         parts = []
-        parent_alias = None
-        for table in reversed(node.nested_path):
-            alias = table  # BUILDER'S uid/VALUE COLUMNS REFERENCE TABLES BY FULL NAME
+        for table in chain:
             if table == fact:
                 parts.append(ConcatSQL(
                     SQL_FROM,
-                    SqlAliasOp(SqlVariable(fact, None, jx_type=self.schema.jx_type), alias),
+                    SqlAliasOp(SqlVariable(fact, None, jx_type=self.schema.jx_type), table),
                 ))
-            else:
-                join = SQL_INNER_JOIN if startswith_field(table, origin_path) and table != origin_path else SQL_LEFT_JOIN
-                parts.append(ConcatSQL(
-                    join,
-                    SqlAliasOp(SqlVariable(table, None), alias),
-                    SQL_ON,
-                    SqlEqOp(SqlVariable(alias, PARENT), SqlVariable(parent_alias, UID)),
-                ))
-            parent_alias = alias
+                continue
+            parent = max((t for t in chain if t != table and startswith_field(table, t)), key=len)
+            on_origin_line = startswith_field(origin_path, table)
+            join = SQL_LEFT_JOIN if on_origin_line and node.sub_table == origin_path else SQL_INNER_JOIN
+            parts.append(ConcatSQL(
+                join,
+                SqlAliasOp(SqlVariable(table, None), table),
+                SQL_ON,
+                SqlEqOp(SqlVariable(table, PARENT), SqlVariable(parent, UID)),
+            ))
         return parts
 
     def arm_select(owned):
@@ -422,11 +380,14 @@ def _make_sql_for_one_nest_in_set_op(
 
     def build(node, ancestor_owned):
         owned = ancestor_owned | _owned_of(node)
-        # THIS ARM MAY APPLY THE where ONLY IF EVERY TABLE IT REFERENCES IS JOINED HERE (AT OR ABOVE
-        # THIS NODE'S TABLE); OTHERWISE A DEEPER ARM FILTERS AND ITS BRANCH IS required.
+        # THIS ARM MAY APPLY THE where ONLY IF EVERY TABLE IT REFERENCES IS JOINED IN THIS ARM'S
+        # CHAIN; OTHERWISE A DEEPER ARM FILTERS AND ITS BRANCH IS required.  THE CHAIN, NOT
+        # "AT OR ABOVE THIS NODE'S TABLE": AN OFF-LINE BRANCH JOINS THE ORIGIN TOO, AND CARRIES
+        # ITS ANCESTORS' VALUE COLUMNS AS REAL - UNFILTERED, IT RE-EMITS ORIGIN ELEMENTS THE
+        # where HAD REMOVED.
         arm_where = (
             where_clause
-            if all(startswith_field(node.nested_path[0], wt) for wt in where_tables)
+            if all(any(startswith_field(t, wt) for t in node.nested_path) for wt in where_tables)
             else SQL_TRUE
         )
         arm = ConcatSQL(
@@ -460,6 +421,14 @@ def _land(doc, rel_field, value):
     return doc
 
 
+def _reroot(node, parent_nested_path):
+    # THE NODE (AND ITS SUBTREE) NOW HANGS UNDER A DIFFERENT PARENT: ITS nested_path IS THE ARM'S
+    # JOIN CHAIN, SO EVERY LEVEL BELOW IT MOVES TOO
+    node.nested_path = [node.sub_table, *parent_nested_path]
+    for child in node.children:
+        _reroot(child, node.nested_path)
+
+
 def _owned_of(node):
     # COLUMN INDICES A NODE OWNS: EVERY SLOT'S VALUE COLUMNS PLUS ITS uid/order PLUMBING.
     return set(i for cols in node.slot_columns.values() for i in cols) | set(node.uid_coords)
@@ -481,6 +450,98 @@ def _path_to(node, target):
         if below:
             return [node, *below]
     return None
+
+
+def _plain_columns(snowflake, nodes, branches, active_paths, origin, selects, deep_selects, term_names):
+    """
+    THE PLAIN SELECT'S COLUMNS, ONE COMPILE PER BRANCH.  A COLUMN IS NAMED BY WHICHEVER SELECT
+    TERM CLAIMS IT (_push_name).  KLUDGE (Kyle): THIS PER-BRANCH RE-INTERPRETATION OF THE SAME
+    NAMES IS THE WRONG SHAPE - THE SELECT SHOULD RESOLVE ONCE AT THE ORIGIN AND EACH BRANCH
+    MERELY PROJECT WHAT IT OWNS.  docs/NAMES.md #1
+    """
+    output = []
+    for sub_table in branches:
+        # WE DO NOT NEED DATA FROM TABLES WE REQUEST NOTHING FROM
+        if sub_table not in active_paths:
+            continue
+        # A BRANCH OFF THE ORIGIN'S LINE OWNS NO VALUES, SO IT IS NOT ASKED FOR ANY: AN ANCESTOR
+        # IS JOIN-ONLY (ITS VALUES REACH UP THROUGH THE ORIGIN'S OWN ARM) AND A SIBLING IS A
+        # FAN-OUT.  NEITHER HAS AN ARM, SO WHAT THEY USED TO CONTRIBUTE WAS DEAD - A NULL COLUMN
+        # PER VARIABLE TERM, AND A SECOND COPY OF EVERY EXPRESSION
+        if sub_table != origin and not startswith_field(sub_table, origin):
+            continue
+        node = nodes[sub_table]
+        sub_schema = snowflake.get_schema(list(reversed([
+            t for t in snowflake.query_paths if startswith_field(sub_table, t)
+        ])))
+        below_origin = sub_table != origin and startswith_field(sub_table, origin)
+        sub_selects = (deep_selects if below_origin else selects).partial_eval(SQLang).to_sql(sub_schema).expr
+
+        for i, term in enumerate(sub_selects.terms):
+            name, value = term.name, term.value
+            if is_op(value, LeavesOp):
+                Log.error("expecting SelectOp to subsume the LeavesOp")
+
+            container, container_path, push_column_child = _push_name(name, term_names)
+            # NAMES ARRIVE ESCAPED FIELD BY FIELD (join_field), SO THE ROOT "." READS AS "\b"
+            is_root = container == "."
+            output.append((node, value, dict(
+                # LIST FORMAT SPLATS THE "." CONTAINER INTO THE DOC ROOT
+                push_list_name=push_column_child if is_root else name,
+                # THE table/cube HEADER IS WHAT THE SELECT CLAUSE CALLED THIS - A NAME, NOT A PATH
+                push_column_name=container,
+                push_column_path=container_path,
+                push_column_child=push_column_child,
+                push_column_index=i,
+                nested_path=node.nested_path,
+            )))
+    return output
+
+
+def _slot_columns(snowflake, nodes, subqueries, origin):
+    """
+    EACH SUBQUERY ENTRY (INCL. A REWRITTEN DEEP NAME) IS A SLOT ON ITS TABLE'S NODE, COMPILED
+    BRANCH-RELATIVE (NAMES LIKE "v","s", NOT "a._a.v").  TWO DEEP LEAVES a._a.v, a._a.s ARE TWO
+    SLOTS ON THE SAME ROWS, EACH ASSEMBLING ITS OWN DOC, SO EACH COLLAPSES TO ITS OWN MULTIVALUE.
+    THE SLOT'S DOC LANDS AT ITS TERM NAME; ITS COLUMNS ARE NAMED INSIDE THE ELEMENT, AND A COLUMN
+    NAMED "." IS THE ELEMENT ITSELF (A BARE MULTIVALUE).  docs/INTERSECTION_SURVEY.md §7 STEP 3
+    """
+    origin_rel = untype_field(origin)[0]
+    output = []
+    for table_path, entries in subqueries.items():
+        sub_schema = snowflake.get_schema(list(reversed([
+            t for t in snowflake.query_paths if startswith_field(table_path, t)
+        ])))
+        for slot, source, inner_select in entries:
+            node = nodes[table_path]
+            # THE SLOT'S ADDRESS AT EVERY LEVEL FROM BELOW THE ORIGIN DOWN TO THIS TABLE: THE TERM
+            # NAME PLUS THE PART OF THAT LEVEL INSIDE THE NAMED VALUE ("." WHILE THE NAME IS STILL
+            # AT OR INSIDE THE LEVEL).  NAMING EVERY LEVEL IS WHAT CARRIES A RENAME ACROSS AN
+            # INTERMEDIATE ARRAY - THE LEVELS BELOW LAND RELATIVE TO THE RENAMED ONE, NOT THE TABLE.
+            for level in snowflake.query_paths:
+                if level == origin or not startswith_field(level, origin) or not startswith_field(table_path, level):
+                    continue
+                level_rel = untype_field(relative_field(level, origin))[0]
+                inside = "." if startswith_field(source, level_rel) else relative_field(level_rel, source)
+                nodes[level].slot_path.setdefault(slot, concat_field(origin_rel, concat_field(slot, inside)))
+            if not startswith_field(table_path, origin):
+                # OFF THE ORIGIN'S LINE: NO LEVELS IN BETWEEN (THE BRANCH HANGS OFF THE COMMON
+                # ANCESTOR), SO THE SLOT'S DOC LANDS DIRECTLY IN THE ORIGIN ELEMENT'S DOC
+                node.slot_path.setdefault(slot, concat_field(origin_rel, slot))
+            for i, (name, value) in enumerate(inner_select):
+                sql = value.partial_eval(SQLang).to_sql(sub_schema)
+                container, push_column_child = tail_field(name)
+                output.append((node, sql, dict(
+                    slot=slot,
+                    push_list_name=push_column_child if unliteral_field(container) == "." else name,
+                    # THE HEADER IS THE TERM THAT CLAIMED THIS SLOT, NOT THE BRANCH-RELATIVE NAME
+                    push_column_name=slot,
+                    push_column_path=slot,
+                    push_column_child=push_column_child,
+                    push_column_index=i,
+                    nested_path=node.nested_path,
+                )))
+    return output
 
 
 def _partition_terms(terms, schema, origin):
@@ -572,7 +633,11 @@ def _branch_split(term, schema, origin):
     for resolved in schema.leaves(var):
         _, col = resolved
         table_path = col.nested_path[0]
-        if table_path == origin or not startswith_field(table_path, origin):
+        if startswith_field(origin, table_path):
+            # AT OR ABOVE THE ORIGIN: ONE VALUE PER ELEMENT, WHICH THE ORIGIN'S OWN ARM HAS.
+            # ANYTHING ELSE IS A BRANCH - BELOW THE ORIGIN, OR OFF ITS LINE ENTIRELY (A SIBLING
+            # ARRAY, REACHED THROUGH THE COMMON ANCESTOR: THE DOCUMENT'S OWN VALUES, SEEN BY
+            # EVERY ELEMENT OF THE ORIGIN)
             shallow = True
             continue
         groups.setdefault(table_path, {}).setdefault(resolved.push_child, []).append(col)
