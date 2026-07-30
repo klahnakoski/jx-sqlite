@@ -112,6 +112,11 @@ def format_flat(result, query, index_to_columns):
                 )
                 parts = [tuple(p(d) for p in pulls) for d in result.data]
                 domain = SimpleSetDomain(partitions=jx.sort(set(parts)))
+                # A TUPLE ALWAYS HAS A VALUE, SO THERE IS NO NULL COORDINATE TO PAD: THE ALL-NULL
+                # TUPLE IS ONE OF THE OBSERVED PARTITIONS ABOVE.  COUNTING IT TWICE GAVE THE CUBE
+                # ONE CELL MORE THAN THE list/table FORMATS EMIT ROWS, AND THE SURPLUS CELL - THE
+                # ONE NO DOCUMENT CAN REACH - CAME BACK NULL
+                allowNulls = False
             else:
                 if not columns:
                     columns = transpose(*result.data)
