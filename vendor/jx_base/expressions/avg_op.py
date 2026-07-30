@@ -10,6 +10,8 @@
 
 
 from jx_base.expressions.expression import Expression
+from jx_base.utils import enlist
+from mo_dots import Null, exists
 from mo_json import JX_NUMBER
 
 
@@ -26,6 +28,12 @@ class AvgOp(Expression):
         Expression.__init__(self, frum)
         self.frum = frum
 
+    def __call__(self, row=None, rownum=None, rows=None):
+        values = [v for v in enlist(self.frum(row, rownum, rows)) if exists(v)]
+        if not values:
+            return Null
+        return sum(values) / len(values)
+
     def __data__(self):
         return {"avg": self.frum.__data__()}
 
@@ -39,4 +47,4 @@ class AvgOp(Expression):
         return AvgOp(frum=self.frum.map(map_))
 
     def partial_eval(self, lang):
-        return AvgOp(frum=self.frum.partial_eval(lang))
+        return lang.AvgOp(frum=self.frum.partial_eval(lang))

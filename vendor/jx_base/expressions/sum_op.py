@@ -12,6 +12,7 @@ from mo_logs import logger
 from jx_base.expressions.add_op import AddOp
 
 from jx_base.expressions import Expression
+from jx_base.utils import enlist
 from mo_dots import exists
 from mo_json import JX_NUMBER
 
@@ -25,16 +26,11 @@ class SumOp(Expression):
     _jx_type = JX_NUMBER
 
     def __new__(cls, *terms, frum=None):
-        if frum is not None:
-            op = object.__new__(SumOp)
-            op.__init__(frum=frum)
-            return op
-        elif len(terms) > 1:
+        if frum is None and len(terms) > 1:
             return AddOp(*terms, nulls=True)
-        else:
-            op = object.__new__(SumOp)
-            op.__init__(frum=terms[0])
-            return op
+        # object.__new__(cls), NOT object.__new__(SumOp): THE LANGUAGE-SPECIFIC SUBCLASS MUST
+        # SURVIVE, OR partial_eval RETURNS A JX OP TO A lang THAT ASKED FOR ITS OWN
+        return object.__new__(cls)
 
     def __init__(self, *terms, frum=None):
         if terms:
@@ -43,7 +39,7 @@ class SumOp(Expression):
         self.frum = frum
 
     def __call__(self, row=None, rownum=None, rows=None):
-        return sum(v for v in self.frum(row, rownum, rows) if exists(v))
+        return sum(v for v in enlist(self.frum(row, rownum, rows)) if exists(v))
 
     def __data__(self):
         return {"sum": self.frum.__data__()}
@@ -58,4 +54,4 @@ class SumOp(Expression):
         return SumOp(frum=self.frum.map(map_))
 
     def partial_eval(self, lang):
-        return SumOp(frum=self.frum.partial_eval(lang))
+        return lang.SumOp(frum=self.frum.partial_eval(lang))

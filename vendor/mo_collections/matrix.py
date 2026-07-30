@@ -11,6 +11,7 @@
 
 from mo_dots import Data, Null, coalesce, get_module, is_sequence
 from mo_future import text, transpose, xrange
+from mo_kwargs import override
 from mo_logs import Log
 
 
@@ -21,8 +22,9 @@ class Matrix:
 
     ZERO = None
 
+    @override
     def __init__(self, dims=[], list=None, value=None, zeros=None, kwargs=None):
-        if list:
+        if list != None:
             self.num = 1
             self.dims = (len(list),)
             self.cube = list
@@ -33,6 +35,9 @@ class Matrix:
             self.dims = tuple()
             self.cube = value
             return
+
+        if any(d < 0 for d in dims):
+            Log.error("Expecting non-negative dimensions, not {dims}", dims=dims)
 
         self.num = len(dims)
         self.dims = tuple(dims)
@@ -52,18 +57,18 @@ class Matrix:
 
     @staticmethod
     def wrap(array):
-        output = Matrix(dims=(1,))
-        output.dims = (len(array),)
-        output.cube = array
-        return output
+        return Matrix(list=array)
 
     def __getitem__(self, index):
         if not is_sequence(index):
             if isinstance(index, slice):
+                if self.num == 0:
+                    Log.error("can not slice a matrix with no dimensions")
+                # THE SLICE APPLIES TO THE FIRST DIMENSION, THE REST ARE UNTOUCHED
                 sub = self.cube[index]
                 output = Matrix()
-                output.num = 1
-                output.dims = (len(sub),)
+                output.num = self.num
+                output.dims = (len(sub),) + self.dims[1:]
                 output.cube = sub
                 return output
             else:
@@ -71,6 +76,11 @@ class Matrix:
 
         if len(index) == 0:
             return self.cube
+
+        if len(index) > self.num:
+            Log.error(
+                "Expecting coordinates to have no more than {num} dimensions, not {index}", num=self.num, index=index,
+            )
 
         dims, cube = _getitem(self.cube, index)
 
@@ -84,29 +94,25 @@ class Matrix:
         return output
 
     def __setitem__(self, key, value):
+        if isinstance(key, int):
+            key = (key,)
+        if not is_sequence(key) or len(key) != self.num:
+            Log.error(
+                "Expecting coordinates to match the {num} dimensions, not {key}", num=self.num, key=key,
+            )
+
+        if self.num == 0:
+            self.cube = value
+            return
+
+        last = self.num - 1
         try:
-            if self.num == 1:
-                if isinstance(key, int):
-                    key = (key,)
-                elif len(key) != 1:
-                    Log.error("Expecting coordinates to match the number of dimensions")
-            elif len(key) != self.num:
-                Log.error("Expecting coordinates to match the number of dimensions")
-
-            if self.num == 0:
-                self.cube = value
-                return
-
-            last = self.num - 1
             m = self.cube
             for k in key[0:last:]:
                 m = m[k]
-            try:
-                m[key[last]] = value
-            except Exception as cause:
-                raise Log.error("problem", cause=cause)
-        except Exception as e:
-            Log.error("can not set item", e)
+            m[key[last]] = value
+        except Exception as cause:
+            Log.error("can not set item at {key}", key=key, cause=cause)
 
     def __bool__(self):
         return self.cube != None
@@ -115,8 +121,7 @@ class Matrix:
         return self.cube != None
 
     def __len__(self):
-        if self.num == 0:
-            return 0
+        # NUMBER OF VALUES IN THIS CUBE; NO DIMENSIONS IS STILL ONE VALUE
         return _product(self.dims)
 
     @property
@@ -133,11 +138,11 @@ class Matrix:
 
     def __eq__(self, other):
         if other == None:
-            if self.num:
-                return False
-            else:
-                return self.cube == other
-        return self.value == other
+            return not self.num and self.cube == None
+        if isinstance(other, Matrix):
+            return self.dims == other.dims and self.cube == other.cube
+        # COMPARE THE WHOLE CUBE; A DIMENSIONAL MATRIX MATCHES ITS NESTED LISTS
+        return self.cube == other
 
     def __add__(self, other):
         return self.value + other
@@ -170,15 +175,10 @@ class Matrix:
         return other / self.value
 
     def __iter__(self):
-        if not self.dims:
-            yield (tuple(), self.value)
-        else:
-            # TODO: MAKE THIS FASTER BY NOT CALLING __getitem__ (MAKES CUBE OBJECTS)
-            for c in self._all_combos():
-                yield (c, self[c])
+        return self.items()
 
     def __float__(self):
-        return self.value
+        return float(self.value)
 
     def groupby(self, io_select):
         """
@@ -187,15 +187,23 @@ class Matrix:
         return -
         """
 
+        if len(io_select) != self.num:
+            Log.error(
+                "Expecting io_select to have {num} dimensions, not {io_select}", num=self.num, io_select=io_select,
+            )
+
         # offsets WILL SERVE TO MASK DIMS WE ARE NOT GROUPING BY, AND SERVE AS RELATIVE INDEX FOR EACH COORDINATE
+        # ONLY THE GROUPED DIMS CONTRIBUTE TO THE OFFSET, SO THE OUTPUT HAS ONE ENTRY PER GROUP
         offsets = []
         new_dim = []
         acc = 1
-        for i, d in reversed(enumerate(self.dims)):
-            if not io_select[i]:
+        for i, d in reversed(list(enumerate(self.dims))):
+            if io_select[i]:
+                offsets.insert(0, acc)
+                acc *= d
+            else:
                 new_dim.insert(0, d)
-            offsets.insert(0, acc * io_select[i])
-            acc *= d
+                offsets.insert(0, 0)
 
         if not new_dim:
             # WHEN groupby ALL DIMENSIONS, ONLY THE VALUES REMAIN
@@ -211,7 +219,7 @@ class Matrix:
 
     def aggregate(self, type):
         func = aggregates[type]
-        if not type:
+        if not func:
             Log.error("Aggregate of type {type} is not supported yet", type=type)
 
         return func(self.num, self.cube)
@@ -321,30 +329,27 @@ def _groupby(cube, depth, intervals, offset, output, group, new_coord):
 
 
 def _getitem(c, i):
-    if len(i) == 1:
-        select = i[0]
-        if select == None:
-            return (len(c),), c
-        elif isinstance(select, slice):
-            sub = c[select]
-            dims, cube = transpose(*[_getitem(cc, i[1::]) for cc in sub])
-            return (len(cube),) + dims[0], cube
-        else:
-            return (), c[select]
-    else:
-        select = i[0]
-        if isinstance(select, int):
+    if len(i) == 0:
+        # ALL COORDINATES CONSUMED, THE REST OF THE CUBE IS THE VALUE
+        return (), c
 
-            return _getitem(c[select], i[1::])
-        elif select == None:
-            dims, cube = transpose(*[_getitem(cc, i[1::]) for cc in c])
-            return (len(cube),) + dims[0], cube
-        elif isinstance(select, slice):
-            sub = c[select]
-            dims, cube = transpose(*[_getitem(cc, i[1::]) for cc in sub])
-            return (len(cube),) + dims[0], cube
-        else:
-            return _getitem(c[select], i[1::])
+    select = i[0]
+    if select == None:
+        return _sub_cube(c, i[1::])
+    elif isinstance(select, slice):
+        return _sub_cube(c[select], i[1::])
+    else:
+        return _getitem(c[select], i[1::])
+
+
+def _sub_cube(sub, i):
+    """
+    APPLY THE REMAINING COORDINATES TO EACH MEMBER OF sub
+    """
+    if not sub:
+        return (0,), []
+    dims, cube = transpose(*[_getitem(cc, i) for cc in sub])
+    return (len(cube),) + dims[0], list(cube)
 
 
 def _zero_dim(value):
@@ -410,7 +415,7 @@ def _MIN(values):
 
 
 def _MAX(values):
-    output = Null
+    output = None
     for v in values:
         if v == None:
             continue
