@@ -12,7 +12,7 @@ from jx_base.domains import SimpleSetDomain
 from jx_base.expressions import TupleOp, NULL, SqlScript
 from jx_base.language import is_op
 from jx_python import jx
-from mo_collections.matrix import Matrix, index_to_coordinate
+from mo_collections.tensor import Tensor, index_to_coordinate
 from mo_dots import (
     Data,
     to_data,
@@ -73,9 +73,9 @@ def format_flat(result, query, index_to_columns):
             data = {}
             for si, s in enumerate(query.select.terms):
                 if s.aggregate == "count":
-                    data[s.name] = Matrix(dims=dims, zeros=0)
+                    data[s.name] = Tensor(dims=dims, zeros=0)
                 else:
-                    data[s.name] = Matrix(dims=dims)
+                    data[s.name] = Tensor(dims=dims)
 
             select = [{"name": s.name} for s in query.select.terms]
 
@@ -133,7 +133,7 @@ def format_flat(result, query, index_to_columns):
             dims.append(len(domain.partitions) + (1 if allowNulls else 0))
             edges.append(Data(name=e.name, allowNulls=allowNulls, domain=domain))
 
-        data_cubes = {s.name: Matrix(dims=dims) for s in query.select.terms}
+        data_cubes = {s.name: Tensor(dims=dims) for s in query.select.terms}
 
         r2c = index_to_coordinate(dims)  # WORKS BECAUSE THE DATABASE SORTED THE EDGES TO CONFORM
         for record, row in enumerate(result.data):
