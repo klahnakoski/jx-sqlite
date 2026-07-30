@@ -1780,6 +1780,32 @@ class TestDeepOps(BaseTestCase):
         self.utils.execute_tests(test)
 
     @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
+    def test_select_sibling_of_origin(self):
+        # `a` AND `k` ARE BOTH ARRAYS OF THE FACT.  FROM AN `a` ELEMENT THERE ARE MANY `k`, SO
+        # `k` IS A FAN-OUT, NOT A PROPERTY OF THAT DOCUMENT: IT HAS NO VALUE HERE, LIKE ANY NAME
+        # THE PERSPECTIVE CAN NOT REACH.  CONTRAST `o`, ONE VALUE PER ELEMENT (UP-REACH), AND
+        # CONTRAST `select *` FROM THE SAME ORIGIN, WHICH DOES NOT OFFER `k` AT ALL.
+        test = {
+            "data": [
+                {"o": 1, "a": [{"v": 1}, {"v": 2}], "k": [{"z": 9}]},
+                {"o": 2, "a": [{"v": 3}], "k": [{"z": 8}, {"z": 7}]},
+            ],
+            "query": {
+                "from": concat_field(TEST_TABLE, "a"),
+                "select": ["v", "o", "k.z"],
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"v": 1, "o": 1, "k":{"z": 9}},
+                    {"v": 2, "o": 1, "k":{"z": 9}},
+                    {"v": 3, "o": 2, "k":{"z": [8, 7]}},
+                ],
+            },
+        }
+        self.utils.execute_tests(test)
+
+    @skipIf(global_settings.use in {"python", "interpret"}, "jx_python known failure")
     @skipIf(global_settings.use == "sqlite", "needs ..* (parent-star) relative names")
     def test_deep_star_w_parent(self):
         # SELECTING * IS LIKE . BUT WITH DIFFERENT COLUMN NAMES

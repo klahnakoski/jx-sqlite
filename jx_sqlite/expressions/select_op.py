@@ -32,18 +32,17 @@ class SelectOp(_SelectOp):
         # AND BRANCHES MERELY PROJECT; SEE docs/NAMES.md
         query_origin = getattr(self.frum, "nested_path", [None])[0]
         at_origin = query_origin is None or schema.nested_path[0] == query_origin
-        branch_depth = len(schema.nested_path)
         if at_origin:
-            branch_prefix = "."
-            keep = lambda col: len(col.nested_path) <= branch_depth  # UP-REACH ONLY
-        elif startswith_field(schema.nested_path[0], query_origin):
-            # BRANCH BELOW THE ORIGIN: OWNS EXACTLY ITS OWN COLUMNS
-            branch_prefix = untype_field(relative_field(schema.nested_path[0], query_origin))[0]
-            keep = lambda col: col.nested_path[0] == schema.nested_path[0]
+            # UP-REACH ONLY, AND UP MEANS *THIS LINE*: A COLUMN AT THIS TABLE OR AN ANCESTOR OF
+            # IT IS ONE VALUE PER ROW.  A DESCENDANT HAS MANY ROWS (ITS OWN BRANCH'S JOB), AND A
+            # TABLE OFF THE LINE - A SIBLING ARRAY - IS A FAN-OUT, NOT A PROPERTY OF THIS
+            # DOCUMENT.  A DEPTH TEST (`len(col.nested_path) <= len(schema.nested_path)`) LET A
+            # SIBLING THROUGH, BECAUSE IT SITS AT THE SAME DEPTH: THE ARM EMITTED A REFERENCE TO
+            # A TABLE IT NEVER JOINS (`no such column: testing.k.$A.z.$N`)
+            keep = lambda col: startswith_field(schema.nested_path[0], col.nested_path[0])
         else:
-            # BRANCH ABOVE THE ORIGIN: UID/ORDER PLUMBING ONLY, NO VALUES
-            branch_prefix = "."
-            keep = lambda col: False
+            # BRANCH BELOW THE ORIGIN: OWNS EXACTLY ITS OWN COLUMNS
+            keep = lambda col: col.nested_path[0] == schema.nested_path[0]
 
         jx_type = JX_IS_NULL
         sql_terms = []
