@@ -15,7 +15,7 @@ from mo_kwargs import override
 from mo_logs import Log
 
 
-class Matrix:
+class Tensor:
     """
     SIMPLE n-DIMENSIONAL ARRAY OF OBJECTS
     """
@@ -57,14 +57,14 @@ class Matrix:
 
     @staticmethod
     def wrap(array):
-        return Matrix(list=array)
+        return Tensor(list=array)
 
     @staticmethod
-    def _sub_matrix(dims, cube):
+    def _sub_tensor(dims, cube):
         """
-        FAST PATH FOR THE SUB-MATRICES MADE BY __getitem__; ALL PROPERTIES ARE KNOWN
+        FAST PATH FOR THE SUB-TENSORS MADE BY __getitem__; ALL PROPERTIES ARE KNOWN
         """
-        output = Matrix.__new__(Matrix)
+        output = Tensor.__new__(Tensor)
         output.num = len(dims)
         output.dims = dims
         output.cube = cube
@@ -74,10 +74,10 @@ class Matrix:
         if not is_sequence(index):
             if isinstance(index, slice):
                 if self.num == 0:
-                    Log.error("can not slice a matrix with no dimensions")
+                    Log.error("can not slice a tensor with no dimensions")
                 # THE SLICE APPLIES TO THE FIRST DIMENSION, THE REST ARE UNTOUCHED
                 sub = self.cube[index]
-                return Matrix._sub_matrix((len(sub),) + self.dims[1:], sub)
+                return Tensor._sub_tensor((len(sub),) + self.dims[1:], sub)
             elif self.num == 1:
                 return self.cube[index]  # SIMPLE VALUE
             else:
@@ -95,7 +95,7 @@ class Matrix:
         if len(dims) == 0:
             return cube  # SIMPLE VALUE
 
-        return Matrix._sub_matrix(dims, cube)
+        return Tensor._sub_tensor(dims, cube)
 
     def __setitem__(self, key, value):
         if isinstance(key, int):
@@ -143,9 +143,9 @@ class Matrix:
     def __eq__(self, other):
         if other == None:
             return not self.num and self.cube == None
-        if isinstance(other, Matrix):
+        if isinstance(other, Tensor):
             return self.dims == other.dims and self.cube == other.cube
-        # COMPARE THE WHOLE CUBE; A DIMENSIONAL MATRIX MATCHES ITS NESTED LISTS
+        # COMPARE THE WHOLE CUBE; A DIMENSIONAL TENSOR MATCHES ITS NESTED LISTS
         return self.cube == other
 
     def __add__(self, other):
@@ -186,7 +186,7 @@ class Matrix:
 
     def groupby(self, io_select):
         """
-        SLICE THIS MATRIX INTO ONES WITH LESS DIMENSIONALITY
+        SLICE THIS TENSOR INTO ONES WITH LESS DIMENSIONALITY
         io_select - 1 IF GROUPING BY THIS DIMENSION, 0 IF FLATTENING
         return -
         """
@@ -216,7 +216,7 @@ class Matrix:
             # v - VALUE AT GIVEN COORDINATES
             return ((c, self[c]) for c in self._all_combos())
         else:
-            output = [[None, Matrix(dims=new_dim)] for i in range(acc)]
+            output = [[None, Tensor(dims=new_dim)] for i in range(acc)]
             _groupby(self.cube, 0, offsets, 0, output, tuple(), [])
 
         return output
@@ -260,13 +260,13 @@ class Matrix:
             yield tuple(int(c / dd) % mm for dd, mm in calc)
 
     def __str__(self):
-        return "Matrix " + get_module("mo_json").value2json(self.dims) + ": " + str(self.cube)
+        return "Tensor " + get_module("mo_json").value2json(self.dims) + ": " + str(self.cube)
 
     def __data__(self):
         return self.cube
 
 
-Matrix.ZERO = Matrix(value=None)
+Tensor.ZERO = Tensor(value=None)
 
 
 def _max(depth, cube):

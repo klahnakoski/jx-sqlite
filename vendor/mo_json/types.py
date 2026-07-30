@@ -404,7 +404,9 @@ _python_type_to_json_type = {
     datetime: TIME,
     date: TIME,
     list: ARRAY,
+    tuple: ARRAY,
     set: ARRAY,
+    FlatList: ARRAY,
     dict: OBJECT,
     Data: OBJECT,
 }
