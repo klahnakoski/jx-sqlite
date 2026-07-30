@@ -51,6 +51,7 @@ def build_names(query_paths, columns, origin: str) -> Names:
         names = {}
         aliases = {}
         boundaries = {}
+        fan_out = {}
         for c in columns:
             home = c.nested_path[0]  # THE TABLE THIS COLUMN LIVES IN (AUTHORITATIVE, NOT es_index)
             if not startswith_field(home, table):
@@ -60,6 +61,11 @@ def build_names(query_paths, columns, origin: str) -> Names:
             names.setdefault(untyped_name, []).append(c)
             # THE ARRAY HOLDING THE VALUE, RELATIVE TO THIS SCOPE ("." = THE SCOPE'S OWN TABLE)
             boundaries.setdefault(untyped_name, []).append(untype_field(relative_field(home, table))[0])
+            # ON THE PERSPECTIVE'S LINE (ANCESTOR, SELF, OR DESCENDANT OF origin) = ONE VALUE PER
+            # ELEMENT OF THE PERSPECTIVE.  ANYTHING ELSE IS A SIBLING/COUSIN ARRAY: A FAN-OUT
+            fan_out.setdefault(untyped_name, []).append(
+                not startswith_field(home, origin) and not startswith_field(origin, home)
+            )
             if i == 0:
                 aliases.setdefault(typed_name, []).append(c)
         scopes.append(Scope(
@@ -67,5 +73,6 @@ def build_names(query_paths, columns, origin: str) -> Names:
             {k: tuple(v) for k, v in aliases.items()},
             root_is_array=(table != fact),
             boundaries={k: tuple(v) for k, v in boundaries.items()},
+            fan_out={k: tuple(v) for k, v in fan_out.items()},
         ))
     return Names(scopes)
