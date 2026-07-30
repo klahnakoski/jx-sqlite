@@ -59,6 +59,17 @@ class Matrix:
     def wrap(array):
         return Matrix(list=array)
 
+    @staticmethod
+    def _sub_matrix(dims, cube):
+        """
+        FAST PATH FOR THE SUB-MATRICES MADE BY __getitem__; ALL PROPERTIES ARE KNOWN
+        """
+        output = Matrix.__new__(Matrix)
+        output.num = len(dims)
+        output.dims = dims
+        output.cube = cube
+        return output
+
     def __getitem__(self, index):
         if not is_sequence(index):
             if isinstance(index, slice):
@@ -66,16 +77,11 @@ class Matrix:
                     Log.error("can not slice a matrix with no dimensions")
                 # THE SLICE APPLIES TO THE FIRST DIMENSION, THE REST ARE UNTOUCHED
                 sub = self.cube[index]
-                output = Matrix()
-                output.num = self.num
-                output.dims = (len(sub),) + self.dims[1:]
-                output.cube = sub
-                return output
+                return Matrix._sub_matrix((len(sub),) + self.dims[1:], sub)
+            elif self.num == 1:
+                return self.cube[index]  # SIMPLE VALUE
             else:
-                return self.cube[index]
-
-        if len(index) == 0:
-            return self.cube
+                index = (index,)
 
         if len(index) > self.num:
             Log.error(
@@ -83,15 +89,13 @@ class Matrix:
             )
 
         dims, cube = _getitem(self.cube, index)
+        # THE DIMENSIONS NO COORDINATE REACHED ARE UNTOUCHED
+        dims = dims + self.dims[len(index) :]
 
         if len(dims) == 0:
             return cube  # SIMPLE VALUE
 
-        output = Matrix(dims=[])
-        output.num = len(dims)
-        output.dims = dims
-        output.cube = cube
-        return output
+        return Matrix._sub_matrix(dims, cube)
 
     def __setitem__(self, key, value):
         if isinstance(key, int):
