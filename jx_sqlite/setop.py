@@ -9,13 +9,12 @@
 #
 from typing import List, Dict, Tuple
 
-from jx_base import Column, is_op, FALSE
+from jx_base import is_op, FALSE
 from jx_base.expressions import NULL, SqlScript, SelectOp, Variable, Literal
 from jx_base.expressions.select_op import SelectOne
 from jx_base.expressions.variable import is_variable
 from jx_base.expressions.sql_is_null_op import SqlIsNullOp
 from jx_base.expressions.sql_order_by_op import OneOrder
-from jx_base.utils import GUID
 from jx_sqlite.builder import DocumentDetails, BranchBuilder
 from jx_sqlite.expressions.coalesce_op import CoalesceOp
 from jx_sqlite.expressions.leaves_op import LeavesOp
@@ -43,7 +42,7 @@ from mo_dots import (
     unliteral_field,
 )
 from mo_future import extend, first
-from mo_json.types import OBJECT, jx_type_to_json_type, JX_ANY, STRING, INTEGER, JX_TEXT, JX_INTEGER
+from mo_json.types import jx_type_to_json_type, JX_ANY, JX_TEXT, JX_INTEGER
 from mo_logs import Log
 from mo_sql import SQL_DESC, SQL_ASC, NO_SQL, SQL_TRUE, SQL_INNER_JOIN
 from mo_sql.utils import untype_field
@@ -62,7 +61,6 @@ from mo_sqlite import SQLang
 from mo_sqlite import sql_alias
 from mo_sqlite.expressions import SqlVariable, SqlOrderByOp, SqlEqOp, SqlAliasOp
 from mo_sqlite.expressions.sql_script import SqlScript
-from mo_times import Date
 
 
 @extend(Facts)
@@ -178,110 +176,24 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
     # EACH SELECT VALUE BELONGS AT QUERY DEPTH, FIND LEAST DEEP FOR EACH (AND THE VARIABLES REQUIRED)
 
     schema = query.frum.schema
-    known_vars = schema.keys()
-
-    # PARTITION SELECT TERMS INTO BRANCHES.  A SUBQUERY VALUE (SelectOp OVER A NESTED FromOp)
-    # AND A NAME REACHING BELOW THE ORIGIN ("a._a.v", "_a", ".") ARE THE SAME THING: A DEEP
-    # GROUP - ITS OWN BRANCH SELECTING BRANCH-RELATIVE COLUMNS.  KYLE'S RULE: A DEEP-LEAF PATH
-    # `a._a.v` IS SUGAR FOR `{"from":"a._a","select":"v","name":"a._a.v"}` (SPLIT AT THE ARRAY
-    # BOUNDARY); _branch_split GENERALIZES THAT SPLIT TO A NAME THAT REACHES SEVERAL TABLES,
-    # ASKING Names WHERE EACH BINDING LANDS.  READ THE PRE-partial_eval TERMS: partial_eval
-    # FLATTENS BOTH BACK TO PATHS.  docs/INTERSECTION_SURVEY.md §7 STEPS 1-2
     origin = query.frum.nested_path[0]
-    plain_terms = []
-    subqueries = {}  # branch table path -> list of (outer name, [(inner name, inner value), ...])
-    # A TERM CARRYING AN aggregate DECLARATION IS READ AS ITS OPERATOR FORM (SelectOne.expr):
-    # ROUTED HERE, IT IS A COLLECTION AGGREGATE OF ONE DOCUMENT (ToListOp DOES ITS OWN FROM), SO
-    # IT NEEDS NO BRANCH - `.value` WOULD HAND US THE BARE NESTED NAME AND BUILD ONE.  THE TWO
-    # ARE THE SAME OBJECT FOR EVERY OTHER TERM.  query.py::_is_per_document
-    for term in query.select.terms:
-        if is_op(term.expr, SelectOp):
-            rel = first(term.expr.frum.vars())
-            table_path = first(c.nested_path[0] for _, c in schema.leaves(rel))
-            inner = []
-            for inner_term in term.expr.terms:
-                if inner_term.aggregate is not NULL and is_variable(inner_term.value):
-                    # AN AGGREGATE INSIDE THE SUBQUERY COLLAPSES ITS ROWS, SO IT IS A SCALAR OF
-                    # THE OUTER DOCUMENT, NOT A BRANCH: SAME OPERATOR, ORIGIN-ROOTED NAME.  A
-                    # ONE-TERM SUBQUERY *IS* ITS TERM, SO THE OUTER NAME IS THE WHOLE NAME
-                    plain_terms.append(SelectOne(
-                        term.name if len(term.expr.terms) == 1 else concat_field(term.name, inner_term.name),
-                        Variable(concat_field(rel, inner_term.value.var)),
-                        aggregate=inner_term.aggregate,
-                    ))
-                else:
-                    inner.append((inner_term.name, inner_term.expr))
-            if inner:
-                subqueries.setdefault(table_path, []).append((term.name, rel, inner))
-            continue
-        if is_variable(term.expr):
-            # EACH TABLE THE NAME REACHES -> ITS OWN SUBQUERY ENTRY = ITS OWN SLOT ON THAT TABLE,
-            # SO a._a.v -> list AND a._a.s -> scalar COLLAPSE INDEPENDENTLY.  A NAME WITH BINDINGS
-            # AT OR ABOVE THE ORIGIN TOO (`.` OVER A DOC WITH A NESTED ARRAY) KEEPS ITS PLAIN TERM
-            # FOR THOSE.  docs/INTERSECTION_SURVEY.md §7 STEP 3
-            deep, shallow = _branch_split(term, schema, origin)
-            for table_path, entry in deep.items():
-                subqueries.setdefault(table_path, []).append(entry)
-            if deep and not shallow:
-                continue
-        plain_terms.append(term)
-
+    plain_terms, subqueries = _partition_terms(query.select.terms, schema, origin)
     plain_select = SelectOp(query.select.frum, *plain_terms)
 
-    # GET LIST OF SELECTED COLUMNS.  join_vars, NOT vars: A COLLECTION AGGREGATE READS ITS NESTED
-    # COLUMN THROUGH ITS OWN FROM (ToListOp), SO IT NEEDS NO BRANCH - AND MUST NOT HAVE ONE, OR THE
-    # ASSEMBLER WOULD TRY TO HANG THE CHILD DOCS OFF THE SCALAR THE AGGREGATE ALREADY PRODUCED.
-    select_vars = set(
-        rest if first == "row" else v
-        for s in plain_terms
-        for v in s.expr.join_vars()
-        for first, rest in [tail_field(v)]
-    )
-    active_paths = {schema.nested_path[0]: {
-        Column(
-            name=GUID,
-            json_type=STRING,
-            es_column=GUID,
-            es_index=self.name,
-            es_type=str,
-            nested_path=[self.name],
-            multi=1,
-            cardinality=0,
-            last_updated=Date.now(),
-        ),
-        Column(
-            name=UID,
-            json_type=INTEGER,
-            es_column=UID,
-            es_index=self.name,
-            es_type=str,
-            nested_path=[self.name],
-            multi=1,
-            cardinality=0,
-            last_updated=Date.now(),
-        ),
-    }}
-    for v in select_vars:
-        for _, c in schema.leaves(v):
-            active_paths.setdefault(c.nested_path[0], set()).add(c)
-
-    # ANY VARS MENTIONED WITH NO COLUMNS?
-    for v in select_vars:
-        if not any(startswith_field(cname, v) for cname in known_vars):
-            active_paths[schema.path].add(Column(
-                name=v,
-                json_type=OBJECT,
-                es_column=".",
-                es_index=schema.path,
-                es_type="NULL",
-                nested_path=[schema.path],
-                multi=1,
-                cardinality=0,
-                last_updated=Date.now(),
-            ))
-    # EACH SUBQUERY'S ORIGIN TABLE IS AN ACTIVE BRANCH (ITS INNER SELECT SUPPLIES THE COLUMNS)
-    for table_path in subqueries:
-        active_paths.setdefault(table_path, set())
+    # WHICH TABLES EACH CLAUSE REACHES.  ONE QUESTION ASKED PER CLAUSE: THE TABLES WE SELECT FROM,
+    # THE BRANCH SET (where/sort TABLES ARE JOINED FOR FILTERING/ORDERING, NOT SELECTED AS VALUES)
+    # AND THE PER-ARM where GATING ARE ALL PROJECTIONS OF THIS ONE MAP.
+    # join_vars, NOT vars: A COLLECTION AGGREGATE READS ITS NESTED COLUMN THROUGH ITS OWN FROM
+    # (ToListOp), SO IT NEEDS NO BRANCH - AND MUST NOT HAVE ONE, OR THE ASSEMBLER WOULD TRY TO
+    # HANG THE CHILD DOCS OFF THE SCALAR THE AGGREGATE ALREADY PRODUCED.
+    clause_tables = {
+        "select": _tables_of(schema, (v for t in plain_terms for v in t.expr.join_vars())),
+        "where": _tables_of(schema, query.where.join_vars()),
+        "sort": _tables_of(schema, (v for s in listwrap(query.sort) for v in s.value.vars())),
+    }
+    # THE TABLES WE REQUEST DATA FROM.  THE ORIGIN IS ALWAYS ONE (ITS uid PLUMBING), AND SO IS
+    # EACH SUBQUERY'S TABLE (ITS INNER SELECT SUPPLIES THE COLUMNS)
+    active_paths = {origin, *clause_tables["select"], *subqueries}
     # EVERY COLUMN, AND THE COLUMN INDEX IT OCCUPIES
     builder = BranchBuilder()
     # ALIASES: SAME OBJECTS THE BUILDER OWNS (IN-PLACE MUTATION IS SHARED); THE REST OF to_sql
@@ -298,25 +210,12 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
         query.select.frum, *(t for t in plain_terms if not is_variable(t.expr))
     ).partial_eval(SQLang)
 
-    # BRANCHES ALSO NEED TABLES THE where/sort REFERENCE (JOINED FOR FILTERING/ORDERING, NOT
-    # SELECTED AS VALUES).  RESOLVE THOSE VARS TO THEIR TABLES THE SAME WAY select_vars ARE.
-    # join_vars, NOT vars: A COLLECTION AGGREGATE READS A NESTED COLUMN THROUGH ITS OWN FROM
-    # (ToListOp), SO IT NEEDS NO BRANCH HERE.
-    referenced_paths = set(active_paths)
-    for v in set(
-        rest if first == "row" else v
-        for source in (query.where.join_vars(), *(s.value.vars() for s in listwrap(query.sort)))
-        for v in source
-        for first, rest in [tail_field(v)]
-    ):
-        for _, c in schema.leaves(v):
-            referenced_paths.add(c.nested_path[0])
-
     # THE BRANCHES OF THE RESULT HIERARCHY.  QUERY-DRIVEN: KEEP ONLY THE BRANCHES ON THE PATH TO
     # SOMETHING THE QUERY REFERENCES - EACH REFERENCED PATH AND ITS ANCESTORS (FOR THE JOIN
     # CHAIN).  UNRELATED/SIBLING TABLES CONTRIBUTE NOTHING, SO DROPPING THEM ONLY REMOVES EMPTY
     # UNION-ALL BRANCHES.  THE SORT KEYS AND THE UNION-ALL SQL ARE BOTH DRIVEN FROM THIS LIST.
     # docs/INTERSECTION_SURVEY.md §6
+    referenced_paths = active_paths | clause_tables["where"] | clause_tables["sort"]
     branches = [
         t
         for t in self.snowflake.query_paths
@@ -330,15 +229,7 @@ def to_sql(self, query) -> Tuple[Dict[int, ColumnMapping], SqlScript, DocumentDe
     # A COLLECTION AGGREGATE IS ABSENT HERE (join_vars): IT IS A PROPERTY OF THE *PARENT*, SO IT
     # BELONGS ON THE ORIGIN ARM - PUSHING IT TO THE CHILD ARM WOULD DROP A DOCUMENT WITH NO CHILD
     # ROW BEFORE THE PREDICATE COULD SEE IT (count == 0).
-    where_tables = set(
-        c.nested_path[0]
-        for v in set(
-            rest if first == "row" else v
-            for v in query.where.join_vars()
-            for first, rest in [tail_field(v)]
-        )
-        for _, c in schema.leaves(v)
-    )
+    where_tables = clause_tables["where"]
 
     # THE SELECT CLAUSE'S OWN NAMES, LONGEST FIRST (SEE _push_name)
     term_names = sorted((t.name for t in plain_terms), key=len, reverse=True)
@@ -590,6 +481,74 @@ def _path_to(node, target):
         if below:
             return [node, *below]
     return None
+
+
+def _partition_terms(terms, schema, origin):
+    """
+    PARTITION SELECT TERMS INTO BRANCHES.  A SUBQUERY VALUE (SelectOp OVER A NESTED FromOp)
+    AND A NAME REACHING BELOW THE ORIGIN ("a._a.v", "_a", ".") ARE THE SAME THING: A DEEP
+    GROUP - ITS OWN BRANCH SELECTING BRANCH-RELATIVE COLUMNS.  KYLE'S RULE: A DEEP-LEAF PATH
+    `a._a.v` IS SUGAR FOR `{"from":"a._a","select":"v","name":"a._a.v"}` (SPLIT AT THE ARRAY
+    BOUNDARY); _branch_split GENERALIZES THAT SPLIT TO A NAME THAT REACHES SEVERAL TABLES,
+    ASKING Names WHERE EACH BINDING LANDS.  READ THE PRE-partial_eval TERMS: partial_eval
+    FLATTENS BOTH BACK TO PATHS.  docs/INTERSECTION_SURVEY.md §7 STEPS 1-2
+
+    RETURN (PLAIN TERMS, {branch table path: [(outer name, queried name, [(inner name, inner
+    value), ...]), ...]})
+    """
+    plain_terms = []
+    subqueries = {}
+    # A TERM CARRYING AN aggregate DECLARATION IS READ AS ITS OPERATOR FORM (SelectOne.expr):
+    # ROUTED HERE, IT IS A COLLECTION AGGREGATE OF ONE DOCUMENT (ToListOp DOES ITS OWN FROM), SO
+    # IT NEEDS NO BRANCH - `.value` WOULD HAND US THE BARE NESTED NAME AND BUILD ONE.  THE TWO
+    # ARE THE SAME OBJECT FOR EVERY OTHER TERM.  query.py::_is_per_document
+    for term in terms:
+        if is_op(term.expr, SelectOp):
+            rel = first(term.expr.frum.vars())
+            table_path = first(c.nested_path[0] for _, c in schema.leaves(rel))
+            inner = []
+            for inner_term in term.expr.terms:
+                if inner_term.aggregate is not NULL and is_variable(inner_term.value):
+                    # AN AGGREGATE INSIDE THE SUBQUERY COLLAPSES ITS ROWS, SO IT IS A SCALAR OF
+                    # THE OUTER DOCUMENT, NOT A BRANCH: SAME OPERATOR, ORIGIN-ROOTED NAME.  A
+                    # ONE-TERM SUBQUERY *IS* ITS TERM, SO THE OUTER NAME IS THE WHOLE NAME
+                    plain_terms.append(SelectOne(
+                        term.name if len(term.expr.terms) == 1 else concat_field(term.name, inner_term.name),
+                        Variable(concat_field(rel, inner_term.value.var)),
+                        aggregate=inner_term.aggregate,
+                    ))
+                else:
+                    inner.append((inner_term.name, inner_term.expr))
+            if inner:
+                subqueries.setdefault(table_path, []).append((term.name, rel, inner))
+            continue
+        if is_variable(term.expr):
+            # EACH TABLE THE NAME REACHES -> ITS OWN SUBQUERY ENTRY = ITS OWN SLOT ON THAT TABLE,
+            # SO a._a.v -> list AND a._a.s -> scalar COLLAPSE INDEPENDENTLY.  A NAME WITH BINDINGS
+            # AT OR ABOVE THE ORIGIN TOO (`.` OVER A DOC WITH A NESTED ARRAY) KEEPS ITS PLAIN TERM
+            # FOR THOSE.  docs/INTERSECTION_SURVEY.md §7 STEP 3
+            deep, shallow = _branch_split(term, schema, origin)
+            for table_path, entry in deep.items():
+                subqueries.setdefault(table_path, []).append(entry)
+            if deep and not shallow:
+                continue
+        plain_terms.append(term)
+
+    return plain_terms, subqueries
+
+
+def _tables_of(schema, names):
+    """
+    THE TABLES ONE CLAUSE REACHES: EACH NAME RESOLVED TO ITS COLUMNS, TAKING THEIR TABLES.  A
+    `row.` PREFIX NAMES THE DOCUMENT ITSELF, SO IT IS STRIPPED BEFORE RESOLVING.  A NAME WITH NO
+    COLUMNS REACHES NOTHING - THE ORIGIN ARM ANSWERS IT WITH NULL, AND IS ACTIVE REGARDLESS.
+    """
+    return set(
+        c.nested_path[0]
+        for name in names
+        for head, rest in [tail_field(name)]
+        for _, c in schema.leaves(rest if head == "row" else name)
+    )
 
 
 def _branch_split(term, schema, origin):

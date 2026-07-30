@@ -185,7 +185,9 @@ def _cardinality(facts, s, si, column_number, schema):
         push_column_name=s.name,
         push_column_index=si,
         push_column_child=".",
-        pull=get_column(column_number, None, 0),
+        # ZERO, NOT 0: get_column READS `default.value`, SO THE DEFAULT IS AN EXPRESSION.  A BARE 0
+        # ONLY BLEW UP WHERE THE CELL WAS MISSING - A COORDINATE NO DOCUMENT REACHED
+        pull=get_column(column_number, None, ZERO),
         sql=count_sql,
         column_alias=_make_column_name(column_number),
         type=NUMBER,
