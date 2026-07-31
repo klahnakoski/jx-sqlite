@@ -16,7 +16,7 @@ from mo_imports import expect
 from mo_logs import logger, strings
 from mo_logs.strings import quote
 from mo_math import is_number
-from mo_sql.utils import  GUID, UID, ORDER, PARENT
+from mo_sql.utils import GUID, UID, ORDER, PARENT
 from mo_times import Date, Duration
 
 from jx_base import enlist
@@ -223,11 +223,8 @@ def to_sql(expr):
     else:
         return SqlLiteral(expr)
 
+
 quoted_GUID = quote_column(GUID)
 quoted_UID = quote_column(UID)
 quoted_ORDER = quote_column(ORDER)
 quoted_PARENT = quote_column(PARENT)
-
-
-
-

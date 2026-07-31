@@ -59,10 +59,7 @@ class Snowflake(_Snowflake):
         :param name_map: IN {new_name: old_name} FORM
         :return: NEW Snowflake WITH RENAMED TABLES
         """
-        return Snowflake(
-            name_map.get(self.fact_name, self.fact_name),
-            self.namespace.rename_tables(name_map)
-        )
+        return Snowflake(name_map.get(self.fact_name, self.fact_name), self.namespace.rename_tables(name_map))
 
     def change_schema(self, required_changes):
         """

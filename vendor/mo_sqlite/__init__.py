@@ -8,8 +8,22 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-__all__ = ["Container", "Namespace", "Schema", "Column", "Facts", "Table", "Snowflake", "SQLang", "quote_column",
-           "TYPE_CHECK", "sql_alias", "sql_list", "sql_iso", "quote_value"]
+__all__ = [
+    "Container",
+    "Namespace",
+    "Schema",
+    "Column",
+    "Facts",
+    "Table",
+    "Snowflake",
+    "SQLang",
+    "quote_column",
+    "TYPE_CHECK",
+    "sql_alias",
+    "sql_list",
+    "sql_iso",
+    "quote_value",
+]
 
 from jx_base import Column
 from mo_sqlite.database import Sqlite

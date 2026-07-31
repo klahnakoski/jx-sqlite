@@ -29,6 +29,7 @@ from mo_sql.utils import ABOUT_TABLE, DIGITS_TABLE
 from mo_sqlite import SQLang
 from mo_sqlite.database import Sqlite
 from mo_sqlite.expressions.sql_select_all_from_op import SqlSelectAllFromOp
+from mo_sqlite.sql_script import SqlTree
 from mo_sqlite.types import json_type_to_sqlite_type
 from mo_sqlite.utils import quote_column, sql_eq, sql_create, sql_insert
 
@@ -68,7 +69,10 @@ class Container(_Container):
                 with self.db.transaction() as t:
                     top_id = first(first(
                         t
-                        .query(ConcatSQL(SQL_SELECT, quote_column("next_id"), SQL_FROM, quote_column(ABOUT_TABLE)), raw=True)
+                        .query(
+                            ConcatSQL(SQL_SELECT, quote_column("next_id"), SQL_FROM, quote_column(ABOUT_TABLE)),
+                            raw=True,
+                        )
                         .data
                     ))
                     max_id = top_id + 1000
@@ -91,6 +95,8 @@ class Container(_Container):
     def query(self, query):
         if isinstance(query, SqlScript):
             return self.db.query(query.sql)
+        if isinstance(query, SqlTree):
+            return self.db.query(query.to_sql(SQLang))
 
         if isinstance(query, Expression):
             if (
@@ -121,8 +127,7 @@ class Container(_Container):
         normalized_query = jx_expression(query, SQLang)
         if normalized_query.lang is not SQLang:
             logger.error(f"cannot execute query in {normalized_query.lang}")
-        command = normalized_query.apply(self)
-        output = self.db.query(command)
+        output = normalized_query.apply(self)
         return output
 
     def create_or_replace_facts(self, fact_name, uid=UID):

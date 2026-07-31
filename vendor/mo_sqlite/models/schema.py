@@ -123,8 +123,7 @@ class Schema(_Schema, Expression):
         :return: NEW SCHEMA WITH RENAMED TABLES
         """
         return Schema(
-            NestedPath([name_map.get(p, p) for p in self.nested_path]),
-            self.snowflake.rename_tables(name_map)
+            NestedPath([name_map.get(p, p) for p in self.nested_path]), self.snowflake.rename_tables(name_map)
         )
 
     def keys(self):

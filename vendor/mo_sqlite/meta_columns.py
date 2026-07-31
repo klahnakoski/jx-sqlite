@@ -153,9 +153,7 @@ class ColumnList(Table, Container):
             self.add(Column(
                 name=cname,
                 json_type=coalesce(
-                    sql_type_key_to_json_type.get(sql_type_key),
-                    sql_type_key_to_json_type.get(sql_type),
-                    IS_NULL,
+                    sql_type_key_to_json_type.get(sql_type_key), sql_type_key_to_json_type.get(sql_type), IS_NULL,
                 ),
                 nested_path=full_nested_path,
                 es_type=sql_type,
@@ -166,7 +164,6 @@ class ColumnList(Table, Container):
             ))
 
         self.relations = [r for t in tables for r in self.db.get_relations(t.name)]
-
 
     def _load_from_database(self):
         # FIND ALL TABLES
@@ -197,9 +194,7 @@ class ColumnList(Table, Container):
                 self.add(Column(
                     name=cname,
                     json_type=coalesce(
-                        sql_type_key_to_json_type.get(sql_type_key),
-                        sql_type_key_to_json_type.get(sql_type),
-                        IS_NULL,
+                        sql_type_key_to_json_type.get(sql_type_key), sql_type_key_to_json_type.get(sql_type), IS_NULL,
                     ),
                     nested_path=full_nested_path,
                     es_type=sql_type,
@@ -208,7 +203,7 @@ class ColumnList(Table, Container):
                     multi=1,
                     last_updated=Date.now(),
                 ))
-            last_nested_path=full_nested_path
+            last_nested_path = full_nested_path
 
         self.relations = [r for t in tables for r in self.db.get_relations(t.name)]
 
@@ -520,13 +515,11 @@ class ColumnList(Table, Container):
         output = ListContainer(
             META_COLUMNS_NAME,
             data=data,
-            schema=jx_base.Schema(
-                [META_COLUMNS_NAME],
-                Snowflake(None, [META_COLUMNS_NAME], SIMPLE_METADATA_COLUMNS)
-            )
+            schema=jx_base.Schema([META_COLUMNS_NAME], Snowflake(None, [META_COLUMNS_NAME], SIMPLE_METADATA_COLUMNS)),
         )
         output.schema.snowflake.namespace = output
         return output
+
 
 def doc_to_column(doc):
     return Column(**to_data(detype(doc)))

@@ -591,7 +591,7 @@ def delete_daemon(file, caller_stack, please_stop):
     num_attempts = 0
     while not please_stop:
         try:
-            if file.exists:
+            if not file.exists:
                 return
             file.delete()
             return
